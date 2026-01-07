@@ -132,7 +132,7 @@ async function initWorld(room: any) {
 
   const bitmap = await loadImageWithProgress(
     map.imageUrl,
-    (p) => (mapProgress.value = p)
+    (p) => (mapProgress.value = p * 0.5)
   )
 
   await nextTick()
@@ -178,7 +178,7 @@ async function initWorld(room: any) {
   // load height map
   const bitmapHeightMap = await loadImageWithProgress(
     map.heightMapUrl,
-    (p) => (mapProgress.value = p)
+    (p) => (mapProgress.value = p * 0.5)
   )
   await w.setHeightMap(bitmapHeightMap);
 

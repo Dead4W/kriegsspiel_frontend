@@ -1,0 +1,194 @@
+{
+  "title": "KRIEGSSPIEL",
+  "subtitle": "Fog of war.",
+  "createRoom": "Create room",
+  "joinRoom": "Join room",
+  "welcome": "Welcome",
+  "to_home": "Go Home",
+  "loading": "Loading...",
+  "loading_map": "Loading map...",
+  "select_team": "Select team",
+  "clear": "Clear",
+
+  "command": {
+    "attack": "Attack",
+    "move": "Move",
+    "formation": "Formation",
+    "ability": "Ability",
+    "move_pick": "Move to target",
+    "damage_modifier": "Damage modifier"
+  },
+  "command_desc": {
+    "move": "Move to position ({x}, {y})",
+    "attack": "Attack targets: {count}, damage modifier {dmg}%",
+    "abilityAttack": "Use ability \"{ability}\": targets {count}, damage modifier {dmg}%",
+    "changeFormation": "Change formation to \"{formation}\""
+  },
+  "command_status": {
+    "pending": "In queue",
+    "running": "Running"
+  },
+
+  "tools": {
+    "add_unit": "Unit",
+    "ruler": "Ruler",
+    "attack": "Attack",
+    "environment_editor": "Environment Modifiers",
+    "commands": "Commands",
+    "admin": {
+      "title": "Administration",
+      "start_war": "Start war",
+      "end_war": "End war",
+      "copy_blue": "Copy blue board",
+      "copy_red": "Copy red board"
+    },
+    "command": {
+      "command": "Command",
+      "attack": "Attack",
+      "move": "Move",
+      "delivery": "Delivery",
+      "formation": "Formation",
+      "units": "Units",
+      "route": "Route",
+      "pickRouteHint": "RMB — edit last point,\nShift + RMB — add",
+      "routeModifiers": "Route modifiers",
+      "moveMode": "Movement mode",
+      "moveModeFormation": "Keep formation",
+      "moveModeColumn": "Column",
+      "cancel": "Cancel"
+    },
+    "command_remove": "Remove command"
+  },
+
+  "stat": {
+    "name": "Unit name",
+    "damage": "Damage",
+    "hp": "HP",
+    "ammo": "Ammo",
+    "speed": "Speed",
+    "defense": "Defense",
+    "attackRange": "Attack range",
+    "visionRange": "Vision range",
+    "height": "Height",
+    "details": "Details"
+  },
+
+  "spawn": {
+    "title": "Add unit",
+    "team": "Team",
+    "count": "Count",
+    "unit_type": "Unit type",
+    "hint": "Click on map — add unit"
+  },
+
+  "unit": {
+    "infantry": "Infantry",
+    "cavalry": "Cavalry",
+    "artillery": "Artillery",
+    "marine": "Marine",
+    "militia": "Militia",
+    "gatling": "Gatling",
+    "general": "General",
+    "messenger": "Messenger"
+  },
+
+  "team": {
+    "admin": "Umpire",
+    "spectator": "Spectator",
+    "blue": "Blue",
+    "red": "Red",
+    "white": "Neutral"
+  },
+
+  "error": {
+    "error_auth_required": "Auth required.",
+    "bad_token": "Auth token expired or not exist.",
+    "bad_password": "Wrong room password.",
+    "room_not_found": "Room not found."
+  },
+
+  "room": {
+    "enter_password": "Enter room password",
+    "password": "password"
+  },
+
+  "continue": "Continue",
+
+  "authModal": {
+    "nickname": "Nickname",
+    "enterName": "Enter nickname"
+  },
+
+  "env": {
+    "in_house": "House",
+    "in_cover_house": "Cover house",
+    "in_forest": "Forest",
+    "on_road": "Road",
+    "on_good_road": "Good Road",
+    "in_water": "Water"
+  },
+
+  "chat": {
+    "you": "You",
+    "units_messages": "Units",
+    "input_placeholder": "Command or message…",
+    "first_unread": "First unread",
+    "mark_as_read": "Mark as read",
+    "mark_all_as_read": "Mark all as read",
+    "selection_warning": "Message cannot be sent",
+    "spawn_messenger": "Spawn messenger",
+    "warning": {
+      "selection_hint": "Select at least one unit to send a chat message",
+      "selection_both_team": "Selected units from many teams, please select units from one team"
+    }
+  },
+
+  "client_settings": {
+    "title": "Settings",
+    "dark_theme": "Dark theme",
+    "sound_volume": "Sound volume",
+    "test_sound": "Test",
+    "show_unit_labels": "Show unit labels",
+    "show_unit_label_type": "Show unit type",
+    "opacity_unit": "Unit opacity",
+    "size_unit": "Unit size",
+    "show_hp_unit_on_map": "Show unit HP on map",
+    "show_unit_vision": "Show unit vision radius",
+    "show_unit_vision_forest_raycast": "[BETA] Use forest map (raycast)",
+    "forest_map": "Show forest map",
+    "height_map": "Show height map"
+  },
+
+  "settings": {
+    "redTeamName": {
+      "label": "Red team name",
+      "description": "Optional name for the red side",
+      "placeholder": "e.g. USA"
+    },
+    "blueTeamName": {
+      "label": "Blue team name",
+      "description": "Optional name for the blue side",
+      "placeholder": "e.g. Britain"
+    },
+    "limitedAmmo": {
+      "label": "Limited ammunition",
+      "description": "Units have limited ammo that must be managed"
+    },
+    "generalVisionUpdate": {
+      "label": "General updates vision in direct sight",
+      "description": "Information is updated within general's direct vision"
+    },
+    "autoStatsUpdate": {
+      "label": "Automatic stats update",
+      "description": "Stats of unit are updated automatically upon receiving reports (HP, Ammo, etc..)"
+    }
+  },
+
+  "formation": {
+    "default": "Default",
+    "line": "Line",
+    "column": "Column",
+    "wedge": "Wedge",
+    "circle": "Circle"
+  }
+}

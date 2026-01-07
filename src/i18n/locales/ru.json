@@ -1,0 +1,202 @@
+{
+  "title": "КРИГШПИЛЬ",
+  "subtitle": "Туман войны.",
+  "createRoom": "Создать комнату",
+  "joinRoom": "Присоединиться",
+  "welcome": "Добро пожаловать",
+  "to_home": "На главную.",
+  "loading": "Загрузка...",
+  "loading_map": "Загрузка карты...",
+  "select_team": "Выбор команды",
+  "clear": "Очистить",
+
+  "command": {
+    "title": "Приказы",
+    "attack": "Атака",
+    "move": "Движение",
+    "formation": "Формация",
+    "ability": "Способность",
+    "clear": "Очистить приказы",
+    "move_pick": "Назначить точку",
+    "damage_modifier": "Модификатор урона"
+  },
+  "command_desc": {
+    "move": "Движение к точке ({x}, {y})",
+    "attack": "Атака целей: {count}, модификатор урона {dmg}%",
+    "abilityAttack": "Использование способности «{ability}»: целей {count}, модификатор урона {dmg}%",
+    "changeFormation": "Смена построения на «{formation}»"
+  },
+  "command_status": {
+    "pending": "В очереди",
+    "running": "Исполняется"
+  },
+
+  "tools": {
+    "add_unit": "Юнит",
+    "ruler": "Линейка",
+    "attack": "Атака",
+    "environment_editor": "Модификаторы окружения",
+    "commands": "Приказы",
+    "admin": {
+      "title": "Администрирование",
+      "start_war": "Начать войну",
+      "end_war": "Закончить войну",
+      "copy_blue": "Скопировать доску синих",
+      "copy_red": "Скопировать доску красных"
+    },
+    "command": {
+      "command": "Приказ",
+      "attack": "Атака",
+      "move": "Движение",
+      "delivery": "Доставка",
+      "formation": "Формация",
+      "units": "Юниты",
+      "route": "Маршрут",
+      "pickRouteHint": "ПКМ — изменить последнюю точку,\nShift + ПКМ — добавить",
+      "routeModifiers": "Модификаторы маршрута",
+      "moveMode": "Режим движения",
+      "moveModeFormation": "Сохраняя формацию",
+      "moveModeColumn": "Колонной",
+      "cancel": "Отмена",
+
+      "delivery_from": "Доставляют",
+      "delivery_to": "Получатели",
+      "delivery_hint": "Выделите подходящие цели",
+      "delivery_message": "Сообщение",
+      "delivery_confirm": "Назначить доставку"
+    },
+    "command_remove": "Удалить приказ"
+  },
+
+  "stat": {
+    "name": "Имя юнита",
+    "damage": "Урон",
+    "hp": "Здоровье",
+    "ammo": "Боеприпасы",
+    "speed": "Скорость",
+    "defense": "Защита",
+    "attackRange": "Даль. атаки",
+    "visionRange": "Даль. обзора",
+    "height": "Высота",
+    "details": "Подробнее"
+  },
+
+  "spawn": {
+    "title": "Добавить юнит",
+    "team": "Команда",
+    "count": "Количество",
+    "unit_type": "Тип юнита",
+    "hint": "Клик по карте — поставить юнит"
+  },
+
+  "unit": {
+    "infantry": "Пехота",
+    "cavalry": "Кавалерия",
+    "artillery": "Артиллерия",
+    "marine": "Морпехи",
+    "militia": "Ополчение",
+    "gatling": "Гатлинг",
+    "general": "Генерал",
+    "messenger": "Посыльный"
+  },
+
+  "team": {
+    "admin": "Судья",
+    "spectator": "Наблюдатель",
+    "blue": "Синие",
+    "red": "Красные",
+    "white": "Нейтральные"
+  },
+
+  "error": {
+    "error_auth_required": "Необходима авторизация.",
+    "bad_token": "Похоже токен истек или что-то пошло не так.",
+    "bad_password": "Неверный пароль комнаты.",
+    "room_not_found": "Комната не найдена."
+  },
+
+  "room": {
+    "enter_password": "Введите пароль комнаты",
+    "password": "Пароль"
+  },
+
+  "continue": "Продолжить",
+
+  "authModal": {
+    "nickname": "Ник",
+    "enterName": "Введите ник"
+  },
+
+  "env": {
+    "in_house": "Дом",
+    "in_cover_house": "Укр. Дом",
+    "in_forest": "Лес",
+    "on_road": "Дорога",
+    "on_good_road": "Хорошая Дорога",
+    "in_water": "Вода"
+  },
+
+  "chat": {
+    "you": "Вы",
+    "units_messages": "Юниты",
+    "input_placeholder": "Приказ или сообщение…",
+    "first_unread": "Первое непрочитанное",
+    "mark_as_read": "Отметить прочитанным",
+    "mark_all_as_read": "Отменить всё прочитанным",
+    "selection_warning": "Нельзя отправить сообщение",
+    "spawn_messenger": "Создать посыльного",
+    "warning": {
+      "selection_hint": "Выберите хотя бы один юнит, чтобы написать сообщение в чат",
+      "selection_both_team": "Выбрано несколько команд, пожалуйста выберине юнитов одной команды"
+    }
+  },
+
+  "client_settings": {
+    "title": "Настройки",
+    "dark_theme": "Тёмная тема",
+    "sound_volume": "Громкость",
+    "test_sound": "Тест",
+    "show_unit_labels": "Показывать подписи юнитов",
+    "show_unit_label_type": "Показывать тип юнита",
+    "opacity_unit": "Прозрачность юнита",
+    "size_unit": "Размер юнита",
+    "show_hp_unit_on_map": "Показывать HP на карте",
+    "show_unit_vision": "Показывать область видимости юнитов",
+    "show_unit_vision_forest_raycast": "[BETA] Использовать карту леса (raycast)",
+    "forest_map": "Показать карту лесов",
+    "height_map": "Показать карту высот"
+  },
+
+  "settings": {
+    "redTeamName": {
+      "label": "Название красной команды",
+      "description": "Опциональное название для красной стороны",
+      "placeholder": "Например: США"
+    },
+    "blueTeamName": {
+      "label": "Название синей команды",
+      "description": "Опциональное название для синей стороны",
+      "placeholder": "Например: Британия"
+    },
+    "limitedAmmo": {
+      "label": "Патроны не бесконечные",
+      "description": "Боезапас юнитов ограничен и требует учёта"
+    },
+    "generalVisionUpdate": {
+      "label": "Генерал обновляет информацию в прямой видимости",
+      "description": "Информация обновляется при прямой видимости генерала"
+    },
+    "autoStatsUpdate": {
+      "label": "Автоматическое обновление статов",
+      "description": "Статы юнита обновляются автоматически при получении рапортов (HP, Ammo, и т.д.)"
+    }
+  },
+
+  "formation": {
+    "default": "По умолчанию",
+    "line": "Линия",
+    "column": "Колонна",
+    "wedge": "Клин",
+    "circle": "Круг"
+  }
+}

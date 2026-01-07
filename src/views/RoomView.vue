@@ -122,7 +122,8 @@ async function onTeamSelected(team: Team) {
 
 async function initWorld(room: any) {
   const map: mapmeta = {
-    imageUrl: room.options?.mapImage ?? '/assets/default_map.jpeg',
+    // imageUrl: room.options?.mapImage ?? '/assets/default_map.jpeg',
+    imageUrl: room.options?.mapImage ?? 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg',
     heightMapUrl: room.options?.heightMapImage ?? '/assets/default_height_map.png',
     width: 9703,
     height: 7553,

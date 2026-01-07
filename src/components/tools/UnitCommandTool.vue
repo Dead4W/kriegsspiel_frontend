@@ -34,6 +34,14 @@ function isMessenger() {
   return props.units.filter(u => u.type === unitType.MESSENGER).length === props.units.length;
 }
 
+function clearCommands() {
+  for (const u of props.units) {
+    u.clearCommands()
+    u.setDirty()
+  }
+  window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
+}
+
 </script>
 
 <template>
@@ -59,6 +67,11 @@ function isMessenger() {
       <button class="order-btn" @click="open(UnitCommandTypes.ChangeFormation)" v-if="!isMessenger()">
         <span class="icon icon-formation">■■■</span>
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.formation') }}</span>
+      </button>
+
+      <button class="order-btn" @click="clearCommands">
+        <span class="icon icon-formation">❌</span>
+        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.clear_commands') }}</span>
       </button>
     </div>
 

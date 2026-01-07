@@ -20,7 +20,7 @@ type worldevents = {
 }
 
 export class world {
-  time: string = '1982-06-12 09:00:00';
+  time: string = '1882-06-12 09:00:00';
 
   stage: RoomGameStage = RoomGameStage.PLANNING;
 

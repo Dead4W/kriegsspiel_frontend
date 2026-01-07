@@ -30,6 +30,9 @@ export const CLIENT_SETTING_KEYS = {
   // Показывать область видимости юнита с учетом леса
   SHOW_UNIT_VISION_FOREST_RAYCAST: 'showUnitVisionForestRaycast',
 
+  // Иконки модификатора над юнитом
+  SHOW_UNIT_MODIFICATORS: 'showUnitModificators',
+
   // Показать карту лесов
   SHOW_FOREST_MAP: 'showForestMap',
 
@@ -74,6 +77,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.SHOW_HP_UNIT_ON_MAP]: true,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_VISION]: true,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]: false,
+    [CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]: true,
     [CLIENT_SETTING_KEYS.SHOW_FOREST_MAP]: false,
     [CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]: false,
     [CLIENT_SETTING_KEYS.CHAT_HEIGHT]: null,

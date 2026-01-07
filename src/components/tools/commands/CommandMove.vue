@@ -464,8 +464,6 @@ function confirm() {
   // используем план, чтобы порядок был стабильный
   const plan = movePlan.value
   plan.forEach(({ unit: u, orderIndex }, planIdx) => {
-    const new_commands = [];
-
     for (let segIndex = 0; segIndex < targets.value.length; segIndex++) {
       const t = targets.value[segIndex]!
 
@@ -491,11 +489,10 @@ function confirm() {
           orderIndex: orderIndex,
           uniqueId: uniqueId,
         })
-        new_commands.push(cmd)
+        u.addCommand(cmd.getState())
       }
     }
 
-    u.setCommands(new_commands)
     u.setDirty()
   })
 

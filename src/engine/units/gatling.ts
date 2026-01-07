@@ -7,10 +7,10 @@ export class Gatling extends BaseUnit {
 
   stats: UnitStats = {
     maxHp: 64,
-    damage: 100,
-    speed: 400,
+    damage: 16,
+    speed: 80,
     defense: 1,
-    attackRange: 400,
+    attackRange: 1000,
     visionRange: 1000,
     ammoMax: 10,
   }

@@ -10,10 +10,10 @@ export class General extends BaseUnit {
 
   stats: UnitStats = {
     maxHp: 64,
-    damage: 10,
-    speed: 400,
+    damage: 1,
+    speed: 80,
     defense: 1,
-    attackRange: 400,
+    attackRange: 1000,
     visionRange: 1000,
     ammoMax: 10,
   }

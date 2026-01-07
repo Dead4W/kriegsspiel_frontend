@@ -7,10 +7,10 @@ export class Marine extends BaseUnit {
 
   stats: UnitStats = {
     maxHp: 64,
-    damage: 15,
-    speed: 400,
+    damage: 2,
+    speed: 80,
     defense: 1,
-    attackRange: 130,
+    attackRange: 1000,
     visionRange: 1000,
     ammoMax: 25,
   }

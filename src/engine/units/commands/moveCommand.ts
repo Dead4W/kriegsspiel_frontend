@@ -1,6 +1,6 @@
 import type { vec2 } from "@/engine/types.ts";
 import { BaseUnit } from "@/engine/units/baseUnit.ts";
-import { BaseCommand } from "./baseCommand.ts";
+import {BaseCommand, CommandStatus} from "./baseCommand.ts";
 import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
 import { UnitEnvironmentState } from "@/engine/units/enums/UnitStates.ts";
 import type {uuid} from "@/engine";
@@ -31,7 +31,7 @@ export class MoveCommand extends BaseCommand<
     const dist = Math.hypot(dx, dy)
     if (dist === 0) return
 
-    const speed = unit.speed / (60 * 60) * dt
+    const speed = unit.speed / 60 * dt * window.ROOM_WORLD.map.metersPerPixel
 
     unit.move({
       x: unit.pos.x + (dx / dist) * speed,
@@ -95,12 +95,13 @@ export class MoveCommand extends BaseCommand<
     const dy = this.state.target.y - unit.pos.y
     const dist = Math.hypot(dx, dy)
 
-    return Math.ceil(dist / (unit.speed / (60 * 60)))
+    return Math.ceil(dist / (unit.speed / 60))
   }
 
-  getState(): { type: UnitCommandTypes.Move; state: MoveCommandState } {
+  getState(): { type: UnitCommandTypes.Move; status: CommandStatus; state: MoveCommandState } {
     return {
       type: this.type,
+      status: this.status,
       state: this.state,
     }
   }

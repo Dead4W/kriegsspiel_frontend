@@ -7,10 +7,10 @@ export class Militia extends BaseUnit {
 
   stats: UnitStats = {
     maxHp: 64,
-    damage: 4,
-    speed: 400,
+    damage: 0.5,
+    speed: 80,
     defense: 1,
-    attackRange: 90,
+    attackRange: 1000,
     visionRange: 1000,
     ammoMax: 15,
   }

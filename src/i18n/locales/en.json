@@ -40,7 +40,8 @@
       "start_war": "Start war",
       "end_war": "End war",
       "copy_blue": "Copy blue board",
-      "copy_red": "Copy red board"
+      "copy_red": "Copy red board",
+      "clear_commands": "Clear commands"
     },
     "command": {
       "command": "Command",
@@ -120,6 +121,12 @@
   },
 
   "env": {
+    "in_field": "In field",
+    "in_plain_field": "In planted field",
+    "in_soft_field": "In soft field",
+    "in_swamp_or_dirty": "In swamp/dirty",
+    "in_cover_trenches": "In cover trenches",
+    "in_brench": "Behind brench",
     "in_house": "House",
     "in_cover_house": "Cover house",
     "in_forest": "Forest",
@@ -153,6 +160,7 @@
     "opacity_unit": "Unit opacity",
     "size_unit": "Unit size",
     "show_hp_unit_on_map": "Show unit HP on map",
+    "show_unit_modificators": "Show icon modificators on unit",
     "show_unit_vision": "Show unit vision radius",
     "show_unit_vision_forest_raycast": "[BETA] Use forest map (raycast)",
     "forest_map": "Show forest map",

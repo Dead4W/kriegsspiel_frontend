@@ -9,21 +9,27 @@ export const FORMATION_STAT_MULTIPLIERS: Record<
 > = {
   [FormationType.Default]: {},
 
-  [FormationType.Line]: {
-    // attackRange: 1.1,
-    // defense: 0.9,
+  [FormationType.Springing]: {
+    defense: 1.2,
+    speed: 0.5,
+  },
+
+  [FormationType.KneelingVolley]: {
+    defense: 2.0,
+    damage: 0.9,
+  },
+
+  [FormationType.ForceWalking]: {
+    defense: 4.0,
+    damage: 0.8,
+  },
+
+  [FormationType.OnHorse]: {
+    defense: 8.0,
+    damage: 0.12,
   },
 
   [FormationType.Column]: {
-    // speed: 1.1,
-    // visionRange: 0.9,
+    defense: 16.0,
   },
-
-  [FormationType.Wedge]: {
-    // damage: 1.15,
-    // defense: 1.1,
-    // speed: 0.9,
-  },
-
-  [FormationType.Circle]: {},
 }

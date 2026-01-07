@@ -63,7 +63,9 @@
       "delivery_to": "Получатели",
       "delivery_hint": "Выделите подходящие цели",
       "delivery_message": "Сообщение",
-      "delivery_confirm": "Назначить доставку"
+      "delivery_confirm": "Назначить доставку",
+
+      "clear_commands": "Очистить команды"
     },
     "command_remove": "Удалить приказ"
   },
@@ -128,6 +130,12 @@
   },
 
   "env": {
+    "in_field": "В поле",
+    "in_plain_field": "В пашне",
+    "in_soft_field": "В мягкое почве",
+    "in_swamp_or_dirty": "В болоте/грязи",
+    "in_cover_trenches": "В укр. траншее",
+    "in_brench": "За забором",
     "in_house": "Дом",
     "in_cover_house": "Укр. Дом",
     "in_forest": "Лес",
@@ -161,6 +169,7 @@
     "opacity_unit": "Прозрачность юнита",
     "size_unit": "Размер юнита",
     "show_hp_unit_on_map": "Показывать HP на карте",
+    "show_unit_modificators": "Показывать иконки модификаторов юнита",
     "show_unit_vision": "Показывать область видимости юнитов",
     "show_unit_vision_forest_raycast": "[BETA] Использовать карту леса (raycast)",
     "forest_map": "Показать карту лесов",

@@ -80,7 +80,6 @@ function confirm() {
   })
 
   for (const u of attackers.value) {
-    u.clearCommands()
     u.addCommand(cmd.getState())
     u.setDirty()
   }

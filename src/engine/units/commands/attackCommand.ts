@@ -1,7 +1,12 @@
-import type { BaseUnit } from "@/engine/units/baseUnit.ts";
-import { BaseCommand } from "./baseCommand.ts";
-import type { uuid } from "@/engine";
+import type {BaseUnit} from "@/engine/units/baseUnit.ts";
+import {BaseCommand} from "./baseCommand.ts";
+import {unitType, type uuid} from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
+import {
+  ARTILLERY_DISTANCE_MODIFIERS, DISTANCE_MODIFIERS,
+  getUnitDistanceModifier
+} from "@/engine/units/enums/UnitDistanceModifier.ts";
 
 export interface AttackCommandState {
   targets: uuid[]
@@ -21,16 +26,49 @@ export class AttackCommand extends BaseCommand<
   }
 
   update(unit: BaseUnit, dt: number) {
+    const ARTILLERY_IGNORE_ENVS = [
+      UnitEnvironmentState.InForest,
+      UnitEnvironmentState.InCoverHouse,
+      UnitEnvironmentState.InCoverTrenches,
+      UnitEnvironmentState.InWater,
+    ];
+
     if (this.isFinished(unit)) return
 
     const targets = this.getPriorityTargets(unit)
     if (targets.length === 0) return
 
     const percentHp = unit.hp / unit.stats.maxHp;
-    const dmg = (unit.damage * percentHp * this.state.damageModifier / (60 * 60) * dt) / targets.length
+    let dmg =
+      (
+        unit.damage
+        * percentHp
+        * this.state.damageModifier
+        / (60 * 60) * dt
+      )
+      / targets.length
 
     for (const target of targets) {
-      target.takeDamage(dmg)
+      let unitDmg = dmg;
+
+      if (unit.type === unitType.ARTILLERY) {
+        for (const env of ARTILLERY_IGNORE_ENVS) {
+          // TODO: Проверка на дальную атаку
+          if (target.envState.includes(env)) {
+            unitDmg *= 2;
+          }
+        }
+      }
+
+      const dx = target.pos.x - unit.pos.x
+      const dy = target.pos.y - unit.pos.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      unitDmg *= getUnitDistanceModifier(
+        unitType.ARTILLERY ? ARTILLERY_DISTANCE_MODIFIERS : DISTANCE_MODIFIERS,
+        distance,
+      );
+
+      target.takeDamage(unitDmg)
     }
   }
 
@@ -68,6 +106,7 @@ export class AttackCommand extends BaseCommand<
   getState() {
     return {
       type: this.type,
+      status: this.status,
       state: this.state
     }
   }

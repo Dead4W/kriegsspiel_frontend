@@ -122,7 +122,7 @@ function clearEnvStates() {
 
 .env-buttons {
   display: grid;
-  grid-template-rows: repeat(2, auto);
+  grid-template-rows: repeat(3, auto);
   grid-auto-flow: column;
   gap: 4px;
 }

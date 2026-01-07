@@ -193,6 +193,16 @@ onUnmounted(() => {
       {{ t('client_settings.show_hp_unit_on_map') }}
     </label>
 
+    <!-- HP -->
+    <label class="setting">
+      <input
+        type="checkbox"
+        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]"
+        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS)"
+      />
+      {{ t('client_settings.show_unit_modificators') }}
+    </label>
+
     <!-- VISION -->
     <label class="setting">
       <input

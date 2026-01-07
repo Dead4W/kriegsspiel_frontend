@@ -7,6 +7,7 @@ import type {ChangeFormationCommandState} from "@/engine/units/commands/changeFo
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import type {WaitCommandState} from "@/engine/units/commands/waitCommand.ts";
 import type {DeliveryCommandState} from "@/engine/units/commands/deliveryCommand.ts";
+import {CommandStatus} from "@/engine/units/commands/baseCommand.ts";
 
 export type uuid = string
 
@@ -25,10 +26,11 @@ export enum unitType {
 
 export enum FormationType {
   Default = 'default',
-  Line = 'line',
+  Springing = 'springing',
+  KneelingVolley = 'kneelingVolley',
+  ForceWalking = 'forceWalking',
   Column = 'column',
-  Wedge = 'wedge',
-  Circle = 'circle',
+  OnHorse = 'onHorse',
 }
 
 
@@ -56,9 +58,9 @@ export interface unitstate {
 }
 
 export type commandstate =
-  { type: UnitCommandTypes.Move; state: MoveCommandState }
-  | { type: UnitCommandTypes.Attack; state: AttackCommandState }
-  | { type: UnitCommandTypes.AbilityAttack; state: AbilityAttackCommandState }
-  | { type: UnitCommandTypes.ChangeFormation; state: ChangeFormationCommandState }
-  | { type: UnitCommandTypes.Wait; state: WaitCommandState }
-  | { type: UnitCommandTypes.Delivery; state: DeliveryCommandState }
+  { type: UnitCommandTypes.Move; status: CommandStatus; state: MoveCommandState }
+  | { type: UnitCommandTypes.Attack; status: CommandStatus; state: AttackCommandState }
+  | { type: UnitCommandTypes.AbilityAttack; status: CommandStatus; state: AbilityAttackCommandState }
+  | { type: UnitCommandTypes.ChangeFormation; status: CommandStatus; state: ChangeFormationCommandState }
+  | { type: UnitCommandTypes.Wait; status: CommandStatus; state: WaitCommandState }
+  | { type: UnitCommandTypes.Delivery; status: CommandStatus; state: DeliveryCommandState }

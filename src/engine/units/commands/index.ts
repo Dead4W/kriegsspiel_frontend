@@ -17,8 +17,7 @@ import {
   type DeliveryCommandState
 } from "@/engine/units/commands/deliveryCommand.ts";
 
-export function createUnitCommand(state: commandstate)
-  : BaseCommand<UnitCommandTypes, AbilityAttackCommandState | AttackCommandState | ChangeFormationCommandState | MoveCommandState | WaitCommandState | DeliveryCommandState> {
+export function initUnitCommand(state: commandstate) {
   switch (state.type) {
     case UnitCommandTypes.Attack:
       return new AttackCommand(state.state)
@@ -34,5 +33,11 @@ export function createUnitCommand(state: commandstate)
       // @ts-ignore
       throw new Error(`Unknown unit type: "${state.type}"`)
   }
+}
+
+export function createUnitCommand(state: commandstate): BaseCommand<UnitCommandTypes, AbilityAttackCommandState | AttackCommandState | ChangeFormationCommandState | MoveCommandState | WaitCommandState | DeliveryCommandState> {
+  const cmd = initUnitCommand(state)
+  cmd.status = state.status
+  return cmd;
 }
 

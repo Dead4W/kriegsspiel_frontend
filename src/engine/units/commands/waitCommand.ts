@@ -30,6 +30,7 @@ export class WaitCommand extends BaseCommand<
   getState() {
     return {
       type: this.type,
+      status: this.status,
       state: this.state,
     }
   }

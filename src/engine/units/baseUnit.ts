@@ -134,7 +134,7 @@ export abstract class BaseUnit {
   }
 
   takeDamage(amount: number) {
-    this.hp -= Math.max(0, amount / this.defense);
+    this.hp -= Math.max(0, amount * this.defense);
     if (this.hp <= 0) {
       this.hp = 0
     }
@@ -209,7 +209,7 @@ export abstract class BaseUnit {
 
     for (const state of this.envState) {
       // @ts-ignore
-      const m = ENV_MULTIPLIERS[state]?.[key]
+      const m = ENV_MULTIPLIERS[state]?.byTypes[this.type][key] ?? ENV_MULTIPLIERS[state]?.[key]
       if (m !== undefined) mul *= m
     }
 
@@ -257,7 +257,7 @@ export abstract class BaseUnit {
     const sources: StatModifierInfo['sources'] = []
 
     for (const state of this.envState) {
-      const m = ENV_MULTIPLIERS[state]?.[key]
+      const m = ENV_MULTIPLIERS[state]!.byTypes![this.type]![key] ?? ENV_MULTIPLIERS[state]?.[key]
       if (m !== undefined) {
         total *= m
         sources.push({ state, multiplier: m })

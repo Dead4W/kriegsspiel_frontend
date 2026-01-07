@@ -16,6 +16,10 @@ import {
   AbilityAttackCommand,
 } from "@/engine/units/commands/abilityAttackCommand.ts";
 import {unitType} from "@/engine";
+import {
+  type UnitEnvironmentState,
+  UnitEnvironmentStateIcon
+} from "@/engine/units/enums/UnitStates.ts";
 
 type MoveOrderRange = {
   min: number
@@ -50,7 +54,7 @@ export class unitlayer {
     const cam = w.camera
     const settings = window.CLIENT_SETTINGS
 
-    const unitOpacity = settings[CLIENT_SETTING_KEYS.OPACITY_UNIT] ?? 1
+    const settingOpacity = settings[CLIENT_SETTING_KEYS.OPACITY_UNIT] ?? 1
     const unitScale = settings[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1
 
     // ===== ОБЛАСТИ ВИДИМОСТИ (ОДИН СЛОЙ) =====
@@ -62,12 +66,11 @@ export class unitlayer {
 
     const units = w.units
       .list()
-      .filter(u => u.alive)
       .sort((a, b) => (a.lastSelected ?? 0) - (b.lastSelected ?? 0))
 
 
     for (const u of units) {
-      if (!u.alive) continue
+      const unitOpacity = u.alive ? settingOpacity : 0.3
 
       const p = cam.worldToScreen(u.pos)
 
@@ -189,6 +192,48 @@ export class unitlayer {
         ctx.fillRect(x, y, barWidth * hpRatio, barHeight)
       }
 
+      // ИКОНКИ МОДИФИКАТОРЫ
+      if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]) {
+        // получаем состояния (поддержка одного или массива)
+        const states: UnitEnvironmentState[] = u.envState
+
+        if (states.length) {
+          const icons = states
+            .map(s => UnitEnvironmentStateIcon[s])
+            .filter(Boolean)
+
+          if (icons.length) {
+            const fontSize = 14 * cam.zoom
+            const paddingX = 6 * cam.zoom
+            const paddingY = 3 * cam.zoom
+            const offsetY =
+              (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] ? 22 : 8) * cam.zoom
+
+            const text = icons.join(' ')
+            ctx.font = `${fontSize}px system-ui, sans-serif`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+
+            const metrics = ctx.measureText(text)
+            const bgWidth = metrics.width + paddingX * 2
+            const bgHeight = fontSize + paddingY * 2
+
+            const bgX = p.x - bgWidth / 2
+            const bgY =
+              p.y - hUnit / 2 - bgHeight - offsetY
+
+            // фон
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'
+            drawRoundRect(ctx, bgX, bgY, bgWidth, bgHeight, 4 * cam.zoom)
+            ctx.fill()
+
+            // иконки
+            ctx.fillStyle = 'white'
+            ctx.fillText(text, p.x, bgY + bgHeight / 2)
+          }
+        }
+      }
+
       // ===== ПОДПИСЬ =====
       if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] && u.label) {
         const fontSize = 12 * cam.zoom
@@ -308,8 +353,6 @@ export class unitlayer {
 
         case UnitCommandTypes.Attack:
         case UnitCommandTypes.AbilityAttack: {
-          if (i > 0) continue;
-
           const command = cmd as AttackCommand | AbilityAttackCommand
           const targets = command.getPriorityTargets(unit)
 

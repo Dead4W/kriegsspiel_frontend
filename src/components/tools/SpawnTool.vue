@@ -97,7 +97,6 @@ function getNextUnitName(
   let used = [];
 
   for (const u of w.units.list()) {
-    if (!u.alive) continue
     if (u.team !== team) continue
     if (!u.label?.startsWith(base + ' ')) continue
 

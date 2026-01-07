@@ -7,10 +7,10 @@ export class Artillery extends BaseUnit {
 
   stats: UnitStats = {
     maxHp: 64,
-    damage: 25,
-    speed: 400,
+    damage: 1,
+    speed: 80,
     defense: 1,
-    attackRange: 3000,
+    attackRange: 4500,
     visionRange: 1000,
     ammoMax: 10,
   }

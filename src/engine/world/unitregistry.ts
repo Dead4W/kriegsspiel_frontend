@@ -94,12 +94,11 @@ export class unitregistry {
   }
 
   getSelected(): BaseUnit[] {
-    return [...this.map.values()].filter(u => u.selected && u.alive)
+    return [...this.map.values()].filter(u => u.selected)
   }
 
   pickAt(pos: vec2, radius = 15): BaseUnit | null {
     const units = Array.from(this.map.values())
-      .filter(u => u.alive)
       .sort((a, b) => b.lastSelected - a.lastSelected)
 
     for (let i = 0; i < units.length; i++) {
@@ -123,8 +122,6 @@ export class unitregistry {
     const maxY = Math.max(a.y, b.y)
 
     for (const u of this.map.values()) {
-      if (!u.alive) continue;
-
       let isSelected = u.pos.x >= minX &&
         u.pos.x <= maxX &&
         u.pos.y >= minY &&

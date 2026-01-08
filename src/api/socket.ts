@@ -187,6 +187,7 @@ export class GameSocket {
 
           for (const {id: unitId, pos: unitPos} of m.data) {
             const u = window.ROOM_WORLD.units.get(unitId)!;
+            if (!u) continue;
             u.pos = unitPos;
             u.directView = true;
           }

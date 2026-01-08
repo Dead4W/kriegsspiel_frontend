@@ -198,7 +198,7 @@
   "formation": {
     "default": "Default",
     "column": "Column",
-    "springing": "Double time",
+    "springing": "Springing",
     "kneelingVolley": "Kneeling volley",
     "forceWalking": "Forced march",
     "onHorse": "Mounted"

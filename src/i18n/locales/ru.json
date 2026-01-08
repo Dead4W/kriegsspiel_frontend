@@ -207,7 +207,7 @@
   "formation": {
     "default": "Обычная",
     "column": "Колонна",
-    "springing": "Бегом",
+    "springing": "Springing",
     "kneelingVolley": "Залп с колена",
     "forceWalking": "Форсированный марш",
     "onHorse": "Верхом"

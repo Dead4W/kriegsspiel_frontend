@@ -4,7 +4,7 @@ import {useI18n} from 'vue-i18n'
 import {Team} from '@/enums/teamKeys'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import type {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
+import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 
 const { t } = useI18n()
 
@@ -53,21 +53,26 @@ function processUnitCommands(dt: number) {
         continue;
       }
 
-      if (cmd.type === UnitCommandTypes.Move) {
+      if (cmd.type === UnitCommandTypes.Attack || cmd.type === UnitCommandTypes.AbilityAttack) {
+        cmd.start(unit)
+        cmd.update(unit, left_dt)
+      } else {
         if (left_dt > 0) {
-          const moveCmd = cmd as MoveCommand;
-          const estimate = moveCmd.estimate(unit);
-          if (moveCmd.getState().state.modifier) {
-            unit.envState = [moveCmd.getState().state.modifier!]
-          } else {
-            unit.envState = []
+          const estimate = cmd.estimate(unit);
+          if (cmd instanceof MoveCommand) {
+            if (cmd.getState().state.modifier) {
+              unit.envState = [cmd.getState().state.modifier!]
+            } else {
+              unit.envState = []
+            }
           }
-          moveCmd.start(unit)
+          cmd.start(unit)
           if (estimate > left_dt) {
-            moveCmd.update(unit, left_dt)
+            cmd.update(unit, left_dt)
             left_dt = 0
+            goodCommands.push(cmd);
           } else {
-            moveCmd.update(unit, estimate)
+            cmd.update(unit, estimate)
             left_dt -= estimate;
           }
         } else {
@@ -75,6 +80,10 @@ function processUnitCommands(dt: number) {
           // Пропуск очереди move
           continue;
         }
+      }
+
+      if (cmd.type === UnitCommandTypes.Move) {
+
       } else if (cmd.type === UnitCommandTypes.Delivery && i > 0) {
         goodCommands.push(cmd);
         // Пропуск delivery

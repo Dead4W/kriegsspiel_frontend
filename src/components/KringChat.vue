@@ -73,7 +73,7 @@ function isUnreadMessage(m: ChatMessage): boolean {
   let currentAuthorTeam = window.PLAYER.team;
   if (currentAuthorTeam === Team.SPECTATOR) currentAuthorTeam = Team.ADMIN;
 
-  return m.status === ChatMessageStatus.Sent
+  return m.status === ChatMessageStatus.Delivered
     && m.author_team !== currentAuthorTeam
 }
 

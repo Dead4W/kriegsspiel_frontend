@@ -55,6 +55,8 @@ export interface unitstate {
   formation?: FormationType;
 
   messageIds?: uuid[],
+
+  directView?: boolean
 }
 
 export type commandstate =

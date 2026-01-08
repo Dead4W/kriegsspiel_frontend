@@ -124,6 +124,21 @@ async function startTurn() {
   running.value = false
   window.ROOM_WORLD.skipTime(value)
   displayWorldTime.value = window.ROOM_WORLD.time
+  const directViewByTeam = window.ROOM_WORLD.units.getDirectView();
+  window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: Team.RED, data: directViewByTeam.get(Team.RED)!.map(uuid => {
+    const u = window.ROOM_WORLD.units.get(uuid)!
+    return {
+      id: u.id,
+      pos: u.pos,
+    }
+  })})
+  window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: Team.BLUE, data: directViewByTeam.get(Team.BLUE)!.map(uuid => {
+    const u = window.ROOM_WORLD.units.get(uuid)!
+    return {
+      id: u.id,
+      pos: u.pos,
+    }
+  })})
 }
 
 function stopTurn() {

@@ -234,6 +234,42 @@ export class unitlayer {
         }
       }
 
+      // ===== DIRECT VIEW (👁) =====
+      if (u.directView) {
+        const icon = '👁'
+
+        const fontSize = 14 * cam.zoom
+        const paddingX = 6 * cam.zoom
+        const paddingY = 3 * cam.zoom
+
+        // если есть подписи — поднимаем выше
+        const offsetY =
+          (
+            (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS] ? 22 : 8) +
+            (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] ? 22 : 0)
+          ) * cam.zoom
+
+        ctx.font = `${fontSize}px system-ui, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+
+        const metrics = ctx.measureText(icon)
+        const bgWidth = metrics.width + paddingX * 2
+        const bgHeight = fontSize + paddingY * 2
+
+        const bgX = p.x - bgWidth / 2
+        const bgY = p.y - hUnit / 2 - bgHeight - offsetY
+
+        // фон
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'
+        drawRoundRect(ctx, bgX, bgY, bgWidth, bgHeight, 4 * cam.zoom)
+        ctx.fill()
+
+        // иконка
+        ctx.fillStyle = 'white'
+        ctx.fillText(icon, p.x, bgY + bgHeight / 2)
+      }
+
       // ===== ПОДПИСЬ =====
       if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] && u.label) {
         const fontSize = 12 * cam.zoom

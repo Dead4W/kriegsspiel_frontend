@@ -1,5 +1,5 @@
-import type {unitstate, uuid} from '@/engine/units/types'
-import {type MoveFrame, world} from '@/engine'
+import type {unitstate, unitTeam, uuid} from '@/engine/units/types'
+import {type MoveFrame, type vec2, world} from '@/engine'
 import {createRafInterval, type RafInterval} from "@/engine/util.ts";
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import type {CursorObject} from "@/engine/world/cursorregistry.ts";
@@ -18,6 +18,7 @@ export type OutMessage =
   | { type: 'set_stage'; data: RoomGameStage }
   | { type: 'copy_board'; data: Team }
   | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
+  | { type: 'direct_view'; team: Team; data: {id: uuid, pos: vec2}[] }
 
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
@@ -178,6 +179,16 @@ export class GameSocket {
         } else if (m.type === 'set_stage') {
           if (this.world.stage === RoomGameStage.PLANNING) {
             this.world.stage = m.data;
+          }
+        } else if (m.type === 'direct_view') {
+          for (const u of window.ROOM_WORLD.units.list()) {
+            u.directView = false;
+          }
+
+          for (const {id: unitId, pos: unitPos} of m.data) {
+            const u = window.ROOM_WORLD.units.get(unitId)!;
+            u.pos = unitPos;
+            u.directView = true;
           }
         }
 

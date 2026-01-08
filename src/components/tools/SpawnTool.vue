@@ -132,19 +132,20 @@ function onClick(e: PointerEvent) {
     spawnCount.value
   )
 
-  const units: unitstate[] = positions.map(pos => ({
-    id: crypto.randomUUID(),
-    type: selectedType.value,
-    team: selectedTeam.value,
-    pos,
-    label: getNextUnitName(
-      w,
-      selectedType.value,
-      selectedTeam.value
-    ),
-  }))
-
-  w.addUnits(units)
+  for (const pos of positions) {
+    const unit = {
+      id: crypto.randomUUID(),
+      type: selectedType.value,
+      team: selectedTeam.value,
+      pos,
+      label: getNextUnitName(
+        w,
+        selectedType.value,
+        selectedTeam.value
+      ),
+    }
+    w.addUnits([unit])
+  }
 }
 
 /* ================= hotkeys ================= */

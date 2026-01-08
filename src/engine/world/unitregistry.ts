@@ -1,7 +1,10 @@
-import type { uuid, unitstate } from '@/engine/units/types'
+import {type unitstate, type unitTeam, unitType, type uuid} from '@/engine/units/types'
 import type {BaseUnit} from '@/engine/units/baseUnit'
-import { createUnit } from '@/engine/units'
+import {createUnit} from '@/engine/units'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
+import {buildVisionPolygon, pointInPolygon} from "@/engine/render/unitlayer/visionlayer.ts";
+import {Team} from "@/enums/teamKeys.ts";
+import {RoomGameStage} from "@/enums/roomStage.ts";
 
 export type UnitDirtyObject = {
   unit: unitstate,
@@ -75,6 +78,15 @@ export class unitregistry {
   }
 
   remove(id: uuid, source: 'local' | 'remote' = 'local') {
+    const u = this.get(id)!;
+    if (
+      source === 'local'
+      && window.ROOM_WORLD.stage !== RoomGameStage.PLANNING
+      && window.PLAYER.team !== Team.ADMIN
+      && u.team === window.PLAYER.team
+    ) {
+      return;
+    }
     this.map.delete(id)
     if (source === 'local') this.dirtyRemove.add(id)
   }
@@ -133,5 +145,35 @@ export class unitregistry {
         u.selected = isSelected;
       }
     }
+  }
+
+  getDirectView(): Map<unitTeam, uuid[]> {
+    const directViewByTeam = new Map<unitTeam, uuid[]>();
+    directViewByTeam.set(Team.RED, [])
+    directViewByTeam.set(Team.BLUE, [])
+
+    for (const generalUnit of this.list()) {
+      if (generalUnit.team !== Team.RED && generalUnit.team !== Team.BLUE) continue;
+      if (generalUnit.type !== unitType.GENERAL) continue;
+      generalUnit.directView = true;
+
+      const visionPoly = buildVisionPolygon(generalUnit, window.ROOM_WORLD)
+      for (const unit of this.list()) {
+        if (unit.team !== generalUnit.team) continue;
+
+        const a = generalUnit.pos
+        const b = unit.pos
+
+        const d = Math.hypot(b.x - a.x, b.y - a.y);
+
+        if (d > generalUnit.visionRange / window.ROOM_WORLD.map.metersPerPixel) continue;
+
+        if (pointInPolygon(unit.pos, visionPoly)) {
+          directViewByTeam.get(generalUnit.team)!.push(unit.id)
+        }
+      }
+    }
+
+    return directViewByTeam;
   }
 }

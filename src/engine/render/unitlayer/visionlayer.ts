@@ -22,7 +22,6 @@ function isForestPixel(
 
 function castRay(
   w: world,
-  unitInForest: boolean,
   origin: { x: number; y: number },
   angle: number,
   maxDist: number
@@ -35,7 +34,7 @@ function castRay(
   let y = origin.y
   let dist = 0
 
-  let leaveFirstForest = !unitInForest;
+  let leaveFirstForest = true;
   let forestThresholdTimer = 0;
 
   while (dist < maxDist) {
@@ -58,7 +57,7 @@ function castRay(
   return { x, y }
 }
 
-function buildVisionPolygon(u: BaseUnit, unitInForest: boolean, w: world) {
+export function buildVisionPolygon(u: BaseUnit, w: world) {
   const origin = u.pos
   const maxRange = (u.visionRange / w.map.metersPerPixel)
 
@@ -67,7 +66,7 @@ function buildVisionPolygon(u: BaseUnit, unitInForest: boolean, w: world) {
 
   for (let i = 0; i < rays; i++) {
     const angle = (i / rays) * Math.PI * 2
-    points.push(castRay(w, unitInForest, origin, angle, maxRange))
+    points.push(castRay(w, origin, angle, maxRange))
   }
 
   return points
@@ -100,7 +99,6 @@ export function drawUnitVision(
 
     const { r: cr, g: cg, b: cb } = getTeamColor(u.team)
     const fillAlpha = u.isSelected() ? 0.18 : 0.1
-    const unitInForest = u.envState.includes(UnitEnvironmentState.InForest);
 
     // В лесу — простой круг, кеш не нужен
     if (!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]) {
@@ -125,7 +123,7 @@ export function drawUnitVision(
     let poly: vec2[]
 
     if (!cache || !samePos(cache.pos, u.pos)) {
-      poly = buildVisionPolygon(u, unitInForest, w)
+      poly = buildVisionPolygon(u, w)
 
       visionCache.set(u.id, {
         pos: { x: u.pos.x, y: u.pos.y },
@@ -155,6 +153,23 @@ export function drawUnitVision(
     ctx.fillStyle = `rgba(${cr},${cg},${cb},${fillAlpha})`
     ctx.fill()
   }
+}
+
+export function pointInPolygon(point: vec2, polygon: vec2[]): boolean {
+  let inside = false
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i]!.x, yi = polygon[i]!.y
+    const xj = polygon[j]!.x, yj = polygon[j]!.y
+
+    const intersect =
+      ((yi > point.y) !== (yj > point.y)) &&
+      (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)
+
+    if (intersect) inside = !inside
+  }
+
+  return inside
 }
 
 

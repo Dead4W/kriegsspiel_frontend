@@ -28,6 +28,7 @@ export class AttackCommand extends BaseCommand<
   update(unit: BaseUnit, dt: number) {
     const ARTILLERY_IGNORE_ENVS = [
       UnitEnvironmentState.InForest,
+      UnitEnvironmentState.InHouse,
       UnitEnvironmentState.InCoverHouse,
       UnitEnvironmentState.InCoverTrenches,
       UnitEnvironmentState.InWater,
@@ -44,7 +45,7 @@ export class AttackCommand extends BaseCommand<
         unit.damage
         * percentHp
         * this.state.damageModifier
-        / (60 * 60) * dt
+        / (60) * dt
       )
       / targets.length
 
@@ -62,11 +63,12 @@ export class AttackCommand extends BaseCommand<
 
       const dx = target.pos.x - unit.pos.x
       const dy = target.pos.y - unit.pos.y
-      const distance = Math.sqrt(dx * dx + dy * dy)
-      unitDmg *= getUnitDistanceModifier(
-        unitType.ARTILLERY ? ARTILLERY_DISTANCE_MODIFIERS : DISTANCE_MODIFIERS,
+      const distance = Math.sqrt(dx * dx + dy * dy) * window.ROOM_WORLD.map.metersPerPixel
+      const distanceModifier = getUnitDistanceModifier(
+        unit.type === unitType.ARTILLERY ? ARTILLERY_DISTANCE_MODIFIERS : DISTANCE_MODIFIERS,
         distance,
       );
+      unitDmg *= distanceModifier;
 
       target.takeDamage(unitDmg)
     }

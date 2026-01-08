@@ -17,6 +17,11 @@ export const DISTANCE_MODIFIERS: DistanceModifierPoint[] = [
   { distance: 800, modifier: 0.20 },
   { distance: 900, modifier: 0.14 },
   { distance: 1000, modifier: 0.11 },
+  { distance: 1100, modifier: 0.055 },
+  { distance: 1200, modifier: 0.028 },
+  { distance: 1300, modifier: 0.013 },
+  { distance: 1400, modifier: 0.075 },
+  { distance: 1500, modifier: 0.035 },
 ]
 
 export const ARTILLERY_DISTANCE_MODIFIERS: DistanceModifierPoint[] = [

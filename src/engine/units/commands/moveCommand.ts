@@ -31,12 +31,18 @@ export class MoveCommand extends BaseCommand<
     const dist = Math.hypot(dx, dy)
     if (dist === 0) return
 
-    const speed = unit.speed / 60 * dt * window.ROOM_WORLD.map.metersPerPixel
-
-    unit.move({
-      x: unit.pos.x + (dx / dist) * speed,
-      y: unit.pos.y + (dy / dist) * speed,
-    })
+    const speed = unit.speed / 60 * dt / window.ROOM_WORLD.map.metersPerPixel
+    if (this.estimate(unit) <= dt) {
+      unit.move({
+        x: this.state.target.x,
+        y: this.state.target.y,
+      })
+    } else {
+      unit.move({
+        x: unit.pos.x + (dx / dist) * speed,
+        y: unit.pos.y + (dy / dist) * speed,
+      })
+    }
   }
 
   private canMove(unit: BaseUnit): boolean {
@@ -95,7 +101,7 @@ export class MoveCommand extends BaseCommand<
     const dy = this.state.target.y - unit.pos.y
     const dist = Math.hypot(dx, dy)
 
-    return Math.ceil(dist / (unit.speed / 60))
+    return Math.ceil(dist / (unit.speed / 60) * window.ROOM_WORLD.map.metersPerPixel)
   }
 
   getState(): { type: UnitCommandTypes.Move; status: CommandStatus; state: MoveCommandState } {

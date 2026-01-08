@@ -44,6 +44,11 @@ export const ENV_MULTIPLIERS: Record<UnitEnvironmentState, EnvStatMultiplier> = 
   [UnitEnvironmentState.InSwampOrDirty]: {
     defense: 0.25,
     speed: 0.25,
+    byTypes: {
+      [unitType.ARTILLERY]: {
+        speed: 0.1,
+      }
+    }
   },
 
   [UnitEnvironmentState.InHouse]: {
@@ -82,5 +87,10 @@ export const ENV_MULTIPLIERS: Record<UnitEnvironmentState, EnvStatMultiplier> = 
 
   [UnitEnvironmentState.InWater]: {
     defense: 0.4,
+    byTypes: {
+      [unitType.ARTILLERY]: {
+        speed: 0.1,
+      }
+    }
   },
 }

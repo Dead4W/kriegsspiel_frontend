@@ -15,6 +15,7 @@ import {createUnitCommand} from "@/engine/units/commands";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {clamp} from "@/engine/math.ts";
 import type {ChatMessage} from "@/engine/types/chatMessage.ts";
+import {Team} from "@/enums/teamKeys.ts";
 
 type StatKey = 'damage' | 'defense' | 'speed' | 'attackRange' | 'visionRange'
 
@@ -78,6 +79,8 @@ export abstract class BaseUnit {
 
   lastSelected: number = 0;
 
+  public directView: boolean = false;
+
   constructor(s: unitstate) {
     this.id = s.id
     this.team = s.team
@@ -93,10 +96,18 @@ export abstract class BaseUnit {
 
     this.envState = s.envState ?? [];
     this.messageIds = s.messageIds ?? [];
+    this.directView = s.directView ?? false
     this.refreshEnvState();
   }
 
   move(to: vec2) {
+    if (this.directView && window.PLAYER.team !== Team.ADMIN) {
+      return;
+    }
+
+    to.x = clamp(to.x, 0, window.ROOM_WORLD.map.width);
+    to.y = clamp(to.y, 0, window.ROOM_WORLD.map.height);
+
     this.pos = to;
     this.refreshEnvState();
 
@@ -134,7 +145,7 @@ export abstract class BaseUnit {
   }
 
   takeDamage(amount: number) {
-    this.hp -= Math.max(0, amount * this.defense);
+    this.hp -= amount * this.defense;
     if (this.hp <= 0) {
       this.hp = 0
     }
@@ -163,6 +174,8 @@ export abstract class BaseUnit {
       formation: this.formation,
 
       messageIds: this.messageIds,
+
+      directView: this.directView,
     }
   }
 
@@ -202,20 +215,27 @@ export abstract class BaseUnit {
   }
 
   private getEnvMultiplier<K extends keyof UnitStats | 'damage'>(
-    key: K,
-    minRatio = 0.1
+    key: K
   ): number {
     let mul = 1
 
     for (const state of this.envState) {
       // @ts-ignore
-      const m = ENV_MULTIPLIERS[state]?.byTypes[this.type][key] ?? ENV_MULTIPLIERS[state]?.[key]
+      let m = ENV_MULTIPLIERS[state]?.[key];
+      if (
+        ENV_MULTIPLIERS[state]
+        && ENV_MULTIPLIERS[state].byTypes
+        && ENV_MULTIPLIERS[state].byTypes[this.type]
+        && ENV_MULTIPLIERS[state].byTypes[this.type][key]
+      ) {
+        m = ENV_MULTIPLIERS[state]?.byTypes[this.type][key]
+      }
       if (m !== undefined) mul *= m
     }
 
     mul *= this.getFormationMultiplier(key)
 
-    return Math.max(mul, minRatio)
+    return mul
   }
 
   private getFormationMultiplier<K extends keyof UnitStats | 'damage'>(
@@ -257,7 +277,15 @@ export abstract class BaseUnit {
     const sources: StatModifierInfo['sources'] = []
 
     for (const state of this.envState) {
-      const m = ENV_MULTIPLIERS[state]!.byTypes![this.type]![key] ?? ENV_MULTIPLIERS[state]?.[key]
+      let m = ENV_MULTIPLIERS[state]?.[key];
+      if (
+        ENV_MULTIPLIERS[state]
+        && ENV_MULTIPLIERS[state].byTypes
+        && ENV_MULTIPLIERS[state].byTypes[this.type]
+        && ENV_MULTIPLIERS[state].byTypes[this.type][key]
+      ) {
+        m = ENV_MULTIPLIERS[state]?.byTypes[this.type][key]
+      }
       if (m !== undefined) {
         total *= m
         sources.push({ state, multiplier: m })

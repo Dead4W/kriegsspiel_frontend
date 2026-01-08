@@ -81,10 +81,13 @@ const emit = defineEmits<{
 /* ================= SNAPSHOT ================= */
 
 const ROUTE_MODIFIERS = [
+  UnitEnvironmentState.InField,
+  UnitEnvironmentState.InPlainField,
+  UnitEnvironmentState.InSoftField,
+  UnitEnvironmentState.InSwampOrDirty,
   UnitEnvironmentState.OnRoad,
   UnitEnvironmentState.InForest,
   UnitEnvironmentState.OnGoodRoad,
-  UnitEnvironmentState.InWater,
 ]
 
 export type RoutePoint = {

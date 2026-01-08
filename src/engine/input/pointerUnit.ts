@@ -1,6 +1,7 @@
-import type { world } from '../world/world'
-import type { vec2 } from '../types'
-import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys.ts'
+import type {world} from '../world/world'
+import type {vec2} from '../types'
+import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys.ts'
+import {RoomGameStage} from "@/enums/roomStage.ts";
 
 export function bindUnitInteraction(
   canvas: HTMLCanvasElement,

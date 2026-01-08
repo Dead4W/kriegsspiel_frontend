@@ -24,12 +24,13 @@ export class AbilityAttackCommand extends BaseCommand<
   }
 
   update(unit: BaseUnit, dt: number) {
+    // TODO обновить по подобию attackCommand.ts
     if (this.isFinished(unit)) return
 
     const targets = this.getPriorityTargets(unit)
     if (targets.length === 0) return
 
-    const dmg = (unit.damage * this.state.damageModifier / (60 * 60) & dt) / targets.length
+    const dmg = (unit.damage * this.state.damageModifier / (60) & dt) / targets.length
 
     for (const target of targets) {
       target.takeDamage(dmg)

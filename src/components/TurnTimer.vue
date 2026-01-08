@@ -77,20 +77,10 @@ function processUnitCommands(dt: number) {
           }
         } else {
           goodCommands.push(cmd);
-          // Пропуск очереди move
+          // Пропуск очереди
           continue;
         }
       }
-
-      if (cmd.type === UnitCommandTypes.Move) {
-
-      } else if (cmd.type === UnitCommandTypes.Delivery && i > 0) {
-        goodCommands.push(cmd);
-        // Пропуск delivery
-        continue;
-      }
-      cmd.start(unit)
-      cmd.update(unit, left_dt)
 
       if (!cmd.isFinished(unit)) {
         goodCommands.push(cmd);

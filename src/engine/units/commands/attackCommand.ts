@@ -78,6 +78,10 @@ export class AttackCommand extends BaseCommand<
     return this.getPriorityTargets(unit).length === 0
   }
 
+  estimate(unit: BaseUnit): number {
+    return Infinity
+  }
+
   /**
    * Все валидные цели в радиусе атаки
    */

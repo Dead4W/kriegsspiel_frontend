@@ -26,5 +26,7 @@ export abstract class BaseCommand<
   /** можно ли считать приказ выполненным */
   abstract isFinished(unit: BaseUnit): boolean
 
+  abstract estimate(unit: BaseUnit): number
+
   abstract getState(): { type: TType; state: TState, status: CommandStatus }
 }

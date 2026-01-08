@@ -4,7 +4,7 @@ import type { BaseUnit } from "@/engine/units/baseUnit.ts";
 import { FormationType } from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 
-const FORMATION_DURATION_MS = 60 * 5 // 5 игровых минут
+const FORMATION_DURATION_MS = 60 * 1 // 1 игровых минут
 
 export interface ChangeFormationCommandState {
   newFormation: FormationType
@@ -31,6 +31,10 @@ export class ChangeFormationCommand extends BaseCommand<
 
   isFinished(): boolean {
     return this.state.elapsed >= FORMATION_DURATION_MS
+  }
+
+  estimate(unit: BaseUnit): number {
+    return FORMATION_DURATION_MS - this.state.elapsed
   }
 
   getState() {

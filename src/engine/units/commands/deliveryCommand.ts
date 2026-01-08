@@ -40,6 +40,10 @@ export class DeliveryCommand extends BaseCommand<
     return this.isDelivered
   }
 
+  estimate(unit: BaseUnit): number {
+    return 1
+  }
+
   getState() {
     return {
       type: this.type,

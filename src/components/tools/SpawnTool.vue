@@ -5,6 +5,7 @@ import type { unitstate, unitTeam } from '@/engine'
 import { unitType as UnitType } from '@/engine'
 import { useI18n } from 'vue-i18n'
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
+import {Team} from "@/enums/teamKeys.ts";
 
 const { t } = useI18n()
 
@@ -18,6 +19,9 @@ const props = defineProps<{
 
 const selectedType = ref<UnitType>(UnitType.INFANTRY)
 const selectedTeam = ref<unitTeam>('red')
+if ([Team.RED, Team.BLUE].includes(window.PLAYER.team)) {
+  selectedTeam.value = window.PLAYER.team as unitTeam
+}
 const spawnCount = ref(1)
 
 /* ================= computed i18n data ================= */

@@ -359,7 +359,7 @@ function barStyle(value: number, max: number) {
   align-items: stretch;
   gap: 0;
   pointer-events: auto;
-  max-height: 270px;
+  max-height: 300px;
 }
 
 @keyframes slide-up {

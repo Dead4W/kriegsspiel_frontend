@@ -59,6 +59,29 @@ function description(cmd: BaseCommand<any, any>) {
 function statusClass(status: CommandStatus) {
   return status
 }
+
+function estimate(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return ''
+
+  const total = Math.ceil(seconds)
+
+  if (total < 60) {
+    return t('time.seconds', { count: total })
+  }
+
+  const minutes = Math.floor(total / 60)
+  const restSeconds = total % 60
+
+  if (restSeconds === 0) {
+    return t('time.minutes', { count: minutes })
+  }
+
+  return t('time.minutes_seconds', {
+    minutes,
+    seconds: restSeconds,
+  })
+}
+
 </script>
 
 <template>
@@ -90,6 +113,10 @@ function statusClass(status: CommandStatus) {
 
         <div class="desc">
           {{ description(cmd) }}
+        </div>
+
+        <div class="estimate" v-if="cmd.estimate(unit) > 0 && cmd.estimate(unit) < Infinity">
+          {{ estimate(cmd.estimate(unit)) }}
         </div>
 
         <div class="status">

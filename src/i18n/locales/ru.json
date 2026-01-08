@@ -211,5 +211,11 @@
     "kneelingVolley": "Залп с колена",
     "forceWalking": "Форсированный марш",
     "onHorse": "Верхом"
+  },
+
+  "time": {
+    "seconds": "{count} сек.",
+    "minutes": "{count} мин.",
+    "minutes_seconds": "{minutes} мин. {seconds} сек."
   }
 }

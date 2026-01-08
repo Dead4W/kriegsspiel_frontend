@@ -202,5 +202,11 @@
     "kneelingVolley": "Kneeling volley",
     "forceWalking": "Forced march",
     "onHorse": "Mounted"
+  },
+
+  "time": {
+    "seconds": "{count} sec",
+    "minutes": "{count} min",
+    "minutes_seconds": "{minutes} min {seconds} sec"
   }
 }

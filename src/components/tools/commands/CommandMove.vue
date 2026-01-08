@@ -106,53 +106,73 @@ const moveMode = ref<MoveMode>('column')
 
 /* ================= FORMATION ================= */
 
-type MovePlanItem = { unit: BaseUnit; orderIndex: number }
+function getUnitPlannedPos(u: BaseUnit): vec2 {
+  let p: vec2 = u.pos
+
+  // Важно: берём ТОЛЬКО Move, и идём по очереди.
+  // Если в списке уже есть несколько Move — конечной будет target последнего.
+  for (const cmd of u.getCommands()) {
+    if (cmd.type !== UnitCommandTypes.Move) continue
+    const moveCmd = cmd as MoveCommand
+    p = moveCmd.getState().state.target
+  }
+
+  return p
+}
+
+type MovePlanItem = { unit: BaseUnit; orderIndex: number; startPos: vec2 }
 
 /** План (порядок) колонны считается по первой точке маршрута */
 const movePlan = computed<MovePlanItem[]>(() => {
   if (!movingUnits.value.length || !targets.value.length) return []
 
   const firstTarget = targets.value[0]!
-  const unitsLeft = [...movingUnits.value]
-  const result: typeof movingUnits.value = []
 
-  // 1. Находим ближайшего к первой точке маршрута
-  let current = unitsLeft.reduce((closest, unit) => {
+  // заранее считаем "эффективные позиции" (конец цепочки Move)
+  const unitsLeft = movingUnits.value.map(unit => ({
+    unit,
+    startPos: getUnitPlannedPos(unit as BaseUnit),
+  }))
+
+  const result: typeof unitsLeft = []
+
+  // 1) ближайший к первой точке маршрута — по startPos
+  let current = unitsLeft.reduce((closest, item) => {
     const d1 = Math.hypot(
-      unit.pos.x - firstTarget.pos.x,
-      unit.pos.y - firstTarget.pos.y
+      item.startPos.x - firstTarget.pos.x,
+      item.startPos.y - firstTarget.pos.y
     )
     const d2 = Math.hypot(
-      closest.pos.x - firstTarget.pos.x,
-      closest.pos.y - firstTarget.pos.y
+      closest.startPos.x - firstTarget.pos.x,
+      closest.startPos.y - firstTarget.pos.y
     )
-    return d1 < d2 ? unit : closest
+    return d1 < d2 ? item : closest
   })
 
   result.push(current)
   unitsLeft.splice(unitsLeft.indexOf(current), 1)
 
-  // 2. Остальных выстраиваем по близости к предыдущему
+  // 2) остальных — по близости к предыдущему startPos
   while (unitsLeft.length) {
     const last = current
 
-    current = unitsLeft.reduce((closest, unit) => {
+    current = unitsLeft.reduce((closest, item) => {
       const d1 = Math.hypot(
-        unit.pos.x - last.pos.x,
-        unit.pos.y - last.pos.y
+        item.startPos.x - last.startPos.x,
+        item.startPos.y - last.startPos.y
       )
       const d2 = Math.hypot(
-        closest.pos.x - last.pos.x,
-        closest.pos.y - last.pos.y
+        closest.startPos.x - last.startPos.x,
+        closest.startPos.y - last.startPos.y
       )
-      return d1 < d2 ? unit : closest
+      return d1 < d2 ? item : closest
     })
 
     result.push(current)
     unitsLeft.splice(unitsLeft.indexOf(current), 1)
   }
 
-  return result.map((unit, orderIndex) => ({ unit, orderIndex }))
+  return result.map(({ unit, startPos }, orderIndex) => ({ unit, startPos, orderIndex }))
 })
 
 const formationCenter = computed<vec2 | null>(() => {
@@ -207,8 +227,8 @@ function getColumnPosition(
   for (let j = targets.length-1; j >= -orderIndex; j--) {
     // 0-N - segments
     // -1,-2,-3 - prev units include current unit
-    const prev = j > 0 ? targets[j-1]!.pos : plan[Math.abs(j)]!.unit.pos;
-    const next = j >= 0 ? targets[j]!.pos : plan[Math.abs(j+1)]!.unit.pos;
+    const prev = j > 0 ? targets[j-1]!.pos : plan[Math.abs(j)]!.startPos
+    const next = j >= 0 ? targets[j]!.pos : plan[Math.abs(j+1)]!.startPos
     const segment = sub(prev, next)
     const segLen = Math.hypot(segment.x, segment.y)
 
@@ -237,7 +257,7 @@ function getColumnPosition(
   }
 
   for (let i = targets.length-1; i >= segIndex; i--) {
-    const iterationSegPrev = i > 0 ? targets[i-1]!.pos : plan[Math.abs(i)]!.unit.pos;
+    const iterationSegPrev = i > 0 ? targets[i-1]!.pos : plan[Math.abs(i)]!.startPos;
     const iterationSegNext = targets[i]!.pos;
     const iterationSegment = sub(iterationSegPrev, iterationSegNext);
     let iterationLen = Math.hypot(iterationSegment.x, iterationSegment.y)
@@ -246,8 +266,8 @@ function getColumnPosition(
     for (let j = currentSegmentIndex; j >= -orderIndex+1; j--) {
       // 0-N - segments
       // -1,-2,-3 - prev units include current unit
-      const prev = j > 0 ? targets[j-1]!.pos : plan[Math.abs(j)]!.unit.pos;
-      const next = j >= 0 ? targets[j]!.pos : plan[Math.abs(j+1)]!.unit.pos;
+      const prev = j > 0 ? targets[j-1]!.pos : plan[Math.abs(j)]!.startPos;
+      const next = j >= 0 ? targets[j]!.pos : plan[Math.abs(j+1)]!.startPos;
       const segment = sub(prev, next);
 
       if (leftSegmentDistance === 0) {

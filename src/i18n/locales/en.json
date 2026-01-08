@@ -16,7 +16,8 @@
     "formation": "Formation",
     "ability": "Ability",
     "move_pick": "Move to target",
-    "damage_modifier": "Damage modifier"
+    "damage_modifier": "Damage modifier",
+    "changeFormation": "Change formation"
   },
   "command_desc": {
     "move": "Move to position ({x}, {y})",
@@ -47,6 +48,7 @@
       "command": "Command",
       "attack": "Attack",
       "move": "Move",
+      "changeFormation": "Change formation",
       "delivery": "Delivery",
       "formation": "Formation",
       "units": "Units",
@@ -56,6 +58,7 @@
       "moveMode": "Movement mode",
       "moveModeFormation": "Keep formation",
       "moveModeColumn": "Column",
+      "apply": "Apply",
       "cancel": "Cancel"
     },
     "command_remove": "Remove command"
@@ -194,9 +197,10 @@
 
   "formation": {
     "default": "Default",
-    "line": "Line",
     "column": "Column",
-    "wedge": "Wedge",
-    "circle": "Circle"
+    "springing": "Double time",
+    "kneelingVolley": "Kneeling volley",
+    "forceWalking": "Forced march",
+    "onHorse": "Mounted"
   }
 }

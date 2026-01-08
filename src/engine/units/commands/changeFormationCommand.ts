@@ -24,6 +24,9 @@ export class ChangeFormationCommand extends BaseCommand<
 
   update(unit: BaseUnit, dt: number) {
     this.state.elapsed += dt
+    if (this.isFinished()) {
+      unit.setFormation(this.state.newFormation)
+    }
   }
 
   isFinished(): boolean {

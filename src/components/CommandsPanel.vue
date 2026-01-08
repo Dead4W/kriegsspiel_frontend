@@ -48,7 +48,7 @@ function description(cmd: BaseCommand<any, any>) {
 
     case UnitCommandTypes.ChangeFormation:
       return t('command_desc.changeFormation', {
-        formation: state.newFormation,
+        formation: t(`formation.${state.newFormation}`),
       })
 
     default:

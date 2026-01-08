@@ -11,6 +11,7 @@ import type {unsub} from '@/engine/events'
 import {unitlayer} from "@/engine/render/unitlayer.ts";
 import {normalize, sub} from "@/engine/math.ts";
 import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enums/UnitStates.ts";
+import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 
 const { t } = useI18n()
 
@@ -396,6 +397,24 @@ function rebuildMoveOverlay() {
 
   plan.forEach(({ unit: u, orderIndex }, planIdx) => {
     let from = u.pos
+
+    // Paint previous commands
+    const unitCommands = u.getCommands()
+    for (const cmd of unitCommands) {
+      if (cmd.type !== UnitCommandTypes.Move) continue;
+      const moveCmd = cmd as MoveCommand
+
+      items.push({
+        type: 'line',
+        from,
+        to: moveCmd.getState().state.target,
+        color: moveMode.value === 'column' ? '#22c55e' : '#38bdf8',
+        width: 6,
+        dash: [6, 6],
+        dashOffset: -1,
+      })
+      from = moveCmd.getState().state.target
+    }
 
     for (let segIndex = 0; segIndex < targets.value.length; segIndex++) {
       const t = targets.value[segIndex]!

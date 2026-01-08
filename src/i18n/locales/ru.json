@@ -18,7 +18,8 @@
     "ability": "Способность",
     "clear": "Очистить приказы",
     "move_pick": "Назначить точку",
-    "damage_modifier": "Модификатор урона"
+    "damage_modifier": "Модификатор урона",
+    "changeFormation": "Смена формации"
   },
   "command_desc": {
     "move": "Движение к точке ({x}, {y})",
@@ -48,6 +49,7 @@
       "command": "Приказ",
       "attack": "Атака",
       "move": "Движение",
+      "changeFormation": "Смена формации",
       "delivery": "Доставка",
       "formation": "Формация",
       "units": "Юниты",
@@ -57,6 +59,7 @@
       "moveMode": "Режим движения",
       "moveModeFormation": "Сохраняя формацию",
       "moveModeColumn": "Колонной",
+      "apply": "Выполнить",
       "cancel": "Отмена",
 
       "delivery_from": "Доставляют",
@@ -202,10 +205,11 @@
   },
 
   "formation": {
-    "default": "По умолчанию",
-    "line": "Линия",
+    "default": "Обычная",
     "column": "Колонна",
-    "wedge": "Клин",
-    "circle": "Круг"
+    "springing": "Бегом",
+    "kneelingVolley": "Залп с колена",
+    "forceWalking": "Форсированный марш",
+    "onHorse": "Верхом"
   }
 }

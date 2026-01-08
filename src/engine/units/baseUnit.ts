@@ -23,7 +23,8 @@ export interface StatModifierInfo {
   totalMultiplier: number
   percent: number
   sources: {
-    state: UnitEnvironmentState
+    type: 'env' | 'formation',
+    state: UnitEnvironmentState | FormationType,
     multiplier: number
   }[]
 }
@@ -92,7 +93,7 @@ export abstract class BaseUnit {
     this.morale = s.morale ?? 0;
     this.commands = s.commands ?? [];
 
-    this.formation = s.formation ?? FormationType.Line;
+    this.formation = s.formation ?? FormationType.Default;
 
     this.envState = s.envState ?? [];
     this.messageIds = s.messageIds ?? [];
@@ -288,13 +289,19 @@ export abstract class BaseUnit {
       }
       if (m !== undefined) {
         total *= m
-        sources.push({ state, multiplier: m })
+        sources.push({ type: 'env', state, multiplier: m })
       }
+    }
+
+    if (this.getFormationMultiplier(key) != 1) {
+      const m = this.getFormationMultiplier(key)
+      total *= m
+      sources.push({ type: 'formation', state: this.formation, multiplier: m })
     }
 
     return {
       totalMultiplier: total,
-      percent: Math.round((total - 1) * 100),
+      percent: Math.round((total) * 100),
       sources,
     }
   }

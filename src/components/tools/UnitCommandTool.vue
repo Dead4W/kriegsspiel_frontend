@@ -8,6 +8,7 @@ import CommandMove from "@/components/tools/commands/CommandMove.vue";
 import {unitType} from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import CommandDelivery from "@/components/tools/commands/CommandDelivery.vue";
+import CommandChangeFormation from "@/components/tools/commands/CommandChangeFormation.vue";
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -90,6 +91,12 @@ function clearCommands() {
 
     <CommandDelivery
       v-if="activeOrder === UnitCommandTypes.Delivery"
+      :units="units"
+      @close="close"
+    />
+
+    <CommandChangeFormation
+      v-if="activeOrder === UnitCommandTypes.ChangeFormation"
       :units="units"
       @close="close"
     />

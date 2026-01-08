@@ -53,8 +53,8 @@ function isAdmin() {
 }
 
 function percentClass(p: number) {
-  if (p > 0) return 'pos'
-  if (p < 0) return 'neg'
+  if (p > 100) return 'pos'
+  if (p < 100) return 'neg'
   return ''
 }
 
@@ -219,7 +219,7 @@ onUnmounted(() => {
 
               <!-- main stat text -->
               <div class="stat-value">
-            <span class="final" v-if="key === 'defense'">
+            <span class="final" v-if="key === 'defense' || key === 'damage'">
               {{ unit[key].toFixed(2) }}
             </span>
                 <span class="final" v-else>
@@ -227,13 +227,13 @@ onUnmounted(() => {
             </span>
 
                 <span
-                  v-if="unit.getStatModifierInfo(key as any).percent !== 0"
+                  v-if="unit.getStatModifierInfo(key as any).percent !== 100"
                   class="origin"
                   :class="percentClass(unit.getStatModifierInfo(key as any).percent)"
                 >
               (
               {{ Math.round((unit.stats as any)[key]) }}
-              {{ unit.getStatModifierInfo(key as any).percent > 0 ? '+' : '' }}
+              {{ unit.getStatModifierInfo(key as any).percent < 100 ? '*' : '*' }}
               {{ unit.getStatModifierInfo(key as any).percent }}%
               )
             </span>
@@ -248,13 +248,13 @@ onUnmounted(() => {
                   v-for="m in unit.getStatModifierInfo(key as any).sources"
                   :key="m.state"
                   class="modifier-card"
-                  :class="percentClass(Math.round((m.multiplier - 1) * 100))"
+                  :class="percentClass(Math.round((m.multiplier) * 100))"
                 >
               <span class="env">
-                {{ t(`env.${m.state}`) }}
+                {{ m.type === 'env' ? t(`env.${m.state}`) : t(`formation.${m.state}`) }}
               </span>
-                  <span class="percent">
-                {{ Math.round((m.multiplier - 1) * 100) }}%
+              <span class="percent">
+                {{ Math.round((m.multiplier) * 100) }}%
               </span>
                 </div>
               </div>

@@ -16,6 +16,8 @@
     "move": "Движение",
     "formation": "Формация",
     "ability": "Способность",
+    "wait": "Ждать",
+    "delivery": "Доставка",
     "clear": "Очистить приказы",
     "move_pick": "Назначить точку",
     "damage_modifier": "Модификатор урона",
@@ -50,6 +52,9 @@
       "attack": "Атака",
       "move": "Движение",
       "changeFormation": "Смена формации",
+      "wait": "Ждать",
+      "total_seconds": "Всего секунд",
+      "comment": "Комментарий",
       "delivery": "Доставка",
       "formation": "Формация",
       "units": "Юниты",
@@ -214,6 +219,8 @@
   },
 
   "time": {
+    "minute": "минут",
+    "second": "секунд",
     "seconds": "{count} сек.",
     "minutes": "{count} мин.",
     "minutes_seconds": "{minutes} мин. {seconds} сек."

@@ -11,7 +11,7 @@ import {
 import {MoveCommand, type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {commandstate} from "@/engine";
-import type {WaitCommandState} from "@/engine/units/commands/waitCommand.ts";
+import {WaitCommand, type WaitCommandState} from "@/engine/units/commands/waitCommand.ts";
 import {
   DeliveryCommand,
   type DeliveryCommandState
@@ -29,6 +29,8 @@ export function initUnitCommand(state: commandstate) {
       return new ChangeFormationCommand(state.state)
     case UnitCommandTypes.Delivery:
       return new DeliveryCommand(state.state)
+    case UnitCommandTypes.Wait:
+      return new WaitCommand(state.state)
     default:
       // @ts-ignore
       throw new Error(`Unknown unit type: "${state.type}"`)

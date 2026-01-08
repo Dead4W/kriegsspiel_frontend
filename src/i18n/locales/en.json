@@ -15,6 +15,8 @@
     "move": "Move",
     "formation": "Formation",
     "ability": "Ability",
+    "wait": "Wait",
+    "delivery": "Delivery",
     "move_pick": "Move to target",
     "damage_modifier": "Damage modifier",
     "changeFormation": "Change formation"
@@ -49,6 +51,9 @@
       "attack": "Attack",
       "move": "Move",
       "changeFormation": "Change formation",
+      "wait": "Wait",
+      "total_seconds": "Total seconds",
+      "comment": "Comment",
       "delivery": "Delivery",
       "formation": "Formation",
       "units": "Units",
@@ -59,7 +64,8 @@
       "moveModeFormation": "Keep formation",
       "moveModeColumn": "Column",
       "apply": "Apply",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "wait_": ""
     },
     "command_remove": "Remove command"
   },
@@ -205,6 +211,8 @@
   },
 
   "time": {
+    "minute": "minutes",
+    "second": "seconds",
     "seconds": "{count} sec",
     "minutes": "{count} min",
     "minutes_seconds": "{minutes} min {seconds} sec"

@@ -9,6 +9,7 @@ import {unitType} from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import CommandDelivery from "@/components/tools/commands/CommandDelivery.vue";
 import CommandChangeFormation from "@/components/tools/commands/CommandChangeFormation.vue";
+import CommandWait from "@/components/tools/commands/CommandWait.vue";
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -70,6 +71,14 @@ function clearCommands() {
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.formation') }}</span>
       </button>
 
+      <button class="order-btn" @click="open(UnitCommandTypes.Wait)">
+        <span class="icon">⏳</span>
+        <span class="label">
+          {{ t('tools.command.command') }}<br>
+          {{ t('tools.command.wait') }}
+        </span>
+      </button>
+
       <button class="order-btn" @click="clearCommands">
         <span class="icon icon-formation">❌</span>
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.clear_commands') }}</span>
@@ -97,6 +106,12 @@ function clearCommands() {
 
     <CommandChangeFormation
       v-if="activeOrder === UnitCommandTypes.ChangeFormation"
+      :units="units"
+      @close="close"
+    />
+
+    <CommandWait
+      v-if="activeOrder === UnitCommandTypes.Wait"
       :units="units"
       @close="close"
     />

@@ -51,6 +51,9 @@ function description(cmd: BaseCommand<any, any>) {
         formation: t(`formation.${state.newFormation}`),
       })
 
+    case UnitCommandTypes.Wait:
+      return cmd.getState().state.comment
+
     default:
       return ''
   }

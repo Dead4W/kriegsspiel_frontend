@@ -27,6 +27,10 @@ export class WaitCommand extends BaseCommand<
     return this.state.elapsed >= this.state.wait;
   }
 
+  estimate(unit: BaseUnit): number {
+    return this.state.wait - this.state.elapsed
+  }
+
   getState() {
     return {
       type: this.type,

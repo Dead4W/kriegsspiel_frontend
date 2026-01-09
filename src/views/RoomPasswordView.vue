@@ -19,12 +19,15 @@ async function submit() {
   loading.value = true
   error.value = ''
 
+  const key = localStorage.getItem(`room_key_${uuid}`) ?? ''
+
   try {
     // пробуем зайти в комнату с паролем
     await api.get(`/room/${uuid}`, {
       headers: {
         'X-Room-Password': password.value,
       },
+      params: { key },
     })
 
     // сохраняем пароль
@@ -34,7 +37,11 @@ async function submit() {
     router.replace(`/room/${uuid}`)
   } catch (e: any) {
     if (e.response?.status === 403) {
-      error.value = 'error.bad_password'
+      if (e.response?.data?.message === 'wrong_key') {
+        error.value = 'error.wrong_key'
+      } else {
+        error.value = 'error.bad_password'
+      }
     } else {
       error.value = 'error.room_not_found'
     }

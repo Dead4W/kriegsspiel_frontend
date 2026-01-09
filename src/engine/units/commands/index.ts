@@ -1,8 +1,4 @@
 import { BaseCommand } from "@/engine/units/commands/baseCommand.ts";
-import {
-  AbilityAttackCommand,
-  type AbilityAttackCommandState
-} from "@/engine/units/commands/abilityAttackCommand.ts";
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {
   ChangeFormationCommand,
@@ -21,8 +17,6 @@ export function initUnitCommand(state: commandstate) {
   switch (state.type) {
     case UnitCommandTypes.Attack:
       return new AttackCommand(state.state)
-    case UnitCommandTypes.AbilityAttack:
-      return new AbilityAttackCommand(state.state)
     case UnitCommandTypes.Move:
       return new MoveCommand(state.state)
     case UnitCommandTypes.ChangeFormation:
@@ -37,7 +31,7 @@ export function initUnitCommand(state: commandstate) {
   }
 }
 
-export function createUnitCommand(state: commandstate): BaseCommand<UnitCommandTypes, AbilityAttackCommandState | AttackCommandState | ChangeFormationCommandState | MoveCommandState | WaitCommandState | DeliveryCommandState> {
+export function createUnitCommand(state: commandstate): BaseCommand<UnitCommandTypes, AttackCommandState | ChangeFormationCommandState | MoveCommandState | WaitCommandState | DeliveryCommandState> {
   const cmd = initUnitCommand(state)
   cmd.status = state.status
   return cmd;

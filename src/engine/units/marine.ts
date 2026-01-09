@@ -9,13 +9,13 @@ export class Marine extends BaseUnit {
     maxHp: 64,
     damage: 2,
     speed: 80,
-    defense: 1,
+    takeDamageMod: 1,
     attackRange: 1000,
     visionRange: 1000,
     ammoMax: 25,
   }
 
-  abilities = ['amphibious', 'boarding']
+  abilities = []
 
   constructor(s: unitstate) {
     super(s)

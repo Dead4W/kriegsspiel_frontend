@@ -2,7 +2,7 @@ import { UnitEnvironmentState } from './UnitStates'
 import {unitType} from "@/engine";
 
 export interface EnvStatMultiplier {
-  defense?: number
+  takeDamageMod?: number
   damage?: number
   attackRange?: number
   visionRange?: number
@@ -11,7 +11,7 @@ export interface EnvStatMultiplier {
 }
 
 export interface EnvStatMultiplierByUnit {
-  defense?: number
+  takeDamageMod?: number
   damage?: number
   attackRange?: number
   visionRange?: number
@@ -42,7 +42,7 @@ export const ENV_MULTIPLIERS: Record<UnitEnvironmentState, EnvStatMultiplier> = 
   },
 
   [UnitEnvironmentState.InSwampOrDirty]: {
-    defense: 0.25,
+    takeDamageMod: 0.25,
     speed: 0.25,
     byTypes: {
       [unitType.ARTILLERY]: {
@@ -52,23 +52,23 @@ export const ENV_MULTIPLIERS: Record<UnitEnvironmentState, EnvStatMultiplier> = 
   },
 
   [UnitEnvironmentState.InHouse]: {
-    defense: 0.25,
+    takeDamageMod: 0.25,
   },
 
   [UnitEnvironmentState.InCoverHouse]: {
-    defense: 0.06,
+    takeDamageMod: 0.06,
   },
 
   [UnitEnvironmentState.InBrench]: {
-    defense: 0.9,
+    takeDamageMod: 0.9,
   },
 
   [UnitEnvironmentState.InCoverTrenches]: {
-    defense: 0.12,
+    takeDamageMod: 0.12,
   },
 
   [UnitEnvironmentState.InForest]: {
-    defense: 0.5,
+    takeDamageMod: 0.5,
     speed: 0.5,
     byTypes: {
       [unitType.ARTILLERY]: {
@@ -86,7 +86,7 @@ export const ENV_MULTIPLIERS: Record<UnitEnvironmentState, EnvStatMultiplier> = 
   },
 
   [UnitEnvironmentState.InWater]: {
-    defense: 0.4,
+    takeDamageMod: 0.4,
     byTypes: {
       [unitType.ARTILLERY]: {
         speed: 0.1,

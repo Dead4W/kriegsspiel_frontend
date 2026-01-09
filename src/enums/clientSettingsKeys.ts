@@ -42,6 +42,9 @@ export const CLIENT_SETTING_KEYS = {
   // Размеры чата
   CHAT_HEIGHT: 'chatHeight',
   CHAT_WIDTH: 'chatWidth',
+
+  // Performance debug
+  ENABLE_PERFORMANCE_DEBUG: 'enablePerformanceDebug'
 } as const
 
 export type ClientSettingKey =
@@ -82,6 +85,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]: false,
     [CLIENT_SETTING_KEYS.CHAT_HEIGHT]: null,
     [CLIENT_SETTING_KEYS.CHAT_WIDTH]: null,
+    [CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]: false,
   };
 }
 

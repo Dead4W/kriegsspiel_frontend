@@ -1,4 +1,4 @@
-import type { unitstate } from '@/engine/units/types'
+import type {unitstate, uuid} from '@/engine/units/types'
 import { emitter } from '../events'
 import { camera } from './camera'
 import { unitregistry } from './unitregistry'
@@ -20,6 +20,7 @@ type worldevents = {
 }
 
 export class world {
+  id: uuid = '';
   time: string = '1882-06-12 09:00:00';
 
   stage: RoomGameStage = RoomGameStage.PLANNING;

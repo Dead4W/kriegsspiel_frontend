@@ -97,7 +97,7 @@ export class AttackCommand extends BaseCommand<
   }
 
   getPriorityTargets(unit: BaseUnit): BaseUnit[] {
-    return this.getActiveTargets(unit)
+    let activeTargets = this.getActiveTargets(unit)
       .sort((a, b) => {
         const dxA = a.pos.x - unit.pos.x
         const dyA = a.pos.y - unit.pos.y
@@ -106,7 +106,10 @@ export class AttackCommand extends BaseCommand<
 
         return (dxA * dxA + dyA * dyA) - (dxB * dxB + dyB * dyB)
       })
-      .slice(0, this.PRIORITY_TARGETS)
+    if (unit.type !== unitType.GATLING && unit.type !== unitType.ARTILLERY) {
+      activeTargets = activeTargets.slice(0, this.PRIORITY_TARGETS)
+    }
+    return activeTargets
   }
 
   getState() {

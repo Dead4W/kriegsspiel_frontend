@@ -12,6 +12,7 @@ const props = defineProps<{
 }>()
 
 const stage = ref(window.ROOM_WORLD.stage);
+const copiedTeam = ref<Team | null>(null)
 
 /* ================= actions ================= */
 
@@ -33,6 +34,26 @@ function copyRedBoard() {
 
 function sync() {
   stage.value = window.ROOM_WORLD.stage;
+}
+
+function copyTeamLink(team: Team) {
+  const host = window.location.origin;
+  const roomUUID = window.ROOM_WORLD.id;
+
+  const keyName = `${team}_key` as keyof typeof window.ROOM_KEYS;
+  const key = window.ROOM_KEYS[keyName];
+
+  if (!key) return;
+
+  const link = `${host}/room/${roomUUID}/key/${key}?team=${team}`;
+
+  navigator.clipboard.writeText(link).then(() => {
+    copiedTeam.value = team;
+
+    setTimeout(() => {
+      copiedTeam.value = null;
+    }, 2000);
+  });
 }
 
 /* LIFE CYCLE */
@@ -66,6 +87,27 @@ onUnmounted(() => {
     <button @click="copyRedBoard" v-if="stage === RoomGameStage.PLANNING">
       📋 {{ t('tools.admin.copy_red') }}
     </button>
+
+    <button @click="copyTeamLink(Team.ADMIN)">
+      <span v-if="copiedTeam === Team.ADMIN">✅ {{ t('copied') }}</span>
+      <span v-else>🔗 {{ t('tools.admin.copy_team_link') }} {{ t('team.admin') }}</span>
+    </button>
+
+    <button @click="copyTeamLink(Team.RED)">
+      <span v-if="copiedTeam === Team.RED">✅ {{ t('copied') }}</span>
+      <span v-else>
+        🔗 {{ t('tools.admin.copy_team_link') }}
+        <span style="color:#ef4444">{{ t('team.red') }}</span>
+      </span>
+    </button>
+
+    <button @click="copyTeamLink(Team.BLUE)">
+      <span v-if="copiedTeam === Team.BLUE">✅ {{ t('copied') }}</span>
+      <span v-else>
+        🔗 {{ t('tools.admin.copy_team_link') }}
+        <span style="color:#3a82f6">{{ t('team.blue') }}</span>
+      </span>
+    </button>
   </div>
 </template>
 
@@ -75,7 +117,7 @@ onUnmounted(() => {
   top: 64px;
   left: 16px;
 
-  width: 250px;
+  width: 340px;
   padding: 12px;
 
   background: #020617ee;
@@ -105,7 +147,7 @@ button {
 }
 
 button:hover {
-  background: #020617cc;
+  background: rgba(21, 32, 83, 0.8);
 }
 
 button.danger {

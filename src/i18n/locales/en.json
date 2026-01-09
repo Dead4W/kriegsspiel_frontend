@@ -1,7 +1,7 @@
 {
   "title": "KRIEGSSPIEL",
   "subtitle": "Fog of war.",
-  "createRoom": "Create room",
+  "createRoomBtn": "Create room",
   "joinRoom": "Join room",
   "welcome": "Welcome",
   "to_home": "Go Home",
@@ -9,6 +9,36 @@
   "loading_map": "Loading map...",
   "select_team": "Select team",
   "clear": "Clear",
+  "copied": "Copied",
+  "createRoom": {
+    "title": "Create room",
+
+    "roomName": {
+      "label": "Room name",
+      "placeholder": "For example: Alpha HQ",
+      "required": "Please enter a room name"
+    },
+
+    "password": {
+      "label": "Password (optional)",
+      "placeholder": "••••••"
+    },
+
+    "advanced": {
+      "toggle": "Advanced settings",
+      "beta": "BETA",
+      "unstable": "UNSTABLE"
+    },
+
+    "actions": {
+      "create": "Create",
+      "cancel": "Cancel"
+    },
+
+    "errors": {
+      "createFailed": "Failed to create room"
+    }
+  },
 
   "command": {
     "attack": "Attack",
@@ -24,7 +54,6 @@
   "command_desc": {
     "move": "Move to position ({x}, {y})",
     "attack": "Attack targets: {count}, damage modifier {dmg}%",
-    "abilityAttack": "Use ability \"{ability}\": targets {count}, damage modifier {dmg}%",
     "changeFormation": "Change formation to \"{formation}\""
   },
   "command_status": {
@@ -44,7 +73,8 @@
       "end_war": "End war",
       "copy_blue": "Copy blue board",
       "copy_red": "Copy red board",
-      "clear_commands": "Clear commands"
+      "clear_commands": "Clear commands",
+      "copy_team_link": "Copy link team"
     },
     "command": {
       "command": "Command",
@@ -88,7 +118,7 @@
     "hp": "HP",
     "ammo": "Ammo",
     "speed": "Speed",
-    "defense": "Defense",
+    "takeDamageMod": "Take damage",
     "attackRange": "Attack range",
     "visionRange": "Vision range",
     "height": "Height",
@@ -127,7 +157,8 @@
     "bad_token": "Auth token expired or not exist.",
     "bad_password": "Wrong room password.",
     "room_not_found": "Room not found.",
-    "alert_ctrl_w": "CTRL+W pressed!\nThis hotkey force close for browser!\nIf you don't need to close tab please enter no."
+    "alert_ctrl_w": "CTRL+W pressed!\nThis hotkey force close for browser!\nIf you don't need to close tab please enter no.",
+    "wrong_key": "Wrong link key. Try with new link"
   },
 
   "room": {
@@ -186,7 +217,8 @@
     "show_unit_vision": "Show unit vision radius",
     "show_unit_vision_forest_raycast": "[BETA] Use forest map (raycast)",
     "forest_map": "Show forest map",
-    "height_map": "Show height map"
+    "height_map": "Show height map",
+    "performance_debug": "Performance debug"
   },
 
   "settings": {

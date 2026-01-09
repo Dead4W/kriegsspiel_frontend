@@ -1,6 +1,7 @@
 import type {UnitStats} from './baseUnit'
 import {BaseUnit} from './baseUnit'
 import {type unitstate, unitType} from './types'
+import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 
 export class Artillery extends BaseUnit {
   type: unitType = unitType.ARTILLERY
@@ -9,13 +10,13 @@ export class Artillery extends BaseUnit {
     maxHp: 64,
     damage: 1,
     speed: 80,
-    defense: 1,
+    takeDamageMod: 1,
     attackRange: 4500,
     visionRange: 1000,
     ammoMax: 10,
   }
 
-  abilities = ['bombard', 'indirect_fire']
+  abilities = [UnitAbilityType.INACCURACY_FIRE]
 
   constructor(s: unitstate) {
     super(s)

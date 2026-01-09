@@ -9,7 +9,7 @@ export class Gatling extends BaseUnit {
     maxHp: 64,
     damage: 16,
     speed: 80,
-    defense: 1,
+    takeDamageMod: 1,
     attackRange: 1000,
     visionRange: 1000,
     ammoMax: 10,

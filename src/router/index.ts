@@ -30,6 +30,12 @@ const router = createRouter({
       name: 'room-password',
       component: RoomPasswordView,
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/room/:uuid/key/:key',
+      name: 'room-key',
+      component: RoomView,
+      meta: { requiresAuth: true },
     }
   ],
 })

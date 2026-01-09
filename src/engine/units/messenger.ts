@@ -7,9 +7,9 @@ export class Messenger extends BaseUnit {
 
   stats: UnitStats = {
     maxHp: 1,
-    damage: 1,
+    damage: 0.01,
     speed: 400,
-    defense: 1,
+    takeDamageMod: 1,
     attackRange: 1000,
     visionRange: 1000,
     ammoMax: 0,

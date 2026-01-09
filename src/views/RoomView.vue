@@ -75,17 +75,42 @@ function applyRoomSettings(id: uuid, options?: Record<string, any>) {
 
 async function loadRoom() {
   const uuid = route.params.uuid as string
+
+  // key из URL имеет приоритет
+  const keyFromRoute = route.params.key as string | undefined
+  const keyFromStorage = localStorage.getItem(`room_key_${uuid}`)
+  const key = keyFromRoute || keyFromStorage
+
+  // если key пришёл из URL — сохраним
+  if (keyFromRoute) {
+    localStorage.setItem(`room_key_${uuid}`, keyFromRoute)
+  }
+
   const password = localStorage.getItem(`room_pass_${uuid}`)
 
   try {
     const res = await api.get(`/room/${uuid}`, {
       headers: password ? { 'X-Room-Password': password } : undefined,
+      params: { key },
     })
 
     roomData.value = res.data
     applyRoomSettings(uuid, res.data.options)
 
-    stage.value = RoomStage.TEAM_SELECT
+    if (roomData.value.team === Team.ADMIN) {
+      stage.value = RoomStage.TEAM_SELECT
+      window.ROOM_KEYS = {
+        admin_key: roomData.value.admin_key,
+        blue_key: roomData.value.blue_key,
+        red_key: roomData.value.red_key,
+      }
+    } else {
+      if (keyFromRoute) {
+        await router.push(`/room/${uuid}`)
+      }
+      stage.value = RoomStage.LOADING_MAP
+      onTeamSelected(roomData.value.team)
+    }
   } catch (e: any) {
     if (e.response?.status === 403) {
       router.replace(`/room/${uuid}/password`)
@@ -114,6 +139,7 @@ async function onTeamSelected(team: Team) {
     roomId: route.params.uuid as string,
     team: window.PLAYER.team,
     password: localStorage.getItem(`room_pass_${route.params.uuid}`) ?? undefined,
+    key: localStorage.getItem(`room_key_${route.params.uuid}`) ?? undefined,
     world: w!,
   })
 }
@@ -138,10 +164,25 @@ async function initWorld(room: any) {
     metersPerPixel: 5.38,
   }
 
-  const bitmap = await loadImageWithProgress(
-    map.imageUrl,
-    (p) => (mapProgress.value = p * 0.5)
-  )
+  let loadMapProgress = 0
+  let loadHeightMapProgress = 0
+
+  const [bitmap, bitmapHeightMap] = await Promise.all([
+    loadImageWithProgress(
+      map.imageUrl,
+      (p) => {
+        loadMapProgress = p * 0.5
+        mapProgress.value = loadMapProgress + loadHeightMapProgress
+      }
+    ),
+    loadImageWithProgress(
+      map.heightMapUrl,
+      (p) => {
+        loadHeightMapProgress = p * 0.5
+        mapProgress.value = loadMapProgress + loadHeightMapProgress
+      }
+    )
+  ])
 
   await nextTick()
   await new Promise(requestAnimationFrame)
@@ -153,6 +194,7 @@ async function initWorld(room: any) {
   }
 
   window.ROOM_WORLD = w = new world(map)
+  w.id = room.uuid
 
   if (!canvasOverlayEl.value) {
     error.value = 'error.canvas_overlay_not_mounted'
@@ -184,10 +226,6 @@ async function initWorld(room: any) {
   ));
 
   // load height map
-  const bitmapHeightMap = await loadImageWithProgress(
-    map.heightMapUrl,
-    (p) => (mapProgress.value = 50 + p * 0.5)
-  )
   await w.setHeightMap(bitmapHeightMap);
 
   bindPointer(canvasEl.value, w)

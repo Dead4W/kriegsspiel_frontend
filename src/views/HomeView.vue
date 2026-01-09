@@ -115,7 +115,7 @@ onMounted(checkAuth)
           @click="createRoom"
           :disabled="!user"
         >
-          {{ t('createRoom') }}
+          {{ t('createRoomBtn') }}
         </button>
 
 <!--        <button-->

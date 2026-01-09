@@ -42,13 +42,6 @@ function description(cmd: BaseCommand<any, any>) {
         dmg: Math.round((state.damageModifier - 1) * 100),
       })
 
-    case UnitCommandTypes.AbilityAttack:
-      return t('command_desc.abilityAttack', {
-        ability: state.abilityId,
-        count: state.targets.length,
-        dmg: Math.round((state.damageModifier - 1) * 100),
-      })
-
     case UnitCommandTypes.ChangeFormation:
       return t('command_desc.changeFormation', {
         formation: t(`formation.${state.newFormation}`),

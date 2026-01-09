@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {useI18n} from 'vue-i18n'
-import type {BaseUnit} from '@/engine/units/baseUnit'
+import type {BaseUnit, StatKey} from '@/engine/units/baseUnit'
 import {computed, onMounted, onUnmounted, ref} from "vue";
 import {Team} from "@/enums/teamKeys.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
@@ -52,10 +52,15 @@ function isAdmin() {
     || window.PLAYER.team === Team.SPECTATOR
 }
 
-function percentClass(p: number) {
-  if (p > 100) return 'pos'
-  if (p < 100) return 'neg'
-  return ''
+function percentClass(key: StatKey, p: number): string {
+  if (key === 'takeDamageMod') {
+    if (p < 100) return 'pos'
+    if (p > 100) return 'neg'
+  } else {
+    if (p > 100) return 'pos'
+    if (p < 100) return 'neg'
+  }
+  return 'aaa'
 }
 
 // PROXIES
@@ -211,51 +216,57 @@ onUnmounted(() => {
 
             <!-- Readonly stats -->
             <div
-              v-for="key in ['damage','speed','defense','attackRange','visionRange']"
-              :key="key"
+              v-for="statKey in ['damage','speed','takeDamageMod','attackRange','visionRange']"
+              :key="statKey"
               class="stat-mod"
             >
-              <label>{{ t(`stat.${key}`) }}</label>
+              <label>{{ t(`stat.${statKey}`) }}</label>
 
               <!-- main stat text -->
               <div class="stat-value">
-            <span class="final" v-if="key === 'defense' || key === 'damage'">
-              {{ unit[key].toFixed(2) }}
+            <span class="final" v-if="statKey === 'takeDamageMod' || statKey === 'damage'">
+              {{ unit[statKey].toFixed(2) }}
             </span>
                 <span class="final" v-else>
-              {{ Math.round(unit[key]) }}
+              {{ Math.round(unit[statKey as StatKey]) }}
             </span>
 
                 <span
-                  v-if="unit.getStatModifierInfo(key as any).percent !== 100"
+                  v-if="unit.getStatModifierInfo(statKey as StatKey).percent !== 100"
                   class="origin"
-                  :class="percentClass(unit.getStatModifierInfo(key as any).percent)"
+                  :class="percentClass(statKey as StatKey, unit.getStatModifierInfo(statKey as StatKey).percent)"
                 >
               (
-              {{ Math.round((unit.stats as any)[key]) }}
-              {{ unit.getStatModifierInfo(key as any).percent < 100 ? '*' : '*' }}
-              {{ unit.getStatModifierInfo(key as any).percent }}%
+              {{ Math.round(unit.stats[statKey as StatKey]) }}
+              *
+              {{ unit.getStatModifierInfo(statKey as StatKey).percent }}%
               )
             </span>
               </div>
 
               <!-- modifier cards -->
               <div
-                v-if="unit.getStatModifierInfo(key as any).sources.length"
+                v-if="unit.getStatModifierInfo(statKey as StatKey).sources.length"
                 class="modifier-cards"
               >
                 <div
-                  v-for="m in unit.getStatModifierInfo(key as any).sources"
+                  v-for="m in unit.getStatModifierInfo(statKey as StatKey).sources"
                   :key="m.state"
                   class="modifier-card"
-                  :class="percentClass(Math.round((m.multiplier) * 100))"
+                  :class="percentClass(statKey as StatKey, Math.round((m.multiplier) * 100))"
                 >
-              <span class="env">
-                {{ m.type === 'env' ? t(`env.${m.state}`) : t(`formation.${m.state}`) }}
-              </span>
-              <span class="percent">
-                {{ Math.round((m.multiplier) * 100) }}%
-              </span>
+                  <span class="env" v-if="m.type === 'env'">
+                    {{ t(`env.${m.state}`) }}
+                  </span>
+                  <span class="env" v-if="m.type === 'formation'">
+                    {{ t(`formation.${m.state}`) }}
+                  </span>
+                  <span class="env" v-if="m.type === 'ability'">
+                    {{ t(`ability.${m.state}`) }}
+                  </span>
+                  <span class="percent">
+                    {{ Math.round((m.multiplier) * 100) }}%
+                  </span>
                 </div>
               </div>
             </div>

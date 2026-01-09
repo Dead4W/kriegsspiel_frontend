@@ -1,7 +1,6 @@
 import type {vec2} from "@/engine/types.ts";
-import type {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
+import {type UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import type {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import type {AbilityAttackCommandState} from "@/engine/units/commands/abilityAttackCommand.ts";
 import type {AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import type {ChangeFormationCommandState} from "@/engine/units/commands/changeFormationCommand.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
@@ -9,6 +8,7 @@ import type {WaitCommandState} from "@/engine/units/commands/waitCommand.ts";
 import type {DeliveryCommandState} from "@/engine/units/commands/deliveryCommand.ts";
 import {CommandStatus} from "@/engine/units/commands/baseCommand.ts";
 import type {MessageLinked} from "@/engine/units/baseUnit.ts";
+import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 
 export type uuid = string
 
@@ -54,6 +54,7 @@ export interface unitstate {
   envState?: UnitEnvironmentState[]
 
   formation?: FormationType;
+  activeAbilityType?: UnitAbilityType | null;
 
   messagesLinked?: MessageLinked[],
 
@@ -63,7 +64,6 @@ export interface unitstate {
 export type commandstate =
   { type: UnitCommandTypes.Move; status: CommandStatus; state: MoveCommandState }
   | { type: UnitCommandTypes.Attack; status: CommandStatus; state: AttackCommandState }
-  | { type: UnitCommandTypes.AbilityAttack; status: CommandStatus; state: AbilityAttackCommandState }
   | { type: UnitCommandTypes.ChangeFormation; status: CommandStatus; state: ChangeFormationCommandState }
   | { type: UnitCommandTypes.Wait; status: CommandStatus; state: WaitCommandState }
   | { type: UnitCommandTypes.Delivery; status: CommandStatus; state: DeliveryCommandState }

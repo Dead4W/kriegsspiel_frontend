@@ -10,26 +10,26 @@ export const FORMATION_STAT_MULTIPLIERS: Record<
   [FormationType.Default]: {},
 
   [FormationType.Springing]: {
-    defense: 1.2,
+    takeDamageMod: 1.2,
     speed: 0.5,
   },
 
   [FormationType.KneelingVolley]: {
-    defense: 2.0,
+    takeDamageMod: 2.0,
     damage: 0.9,
   },
 
   [FormationType.ForceWalking]: {
-    defense: 4.0,
+    takeDamageMod: 4.0,
     damage: 0.8,
   },
 
   [FormationType.OnHorse]: {
-    defense: 8.0,
+    takeDamageMod: 8.0,
     damage: 0.12,
   },
 
   [FormationType.Column]: {
-    defense: 16.0,
+    takeDamageMod: 16.0,
   },
 }

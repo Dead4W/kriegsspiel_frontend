@@ -1,7 +1,7 @@
 {
   "title": "КРИГШПИЛЬ",
   "subtitle": "Туман войны.",
-  "createRoom": "Создать комнату",
+  "createRoomBtn": "Создать комнату",
   "joinRoom": "Присоединиться",
   "welcome": "Добро пожаловать",
   "to_home": "На главную.",
@@ -9,6 +9,36 @@
   "loading_map": "Загрузка карты...",
   "select_team": "Выбор команды",
   "clear": "Очистить",
+  "copied": "Скопировано",
+  "createRoom": {
+    "title": "Создание комнаты",
+
+    "roomName": {
+      "label": "Название комнаты",
+      "placeholder": "Например: Штаб Альфа",
+      "required": "Введите название комнаты"
+    },
+
+    "password": {
+      "label": "Пароль (опционально)",
+      "placeholder": "••••••"
+    },
+
+    "advanced": {
+      "toggle": "Дополнительные настройки",
+      "beta": "БЕТА",
+      "unstable": "НЕСТАБИЛЬНО"
+    },
+
+    "actions": {
+      "create": "Создать",
+      "cancel": "Отмена"
+    },
+
+    "errors": {
+      "createFailed": "Не удалось создать комнату"
+    }
+  },
 
   "command": {
     "title": "Приказы",
@@ -26,7 +56,6 @@
   "command_desc": {
     "move": "Движение к точке ({x}, {y})",
     "attack": "Атака целей: {count}, модификатор урона {dmg}%",
-    "abilityAttack": "Использование способности «{ability}»: целей {count}, модификатор урона {dmg}%",
     "changeFormation": "Смена построения на «{formation}»"
   },
   "command_status": {
@@ -45,7 +74,8 @@
       "start_war": "Начать войну",
       "end_war": "Закончить войну",
       "copy_blue": "Скопировать доску синих",
-      "copy_red": "Скопировать доску красных"
+      "copy_red": "Скопировать доску красных",
+      "copy_team_link": "Скопировать ссылку команды"
     },
     "command": {
       "command": "Приказ",
@@ -89,7 +119,7 @@
     "hp": "Здоровье",
     "ammo": "Боеприпасы",
     "speed": "Скорость",
-    "defense": "Защита",
+    "takeDamageMod": "Вход. урон",
     "attackRange": "Даль. атаки",
     "visionRange": "Даль. обзора",
     "height": "Высота",
@@ -128,7 +158,8 @@
     "bad_token": "Похоже токен истек или что-то пошло не так.",
     "bad_password": "Неверный пароль комнаты.",
     "room_not_found": "Комната не найдена.",
-    "alert_ctrl_w": "CTRL+W pressed!\nThis hotkey force close for browser!\nIf you don't need to close tab please enter no."
+    "alert_ctrl_w": "CTRL+W pressed!\nThis hotkey force close for browser!\nIf you don't need to close tab please enter no.",
+    "wrong_key": "Wrong link key. Try with new link"
   },
 
   "room": {
@@ -187,7 +218,8 @@
     "show_unit_vision": "Показывать область видимости юнитов",
     "show_unit_vision_forest_raycast": "[BETA] Использовать карту леса (raycast)",
     "forest_map": "Показать карту лесов",
-    "height_map": "Показать карту высот"
+    "height_map": "Показать карту высот",
+    "performance_debug": "Дебаг производительности"
   },
 
   "settings": {

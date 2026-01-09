@@ -7,24 +7,28 @@ import {
   type uuid
 } from './types'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
-import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
+import {
+  UnitEnvironmentState
+} from "@/engine/units/enums/UnitStates.ts";
 import {ENV_MULTIPLIERS} from '@/engine/units/enums/UnitEnvModifiers'
 import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engine/util.ts";
 import {FORMATION_STAT_MULTIPLIERS} from "@/engine/units/enums/UnitFormationModifiers.ts";
 import {createUnitCommand} from "@/engine/units/commands";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {clamp} from "@/engine/math.ts";
-import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
+import {type ChatMessage} from "@/engine/types/chatMessage.ts";
 import {Team} from "@/enums/teamKeys.ts";
+import {BaseAbility, type UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {createAbility} from "@/engine/units/abilities";
 
-type StatKey = 'damage' | 'defense' | 'speed' | 'attackRange' | 'visionRange'
+export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
 
 export interface StatModifierInfo {
   totalMultiplier: number
   percent: number
   sources: {
-    type: 'env' | 'formation',
-    state: UnitEnvironmentState | FormationType,
+    type: 'env' | 'formation' | 'ability',
+    state: UnitEnvironmentState | FormationType | UnitAbilityType,
     multiplier: number
   }[]
 }
@@ -33,7 +37,7 @@ export interface UnitStats {
   maxHp: number
   damage: number,
   speed: number
-  defense: number
+  takeDamageMod: number
   attackRange: number
   visionRange: number
   ammoMax?: number
@@ -66,7 +70,8 @@ export abstract class BaseUnit {
   morale: number
 
   abstract stats: UnitStats
-  abstract abilities: string[]
+  abstract abilities: UnitAbilityType[]
+  private activeAbilityType: UnitAbilityType | null = null
 
   envState: UnitEnvironmentState[] = []
 
@@ -99,6 +104,7 @@ export abstract class BaseUnit {
     this.commands = s.commands ?? [];
 
     this.formation = s.formation ?? FormationType.Default;
+    this.activeAbilityType = s.activeAbilityType ?? null;
 
     this.envState = s.envState ?? [];
     this.messagesLinked = s.messagesLinked ?? [];
@@ -151,7 +157,7 @@ export abstract class BaseUnit {
   }
 
   takeDamage(amount: number) {
-    this.hp -= amount * this.defense;
+    this.hp -= amount * this.takeDamageMod;
     if (this.hp <= 0) {
       this.hp = 0
     }
@@ -220,7 +226,7 @@ export abstract class BaseUnit {
     // }
   }
 
-  private getEnvMultiplier<K extends keyof UnitStats | 'damage'>(
+  private getEnvMultiplier<K extends StatKey>(
     key: K
   ): number {
     let mul = 1
@@ -232,14 +238,17 @@ export abstract class BaseUnit {
         ENV_MULTIPLIERS[state]
         && ENV_MULTIPLIERS[state].byTypes
         && ENV_MULTIPLIERS[state].byTypes[this.type]
-        && ENV_MULTIPLIERS[state].byTypes[this.type][key]
+        && ENV_MULTIPLIERS[state].byTypes[this.type]![key]
       ) {
-        m = ENV_MULTIPLIERS[state]?.byTypes[this.type][key]
+        m = ENV_MULTIPLIERS[state]?.byTypes[this.type]![key]
       }
       if (m !== undefined) mul *= m
     }
 
     mul *= this.getFormationMultiplier(key)
+    if (this.activeAbility) {
+      mul *= this.activeAbility.getStatMultiplier!(key, this)
+    }
 
     return mul
   }
@@ -254,8 +263,8 @@ export abstract class BaseUnit {
     return this.hp > 0;
   }
 
-  get defense(): number {
-    return this.stats.defense * this.getEnvMultiplier('defense')
+  get takeDamageMod(): number {
+    return this.stats.takeDamageMod * this.getEnvMultiplier('takeDamageMod')
   }
 
   get damage(): number {
@@ -288,9 +297,9 @@ export abstract class BaseUnit {
         ENV_MULTIPLIERS[state]
         && ENV_MULTIPLIERS[state].byTypes
         && ENV_MULTIPLIERS[state].byTypes[this.type]
-        && ENV_MULTIPLIERS[state].byTypes[this.type][key]
+        && ENV_MULTIPLIERS[state].byTypes[this.type]![key]
       ) {
-        m = ENV_MULTIPLIERS[state]?.byTypes[this.type][key]
+        m = ENV_MULTIPLIERS[state]?.byTypes[this.type]![key]
       }
       if (m !== undefined) {
         total *= m
@@ -302,6 +311,12 @@ export abstract class BaseUnit {
       const m = this.getFormationMultiplier(key)
       total *= m
       sources.push({ type: 'formation', state: this.formation, multiplier: m })
+    }
+
+    if (this.activeAbility) {
+      const m = this.activeAbility.getStatMultiplier!(key, this)
+      total *= m
+      sources.push({ type: 'ability', state: this.activeAbilityType!, multiplier: m })
     }
 
     return {
@@ -402,5 +417,15 @@ export abstract class BaseUnit {
     }
 
     return result
+  }
+
+  get activeAbility(): BaseAbility | null {
+    if (!this.activeAbilityType) return null;
+    return createAbility(this.activeAbilityType)
+  }
+
+  activateAbility(newAbilityType: UnitAbilityType) {
+    this.activeAbilityType = newAbilityType
+    this.setDirty()
   }
 }

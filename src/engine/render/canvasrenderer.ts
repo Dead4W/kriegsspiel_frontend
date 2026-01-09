@@ -3,6 +3,7 @@ import { maplayer } from './maplayer'
 import { unitlayer } from './unitlayer'
 import { overlaylayer } from './overlaylayer'
 import {cursorlayer} from "@/engine/render/cursorlayer.ts";
+import {debugPerformance} from "@/engine/debugPerformance.ts";
 
 export class canvasrenderer {
   private canvas: HTMLCanvasElement
@@ -55,26 +56,38 @@ export class canvasrenderer {
   }
 
   render(w: world) {
-    this.ctx.clearRect(0, 0, w.camera.viewport.x, w.camera.viewport.y)
+    debugPerformance('render', () => {
+      debugPerformance('clearRect', () => {
+        this.ctx.clearRect(0, 0, w.camera.viewport.x, w.camera.viewport.y)
+      })
+      // базовые параметры текста
+      this.ctx.font = '12px system-ui'
+      this.ctx.textBaseline = 'top'
 
-    // базовые параметры текста
-    this.ctx.font = '12px system-ui'
-    this.ctx.textBaseline = 'top'
-
-    // слои
-    this.map.draw(this.ctx, w)
-    this.units.draw(this.ctx, w)
-    this.overlay.draw(this.ctx, w)
+      // слои
+      debugPerformance('map.draw', () => {
+        this.map.draw(this.ctx, w)
+      })
+      debugPerformance('units.draw', () => {
+        this.units.draw(this.ctx, w)
+      })
+      debugPerformance('overlay.draw', () => {
+        this.overlay.draw(this.ctx, w)
+      })
+    })
   }
 
   renderOverlay(w: world) {
-    this.overlayCtx.clearRect(0, 0, w.camera.viewport.x, w.camera.viewport.y)
+    debugPerformance('renderOverlay', () => {
+      debugPerformance('clearRect', () => {
+        this.overlayCtx.clearRect(0, 0, w.camera.viewport.x, w.camera.viewport.y)
+      })
 
-    // базовые параметры текста
-    this.overlayCtx.font = '12px system-ui'
-    this.overlayCtx.textBaseline = 'top'
+      // базовые параметры текста
+      this.overlayCtx.font = '12px system-ui'
+      this.overlayCtx.textBaseline = 'top'
 
-    this.cursor.draw(this.overlayCtx, w)
-
+      this.cursor.draw(this.overlayCtx, w)
+    })
   }
 }

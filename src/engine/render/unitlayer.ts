@@ -1,7 +1,7 @@
 import type { world } from '../world/world'
 import {drawRoundRect, getTeamColor} from '@/engine/render/util.ts'
 import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
-import { t } from '@/i18n'
+import { translate } from '@/i18n'
 import {drawUnitVision} from "@/engine/render/unitlayer/visionlayer.ts";
 import {getUnitTexture} from "@/engine/assets/textures.ts";
 import {
@@ -12,14 +12,12 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
-import {
-  AbilityAttackCommand,
-} from "@/engine/units/commands/abilityAttackCommand.ts";
 import {unitType} from "@/engine";
 import {
   type UnitEnvironmentState,
   UnitEnvironmentStateIcon
 } from "@/engine/units/enums/UnitStates.ts";
+import {debugPerformance} from "@/engine/debugPerformance.ts";
 
 type MoveOrderRange = {
   min: number
@@ -45,310 +43,157 @@ function hpGradientColor(hpRatio: number) {
 }
 
 export class unitlayer {
-  private move_orders: Record<string, MoveOrderRange> = {}
-
   static readonly BASE_UNIT_W = 30
   static readonly BASE_UNIT_H = 15
+
+  unitTypesLabel: Map<unitType, string> = new Map()
+
+  private move_orders: Record<string, MoveOrderRange> = {}
+
+  constructor() {
+    for (const type of Object.values(unitType)) {
+      this.unitTypesLabel.set(type, translate(`unit.${type}`))
+    }
+  }
+
+  // =============================
+  // PUBLIC DRAW ENTRY
+  // =============================
 
   draw(ctx: CanvasRenderingContext2D, w: world) {
     const cam = w.camera
     const settings = window.CLIENT_SETTINGS
 
-    const settingOpacity = settings[CLIENT_SETTING_KEYS.OPACITY_UNIT] ?? 1
-    const unitScale = settings[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1
-
-    // ===== ОБЛАСТИ ВИДИМОСТИ (ОДИН СЛОЙ) =====
-    if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION] && !settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]) {
-      drawUnitVision(ctx, w);
-    }
-
-    this.calcMoveOrderIndex();
+    this.drawVision(ctx, w, settings)
+    this.updateMoveOrders()
 
     const units = w.units
       .list()
       .sort((a, b) => (a.lastSelected ?? 0) - (b.lastSelected ?? 0))
 
+    for (const unit of units) {
+      this.drawUnit(ctx, cam, unit, settings)
+    }
+  }
 
-    for (const u of units) {
-      const unitOpacity = u.alive ? settingOpacity : 0.3
+  // =============================
+  // VISION
+  // =============================
 
-      const p = cam.worldToScreen(u.pos)
+  private drawVision(
+    ctx: CanvasRenderingContext2D,
+    w: world,
+    settings: typeof window.CLIENT_SETTINGS
+  ) {
+    if (
+      settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION] &&
+      !settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]
+    ) {
+      debugPerformance('drawUnitVision', () => {
+        drawUnitVision(ctx, w)
+      })
+    }
+  }
 
-      // ===== ЦВЕТ ПО КОМАНДЕ =====
-      const { r, g, b } = getTeamColor(u.team)
+  // =============================
+  // UNIT DRAW
+  // =============================
+
+  private drawUnit(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    unit: BaseUnit,
+    settings: typeof window.CLIENT_SETTINGS
+  ) {
+    debugPerformance('drawUnit', () => {
+      const unitOpacity = unit.alive
+        ? settings[CLIENT_SETTING_KEYS.OPACITY_UNIT] ?? 1
+        : 0.3
+
+      const unitScale = settings[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1
+      const p = cam.worldToScreen(unit.pos)
+
+      const { r, g, b } = getTeamColor(unit.team)
       ctx.fillStyle = `rgba(${r},${g},${b},${unitOpacity})`
 
-      this.drawCommands(ctx, cam, u);
+      debugPerformance('drawCommands', () => {
+        this.drawCommands(ctx, cam, unit)
+      })
 
-      // ===== РАЗМЕР ЮНИТА =====
+
       const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * unitScale
       const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * unitScale
 
-      if (u.type === unitType.MESSENGER) {
-        const radius = Math.min(wUnit, hUnit) / 1.5 * unitScale
+      debugPerformance('drawUnitBody', () => {
+        this.drawUnitBody(ctx, cam, unit, p, wUnit, hUnit)
+      })
+      debugPerformance('drawTexture', () => {
+        this.drawTexture(ctx, unit, p, wUnit, hUnit, unitOpacity)
+      })
+      debugPerformance('drawOutline', () => {
+        this.drawOutline(ctx, cam, unit, p, wUnit, hUnit)
+      })
+      debugPerformance('drawSelection', () => {
+        this.drawSelection(ctx, cam, unit, p, wUnit, hUnit)
+      })
+      debugPerformance('drawHp', () => {
+        this.drawHp(ctx, cam, unit, p, wUnit, hUnit, settings)
+      })
+      debugPerformance('drawModifiers', () => {
+        this.drawModifiers(ctx, cam, unit, p, wUnit, hUnit, settings)
+      })
+      debugPerformance('drawDirectView', () => {
+        this.drawDirectView(ctx, cam, unit, p, wUnit, hUnit, settings)
+      })
+      debugPerformance('drawLabel', () => {
+        this.drawLabel(ctx, cam, unit, p, wUnit, hUnit, settings)
+      })
+    })
+  }
 
-        // === КРУЖОК ===
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
-        ctx.fill()
+  // =============================
+  // BODY / TEXTURE
+  // =============================
 
-        // === КРЕСТИК ===
-        const crossSize = radius * 0.7
-        ctx.strokeStyle = 'rgba(0,0,0,0.8)'
-        ctx.lineWidth = 0.5 * cam.zoom
-        ctx.lineCap = 'round'
-
-        ctx.beginPath()
-        // \
-        ctx.moveTo(p.x - crossSize, p.y - crossSize)
-        ctx.lineTo(p.x + crossSize, p.y + crossSize)
-        // /
-        ctx.moveTo(p.x + crossSize, p.y - crossSize)
-        ctx.lineTo(p.x - crossSize, p.y + crossSize)
-        ctx.stroke()
-      } else {
-        ctx.fillRect(
-          p.x - wUnit / 2,
-          p.y - hUnit / 2,
-          wUnit,
-          hUnit
-        )
-      }
-
-      const texture = u.type ? getUnitTexture(u.type) : null
-
-      if (texture && texture.complete && texture.naturalWidth > 0) {
-        ctx.globalAlpha = unitOpacity
-
-        ctx.drawImage(
-          texture,
-          p.x - wUnit / 2,
-          p.y - hUnit / 2,
-          wUnit,
-          hUnit
-        )
-
-        ctx.globalAlpha = 1
-      }
-
-      // ===== ОБВОДКА =====
-      ctx.strokeStyle = 'black'
-      ctx.lineWidth = 1 * cam.zoom
-      if (u.type === unitType.MESSENGER) {
-        const radius = Math.min(wUnit, hUnit) / 1.5 * unitScale
-
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
-        ctx.stroke()
-      } else {
-        ctx.strokeRect(
-          p.x - wUnit / 2,
-          p.y - hUnit / 2,
-          wUnit,
-          hUnit
-        )
-      }
-
-      // ===== ВЫДЕЛЕНИЕ =====
-      if (u.isSelected()) {
-        const pad = 2 * cam.zoom
-
-        ctx.strokeStyle = '#4ade80'
-        ctx.lineWidth = 3 * cam.zoom
-
-        if (u.type === unitType.MESSENGER) {
-          const radius = Math.min(wUnit, hUnit) / 1.5 * unitScale + pad
-
-          ctx.beginPath()
-          ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
-          ctx.stroke()
-        } else {
-          ctx.strokeRect(
-            p.x - wUnit / 2 - pad,
-            p.y - hUnit / 2 - pad,
-            wUnit + pad * 2,
-            hUnit + pad * 2
-          )
-        }
-      }
-
-      // ===== HP НА КАРТЕ =====
-      if (settings[CLIENT_SETTING_KEYS.SHOW_HP_UNIT_ON_MAP] && u.hp != null) {
-        const hpRatio = Math.max(0, Math.min(1, u.hp / u.stats.maxHp))
-
-        const barWidth = wUnit
-        const barHeight = 4 * cam.zoom
-        const offsetY = 4 * cam.zoom
-
-        const x = p.x - barWidth / 2
-        const y = p.y + hUnit / 2 + offsetY
-
-        // фон
-        ctx.fillStyle = 'rgba(0,0,0,0.6)'
-        ctx.fillRect(x, y, barWidth, barHeight)
-
-        // градиентный цвет HP
-        ctx.fillStyle = hpGradientColor(hpRatio)
-        ctx.fillRect(x, y, barWidth * hpRatio, barHeight)
-      }
-
-      // ИКОНКИ МОДИФИКАТОРЫ
-      if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]) {
-        // получаем состояния (поддержка одного или массива)
-        const states: UnitEnvironmentState[] = u.envState
-
-        if (states.length) {
-          const icons = states
-            .map(s => UnitEnvironmentStateIcon[s])
-            .filter(Boolean)
-
-          if (icons.length) {
-            const fontSize = 14 * cam.zoom
-            const paddingX = 6 * cam.zoom
-            const paddingY = 3 * cam.zoom
-            const offsetY =
-              (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] ? 22 : 8) * cam.zoom
-
-            const text = icons.join(' ')
-            ctx.font = `${fontSize}px system-ui, sans-serif`
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'middle'
-
-            const metrics = ctx.measureText(text)
-            const bgWidth = metrics.width + paddingX * 2
-            const bgHeight = fontSize + paddingY * 2
-
-            const bgX = p.x - bgWidth / 2
-            const bgY =
-              p.y - hUnit / 2 - bgHeight - offsetY
-
-            // фон
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'
-            drawRoundRect(ctx, bgX, bgY, bgWidth, bgHeight, 4 * cam.zoom)
-            ctx.fill()
-
-            // иконки
-            ctx.fillStyle = 'white'
-            ctx.fillText(text, p.x, bgY + bgHeight / 2)
-          }
-        }
-      }
-
-      // ===== DIRECT VIEW (👁) =====
-      if (u.directView) {
-        const icon = '👁'
-
-        const fontSize = 14 * cam.zoom
-        const paddingX = 6 * cam.zoom
-        const paddingY = 3 * cam.zoom
-
-        // если есть подписи — поднимаем выше
-        const offsetY =
-          (
-            (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS] ? 22 : 8) +
-            (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] ? 22 : 0)
-          ) * cam.zoom
-
-        ctx.font = `${fontSize}px system-ui, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-
-        const metrics = ctx.measureText(icon)
-        const bgWidth = metrics.width + paddingX * 2
-        const bgHeight = fontSize + paddingY * 2
-
-        const bgX = p.x - bgWidth / 2
-        const bgY = p.y - hUnit / 2 - bgHeight - offsetY
-
-        // фон
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'
-        drawRoundRect(ctx, bgX, bgY, bgWidth, bgHeight, 4 * cam.zoom)
-        ctx.fill()
-
-        // иконка
-        ctx.fillStyle = 'white'
-        ctx.fillText(icon, p.x, bgY + bgHeight / 2)
-      }
-
-      // ===== ПОДПИСЬ =====
-      if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] && u.label) {
-        const fontSize = 12 * cam.zoom
-        const paddingX = 6 * cam.zoom
-        const paddingY = 3 * cam.zoom
-        const offsetY = 6 * cam.zoom
-
-        ctx.font = `${fontSize}px system-ui, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-
-        let text = u.label
-
-        // тип юнита
-        if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABEL_TYPE] && u.type) {
-          const labelUnitType = t(`unit.${u.type}`);
-          text += ` (${labelUnitType})`;
-        }
-
-        const metrics = ctx.measureText(text)
-        const textWidth = metrics.width
-        const textHeight = fontSize
-
-        const bgWidth = textWidth + paddingX * 2
-        const bgHeight = textHeight + paddingY * 2
-
-        const bgX = p.x - bgWidth / 2
-        const bgY = p.y - hUnit / 2 - bgHeight - offsetY
-
-        // фон
-        ctx.fillStyle = u.isSelected()
-          ? 'rgba(74,222,128,0.55)'
-          : 'rgba(0,0,0,0.55)'
-
-        drawRoundRect(ctx, bgX, bgY, bgWidth, bgHeight, 4 * cam.zoom)
-        ctx.fill()
-
-        // текст
-        ctx.fillStyle = 'white'
-        ctx.fillText(text, p.x, bgY + bgHeight / 2)
-      }
+  private drawUnitBody(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    unit: BaseUnit,
+    p: { x: number; y: number },
+    w: number,
+    h: number
+  ) {
+    if (unit.type === unitType.MESSENGER) {
+      const radius = Math.min(w, h) / 1.5
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+      ctx.fill()
+    } else {
+      ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h)
     }
   }
 
-  calcMoveOrderIndex() {
-    // Calc min/max move orderIndex
-    type MoveOrderRange = {
-      min: number
-      max: number
-    }
-    const cmd_move_orders: Record<string, MoveOrderRange> = {}
-    for (const u of window.ROOM_WORLD.units.list()) {
-      for (const cmd of u.getCommands()) {
-        if (cmd.type !== UnitCommandTypes.Move) continue
+  private drawTexture(
+    ctx: CanvasRenderingContext2D,
+    unit: BaseUnit,
+    p: { x: number; y: number },
+    w: number,
+    h: number,
+    opacity: number
+  ) {
+    const texture = unit.type ? getUnitTexture(unit.type) : null
+    if (!texture || !texture.complete || texture.naturalWidth === 0) return
 
-        const cmd_state = cmd.getState().state as MoveCommandState
-        const id = cmd_state.uniqueId
-        if (!cmd_move_orders[id]) {
-          cmd_move_orders[id] = {
-            min: cmd_state.orderIndex,
-            max: cmd_state.orderIndex,
-          }
-          continue
-        }
-        cmd_move_orders[id].min = Math.min(
-          cmd_move_orders[id].min,
-          cmd_state.orderIndex
-        )
-        cmd_move_orders[id].max = Math.max(
-          cmd_move_orders[id].max,
-          cmd_state.orderIndex
-        )
-      }
-    }
-
-    this.move_orders = cmd_move_orders;
+    ctx.globalAlpha = opacity
+    ctx.drawImage(texture, p.x - w / 2, p.y - h / 2, w, h)
+    ctx.globalAlpha = 1
   }
 
-  drawCommands(
+  // =============================
+  // COMMANDS
+  // =============================
+
+  private drawCommands(
     ctx: CanvasRenderingContext2D,
     cam: world['camera'],
     unit: BaseUnit
@@ -357,61 +202,285 @@ export class unitlayer {
     if (!commands.length) return
 
     ctx.globalAlpha = 0.8
+    const { r, g, b } = getTeamColor(unit.team)
+    const color = `rgba(${r},${g},${b},1)`
 
-    const { r, g, b } = getTeamColor(unit.team);
-    const color = `rgba(${r},${g},${b},1)`;
-    let from = unit.pos;
+    let from = unit.pos
 
-    let i = 0;
     for (const cmd of commands) {
       switch (cmd.type) {
         case UnitCommandTypes.Move: {
           const state = cmd.getState().state as MoveCommandState
+          const range = this.move_orders[state.uniqueId]
 
           if (
-            this.move_orders[state.uniqueId] &&
-            (
-              this.move_orders[state.uniqueId]!.min === state.orderIndex ||
-              this.move_orders[state.uniqueId]!.max === state.orderIndex
-            )
+            range &&
+            (range.min === state.orderIndex ||
+              range.max === state.orderIndex)
           ) {
-            drawMoveArrowChainIcons(
-              ctx,
-              from,
-              state.target,
-              '#4587cc',
-              cam.zoom
-            )
+            debugPerformance('drawMoveArrowChainIcons', () => {
+              drawMoveArrowChainIcons(
+                ctx,
+                from,
+                state.target,
+                '#4587cc',
+                cam.zoom
+              )
+            })
           }
-          from = state.target;
+          from = state.target
           break
         }
 
-        case UnitCommandTypes.Attack:
-        case UnitCommandTypes.AbilityAttack: {
-          const command = cmd as AttackCommand | AbilityAttackCommand
+        case UnitCommandTypes.Attack: {
+          const command = cmd as AttackCommand
           const targets = command.getPriorityTargets(unit)
 
           for (const target of targets) {
-            drawAttackWaveIcons(
-              ctx,
-              unit.pos,
-              target.pos,
-              color,
-              cam.zoom
-            )
+            debugPerformance('drawAttackWaveIcons', () => {
+              drawAttackWaveIcons(
+                ctx,
+                unit.pos,
+                target.pos,
+                color,
+                cam.zoom
+              )
+            })
           }
           break
         }
-
-        case UnitCommandTypes.ChangeFormation:
-          // позже: иконка формации
-          break
       }
-
-      i++;
     }
 
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1
   }
+
+  // =============================
+  // MOVE ORDER INDEX
+  // =============================
+
+  private updateMoveOrders() {
+    return debugPerformance('updateMoveOrders', () => {
+      const orders: Record<string, MoveOrderRange> = {}
+
+      for (const u of window.ROOM_WORLD.units.list()) {
+        for (const cmd of u.getCommands()) {
+          if (cmd.type !== UnitCommandTypes.Move) continue
+
+          const state = cmd.getState().state as MoveCommandState
+          const id = state.uniqueId
+
+          const entry = orders[id]
+          if (!entry) {
+            orders[id] = { min: state.orderIndex, max: state.orderIndex }
+          } else {
+            entry.min = Math.min(entry.min, state.orderIndex)
+            entry.max = Math.max(entry.max, state.orderIndex)
+          }
+        }
+      }
+
+      this.move_orders = orders
+    })
+  }
+
+  // =============================
+  // UI PARTS (HP / LABELS / ICONS)
+  // =============================
+
+  private drawHp(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    unit: BaseUnit,
+    p: { x: number; y: number },
+    w: number,
+    h: number,
+    settings: typeof window.CLIENT_SETTINGS
+  ) {
+    if (
+      !settings[CLIENT_SETTING_KEYS.SHOW_HP_UNIT_ON_MAP] ||
+      unit.hp == null
+    )
+      return
+
+    const hpRatio = unit.hp / unit.stats.maxHp
+    const barH = 4 * cam.zoom
+    const y = p.y + h / 2 + 4 * cam.zoom
+
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'
+    ctx.fillRect(p.x - w / 2, y, w, barH)
+
+    ctx.fillStyle = hpGradientColor(hpRatio)
+    ctx.fillRect(p.x - w / 2, y, w * hpRatio, barH)
+  }
+
+  private drawModifiers(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    unit: BaseUnit,
+    p: { x: number; y: number },
+    w: number,
+    h: number,
+    settings: typeof window.CLIENT_SETTINGS
+  ) {
+    if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]) return
+
+    const states: UnitEnvironmentState[] = unit.envState
+    if (!states.length) return
+
+    const icons = states
+      .map(s => UnitEnvironmentStateIcon[s])
+      .filter(Boolean)
+
+    if (!icons.length) return
+
+    const text = icons.join(' ')
+    ctx.font = `${14 * cam.zoom}px system-ui`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    const metrics = ctx.measureText(text)
+    const bgW = metrics.width + 12 * cam.zoom
+    const bgH = 20 * cam.zoom
+    const y = p.y - h / 2 - bgH - 25 * cam.zoom
+
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'
+    drawRoundRect(ctx, p.x - bgW / 2, y, bgW, bgH, 4 * cam.zoom)
+    ctx.fill()
+
+    ctx.fillStyle = 'white'
+    ctx.fillText(text, p.x, y + bgH / 2)
+  }
+
+  private drawDirectView(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    unit: BaseUnit,
+    p: { x: number; y: number },
+    w: number,
+    h: number,
+    settings: typeof window.CLIENT_SETTINGS
+  ) {
+    if (!unit.directView) return
+
+    const icon = '👁'
+    ctx.font = `${14 * cam.zoom}px system-ui`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    const metrics = ctx.measureText(icon)
+    const bgW = metrics.width + 12 * cam.zoom
+    const bgH = 20 * cam.zoom
+    const y = p.y - h / 2 - bgH - 48 * cam.zoom
+
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'
+    drawRoundRect(ctx, p.x - bgW / 2, y, bgW, bgH, 4 * cam.zoom)
+    ctx.fill()
+
+    ctx.fillStyle = 'white'
+    ctx.fillText(icon, p.x, y + bgH / 2)
+  }
+
+  private drawLabel(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    unit: BaseUnit,
+    p: { x: number; y: number },
+    w: number,
+    h: number,
+    settings: typeof window.CLIENT_SETTINGS
+  ) {
+    if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] || !unit.label) return
+
+    let text = unit.label
+    if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABEL_TYPE]) {
+      text += ` (${this.unitTypesLabel.get(unit.type)!})`
+    }
+
+    ctx.font = `${12 * cam.zoom}px system-ui`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    const metrics = ctx.measureText(text)
+    const bgW = metrics.width + 12 * cam.zoom
+    const bgH = 18 * cam.zoom
+    const y = p.y - h / 2 - bgH - 6 * cam.zoom
+
+    ctx.fillStyle = unit.isSelected()
+      ? 'rgba(74,222,128,0.55)'
+      : 'rgba(0,0,0,0.55)'
+
+    debugPerformance('fillRect', () => {
+      ctx.fillRect(
+        p.x - bgW / 2,
+        y,
+        bgW,
+        bgH
+      )
+    })
+
+    ctx.fillStyle = 'white'
+    debugPerformance('fillText', () => {
+      ctx.fillText(text, p.x, y + bgH / 2)
+    })
+  }
+
+  private drawOutline(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    unit: BaseUnit,
+    p: { x: number; y: number },
+    w: number,
+    h: number
+  ) {
+    ctx.strokeStyle = 'black'
+    ctx.lineWidth = 1 * cam.zoom
+
+    if (unit.type === unitType.MESSENGER) {
+      const radius = Math.min(w, h) / 1.5
+
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+      ctx.stroke()
+    } else {
+      ctx.strokeRect(
+        p.x - w / 2,
+        p.y - h / 2,
+        w,
+        h
+      )
+    }
+  }
+
+  private drawSelection(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    unit: BaseUnit,
+    p: { x: number; y: number },
+    w: number,
+    h: number
+  ) {
+    if (!unit.isSelected()) return
+
+    const pad = 2 * cam.zoom
+
+    ctx.strokeStyle = '#4ade80'
+    ctx.lineWidth = 3 * cam.zoom
+
+    if (unit.type === unitType.MESSENGER) {
+      const radius = Math.min(w, h) / 1.5 + pad
+
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+      ctx.stroke()
+    } else {
+      ctx.strokeRect(
+        p.x - w / 2 - pad,
+        p.y - h / 2 - pad,
+        w + pad * 2,
+        h + pad * 2
+      )
+    }
+  }
+
 }

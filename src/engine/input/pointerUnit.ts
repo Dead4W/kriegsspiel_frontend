@@ -126,10 +126,6 @@ export function bindUnitInteraction(
         // CTRL → exclude
         hit.selected = false
       } else {
-        // SHIFT или обычный клик → include
-        if (!e.shiftKey) {
-          w.units.clearSelection()
-        }
         hit.selected = true
       }
 

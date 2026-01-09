@@ -1,3 +1,5 @@
+import type {BaseUnit, StatKey} from "@/engine/units/baseUnit.ts";
+
 export enum UnitEnvironmentState {
   InField = 'in_field', // Поля
   InPlainField = 'in_plain_field', // Пашни

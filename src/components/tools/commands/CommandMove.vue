@@ -6,7 +6,7 @@ import type {vec2} from '@/engine/types'
 import {MoveCommand} from '@/engine/units/commands/moveCommand'
 import {useI18n} from 'vue-i18n'
 import {getTeamColor} from '@/engine/render/util'
-import {type unitTeam, unitType, type uuid} from '@/engine'
+import {type commandstate, type unitTeam, unitType, type uuid} from '@/engine'
 import type {unsub} from '@/engine/events'
 import {unitlayer} from "@/engine/render/unitlayer.ts";
 import {normalize, sub} from "@/engine/math.ts";
@@ -51,22 +51,6 @@ function pointOnSegmentFromEnd(
     x: end.x + dx * t,
     y: end.y + dy * t,
   }
-}
-
-/* ================= Math ========================== */
-/** Направление для сегмента, который заканчивается в targets[segIndex] */
-function getColumnDir(segIndex: number): vec2 {
-  const last = targets.value[segIndex]!
-  const prev = segIndex > 0 ? targets.value[segIndex - 1] : null
-
-  if (prev) return normalize(sub(last.pos, prev.pos))
-
-  // если нет предыдущей точки — строим направление от центра группы (или от среднего)
-  const center = formationCenter.value
-  if (center) return normalize(sub(last.pos, center))
-
-  // fallback
-  return normalize(sub(last.pos, movingUnits.value[0]?.pos ?? { x: last.pos.x - 1, y: last.pos.y }))
 }
 
 /* ================= props / emits ================= */
@@ -180,8 +164,9 @@ const formationCenter = computed<vec2 | null>(() => {
 
   const sum = movingUnits.value.reduce(
     (a, u) => {
-      a.x += u.pos.x
-      a.y += u.pos.y
+      const uPlanPos = getUnitPlannedPos(u as BaseUnit)
+      a.x += uPlanPos.x
+      a.y += uPlanPos.y
       return a
     },
     { x: 0, y: 0 }
@@ -197,13 +182,16 @@ const formationOffsets = computed<Record<uuid, vec2>>(() => {
   if (!formationCenter.value) return {}
 
   return Object.fromEntries(
-    movingUnits.value.map(u => [
-      u.id,
-      {
-        x: u.pos.x - formationCenter.value!.x,
-        y: u.pos.y - formationCenter.value!.y,
-      },
-    ])
+    movingUnits.value.map(u => {
+      const uPlanPos = getUnitPlannedPos(u as BaseUnit)
+      return [
+        u.id,
+        {
+          x: uPlanPos.x - formationCenter.value!.x,
+          y: uPlanPos.y - formationCenter.value!.y,
+        },
+      ]
+    })
   )
 })
 
@@ -503,9 +491,30 @@ function confirm() {
 
   const uniqueId = crypto.randomUUID();
 
+  if (!movingUnits.value.length || !targets.value.length) {
+    window.ROOM_WORLD.clearOverlay()
+    return
+  }
+
+  const items: OverlayItem[] = []
+
   // используем план, чтобы порядок был стабильный
   const plan = movePlan.value
+
+  const new_commands: Map<uuid, commandstate[]> = new Map()
+
   plan.forEach(({ unit: u, orderIndex }, planIdx) => {
+    let from = u.pos
+    new_commands.set(u.id, [])
+
+    // Compute previous commands
+    const unitCommands = u.getCommands()
+    for (const cmd of unitCommands) {
+      if (cmd.type !== UnitCommandTypes.Move) continue;
+      const moveCmd = cmd as MoveCommand
+      from = moveCmd.getState().state.target
+    }
+
     for (let segIndex = 0; segIndex < targets.value.length; segIndex++) {
       const t = targets.value[segIndex]!
 
@@ -518,25 +527,34 @@ function confirm() {
         }]
       } else if (moveMode.value === 'column') {
         to_points = getColumnPosition(segIndex, orderIndex, targets.value, plan)
-        if (orderIndex > 0) {
-        }
       } else {
         to_points = [t.pos]
       }
 
       for (const to of to_points) {
         const cmd = new MoveCommand({
-          target: to,
+          target: {
+            x: to.x,
+            y: to.y,
+          },
           modifier: t.modifier ?? null,
           orderIndex: orderIndex,
           uniqueId: uniqueId,
         })
-        u.addCommand(cmd.getState())
+        new_commands.get(u.id)!.push(cmd.getState())
+        from = to;
       }
+      if (to_points.length) from = to_points[to_points.length-1]!
     }
-
-    u.setDirty()
   })
+
+  for (const u of movingUnits.value) {
+    const cmds = new_commands.get(u.id)!
+    for (const cmd of cmds) {
+      u.addCommand(cmd)
+    }
+    u.setDirty()
+  }
 
   cleanup()
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });

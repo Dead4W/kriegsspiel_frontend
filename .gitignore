@@ -36,3 +36,5 @@ coverage
 __screenshots__/
 
 public/assets/default_map.png
+
+.env

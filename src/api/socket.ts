@@ -35,17 +35,18 @@ export class GameSocket {
     roomId: string
     team: string
     password?: string
+    key?: string
     world: world
   }) {
     const query = new URLSearchParams({
       room_id: params.roomId,
       team: params.team,
       password: params.password ?? '',
+      key: params.key ?? '',
     })
 
     this.world = params.world
-    this.ws = new WebSocket(`wss://socket.kriegsspiel.io?${query}`)
-    // this.ws = new WebSocket(`ws://localhost:9501?${query}`)
+    this.ws = new WebSocket(import.meta.env.VITE_SOCKET_URL + `?${query}`)
 
     this.ws.onopen = () => {
       console.log('[WS] connected')
@@ -69,6 +70,20 @@ export class GameSocket {
 
   /* ================== OUT ================== */
   private syncTimer?: RafInterval
+
+  private sendBatched(messages: OutMessage[], batchSize = 100) {
+    if (this.ws.readyState !== WebSocket.OPEN) return
+
+    for (let i = 0; i < messages.length; i += batchSize) {
+      const chunk = messages.slice(i, i + batchSize)
+      this.ws.send(
+        JSON.stringify({
+          messages: chunk,
+        })
+      )
+    }
+  }
+
   private startSync() {
     let busMessages: OutMessage[] = []
     window.ROOM_WORLD.events.on('api', (message) => {

@@ -12,5 +12,10 @@ declare global {
       IGNORE_DRAG: boolean,
     }
     PLAYER: PlayerInfo;
+    ROOM_KEYS: {
+      admin_key: string,
+      red_key: string,
+      blue_key: string,
+    }
   }
 }

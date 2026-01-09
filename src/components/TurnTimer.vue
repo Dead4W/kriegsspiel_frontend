@@ -53,7 +53,7 @@ function processUnitCommands(dt: number) {
         continue;
       }
 
-      if (cmd.type === UnitCommandTypes.Attack || cmd.type === UnitCommandTypes.AbilityAttack) {
+      if (cmd.type === UnitCommandTypes.Attack) {
         cmd.start(unit)
         cmd.update(unit, left_dt)
       } else {

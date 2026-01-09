@@ -14,7 +14,6 @@ export abstract class BaseCommand<
 
   abstract readonly type: TType
 
-  /** вызывается один раз */
   start(unit: BaseUnit): void {
     this.status = CommandStatus.Running
     unit.setDirty();

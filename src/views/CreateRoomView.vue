@@ -37,6 +37,8 @@ async function createRoom() {
       localStorage.setItem(`room_pass_${data.uuid}`, password.value);
     }
 
+    localStorage.setItem(`room_key_${data.uuid}`, data.admin_key)
+
     // 👉 редирект в комнату по uuid
     await router.push(`/room/${data.uuid}`)
   } catch (e) {
@@ -48,33 +50,30 @@ async function createRoom() {
 <template>
   <section class="create">
     <div class="card">
-      <h1>{{ t('createRoom') }}</h1>
+      <h1>{{ t('createRoom.title') }}</h1>
 
       <!-- Название комнаты -->
       <div class="field">
-        <label>Название комнаты</label>
+        <label>{{ t('createRoom.roomName.label') }}</label>
         <input
           v-model="roomName"
-          placeholder="Например: Штаб Альфа"
+          :placeholder="t('createRoom.roomName.placeholder')"
         />
       </div>
 
-      <!-- Пароль -->
-      <div class="field">
-        <label>Пароль (опционально)</label>
-        <input
-          v-model="password"
-          type="password"
-          placeholder="••••••"
-        />
-      </div>
+<!--      &lt;!&ndash; Пароль &ndash;&gt;-->
+<!--      <div class="field">-->
+<!--        <label>Пароль (опционально)</label>-->
+<!--        <input-->
+<!--          v-model="password"-->
+<!--          type="password"-->
+<!--          placeholder="••••••"-->
+<!--        />-->
+<!--      </div>-->
 
       <!-- Дополнительные настройки -->
-      <button
-        class="advanced-toggle"
-        @click="showAdvanced = !showAdvanced"
-      >
-        Дополнительные настройки
+      <button class="advanced-toggle" @click="showAdvanced = !showAdvanced">
+        {{ t('createRoom.advanced.toggle') }}
         <span :class="{ open: showAdvanced }">▾</span>
       </button>
 
@@ -137,11 +136,11 @@ async function createRoom() {
       <!-- Действия -->
       <div class="actions">
         <button class="primary" @click="createRoom">
-          Создать
+          {{ t('createRoom.actions.create') }}
         </button>
 
         <button class="secondary" @click="router.back()">
-          Отмена
+          {{ t('createRoom.actions.cancel') }}
         </button>
       </div>
     </div>

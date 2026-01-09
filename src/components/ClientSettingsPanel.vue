@@ -243,6 +243,16 @@ onUnmounted(() => {
       />
       {{ t('client_settings.height_map') }}
     </label>
+
+    <!-- Performance debug -->
+    <label class="setting">
+      <input
+        type="checkbox"
+        :checked="!!settings[CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]"
+        @change="toggleBool(CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG)"
+      />
+      {{ t('client_settings.performance_debug') }}
+    </label>
   </div>
 </template>
 

@@ -70,15 +70,10 @@ function processUnitCommands(dt: number) {
           if (estimate > left_dt) {
             cmd.update(unit, left_dt)
             left_dt = 0
-            goodCommands.push(cmd);
           } else {
             cmd.update(unit, estimate)
             left_dt -= estimate;
           }
-        } else {
-          goodCommands.push(cmd);
-          // Пропуск очереди
-          continue;
         }
       }
 
@@ -104,6 +99,8 @@ async function startTurn() {
 
   const CHUNK = 60
 
+  window.ROOM_WORLD.units.withNewCommands.clear()
+
   while (totalSeconds.value > 0 && running.value) {
     if (!running.value) return;
     const step = Math.min(CHUNK, totalSeconds.value)
@@ -120,24 +117,24 @@ async function startTurn() {
     await new Promise(requestAnimationFrame)
   }
 
+  window.ROOM_WORLD.events.emit('changed', { reason: 'timer' });
+
   running.value = false
   window.ROOM_WORLD.skipTime(value)
   displayWorldTime.value = window.ROOM_WORLD.time
+
+  // DirectView general
   const directViewByTeam = window.ROOM_WORLD.units.getDirectView();
-  window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: Team.RED, data: directViewByTeam.get(Team.RED)!.map(uuid => {
-    const u = window.ROOM_WORLD.units.get(uuid)!
-    return {
-      id: u.id,
-      pos: u.pos,
-    }
-  })})
-  window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: Team.BLUE, data: directViewByTeam.get(Team.BLUE)!.map(uuid => {
-    const u = window.ROOM_WORLD.units.get(uuid)!
-    return {
-      id: u.id,
-      pos: u.pos,
-    }
-  })})
+  for (const team of [Team.RED, Team.BLUE]) {
+    window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team)!.map(uuid => {
+        const u = window.ROOM_WORLD.units.get(uuid)!
+        return {
+          id: u.id,
+          pos: u.pos,
+          hp: u.hp,
+        }
+    })})
+  }
 }
 
 function stopTurn() {

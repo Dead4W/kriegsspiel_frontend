@@ -121,10 +121,18 @@ async function onTeamSelected(team: Team) {
 /* ================== world init ================== */
 
 async function initWorld(room: any) {
+  let defaultMapUrl = 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg';
+  let defaultHeightMapUrl = 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png';
+
+  if (window.location.hostname === 'localhost') {
+    defaultMapUrl = '/assets/default_map.jpeg'
+    defaultHeightMapUrl = '/assets/default_height_map.png'
+  }
+
   const map: mapmeta = {
     // imageUrl: room.options?.mapImage ?? '/assets/default_map.jpeg',
-    imageUrl: room.options?.mapImage ?? 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg',
-    heightMapUrl: room.options?.heightMapImage ?? 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png',
+    imageUrl: room.options?.mapImage ?? defaultMapUrl,
+    heightMapUrl: room.options?.heightMapImage ?? defaultHeightMapUrl,
     width: 9703,
     height: 7553,
     metersPerPixel: 5.38,

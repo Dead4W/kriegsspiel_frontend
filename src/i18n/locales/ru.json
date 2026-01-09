@@ -127,7 +127,8 @@
     "error_auth_required": "Необходима авторизация.",
     "bad_token": "Похоже токен истек или что-то пошло не так.",
     "bad_password": "Неверный пароль комнаты.",
-    "room_not_found": "Комната не найдена."
+    "room_not_found": "Комната не найдена.",
+    "alert_ctrl_w": "CTRL+W pressed!\nThis hotkey force close for browser!\nIf you don't need to close tab please enter no."
   },
 
   "room": {
@@ -228,6 +229,12 @@
     "second": "секунд",
     "seconds": "{count} сек.",
     "minutes": "{count} мин.",
-    "minutes_seconds": "{minutes} мин. {seconds} сек."
+    "minutes_seconds": "{minutes} мин. {seconds} сек.",
+    "infinity": "Бесконечность"
+  },
+
+  "notifications": {
+    "units_with_new_order": "Юнитов с новым приказом",
+    "units_without_order": "Юнитов без приказа"
   }
 }

@@ -14,7 +14,7 @@ import {FORMATION_STAT_MULTIPLIERS} from "@/engine/units/enums/UnitFormationModi
 import {createUnitCommand} from "@/engine/units/commands";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {clamp} from "@/engine/math.ts";
-import type {ChatMessage} from "@/engine/types/chatMessage.ts";
+import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 
 type StatKey = 'damage' | 'defense' | 'speed' | 'attackRange' | 'visionRange'
@@ -37,6 +37,11 @@ export interface UnitStats {
   attackRange: number
   visionRange: number
   ammoMax?: number
+}
+
+export interface MessageLinked {
+  id: uuid
+  time: string
 }
 
 export abstract class BaseUnit {
@@ -76,7 +81,7 @@ export abstract class BaseUnit {
 
   private formation: FormationType;
 
-  private messageIds: uuid[] = []
+  private messagesLinked: MessageLinked[] = []
 
   lastSelected: number = 0;
 
@@ -96,7 +101,7 @@ export abstract class BaseUnit {
     this.formation = s.formation ?? FormationType.Default;
 
     this.envState = s.envState ?? [];
-    this.messageIds = s.messageIds ?? [];
+    this.messagesLinked = s.messagesLinked ?? [];
     this.directView = s.directView ?? false
     this.refreshEnvState();
   }
@@ -174,7 +179,7 @@ export abstract class BaseUnit {
 
       formation: this.formation,
 
-      messageIds: this.messageIds,
+      messagesLinked: this.messagesLinked,
 
       directView: this.directView,
     }
@@ -347,6 +352,8 @@ export abstract class BaseUnit {
       this.clearCommands()
     }
     this.commands.push(command)
+    this.setDirty()
+    window.ROOM_WORLD.units.withNewCommands.delete(this.id)
   }
 
   getCommands() {
@@ -356,29 +363,44 @@ export abstract class BaseUnit {
   setCommands(commands: BaseCommand<any, any>[]) {
     this.commands = commands.map(c => c.getState());
     this.setDirty();
+    window.ROOM_WORLD.units.withNewCommands.delete(this.id)
   }
 
   clearCommands() {
     this.commands = []
     this.setDirty();
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
+    window.ROOM_WORLD.units.withNewCommands.delete(this.id)
   }
 
   setFormation(formation: FormationType) {
     this.formation = formation;
     this.setDirty();
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
+    window.ROOM_WORLD.units.withNewCommands.delete(this.id)
   }
 
   linkMessage(id: uuid) {
-    if (!this.messageIds.includes(id)) {
-      this.messageIds.push(id);
-      this.setDirty();
-      window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
+    for (const m of this.messagesLinked) {
+      if (m.id === id) return
     }
+    this.messagesLinked.push({id: id, time: window.ROOM_WORLD.time});
+    this.setDirty();
+    window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
   }
 
   get messages(): ChatMessage[] {
-    return window.ROOM_WORLD.messages.list().filter(m => this.messageIds.includes(m.id));
+    const result: ChatMessage[] = []
+
+    for (const messageLinked of this.messagesLinked) {
+      const m = window.ROOM_WORLD.messages.get(messageLinked.id)
+      if (!m) continue
+      result.push({
+        ...m,
+        time: messageLinked.time,
+      })
+    }
+
+    return result
   }
 }

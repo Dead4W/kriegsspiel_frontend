@@ -16,6 +16,7 @@ export class unitregistry {
   private dirty = new Set<uuid>()
   private dirtyRemove = new Set<uuid>()
   private dirtyMoveFrames = new Map<uuid, MoveFrame[]>()
+  public withNewCommands = new Set<uuid>()
 
 
   upsert(state: unitstate, source: 'local' | 'remote' = 'local'): BaseUnit {

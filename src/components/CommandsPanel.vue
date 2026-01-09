@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import {BaseCommand, CommandStatus} from '@/engine/units/commands/baseCommand'
@@ -8,7 +8,10 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 const { unit } = defineProps<{ unit: BaseUnit }>()
 const { t } = useI18n()
 
-const commands = computed(() => unit.getCommands() ?? [])
+const commands = computed(() => {
+  refreshKey.value;
+  return unit.getCommands() ?? []
+})
 
 function cmdKey(cmd: BaseCommand<any, any>) {
   const { type, state } = cmd.getState()
@@ -85,10 +88,26 @@ function estimate(seconds: number) {
   })
 }
 
+const refreshKey = ref(0);
+
+function sync(data: { reason: string }) {
+  if (data.reason !== 'timer') return;
+  refreshKey.value++
+}
+
+/* LIFE CYCLE */
+
+onMounted(() => {
+  window.ROOM_WORLD.events.on('changed', sync)
+})
+onUnmounted(() => {
+  window.ROOM_WORLD.events.off('changed', sync)
+})
+
 </script>
 
 <template>
-  <div class="commands-panel">
+  <div class="commands-panel" :key="`commands_panel_${refreshKey}`">
     <div class="header">
       {{ t('tools.commands') }}
     </div>

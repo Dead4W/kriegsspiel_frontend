@@ -93,7 +93,7 @@ function onSpawnMessenger(m: ChatMessage) {
     team: m.team === Team.RED ? 'red' : 'blue',
     pos,
     label: t(`unit.${unitType.MESSENGER}`),
-    messageIds: [m.id],
+    messagesLinked: [{id: m.id, time: window.ROOM_WORLD.time}],
   }
   window.ROOM_WORLD.units.upsert(new_messenger);
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
@@ -215,17 +215,32 @@ if (window.PLAYER.team !== Team.ADMIN && window.PLAYER.team !== Team.SPECTATOR) 
   }
 }
 
+function parseTime(t: string): number {
+  return new Date(t.replace(' ', 'T')).getTime()
+}
+
 // Фильтр сообщений по чату
 const visibleMessages = computed(() => {
   // 👇 вкладка сообщений выделенных юнитов
   if (activeTeam.value === Team.ADMIN) {
     if (!selectedUnits.value.length) return []
 
-    const ids = new Set(
-      selectedUnits.value.flatMap(u => u.messages.map(m => m.id) ?? [])
-    )
+    const result: ChatMessage[] = []
+    const seenIds = new Set<string>()
 
-    return messages.value.filter(m => ids.has(m.id))
+    for (const unit of selectedUnits.value) {
+      for (const msg of unit.messages ?? []) {
+        if (seenIds.has(msg.id)) continue
+
+        seenIds.add(msg.id)
+        result.push(msg)
+      }
+    }
+
+    // сортировка по времени
+    result.sort((a, b) => parseTime(a.time) - parseTime(b.time))
+
+    return result
   }
 
   // обычные чаты
@@ -449,7 +464,7 @@ function autoResizeInput() {
   el.style.height = Math.min(el.scrollHeight, 120) + 'px'
 }
 
-function onChangedWorld() {
+function onChangedWorld(event: { reason: string }) {
   const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => m.author_team !== window.PLAYER.team);
   if (new_messages.length) {
     const messageSound = new Audio('/assets/sounds/message.wav')
@@ -465,8 +480,13 @@ function onChangedWorld() {
     selectedUnits.value = selectedUnits.value.filter(u => u.team === window.PLAYER.team);
   }
 
-  if (!isPlayer() && selectedUnits.value.length && activeTeam.value !== Team.ADMIN) {
-    activeTeam.value = selectedUnits.value[0]!.team === 'red' ? Team.RED : Team.BLUE;
+  if (
+    event.reason === 'select'
+    && !isPlayer()
+    && selectedUnits.value.length
+    && activeTeam.value !== Team.ADMIN
+  ) {
+    activeTeam.value = selectedUnits.value.length > 0 ? Team.ADMIN : Team.RED;
   }
 
   // Держмимся низа

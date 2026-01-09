@@ -18,7 +18,7 @@ export type OutMessage =
   | { type: 'set_stage'; data: RoomGameStage }
   | { type: 'copy_board'; data: Team }
   | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
-  | { type: 'direct_view'; team: Team; data: {id: uuid, pos: vec2}[] }
+  | { type: 'direct_view'; team: Team; data: {id: uuid, pos: vec2, hp: number}[] }
 
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
@@ -185,10 +185,11 @@ export class GameSocket {
             u.directView = false;
           }
 
-          for (const {id: unitId, pos: unitPos} of m.data) {
+          for (const {id: unitId, pos: unitPos, hp: unitHp} of m.data) {
             const u = window.ROOM_WORLD.units.get(unitId)!;
             if (!u) continue;
             u.pos = unitPos;
+            u.hp = unitHp;
             u.directView = true;
           }
         }

@@ -87,7 +87,7 @@ export function bindUnitInteraction(
         },
       ])
 
-      w.events.emit('changed', { reason: 'select-preview' })
+      w.events.emit('changed', { reason: 'select' })
     }
   }
 
@@ -142,7 +142,7 @@ export function bindUnitInteraction(
       }
 
       canvas.setPointerCapture(e.pointerId)
-      w.events.emit('changed', { reason: 'select-start' })
+      w.events.emit('changed', { reason: 'select' })
       return
     }
 
@@ -188,8 +188,10 @@ export function bindUnitInteraction(
       }
     }
 
-    cleanup(e.pointerId)
-    w.events.emit('changed', { reason: 'select-end' })
+    if (mode !== 'idle') {
+      cleanup(e.pointerId)
+      w.events.emit('changed', { reason: 'select' })
+    }
   })
 
   canvas.addEventListener('pointerleave', () => {

@@ -8,6 +8,7 @@ import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import type {WaitCommandState} from "@/engine/units/commands/waitCommand.ts";
 import type {DeliveryCommandState} from "@/engine/units/commands/deliveryCommand.ts";
 import {CommandStatus} from "@/engine/units/commands/baseCommand.ts";
+import type {MessageLinked} from "@/engine/units/baseUnit.ts";
 
 export type uuid = string
 
@@ -54,7 +55,7 @@ export interface unitstate {
 
   formation?: FormationType;
 
-  messageIds?: uuid[],
+  messagesLinked?: MessageLinked[],
 
   directView?: boolean
 }

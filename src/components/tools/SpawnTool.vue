@@ -35,20 +35,20 @@ const UNIT_TYPES = computed(() => [
   { type: UnitType.GATLING, label: t('unit.gatling') },
   { type: UnitType.GENERAL, label: t('unit.general') },
 ])
-
-if (window.PLAYER.team === Team.ADMIN) {
-  const TEAMS = computed(() => [
-    { value: 'red' as unitTeam, label: t('team.red') },
-    { value: 'blue' as unitTeam, label: t('team.blue') },
-    { value: 'neutral' as unitTeam, label: t('team.white') },
-  ])
-} else {
-  const TEAMS = computed(() => [
-    { value: 'red' as unitTeam, label: t('team.red') },
-    { value: 'blue' as unitTeam, label: t('team.blue') },
-    { value: 'neutral' as unitTeam, label: t('team.white') },
-  ])
-}
+const TEAMS = computed(() => {
+  if (window.PLAYER.team === Team.ADMIN) {
+    return [
+      { value: 'red' as unitTeam, label: t('team.red') },
+      { value: 'blue' as unitTeam, label: t('team.blue') },
+      { value: 'neutral' as unitTeam, label: t('team.white') },
+    ]
+  } else {
+    return [
+      { value: 'red' as unitTeam, label: t('team.red') },
+      { value: 'blue' as unitTeam, label: t('team.blue') },
+    ]
+  }
+})
 
 /* ================= helpers ================= */
 

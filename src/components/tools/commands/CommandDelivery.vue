@@ -140,7 +140,7 @@ onMounted(() => {
   rebuildOverlay()
 
   unsubscribe = window.ROOM_WORLD.events.on('changed', ({ reason }) => {
-    if (reason !== 'select-end') return
+    if (reason !== 'select') return
     syncTargets()
     rebuildOverlay()
   })

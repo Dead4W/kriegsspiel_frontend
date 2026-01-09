@@ -126,7 +126,8 @@
     "error_auth_required": "Auth required.",
     "bad_token": "Auth token expired or not exist.",
     "bad_password": "Wrong room password.",
-    "room_not_found": "Room not found."
+    "room_not_found": "Room not found.",
+    "alert_ctrl_w": "CTRL+W pressed!\nThis hotkey force close for browser!\nIf you don't need to close tab please enter no."
   },
 
   "room": {
@@ -227,6 +228,12 @@
     "second": "seconds",
     "seconds": "{count} sec",
     "minutes": "{count} min",
-    "minutes_seconds": "{minutes} min {seconds} sec"
+    "minutes_seconds": "{minutes} min {seconds} sec",
+    "infinity": "Бесконечность"
+  },
+
+  "notifications": {
+    "units_with_new_order": "Units with new command",
+    "units_without_order": "Units without command"
   }
 }

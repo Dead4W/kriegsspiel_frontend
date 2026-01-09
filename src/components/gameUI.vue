@@ -10,6 +10,7 @@ import TurnTimer from "@/components/TurnTimer.vue";
 import {Team} from "@/enums/teamKeys.ts";
 import AdminTool from "@/components/tools/AdminTool.vue";
 import ForcesBar from "@/components/ForcesBar.vue";
+import NotificationsPanel from "@/components/NotificationsPanel.vue";
 
 const { t } = useI18n()
 
@@ -106,6 +107,8 @@ onUnmounted(() => {
     <ClientSettingsPanel />
 
     <KringChat />
+
+    <NotificationsPanel v-if="isAdmin()"/>
   </div>
 </template>
 

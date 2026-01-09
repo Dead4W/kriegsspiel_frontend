@@ -21,7 +21,7 @@ const unitsSnapshot = ref<BaseUnit[]>([])
 /* ===== STATE ===== */
 
 const minutes = ref(0)
-const seconds = ref(1)
+const seconds = ref(0)
 const comment = ref('')
 
 const waitTime = computed(() => {
@@ -31,10 +31,8 @@ const waitTime = computed(() => {
 /* ===== ACTION ===== */
 
 function confirm() {
-  if (waitTime.value <= 0) return
-
   const cmd = new WaitCommand({
-    wait: waitTime.value,
+    wait: waitTime.value > 0 ? waitTime.value : Infinity,
     elapsed: 0,
     comment: comment.value || undefined,
   })
@@ -87,8 +85,11 @@ onMounted(() => {
         </label>
       </div>
 
-      <div class="hint">
+      <div class="hint" v-if="waitTime > 0">
         {{ t('tools.command.total_seconds') }}: {{ waitTime.toFixed(0) }}
+      </div>
+      <div class="hint" v-if="waitTime === 0">
+        {{ t('tools.command.total_seconds') }}: {{ t('time.infinity') }}
       </div>
 
       <input
@@ -107,7 +108,6 @@ onMounted(() => {
 
       <button
         class="btn confirm"
-        :disabled="waitTime <= 0"
         @click="confirm"
       >
         {{ t('tools.command.wait') }}

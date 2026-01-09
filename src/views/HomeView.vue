@@ -28,6 +28,7 @@ function joinRoom() {
 }
 
 function setLang(lang: 'ru' | 'en') {
+  localStorage.setItem('i18n_locale', lang)
   locale.value = lang
 }
 

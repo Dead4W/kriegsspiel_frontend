@@ -65,7 +65,19 @@
       "moveModeColumn": "Column",
       "apply": "Apply",
       "cancel": "Cancel",
-      "wait_": ""
+
+      "attackHint": "Select targets",
+
+      "attackers": "Attackers",
+      "targets": "Targets",
+
+      "from": "From",
+      "to": "To",
+      "delivery_hint": "Select appropriate targets",
+      "delivery_message": "Message",
+      "delivery_confirm": "Confirm",
+
+      "clear_commands": "Clear commands"
     },
     "command_remove": "Remove command"
   },

@@ -157,7 +157,7 @@ onUnmounted(() => {
 
     <!-- ===== ATTACKERS ===== -->
     <div class="column">
-      <div class="title">Атакуют</div>
+      <div class="title">{{ t('tools.command.attackers') }}</div>
       <div class="cards">
         <div
           v-for="a in attackersGrouped"
@@ -175,13 +175,13 @@ onUnmounted(() => {
 
     <!-- ===== TARGETS ===== -->
     <div class="column">
-      <div class="title">Цели</div>
+      <div class="title">{{ t('tools.command.targets') }}</div>
       <div class="cards">
         <div
           v-if="!targetsGrouped.length"
           class="hint"
         >
-          Выделите противников
+          {{ t('tools.command.attackHint') }}
         </div>
 
         <div
@@ -198,7 +198,7 @@ onUnmounted(() => {
     <!-- ===== SETTINGS ===== -->
     <div class="column settings">
       <div class="title">
-        Урон × {{ damageModifier.toFixed(1) }}
+        {{ t('command.damage_modifier') }} × {{ damageModifier.toFixed(1) }}
       </div>
       <input
         type="range"
@@ -212,7 +212,7 @@ onUnmounted(() => {
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
       <button class="btn cancel" @click="emit('close')">
-        Отмена
+        {{ t('tools.command.cancel') }}
       </button>
 
       <button
@@ -220,7 +220,7 @@ onUnmounted(() => {
         :disabled="!targets.length"
         @click="confirm"
       >
-        Атаковать
+        {{ t('tools.command.attack') }}
       </button>
     </div>
 

@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
       <div class="bar" :style="{ width: mapProgress + '%' }"></div>
     </div>
 
-    <div class="percent">{{ mapProgress }}%</div>
+    <div class="percent">{{ Math.round(mapProgress) }}%</div>
   </section>
 
   <!-- error -->

@@ -158,7 +158,7 @@ onUnmounted(cleanup)
 
     <!-- ===== MESSENGERS ===== -->
     <div class="column">
-      <div class="title">{{ t('tools.command.delivery_from') }}</div>
+      <div class="title">{{ t('tools.command.from') }}</div>
       <div class="cards">
         <div
           v-for="m in messengersGrouped"
@@ -175,7 +175,7 @@ onUnmounted(cleanup)
 
     <!-- ===== TARGETS ===== -->
     <div class="column">
-      <div class="title">{{ t('tools.command.delivery_to') }}</div>
+      <div class="title">{{ t('tools.command.from') }}</div>
 
       <div v-if="!targetsGrouped.length" class="hint">
         {{ t('tools.command.delivery_hint') }}

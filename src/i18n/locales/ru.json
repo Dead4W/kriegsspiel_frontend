@@ -67,8 +67,13 @@
       "apply": "Выполнить",
       "cancel": "Отмена",
 
-      "delivery_from": "Доставляют",
-      "delivery_to": "Получатели",
+      "attackHint": "Выделите цели",
+
+      "attackers": "Атакующие",
+      "targets": "Цели",
+
+      "from": "Доставляют",
+      "to": "Получатели",
       "delivery_hint": "Выделите подходящие цели",
       "delivery_message": "Сообщение",
       "delivery_confirm": "Назначить доставку",

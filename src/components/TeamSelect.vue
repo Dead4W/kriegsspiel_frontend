@@ -11,7 +11,6 @@ const emit = defineEmits<{
 
 const teams = [
   Team.ADMIN,
-  Team.SPECTATOR,
   Team.BLUE,
   Team.RED,
 ]

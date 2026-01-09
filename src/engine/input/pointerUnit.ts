@@ -12,6 +12,9 @@ export function bindUnitInteraction(
   let startWorld: vec2 | null = null
   let currentWorld: vec2 | null = null
 
+  let ctrlKeyActive = false
+  let shiftKeyActive = false
+
   // preview-база
   const previewBaseSelection = new Set<string>()
 
@@ -57,12 +60,21 @@ export function bindUnitInteraction(
 
     // ===== SELECT PREVIEW =====
     if (mode === 'select') {
-      // восстановить базу
       for (const u of w.units.list()) {
         u.previewSelected = previewBaseSelection.has(u.id)
       }
 
       w.units.selectInRect(startWorld, currentWorld, true)
+
+      if (ctrlKeyActive) {
+        // CTRL → exclude
+        for (const u of w.units.list()) {
+          if (u.previewSelected && !previewBaseSelection.has(u.id)) {
+            // попал в рамку → убираем
+            u.previewSelected = false
+          }
+        }
+      }
 
       w.overlay.set([
         {
@@ -110,8 +122,12 @@ export function bindUnitInteraction(
 
     // ===== CLICK ON UNIT =====
     if (hit) {
-      if (!hit.selected) {
-        if (!e.ctrlKey && !e.shiftKey) {
+      if (e.ctrlKey) {
+        // CTRL → exclude
+        hit.selected = false
+      } else {
+        // SHIFT или обычный клик → include
+        if (!e.shiftKey) {
           w.units.clearSelection()
         }
         hit.selected = true
@@ -135,13 +151,21 @@ export function bindUnitInteraction(
     startWorld = worldPos
     previewBaseSelection.clear()
 
-    if (e.ctrlKey || e.shiftKey) {
+    if (e.shiftKey) {
+      // SHIFT → include (сохраняем базу)
+      for (const u of w.units.list()) {
+        if (u.selected) previewBaseSelection.add(u.id)
+      }
+    } else if (e.ctrlKey) {
+      // CTRL → exclude (база = текущее выделение)
       for (const u of w.units.list()) {
         if (u.selected) previewBaseSelection.add(u.id)
       }
     } else {
+      // обычное выделение
       w.units.clearSelection()
     }
+
 
     canvas.setPointerCapture(e.pointerId)
   })
@@ -149,10 +173,18 @@ export function bindUnitInteraction(
   canvas.addEventListener('pointerup', (e) => {
     if (mode === 'select') {
       for (const u of w.units.list()) {
-        if (u.previewSelected) {
-          u.selected = true
-          u.previewSelected = false
+        if (e.ctrlKey) {
+          // CTRL → exclude
+          if (u.previewSelected) {
+            u.selected = false
+          }
+        } else {
+          // SHIFT / обычный → include
+          if (u.previewSelected) {
+            u.selected = true
+          }
         }
+        u.previewSelected = false
       }
     }
 
@@ -183,6 +215,8 @@ export function bindUnitInteraction(
   /* ================= DELETE ================= */
 
   function onKeyDown(e: KeyboardEvent) {
+    if (e.ctrlKey) ctrlKeyActive = true
+    if (e.shiftKey) shiftKeyActive = true
     if (document.querySelector('.toolbar .active')) return
     if (e.key !== 'Delete' || e.repeat) return
 
@@ -197,5 +231,11 @@ export function bindUnitInteraction(
     w.events.emit('changed', { reason: 'delete' })
   }
 
+  function onKeyUp(e: KeyboardEvent) {
+    if (!e.ctrlKey) ctrlKeyActive = false
+    if (!e.shiftKey) shiftKeyActive = false
+  }
+
   window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keyup', onKeyUp)
 }

@@ -88,7 +88,7 @@ onMounted(() => {
       </div>
 
       <div class="hint">
-        {{ t('tools.command.total_seconds') }}: {{ waitTime.toFixed(1) }} c
+        {{ t('tools.command.total_seconds') }}: {{ waitTime.toFixed(0) }}
       </div>
 
       <input

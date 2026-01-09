@@ -36,11 +36,19 @@ const UNIT_TYPES = computed(() => [
   { type: UnitType.GENERAL, label: t('unit.general') },
 ])
 
-const TEAMS = computed(() => [
-  { value: 'red' as unitTeam, label: t('team.red') },
-  { value: 'blue' as unitTeam, label: t('team.blue') },
-  { value: 'neutral' as unitTeam, label: t('team.white') },
-])
+if (window.PLAYER.team === Team.ADMIN) {
+  const TEAMS = computed(() => [
+    { value: 'red' as unitTeam, label: t('team.red') },
+    { value: 'blue' as unitTeam, label: t('team.blue') },
+    { value: 'neutral' as unitTeam, label: t('team.white') },
+  ])
+} else {
+  const TEAMS = computed(() => [
+    { value: 'red' as unitTeam, label: t('team.red') },
+    { value: 'blue' as unitTeam, label: t('team.blue') },
+    { value: 'neutral' as unitTeam, label: t('team.white') },
+  ])
+}
 
 /* ================= helpers ================= */
 

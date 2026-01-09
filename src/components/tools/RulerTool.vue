@@ -89,7 +89,7 @@ function rebuildOverlay() {
           x: m.x - Math.sin(angle) * normalOffset * sign,
           y: m.y + Math.cos(angle) * normalOffset * sign,
         },
-        text: `${Math.round(totalDistance)} м`,
+        text: `${Math.round(totalDistance)} M`,
         angle,
         size: 24,
 

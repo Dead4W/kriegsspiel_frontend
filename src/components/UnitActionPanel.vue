@@ -48,7 +48,7 @@ function edit() {
 
 <template>
   <div
-    v-if="isAdmin && hasUnits"
+    v-if="hasUnits"
     class="action-panel"
   >
     <!-- ===== ENV MODIFIERS ===== -->
@@ -59,6 +59,7 @@ function edit() {
     />
 
     <UnitCommandTool
+      v-if="isAdmin"
       :units="units"
       @attack="attack"
       @move="edit"

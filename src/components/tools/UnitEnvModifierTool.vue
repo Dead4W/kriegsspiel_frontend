@@ -17,16 +17,6 @@ const emit = defineEmits<{
   (e: 'edit'): void
 }>()
 
-/* ================= access ================= */
-
-const isAdmin = computed(
-  () => window.PLAYER?.team === Team.ADMIN
-)
-
-const hasUnits = computed(
-  () => props.units.length > 0
-)
-
 /* ================= helpers ================= */
 
 const ENV_STATES = Object.values(UnitEnvironmentState)
@@ -69,7 +59,6 @@ function clearEnvStates() {
 
 <template>
   <div
-    v-if="isAdmin && hasUnits"
     class="env-panel"
   >
     <div class="env-title">

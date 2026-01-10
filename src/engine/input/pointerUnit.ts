@@ -205,6 +205,68 @@ export function bindUnitInteraction(
     cleanup()
   })
 
+  canvas.addEventListener('dblclick', (e) => {
+    const worldPos = w.camera.screenToWorld({
+      x: e.clientX,
+      y: e.clientY,
+    })
+
+    const hit = w.units.pickAt(
+      worldPos,
+      15 * window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT]
+    )
+
+    if (!hit) return
+
+    if (!shiftKeyActive) {
+      for (const u of w.units.list()) {
+        if (u.id != hit.id) {
+          u.selected = false
+        }
+      }
+    }
+
+    const cam = w.camera
+    const CAMERA_OFFSET = 0.95
+
+    const vp = cam.viewport
+
+    // центр экрана → мир
+    const centerWorld = cam.screenToWorld({
+      x: vp.x * 0.5,
+      y: vp.y * 0.5,
+    })
+    if (!centerWorld) return
+
+    // 10% от viewport
+    const halfW = (vp.x * CAMERA_OFFSET * 0.5) / cam.zoom
+    const halfH = (vp.y * CAMERA_OFFSET * 0.5) / cam.zoom
+
+    const minX = centerWorld.x - halfW
+    const maxX = centerWorld.x + halfW
+    const minY = centerWorld.y - halfH
+    const maxY = centerWorld.y + halfH
+
+    const targetType = hit.type
+
+    for (const u of w.units.list()) {
+      if (u.type !== targetType) continue
+
+      const { x, y } = u.pos
+
+      if (
+        x >= minX &&
+        x <= maxX &&
+        y >= minY &&
+        y <= maxY
+      ) {
+        u.selected = true
+      }
+    }
+
+    w.events.emit('changed', { reason: 'select' })
+  })
+
   function cleanup(pointerId?: number) {
    if (mode !== 'idle') {
      previewBaseSelection.clear()

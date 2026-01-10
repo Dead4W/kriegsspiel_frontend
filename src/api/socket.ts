@@ -181,6 +181,12 @@ export class GameSocket {
           }
         } else if (m.type === 'chat') {
           this.world.messages.upsert(m.data, 'remote', m.meta && m.meta.ignore);
+          for (const unitId of m.data.unitIds) {
+            const u = this.world.units.get(unitId)
+            if (u) {
+              u.linkMessage(m.data.id)
+            }
+          }
         } else if (m.type === 'chat_read') {
           for (const id of m.data) {
             const message = this.world.messages.get(id);

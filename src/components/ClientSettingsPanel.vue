@@ -219,7 +219,7 @@ onUnmounted(() => {
       {{ t('client_settings.show_unit_vision') }}
     </label>
 
-    <label class="setting indent" v-if="isAdmin()">
+    <label class="setting indent">
       <input
         type="checkbox"
         :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]"

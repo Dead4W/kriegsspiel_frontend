@@ -9,7 +9,7 @@ export class Cavalry extends BaseUnit {
   stats: UnitStats = {
     maxHp: 64,
     damage: 0.6,
-    speed: 80,
+    speed: 100,
     takeDamageMod: 1,
     attackRange: 2000,
     visionRange: 1000,

@@ -6,7 +6,7 @@ export class ChargeAbility extends BaseAbility {
 
   getStatMultiplier(key: StatKey): number {
     if (key === 'damage') return 2
-    if (key === 'speed') return 2
+    if (key === 'speed') return 4
     if (key === 'takeDamageMod') return 2
     return 1;
   }

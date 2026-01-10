@@ -25,7 +25,6 @@ function focusUnits(units: BaseUnit[]) {
     u.selected = false
   }
 
-
   // центр группы юнитов
   let minX = Infinity, minY = Infinity
   let maxX = -Infinity, maxY = -Infinity

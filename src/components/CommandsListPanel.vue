@@ -5,8 +5,9 @@ import type {BaseUnit} from '@/engine/units/baseUnit'
 import {BaseCommand, CommandStatus} from '@/engine/units/commands/baseCommand'
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
-import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
+import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
 import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
+import type {vec2} from "@/engine";
 
 const { unit } = defineProps<{ unit: BaseUnit }>()
 const { t } = useI18n()
@@ -16,12 +17,28 @@ const commands = computed(() => {
   return unit.getCommands() ?? []
 })
 
-const totalEstimate = computed(() => {
-  let result = 0
-  for (const cmd of commands.value) {
-    result += cmd.estimate(unit)
+const commandsEstimates = computed(() => {
+  let lastPos: vec2 = unit.pos
+  const result: Record<number, number> = {}
+  for (const cmdIndex in commands.value) {
+    const cmd = commands.value[cmdIndex]!
+    let est = 0
+    if (cmd instanceof MoveCommand) {
+      est = cmd.estimate(unit, lastPos)
+      lastPos = cmd.getState().state.target
+    } else {
+      est = cmd.estimate(unit)
+    }
+    if (est > 0 && Number.isFinite(est)) {
+      result[cmdIndex] = est
+    }
   }
   return result
+})
+
+const totalEstimate = computed(() => {
+  return Object.values(commandsEstimates.value)
+    .reduce((a, b) => a + b, 0)
 })
 
 function cmdKey(cmd: BaseCommand<any, any>) {
@@ -163,8 +180,11 @@ onUnmounted(() => {
           {{ t('command.ability') }}: {{ t(`ability.${getUnitCommandAbility(cmd, unit)}`) }}
         </div>
 
-        <div class="estimate" v-if="cmd.estimate(unit) > 0 && cmd.estimate(unit) < Infinity">
-          {{ estimate(cmd.estimate(unit)) }}
+        <div
+          class="estimate"
+          v-if="commandsEstimates[i]"
+        >
+          {{ estimate(commandsEstimates[i]) }}
         </div>
 
         <div class="status">

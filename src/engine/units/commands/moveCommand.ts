@@ -112,7 +112,7 @@ export class MoveCommand extends BaseCommand<
     return Math.hypot(dx, dy) <= 1
   }
 
-  estimate(unit: BaseUnit): number {
+  estimate(unit: BaseUnit, startPos: vec2 = unit.pos): number {
     // save values
     const saveEnv = [...unit.envState]
     const saveAbilityType = unit.activeAbilityType

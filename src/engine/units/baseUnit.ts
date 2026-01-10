@@ -153,7 +153,7 @@ export abstract class BaseUnit {
     this.hp = clamp(s.hp ?? this.stats.maxHp, 0, this.stats.maxHp)
 
     if (this.stats.ammoMax !== undefined) {
-      this.ammo = s.ammo ?? this.stats.ammoMax
+      this.ammo = clamp(s.ammo ?? this.stats.ammoMax, 0, this.stats.ammoMax)
     }
   }
 

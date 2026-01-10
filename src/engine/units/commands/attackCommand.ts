@@ -8,7 +8,10 @@ import {
   getUnitDistanceModifier
 } from "@/engine/units/modifiers/UnitDistanceModifier.ts";
 import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
-import {getDamageModifierByHeights} from "@/engine/units/modifiers/UnitHeightModifier.ts";
+import {
+  ArtilleryAngleTable, defaultAngleTable,
+  getDamageModifierByHeights
+} from "@/engine/units/modifiers/UnitHeightModifier.ts";
 
 export interface AttackCommandState {
   targets: uuid[]
@@ -110,18 +113,19 @@ export class AttackCommand extends BaseCommand<
       formula.push(`dist(${distance.toFixed(1)}m)×${distanceModifier.toFixed(2)}`)
 
       /* ===== Высота ===== */
-
-      const heightModifier = getDamageModifierByHeights(
-        unit.height ?? 0,
-        target.height ?? 0,
-        distance,
-      )
-
-      unitDmg *= heightModifier
-      if (heightModifier !== 1) {
-        formula.push(
-          `height(${(unit.height ?? 0)}→${(target.height ?? 0)})×${heightModifier.toFixed(2)}`
+      if (unit.type !== unitType.ARTILLERY) {
+        const heightModifier = getDamageModifierByHeights(
+          unit.height ?? 0,
+          target.height ?? 0,
+          distance,
         )
+
+        unitDmg *= heightModifier
+        if (heightModifier !== 1) {
+          formula.push(
+            `height(${(unit.height ?? 0)}→${(target.height ?? 0)})×${heightModifier.toFixed(2)}`
+          )
+        }
       }
 
       /* ===== Применение урона ===== */

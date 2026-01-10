@@ -8,14 +8,14 @@ type AngleModifier = {
 };
 
 // --------------------
-// Таблица модификаторов
+// Тестовая таблица
 // --------------------
 
 const angleTable: AngleModifier[] = [
+  { angle: -6, modifier: 0.5 },
+  { angle: -3, modifier: 0.7 },
+  { angle: -5, modifier: 0.85 },
   { angle: 0, modifier: 1.0 },
-  { angle: 5, modifier: 0.9 },
-  { angle: 10, modifier: 0.8 },
-  { angle: 15, modifier: 0.6 },
 ];
 
 // --------------------
@@ -31,7 +31,7 @@ function radToDeg(rad: number): number {
 // --------------------
 
 /**
- * Возвращает АБСОЛЮТНЫЙ угол в градусах между двумя высотами
+ * Возвращает угол в градусах между двумя высотами
  * @param h1 высота атакующего
  * @param h2 высота цели
  * @param distance горизонтальная дистанция
@@ -46,9 +46,7 @@ export function getAngle(
   }
 
   const deltaH = h1 - h2;
-  const angleRad = Math.atan(deltaH / distance);
-
-  return Math.abs(radToDeg(angleRad));
+  return radToDeg(Math.atan(deltaH / distance));
 }
 
 // --------------------
@@ -56,7 +54,7 @@ export function getAngle(
 // --------------------
 
 /**
- * Возвращает модификатор урона по абсолютному углу
+ * Возвращает модификатор урона по углу с линейной интерполяцией
  * @param angle угол в градусах
  */
 export function getDamageModifier(angle: number): number {
@@ -70,7 +68,7 @@ export function getDamageModifier(angle: number): number {
     return angleTable[angleTable.length - 1]!.modifier;
   }
 
-  // Поиск диапазона + линейная интерполяция
+  // Поиск диапазона
   for (let i = 0; i < angleTable.length - 1; i++) {
     const a1 = angleTable[i]!;
     const a2 = angleTable[i + 1]!;

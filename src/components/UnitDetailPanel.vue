@@ -172,6 +172,7 @@ onUnmounted(() => {
             type="number"
             v-model="unit.morale"
             @keydown.stop
+            @change="onEdit"
           />
         </div>
 

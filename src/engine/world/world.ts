@@ -12,6 +12,8 @@ import {createHeightSampler, type HeightSampler} from "@/engine/assets/heightmap
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import type {OutMessage} from "@/api/socket.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import {type Ref, ref} from "vue";
+import type {BattleLogEntry} from "@/engine/types/logType.ts";
 
 type worldevents = {
   changed: { reason: string }
@@ -45,6 +47,8 @@ export class world {
   messages = new messageregistry()
 
   cursor = new cursorregistry()
+
+  logs: Ref<BattleLogEntry[]> = ref<BattleLogEntry[]>([])
 
   constructor(map: mapmeta) {
     this.map = map

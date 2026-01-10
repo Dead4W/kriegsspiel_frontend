@@ -28,7 +28,7 @@ export class DeliveryCommand extends BaseCommand<
         if (u.type === unitType.GENERAL) {
           window.ROOM_WORLD.events.emit('api', {type: 'messenger_delivery', data: {id: m.id, time: window.ROOM_WORLD.time}})
         } else {
-          window.ROOM_WORLD.units.withNewCommands.add(id)
+          window.ROOM_WORLD.units.withNewCommandsTmp.add(id)
         }
         u.linkMessage(m.id)
         u.setDirty()

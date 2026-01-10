@@ -17,11 +17,6 @@ export const DISTANCE_MODIFIERS: DistanceModifierPoint[] = [
   { distance: 800, modifier: 0.20 },
   { distance: 900, modifier: 0.14 },
   { distance: 1000, modifier: 0.11 },
-  { distance: 1100, modifier: 0.055 },
-  { distance: 1200, modifier: 0.028 },
-  { distance: 1300, modifier: 0.013 },
-  { distance: 1400, modifier: 0.075 },
-  { distance: 1500, modifier: 0.035 },
 ]
 
 export const ARTILLERY_DISTANCE_MODIFIERS: DistanceModifierPoint[] = [
@@ -56,19 +51,26 @@ export const ARTILLERY_DISTANCE_MODIFIERS: DistanceModifierPoint[] = [
   { distance: 4500, modifier: 0.03 },
 ]
 
-export function getUnitDistanceModifier(distanceModifiers: DistanceModifierPoint[], distance: number): number {
+export function getUnitDistanceModifier(
+  distanceModifiers: DistanceModifierPoint[],
+  distance: number
+): number {
+  const first = distanceModifiers[0]!
+  const last = distanceModifiers[distanceModifiers.length - 1]!
+
   // ближе минимальной дистанции
-  if (distance <= distanceModifiers[0]!.distance) {
-    return distanceModifiers[0]!.modifier
+  if (distance <= first.distance) {
+    return first.modifier
   }
 
   // дальше максимальной дистанции
-  const last = distanceModifiers[distanceModifiers.length - 1]
-  if (distance >= last!.distance) {
-    return last!.modifier
+  if (distance > last.distance) {
+    const extraDistance = distance - last.distance
+    const steps = Math.floor(extraDistance / 100)
+    return last.modifier / Math.pow(2, steps)
   }
 
-  // поиск диапазона для интерполяции
+  // интерполяция внутри диапазона
   for (let i = 0; i < distanceModifiers.length - 1; i++) {
     const a = distanceModifiers[i]!
     const b = distanceModifiers[i + 1]!

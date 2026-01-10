@@ -124,13 +124,11 @@ function rebuildOverlay() {
 /* ================= LIFE CYCLE ================= */
 
 let unsubscribe: unsub
-let timer: number | null = null
 
 function cleanup() {
   messengers.value = []
   targets.value = []
   window.ROOM_WORLD.clearOverlay()
-  if (timer) clearInterval(timer)
   unsubscribe?.()
 }
 
@@ -144,10 +142,6 @@ onMounted(() => {
     syncTargets()
     rebuildOverlay()
   })
-
-  timer = setInterval(() => {
-    window.ROOM_WORLD.events.emit('changed', { reason: 'animation' })
-  }, 100)
 })
 
 onUnmounted(cleanup)

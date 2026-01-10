@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import { useI18n } from 'vue-i18n'
 import type {OverlayItem, OverlayLine} from "@/engine/types/overlayTypes.ts";
@@ -7,6 +7,7 @@ import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
 import {getTeamColor} from "@/engine/render/util.ts";
 import {type unitTeam, unitType} from "@/engine";
 import type { unsub } from "@/engine/events";
+import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 
 const {t} = useI18n()
 
@@ -31,6 +32,27 @@ const attackers = ref<BaseUnit[]>([])
 /** Цели — считаются по текущему выделению */
 const targets = ref<BaseUnit[]>([])
 
+const selectedAbilities = ref<UnitAbilityType[]>([])
+function toggleAbility(a: UnitAbilityType) {
+  if (selectedAbilities.value.includes(a)) {
+    selectedAbilities.value = selectedAbilities.value.filter(x => x !== a)
+  } else {
+    selectedAbilities.value.push(a)
+  }
+}
+
+const availableAbilities = computed<UnitAbilityType[]>(() => {
+  const set = new Set<UnitAbilityType>()
+
+  for (const u of attackers.value) {
+    for (const a of u.abilities) {
+      set.add(a)
+    }
+  }
+
+  return [...set]
+})
+
 /* ================= GROUPING ================= */
 
 interface UnitGroup {
@@ -39,7 +61,7 @@ interface UnitGroup {
   count: number
 }
 
-function group(units: BaseUnit[]): UnitGroup[] {
+function group(units: UnwrapRef<BaseUnit[]>): UnitGroup[] {
   const map = new Map<string, UnitGroup>()
 
   for (const u of units) {
@@ -77,6 +99,7 @@ function confirm() {
   const cmd = new AttackCommand({
     targets: targets.value.map(u => u.id),
     damageModifier: damageModifier.value,
+    abilities: selectedAbilities.value,
   })
 
   for (const u of attackers.value) {
@@ -84,12 +107,13 @@ function confirm() {
     u.setDirty()
   }
 
-  attackers.value = [];
-  targets.value = [];
+  attackers.value = []
+  targets.value = []
+  selectedAbilities.value = []
 
   window.ROOM_WORLD.clearOverlay()
   emit('close')
-  window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
+  window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
 }
 
 // OVERLAY
@@ -135,9 +159,6 @@ onMounted(() => {
     syncTargets()
     rebuildAttackOverlay()
   })
-  timer = setInterval(() => {
-    window.ROOM_WORLD.events.emit('changed', { reason: 'animation' })
-  }, 100);
 })
 
 onUnmounted(() => {
@@ -147,7 +168,6 @@ onUnmounted(() => {
 
   window.ROOM_WORLD.events.off('changed', syncTargets)
   window.ROOM_WORLD.clearOverlay()
-  if (timer) clearInterval(timer);
 })
 
 </script>
@@ -192,6 +212,28 @@ onUnmounted(() => {
         >
           {{ t(`unit.${targetGroup.type}`) }} × {{ targetGroup.count }}
         </div>
+      </div>
+    </div>
+
+    <!-- ===== ABILITIES ===== -->
+    <div
+      v-if="availableAbilities.length"
+      class="column abilities"
+    >
+      <div class="title">
+        {{ t('command.abilities') }}
+      </div>
+
+      <div class="cards">
+        <button
+          v-for="a in availableAbilities"
+          :key="a"
+          class="card ability"
+          :class="{ active: selectedAbilities.includes(a) }"
+          @click="toggleAbility(a)"
+        >
+          {{ t(`ability.${a}`) }}
+        </button>
       </div>
     </div>
 
@@ -245,6 +287,22 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 4px;
   min-width: 120px;
+}
+
+.column.abilities {
+  min-width: 140px;
+}
+
+.card.ability {
+  cursor: pointer;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.card.ability.active {
+  color: #22c55e;
+  border-color: #22c55e;
+  background: #052e16;
 }
 
 .column.settings {

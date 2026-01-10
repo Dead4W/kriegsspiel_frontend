@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import { Team } from '@/enums/teamKeys'
+import {debugPerformance} from "@/engine/debugPerformance.ts";
 
 const redPower = ref(0);
 const bluePower = ref(0);
@@ -12,21 +13,23 @@ const bluePercent = computed(() =>
 const redPercent = computed(() => 100 - bluePercent.value)
 
 function sync(data: {reason: string}) {
-  if (['camera', 'drag'].includes(data.reason)) return;
+  debugPerformance('ForcesBar.sync', () => {
+    if (['camera', 'drag'].includes(data.reason)) return;
 
-  redPower.value = 0;
-  bluePower.value = 0;
-  totalPower.value = 0;
+    redPower.value = 0;
+    bluePower.value = 0;
+    totalPower.value = 0;
 
-  for (const u of window.ROOM_WORLD.units.list()) {
-    if (u.team === Team.RED) {
-      redPower.value += u.hp;
+    for (const u of window.ROOM_WORLD.units.list()) {
+      if (u.team === Team.RED) {
+        redPower.value += u.hp;
+      }
+      if (u.team === Team.BLUE) {
+        bluePower.value += u.hp;
+      }
     }
-    if (u.team === Team.BLUE) {
-      bluePower.value += u.hp;
-    }
-  }
-  totalPower.value = redPower.value + bluePower.value;
+    totalPower.value = redPower.value + bluePower.value;
+  })
 }
 
 /* LIFE CYCLE */

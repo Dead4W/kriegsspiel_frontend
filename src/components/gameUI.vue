@@ -11,14 +11,15 @@ import {Team} from "@/enums/teamKeys.ts";
 import AdminTool from "@/components/tools/AdminTool.vue";
 import ForcesBar from "@/components/ForcesBar.vue";
 import NotificationsPanel from "@/components/NotificationsPanel.vue";
+import BattleLog from "@/components/BattleLog.vue";
 
 const { t } = useI18n()
 
-const activeTool = ref<'spawn' | 'ruler' | 'admin' | null>(null)
+const activeTool = ref<'spawn' | 'ruler' | 'admin' | 'logs' | null>(null)
 
 const world = computed(() => window.ROOM_WORLD)
 
-function toggle(e: MouseEvent, tool: 'spawn' | 'ruler' | 'admin') {
+function toggle(e: MouseEvent, tool: 'spawn' | 'ruler' | 'admin' | 'logs') {
   e.preventDefault()
   e.stopPropagation()
   activeTool.value = activeTool.value === tool ? null : tool
@@ -56,6 +57,15 @@ onUnmounted(() => {
     <div class="toolbar no-select">
       <button
         v-if="isAdmin()"
+        :class="{ active: activeTool === 'logs' }"
+        @pointerdown.stop.prevent
+        @click="toggle($event, 'logs')"
+      >
+        📜 {{ t('tools.logs.title') }}
+      </button>
+
+      <button
+        v-if="isAdmin()"
         :class="{ active: activeTool === 'admin' }"
         @pointerdown.stop.prevent
         @click="toggle($event, 'admin')"
@@ -84,6 +94,10 @@ onUnmounted(() => {
       v-if="isAdmin() && activeTool === 'admin'"
       :world="world"
       class="no-select"
+    />
+
+    <BattleLog
+      v-if="isAdmin() && activeTool === 'logs'"
     />
 
     <!-- Инструменты -->

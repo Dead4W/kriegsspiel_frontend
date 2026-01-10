@@ -59,6 +59,8 @@ export interface unitstate {
   messagesLinked?: MessageLinked[],
 
   directView?: boolean
+
+  activeAbility?: UnitAbilityType | null;
 }
 
 export type commandstate =

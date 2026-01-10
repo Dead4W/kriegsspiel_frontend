@@ -46,6 +46,7 @@
     "move": "Движение",
     "formation": "Формация",
     "ability": "Способность",
+    "abilities": "Способности",
     "wait": "Ждать",
     "delivery": "Доставка",
     "clear": "Очистить приказы",
@@ -109,6 +110,10 @@
       "delivery_confirm": "Назначить доставку",
 
       "clear_commands": "Очистить команды"
+    },
+    "logs": {
+      "title": "Логи",
+      "attack": "атакует"
     },
     "command_remove": "Удалить приказ"
   },
@@ -268,5 +273,11 @@
   "notifications": {
     "units_with_new_order": "Юнитов с новым приказом",
     "units_without_order": "Юнитов без приказа"
+  },
+
+  "ability": {
+    "double_time_move": "Ускоренный марш",
+    "charge": "Кавалерийская атака",
+    "inaccuracy_fire": "Неточный артиллерийский огонь"
   }
 }

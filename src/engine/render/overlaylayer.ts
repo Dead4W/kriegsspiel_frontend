@@ -1,130 +1,179 @@
-import type { world } from '@/engine'
+import type {vec2, world} from '@/engine'
 import type {
   OverlayCircle,
   OverlayLine,
   OverlayRect,
   OverlayText
-} from "@/engine/types/overlayTypes.ts";
+} from '@/engine/types/overlayTypes.ts'
+import {debugPerformance} from "@/engine/debugPerformance.ts";
+
+type Cam = {
+  zoom: number
+  worldToScreen(p: { x: number; y: number }): { x: number; y: number }
+}
 
 export class overlaylayer {
-  draw(ctx: CanvasRenderingContext2D, w: world) {
-    const cam = w.camera
+  private lineDashOffset = 0
 
-    ctx.save()
+  draw(ctx: CanvasRenderingContext2D, w: world) {
+    const cam = w.camera as Cam
+    const canvas = ctx.canvas
+
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
-    for (const item of w.overlay.list()) {
-      switch (item.type) {
-        case 'line':
-          this.drawLine(ctx, cam, item)
-          break
+    // ===== группировка =====
+    const lines: OverlayLine[] = []
+    const circles: OverlayCircle[] = []
+    const texts: OverlayText[] = []
+    const rects: OverlayRect[] = []
 
-        case 'circle':
-          this.drawCircle(ctx, cam, item)
-          break
-
-        case 'text':
-          this.drawText(ctx, cam, item)
-          break
-
-        case 'rect':
-          this.drawRect(ctx, cam, item)
-          break
+    debugPerformance('group', () => {
+      for (const item of w.overlay.list()) {
+        switch (item.type) {
+          case 'line': lines.push(item); break
+          case 'circle': circles.push(item); break
+          case 'text': texts.push(item); break
+          case 'rect': rects.push(item); break
+        }
       }
-    }
+    })
 
-    ctx.restore()
+    // ===== отрисовка =====
+    this.drawLinesBatched(ctx, cam, canvas, lines)
+    for (const c of circles) this.drawCircle(ctx, cam, canvas, c)
+    for (const r of rects) this.drawRect(ctx, cam, canvas, r)
+    for (const t of texts) this.drawText(ctx, cam, canvas, t)
+    this.lineDashOffset++
   }
 
-  private drawLine(
+  // ============================================================
+  // ======================= LINES ==============================
+  // ============================================================
+
+  private drawLinesBatched(
     ctx: CanvasRenderingContext2D,
-    cam: any,
-    item: OverlayLine
+    cam: Cam,
+    canvas: HTMLCanvasElement,
+    lines: OverlayLine[]
   ) {
-    const a = cam.worldToScreen(item.from)
-    const b = cam.worldToScreen(item.to)
+    // styleKey → lines
+    const batches = new Map<string, OverlayLine[]>()
 
-    ctx.save()
-
-    ctx.strokeStyle = item.color ?? '#22d3ee'
-    ctx.lineWidth = (item.width ?? 2) * cam.zoom
-
-    // ===== DASH SUPPORT =====
-    if (item.dash?.length) {
-      ctx.setLineDash(
-        item.dash.map(v => v * cam.zoom) // масштабируем под зум
-      )
-      ctx.lineDashOffset = item.dashOffset ?? 0
-      if (item.dashOffset !== null && item.dashOffset !== undefined) {
-        if (item.dashOffset > 0) item.dashOffset += 3;
-        if (item.dashOffset < 0) item.dashOffset -= 3;
+    debugPerformance('batchesGroup', () => {
+      for (const l of lines) {
+        const key = this.lineStyleKey(l, cam)
+        let arr = batches.get(key)
+        if (!arr) {
+          arr = []
+          batches.set(key, arr)
+        }
+        arr.push(l)
       }
-    } else {
-      ctx.setLineDash([])
-      ctx.lineDashOffset = 0
+    })
+
+    for (const [key, batch] of batches) {
+      debugPerformance('batch', () => {
+        // стиль из key
+        const style = JSON.parse(key)
+
+        ctx.strokeStyle = style.color
+        ctx.lineWidth = style.width
+        ctx.setLineDash(style.dash)
+        ctx.lineDashOffset = style.dashOffset * this.lineDashOffset
+
+        ctx.beginPath()
+
+        for (const l of batch) {
+          let a: vec2 = {x: 0, y: 0};
+          let b: vec2 = {x: 0, y: 0};
+
+          debugPerformance('culling', () => {
+            a = cam.worldToScreen(l.from)
+            b = cam.worldToScreen(l.to)
+          })
+
+          if (!this.lineVisible(canvas, a, b)) continue
+
+          debugPerformance('drawLine', () => {
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
+          })
+        }
+
+        ctx.stroke()
+      })
     }
 
-    ctx.beginPath()
-    ctx.moveTo(a.x, a.y)
-    ctx.lineTo(b.x, b.y)
-    ctx.stroke()
-
-    ctx.restore()
+    ctx.setLineDash([])
+    ctx.lineDashOffset = 0
   }
 
-  private drawCircle(ctx: CanvasRenderingContext2D, cam: any, item: OverlayCircle) {
-    const c = cam.worldToScreen(item.center)
+  private lineStyleKey(item: OverlayLine, cam: Cam): string {
+    return JSON.stringify({
+      color: item.color ?? '#22d3ee',
+      width: (item.width ?? 2) * cam.zoom,
+      dash: item.dash?.map(v => v * cam.zoom) ?? [],
+      dashOffset: (item.dashOffset ?? 0) * cam.zoom
+    })
+  }
 
-    ctx.strokeStyle = item.strokeColor ?? 'black'
+  private lineVisible(
+    canvas: HTMLCanvasElement,
+    a: { x: number; y: number },
+    b: { x: number; y: number }
+  ): boolean {
+    const minX = Math.min(a.x, b.x)
+    const maxX = Math.max(a.x, b.x)
+    const minY = Math.min(a.y, b.y)
+    const maxY = Math.max(a.y, b.y)
+
+    return !(
+      maxX < 0 ||
+      maxY < 0 ||
+      minX > canvas.width ||
+      minY > canvas.height
+    )
+  }
+
+  // ============================================================
+  // ======================= CIRCLE =============================
+  // ============================================================
+
+  private drawCircle(
+    ctx: CanvasRenderingContext2D,
+    cam: Cam,
+    canvas: HTMLCanvasElement,
+    item: OverlayCircle
+  ) {
+    const c = cam.worldToScreen(item.center)
+    const r = item.radius * cam.zoom
+
+    if (
+      c.x + r < 0 ||
+      c.y + r < 0 ||
+      c.x - r > canvas.width ||
+      c.y - r > canvas.height
+    ) return
+
     ctx.fillStyle = item.color ?? '#a855f7'
+    ctx.strokeStyle = item.strokeColor ?? 'black'
     ctx.lineWidth = 2 * cam.zoom
 
     ctx.beginPath()
-    ctx.arc(
-      c.x,
-      c.y,
-      item.radius * cam.zoom,
-      0,
-      Math.PI * 2
-    )
-
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
     ctx.fill()
-    if (item.strokeColor) ctx.stroke();
+    if (item.strokeColor) ctx.stroke()
   }
 
-  private drawText(ctx: CanvasRenderingContext2D, cam: any, item: OverlayText) {
-    const p = cam.worldToScreen(item.pos)
-
-    ctx.save()
-    ctx.translate(p.x, p.y)
-    if (item.angle) ctx.rotate(item.angle)
-
-    const size = item.size ?? 12
-    const fontSize = size * cam.zoom
-    const font = item.font ?? 'sans-serif';
-
-    ctx.font = `${fontSize}px ${font}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-
-    // ===== stroke =====
-    if (item.strokeColor && item.strokeWidth) {
-      ctx.strokeStyle = item.strokeColor
-      ctx.lineWidth = item.strokeWidth * cam.zoom
-      ctx.strokeText(item.text, 0, 0)
-    }
-
-    // ===== fill =====
-    ctx.fillStyle = item.color ?? 'white'
-    ctx.fillText(item.text, 0, 0)
-
-    ctx.restore()
-  }
+  // ============================================================
+  // ======================== RECT ==============================
+  // ============================================================
 
   private drawRect(
     ctx: CanvasRenderingContext2D,
-    cam: any,
+    cam: Cam,
+    canvas: HTMLCanvasElement,
     item: OverlayRect
   ) {
     const a = cam.worldToScreen(item.from)
@@ -135,15 +184,63 @@ export class overlaylayer {
     const w = Math.abs(a.x - b.x)
     const h = Math.abs(a.y - b.y)
 
-    // заливка
+    if (
+      x + w < 0 ||
+      y + h < 0 ||
+      x > canvas.width ||
+      y > canvas.height
+    ) return
+
     if (item.fillColor) {
       ctx.fillStyle = item.fillColor
       ctx.fillRect(x, y, w, h)
     }
 
-    // обводка
     ctx.strokeStyle = item.color ?? '#3cff00'
     ctx.lineWidth = (item.width ?? 1) * cam.zoom
     ctx.strokeRect(x, y, w, h)
+  }
+
+  // ============================================================
+  // ========================= TEXT =============================
+  // ============================================================
+
+  private drawText(
+    ctx: CanvasRenderingContext2D,
+    cam: Cam,
+    canvas: HTMLCanvasElement,
+    item: OverlayText
+  ) {
+    const p = cam.worldToScreen(item.pos)
+
+    if (
+      p.x < 0 ||
+      p.y < 0 ||
+      p.x > canvas.width ||
+      p.y > canvas.height
+    ) return
+
+    ctx.save()
+    ctx.translate(p.x, p.y)
+    if (item.angle) ctx.rotate(item.angle)
+
+    const size = item.size ?? 12
+    const fontSize = size * cam.zoom
+    const font = item.font ?? 'sans-serif'
+
+    ctx.font = `${fontSize}px ${font}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    if (item.strokeColor && item.strokeWidth) {
+      ctx.strokeStyle = item.strokeColor
+      ctx.lineWidth = item.strokeWidth * cam.zoom
+      ctx.strokeText(item.text, 0, 0)
+    }
+
+    ctx.fillStyle = item.color ?? 'white'
+    ctx.fillText(item.text, 0, 0)
+
+    ctx.restore()
   }
 }

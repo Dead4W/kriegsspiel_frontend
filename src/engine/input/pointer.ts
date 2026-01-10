@@ -75,7 +75,7 @@ export function bindPointer(canvas: HTMLCanvasElement, w: world) {
       cam.pos.y += before.y - after.y
 
       cam.clampToWorld()
-      w.events.emit('changed', { reason: 'camera' })
+      // w.events.emit('changed', { reason: 'camera' })
     },
     { passive: false }
   )
@@ -93,7 +93,7 @@ export function bindPointer(canvas: HTMLCanvasElement, w: world) {
         w.camera.pos.y -= delta.y / w.camera.zoom
         w.camera.clampToWorld()
 
-        w.events.emit('changed', { reason: 'camera' })
+        // w.events.emit('changed', { reason: 'camera' })
         last = current
       }
 

@@ -5,6 +5,7 @@ import {Team} from '@/enums/teamKeys'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
+import {debugPerformance} from "@/engine/debugPerformance.ts";
 
 const { t } = useI18n()
 
@@ -97,17 +98,14 @@ async function startTurn() {
   totalSeconds.value = value
   running.value = true
 
-  const CHUNK = 60
+  const MAX_STEP = 5 * 60 // 300 секунд
 
-  window.ROOM_WORLD.units.withNewCommands.clear()
+  window.ROOM_WORLD.units.withNewCommandsTmp.clear()
 
   while (totalSeconds.value > 0 && running.value) {
     if (!running.value) return;
-    const step = Math.min(CHUNK, totalSeconds.value)
-
-    for (let i = 0; i < step; i++) {
-      processUnitCommands(1)
-    }
+    const step = Math.min(MAX_STEP, totalSeconds.value)
+    processUnitCommands(step)
 
     totalSeconds.value -= step
 
@@ -135,6 +133,11 @@ async function startTurn() {
         }
     })})
   }
+
+  // units with new commands
+  for (const unitId of window.ROOM_WORLD.units.withNewCommandsTmp) {
+    window.ROOM_WORLD.units.withNewCommands.add(unitId)
+  }
 }
 
 function stopTurn() {
@@ -146,17 +149,20 @@ function stopTurn() {
 
 // force refresh on changed
 const refreshKey = ref(0)
-function syncSelection() {
-  refreshKey.value++
-  displayWorldTime.value = window.ROOM_WORLD.time
+function sync(data: {reason: string}) {
+  debugPerformance('TurnTimer.sync', () => {
+    if (['camera', 'drag'].includes(data.reason)) return;
+    refreshKey.value++
+    displayWorldTime.value = window.ROOM_WORLD.time
+  })
 }
 
 onMounted(() => {
-  window.ROOM_WORLD.events.on('changed', syncSelection)
-  syncSelection()
+  window.ROOM_WORLD.events.on('changed', sync)
+  sync({ reason: "init" })
 })
 onUnmounted(() => {
-  window.ROOM_WORLD.events.off('changed', syncSelection)
+  window.ROOM_WORLD.events.off('changed', sync)
 })
 </script>
 

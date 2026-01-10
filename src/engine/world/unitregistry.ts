@@ -16,6 +16,7 @@ export class unitregistry {
   private dirty = new Set<uuid>()
   private dirtyRemove = new Set<uuid>()
   private dirtyMoveFrames = new Map<uuid, MoveFrame[]>()
+  public withNewCommandsTmp = new Set<uuid>()
   public withNewCommands = new Set<uuid>()
 
 

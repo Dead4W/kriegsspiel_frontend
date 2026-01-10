@@ -8,6 +8,7 @@ import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enu
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import CommandsPanel from "@/components/CommandsPanel.vue";
 import {Team} from "@/enums/teamKeys.ts";
+import {debugPerformance} from "@/engine/debugPerformance.ts";
 
 /* ================= i18n ================= */
 
@@ -24,23 +25,27 @@ const focusedUnit = ref<BaseUnit | null>(null)
 
 /* ================= world sync ================= */
 
-function syncSelection() {
-  const next = world.units.list().filter((u: BaseUnit) => u.selected)
-  selectedUnits.value = next
+function syncSelection(data: {reason: string}) {
+  debugPerformance('SelectionPanel.syncSelection', () => {
+    if (['camera', 'drag'].includes(data.reason)) return;
 
-  if (next.length === 1) {
-    focusedUnit.value = next[0] as BaseUnit
-    return
-  }
+    const next = world.units.list().filter((u: BaseUnit) => u.selected)
+    selectedUnits.value = next
 
-  if (focusedUnit.value && !next.some(u => u.id === focusedUnit.value!.id)) {
-    focusedUnit.value = null
-  }
+    if (next.length === 1) {
+      focusedUnit.value = next[0] as BaseUnit
+      return
+    }
+
+    if (focusedUnit.value && !next.some(u => u.id === focusedUnit.value!.id)) {
+      focusedUnit.value = null
+    }
+  })
 }
 
 onMounted(() => {
   world.events.on('changed', syncSelection)
-  syncSelection()
+  syncSelection({ reason: "init" })
 })
 
 onUnmounted(() => {

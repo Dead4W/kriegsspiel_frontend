@@ -109,6 +109,7 @@ export abstract class BaseUnit {
     this.envState = s.envState ?? [];
     this.messagesLinked = s.messagesLinked ?? [];
     this.directView = s.directView ?? false
+    this.activeAbilityType = s.activeAbility ?? null
     this.refreshEnvState();
   }
 
@@ -156,12 +157,14 @@ export abstract class BaseUnit {
     }
   }
 
-  takeDamage(amount: number) {
-    this.hp -= amount * this.takeDamageMod;
+  takeDamage(amount: number): number {
+    const afterMod = amount * this.takeDamageMod
+    this.hp -= afterMod;
     if (this.hp <= 0) {
       this.hp = 0
     }
     this.setDirty()
+    return afterMod
   }
 
   toState(): unitstate {
@@ -188,6 +191,8 @@ export abstract class BaseUnit {
       messagesLinked: this.messagesLinked,
 
       directView: this.directView,
+
+      activeAbility: this.activeAbilityType,
     }
   }
 
@@ -315,8 +320,10 @@ export abstract class BaseUnit {
 
     if (this.activeAbility) {
       const m = this.activeAbility.getStatMultiplier!(key, this)
-      total *= m
-      sources.push({ type: 'ability', state: this.activeAbilityType!, multiplier: m })
+      if (m !== 1) {
+        total *= m
+        sources.push({ type: 'ability', state: this.activeAbilityType!, multiplier: m })
+      }
     }
 
     return {
@@ -424,7 +431,7 @@ export abstract class BaseUnit {
     return createAbility(this.activeAbilityType)
   }
 
-  activateAbility(newAbilityType: UnitAbilityType) {
+  activateAbility(newAbilityType: UnitAbilityType | null) {
     this.activeAbilityType = newAbilityType
     this.setDirty()
   }

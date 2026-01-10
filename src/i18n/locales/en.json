@@ -45,6 +45,7 @@
     "move": "Move",
     "formation": "Formation",
     "ability": "Ability",
+    "abilities": "Abilities",
     "wait": "Wait",
     "delivery": "Delivery",
     "move_pick": "Move to target",
@@ -108,6 +109,10 @@
       "delivery_confirm": "Confirm",
 
       "clear_commands": "Clear commands"
+    },
+    "logs": {
+      "title": "Logs",
+      "attack": "attack"
     },
     "command_remove": "Remove command"
   },
@@ -267,5 +272,11 @@
   "notifications": {
     "units_with_new_order": "Units with new command",
     "units_without_order": "Units without command"
+  },
+
+  "ability": {
+    "double_time_move": "Double time move",
+    "charge": "Cavalry Charge",
+    "inaccuracy_fire": "Artillery Inaccuracy fire"
   }
 }

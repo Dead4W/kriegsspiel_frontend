@@ -87,7 +87,7 @@ export function bindUnitInteraction(
         },
       ])
 
-      w.events.emit('changed', { reason: 'select' })
+      // w.events.emit('changed', { reason: 'select' })
     }
   }
 
@@ -122,11 +122,22 @@ export function bindUnitInteraction(
 
     // ===== CLICK ON UNIT =====
     if (hit) {
+      const wasSelected = hit.selected
+
       if (e.ctrlKey) {
-        // CTRL → exclude
+        // CTRL → toggle off
         hit.selected = false
-      } else {
+      } else if (e.shiftKey) {
+        // SHIFT → add
         hit.selected = true
+      } else {
+        // обычный клик
+        if (!wasSelected) {
+          // клик по НЕвыделенному → сбрасываем всё
+          w.units.clearSelection()
+          hit.selected = true
+        }
+        // если wasSelected === true → ничего не делаем (drag существующего selection)
       }
 
       mode = 'drag'

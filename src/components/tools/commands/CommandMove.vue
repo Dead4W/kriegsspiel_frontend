@@ -12,6 +12,7 @@ import {unitlayer} from "@/engine/render/unitlayer.ts";
 import {normalize, sub} from "@/engine/math.ts";
 import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enums/UnitStates.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 
 const { t } = useI18n()
 
@@ -82,6 +83,30 @@ export type RoutePoint = {
 
 const movingUnits = ref<BaseUnit[]>([])
 const targets = ref<RoutePoint[]>([])
+
+/* ================= ABILITIES ================= */
+
+const selectedAbilities = ref<UnitAbilityType[]>([])
+function toggleAbility(a: UnitAbilityType) {
+  if (selectedAbilities.value.includes(a)) {
+    selectedAbilities.value = selectedAbilities.value.filter(x => x !== a)
+  } else {
+    selectedAbilities.value.push(a)
+  }
+}
+
+const availableAbilities = computed<UnitAbilityType[]>(() => {
+  const set = new Set<UnitAbilityType>()
+
+  for (const u of movingUnits.value) {
+    for (const a of u.abilities) {
+      if (a === UnitAbilityType.INACCURACY_FIRE) continue
+      set.add(a)
+    }
+  }
+
+  return [...set]
+})
 
 /* ================= MOVE MODE ================= */
 
@@ -540,6 +565,7 @@ function confirm() {
           modifier: t.modifier ?? null,
           orderIndex: orderIndex,
           uniqueId: uniqueId,
+          abilities: selectedAbilities.value,
         })
         new_commands.get(u.id)!.push(cmd.getState())
         from = to;
@@ -570,7 +596,6 @@ function cleanup() {
 
 /* ================= LIFE CYCLE ================= */
 
-let timer: number | null = null
 let unsubscribe: unsub
 
 onMounted(() => {
@@ -579,13 +604,10 @@ onMounted(() => {
   window.addEventListener('pointerdown', onPointerDown)
 
   unsubscribe = window.ROOM_WORLD.events.on('changed', ({ reason }) => {
-    if (reason === 'overlay' || reason === 'animation') return
+    if (reason === 'overlay' || reason === 'animation' || reason === 'camera') return
     rebuildMoveOverlay()
   })
 
-  timer = setInterval(() => {
-    window.ROOM_WORLD.events.emit('changed', { reason: 'animation' })
-  }, 100)
   window.INPUT.IGNORE_DRAG = true;
 })
 
@@ -595,7 +617,6 @@ onUnmounted(() => {
   targets.value = []
   window.removeEventListener('pointerdown', onPointerDown)
   window.ROOM_WORLD.clearOverlay()
-  if (timer) clearInterval(timer)
   window.INPUT.IGNORE_DRAG = false;
 })
 </script>
@@ -653,6 +674,28 @@ onUnmounted(() => {
         <span class="radio-ui formation"></span>
         {{ t('tools.command.moveModeFormation') }}
       </label>
+    </div>
+
+    <!-- ===== ABILITIES ===== -->
+    <div
+      v-if="availableAbilities.length"
+      class="column abilities"
+    >
+      <div class="title">
+        {{ t('command.abilities') }}
+      </div>
+
+      <div class="cards">
+        <button
+          v-for="a in availableAbilities"
+          :key="a"
+          class="card ability"
+          :class="{ active: selectedAbilities.includes(a) }"
+          @click="toggleAbility(a)"
+        >
+          {{ t(`ability.${a}`) }}
+        </button>
+      </div>
     </div>
 
     <!-- ===== ENV MODIFIER ===== -->
@@ -897,5 +940,26 @@ onUnmounted(() => {
 
 .env-btn-label {
   white-space: nowrap;
+}
+
+.column.abilities {
+  min-width: 140px;
+}
+
+.card.ability {
+  cursor: pointer;
+  font-size: 10px;
+  color: #94a3b8;
+  user-select: none;
+}
+
+.card.ability:hover {
+  border-color: #64748b;
+}
+
+.card.ability.active {
+  color: #22c55e;
+  border-color: #22c55e;
+  background: #052e16;
 }
 </style>

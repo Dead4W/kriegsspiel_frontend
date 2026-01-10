@@ -6,11 +6,14 @@ import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {
   ARTILLERY_DISTANCE_MODIFIERS, DISTANCE_MODIFIERS,
   getUnitDistanceModifier
-} from "@/engine/units/enums/UnitDistanceModifier.ts";
+} from "@/engine/units/modifiers/UnitDistanceModifier.ts";
+import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {getDamageModifierByHeights} from "@/engine/units/modifiers/UnitHeightModifier.ts";
 
 export interface AttackCommandState {
   targets: uuid[]
   damageModifier: number
+  abilities: UnitAbilityType[]
 }
 
 export class AttackCommand extends BaseCommand<
@@ -39,38 +42,101 @@ export class AttackCommand extends BaseCommand<
     const targets = this.getPriorityTargets(unit)
     if (targets.length === 0) return
 
-    const percentHp = unit.hp / unit.stats.maxHp;
-    let dmg =
+    unit.activateAbility(null)
+    for (const ability of this.state.abilities) {
+      if (unit.abilities.includes(ability)) {
+        unit.activateAbility(ability)
+      }
+    }
+
+    const percentHp = unit.hp / unit.stats.maxHp
+    const baseDmg =
       (
         unit.damage
         * percentHp
         * this.state.damageModifier
-        / (60) * dt
-      )
-      / targets.length
+        / 60 * dt
+      ) / targets.length
 
     for (const target of targets) {
-      let unitDmg = dmg;
+      let unitDmg = baseDmg
+      const formula: string[] = []
+
+      formula.push(
+        `${unit.damage.toFixed(2)}`
+        + `×hp(${percentHp.toFixed(2)})`
+        + `×mod(${this.state.damageModifier})`
+        + `÷60×dt`
+        + `÷${targets.length}`
+      )
+
+      /* ===== Артиллерия / окружение ===== */
 
       if (unit.type === unitType.ARTILLERY) {
         for (const env of ARTILLERY_IGNORE_ENVS) {
-          // TODO: Проверка на дальную атаку
           if (target.envState.includes(env)) {
-            unitDmg *= 2;
+            unitDmg *= 2
+            formula.push(`ignoreArtillery(${env})×2`)
           }
         }
       }
 
+      /* ===== Дистанция ===== */
+
       const dx = target.pos.x - unit.pos.x
       const dy = target.pos.y - unit.pos.y
-      const distance = Math.sqrt(dx * dx + dy * dy) * window.ROOM_WORLD.map.metersPerPixel
-      const distanceModifier = getUnitDistanceModifier(
-        unit.type === unitType.ARTILLERY ? ARTILLERY_DISTANCE_MODIFIERS : DISTANCE_MODIFIERS,
-        distance,
-      );
-      unitDmg *= distanceModifier;
+      const distance =
+        Math.sqrt(dx * dx + dy * dy)
+        * window.ROOM_WORLD.map.metersPerPixel
 
-      target.takeDamage(unitDmg)
+      const distanceModifier = getUnitDistanceModifier(
+        unit.type === unitType.ARTILLERY
+          ? ARTILLERY_DISTANCE_MODIFIERS
+          : DISTANCE_MODIFIERS,
+        distance,
+      )
+
+      unitDmg *= distanceModifier
+      formula.push(`dist(${distance.toFixed(1)}m)×${distanceModifier.toFixed(2)}`)
+
+      /* ===== Высота ===== */
+
+      const heightModifier = getDamageModifierByHeights(
+        unit.height ?? 0,
+        target.height ?? 0,
+        distance,
+      )
+
+      unitDmg *= heightModifier
+      formula.push(
+        `height(${(unit.height ?? 0)}→${(target.height ?? 0)})×${heightModifier.toFixed(2)}`
+      )
+
+      /* ===== Применение урона ===== */
+
+      const unitDmgAfterDefense = target.takeDamage(unitDmg)
+
+      const defenseModifier =
+        unitDmg > 0
+          ? unitDmgAfterDefense / unitDmg
+          : 1
+
+      formula.push(`def×${defenseModifier.toFixed(2)}`)
+
+      /* ===== ЛОГ ===== */
+      window.ROOM_WORLD.logs.value.push({
+        id: Date.now() + Math.random(),
+        tokens: [
+          { t: 'unit', u: unit.id },
+          { t: 'i18n', v: `tools.logs.attack` },
+          { t: 'unit', u: target.id },
+          { t: 'i18n', v: `stat.damage` },
+          { t: 'number', v: unitDmgAfterDefense },
+          { t: 'text', v: ' (' },
+          { t: 'formula', v: formula.join(' × ') },
+          { t: 'text', v: ')' },
+        ]
+      })
     }
   }
 

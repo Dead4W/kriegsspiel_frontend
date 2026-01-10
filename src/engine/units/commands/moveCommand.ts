@@ -4,10 +4,12 @@ import {BaseCommand, CommandStatus} from "./baseCommand.ts";
 import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
 import { UnitEnvironmentState } from "@/engine/units/enums/UnitStates.ts";
 import type {uuid} from "@/engine";
+import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 
 export interface MoveCommandState {
   target: vec2
   modifier: UnitEnvironmentState | null
+  abilities: UnitAbilityType[]
   orderIndex: number
   uniqueId: uuid
 }
@@ -30,6 +32,13 @@ export class MoveCommand extends BaseCommand<
     const dy = this.state.target.y - unit.pos.y
     const dist = Math.hypot(dx, dy)
     if (dist === 0) return
+
+    unit.activateAbility(null)
+    for (const ability of this.state.abilities) {
+      if (unit.abilities.includes(ability)) {
+        unit.activateAbility(ability)
+      }
+    }
 
     const speed = unit.speed / 60 * dt / window.ROOM_WORLD.map.metersPerPixel
     if (this.estimate(unit) <= dt) {

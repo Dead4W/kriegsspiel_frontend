@@ -69,12 +69,16 @@ export class AttackCommand extends BaseCommand<
           formula.push(`${statModifierSource.type}.${statModifierSource.state}(${statModifierSource.multiplier})`)
         }
       }
-      formula.push(`hp(${percentHp.toFixed(2)})`)
-      if (this.state.damageModifier) {
+      if (percentHp !== 1) {
+        formula.push(`hp(${percentHp.toFixed(2)})`)
+      }
+      if (this.state.damageModifier && this.state.damageModifier !== 1) {
         formula.push(`attackCommandModifier(${this.state.damageModifier})`)
       }
       formula.push(`minutes(${dt/60})`)
-      formula.push(`÷ countTargets(${targets.length})`)
+      if (targets.length > 1) {
+        formula.push(`÷ countTargets(${targets.length})`)
+      }
 
       /* ===== Артиллерия / окружение ===== */
 
@@ -114,9 +118,11 @@ export class AttackCommand extends BaseCommand<
       )
 
       unitDmg *= heightModifier
-      formula.push(
-        `height(${(unit.height ?? 0)}→${(target.height ?? 0)})×${heightModifier.toFixed(2)}`
-      )
+      if (heightModifier !== 1) {
+        formula.push(
+          `height(${(unit.height ?? 0)}→${(target.height ?? 0)})×${heightModifier.toFixed(2)}`
+        )
+      }
 
       /* ===== Применение урона ===== */
 
@@ -127,7 +133,9 @@ export class AttackCommand extends BaseCommand<
           ? unitDmgAfterDefense / unitDmg
           : 1
 
-      formula.push(`def(${defenseModifier.toFixed(2)})`)
+      if (defenseModifier !== 1) {
+        formula.push(`def(${defenseModifier.toFixed(2)})`)
+      }
 
       /* ===== ЛОГ ===== */
       window.ROOM_WORLD.logs.value.push({

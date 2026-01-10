@@ -70,6 +70,7 @@ onMounted(() => {
             min="0"
             step="1"
             v-model.number="minutes"
+            @keydown.stop
           />
         </label>
 
@@ -81,6 +82,7 @@ onMounted(() => {
             max="59"
             step="1"
             v-model.number="seconds"
+            @keydown.stop
           />
         </label>
       </div>
@@ -97,20 +99,20 @@ onMounted(() => {
         type="text"
         :placeholder="t('tools.command.comment')"
         v-model="comment"
+        @keydown.stop
       />
     </div>
 
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
-      <button class="btn cancel" @click="emit('close')">
-        {{ t('tools.command.cancel') }}
-      </button>
-
       <button
         class="btn confirm"
         @click="confirm"
       >
         {{ t('tools.command.wait') }}
+      </button>
+      <button class="btn cancel" @click="emit('close')">
+        {{ t('tools.command.cancel') }}
       </button>
     </div>
 

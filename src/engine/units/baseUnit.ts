@@ -231,7 +231,7 @@ export abstract class BaseUnit {
     // }
   }
 
-  private getEnvMultiplier<K extends StatKey>(
+  private getStatMultiplier<K extends StatKey>(
     key: K
   ): number {
     let mul = 1
@@ -269,23 +269,23 @@ export abstract class BaseUnit {
   }
 
   get takeDamageMod(): number {
-    return this.stats.takeDamageMod * this.getEnvMultiplier('takeDamageMod')
+    return this.stats.takeDamageMod * this.getStatMultiplier('takeDamageMod')
   }
 
   get damage(): number {
-    return this.stats.damage * this.getEnvMultiplier('damage')
+    return this.stats.damage * this.getStatMultiplier('damage')
   }
 
   get attackRange(): number {
-    return this.stats.attackRange * this.getEnvMultiplier('attackRange')
+    return this.stats.attackRange * this.getStatMultiplier('attackRange')
   }
 
   get visionRange(): number {
-    return this.stats.visionRange * this.getEnvMultiplier('visionRange')
+    return this.stats.visionRange * this.getStatMultiplier('visionRange')
   }
 
   get speed(): number {
-    return this.stats.speed * this.getEnvMultiplier('speed')
+    return this.stats.speed * this.getStatMultiplier('speed')
   }
 
   get height(): number {

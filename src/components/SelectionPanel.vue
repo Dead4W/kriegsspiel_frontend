@@ -6,7 +6,7 @@ import UnitDetailPanel from '@/components/UnitDetailPanel.vue'
 import UnitActionPanel from "@/components/UnitActionPanel.vue";
 import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enums/UnitStates.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
-import CommandsPanel from "@/components/CommandsPanel.vue";
+import CommandsListPanel from "@/components/CommandsListPanel.vue";
 import {Team} from "@/enums/teamKeys.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 
@@ -129,7 +129,7 @@ function barStyle(value: number, max: number) {
     <!-- ===== DETAIL & COMMANDS ===== -->
     <div v-if="focusedUnit" class="detail-anchor">
       <div class="detail-stack">
-        <CommandsPanel :unit="focusedUnit" v-if="isAdmin()" />
+        <CommandsListPanel :unit="focusedUnit" v-if="isAdmin()" />
         <UnitDetailPanel
           :unit="focusedUnit"
           @edit="notifyEdit"

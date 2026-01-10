@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
-import { useI18n } from 'vue-i18n'
-import type { BaseUnit } from '@/engine/units/baseUnit'
+import {useI18n} from 'vue-i18n'
+import type {BaseUnit} from '@/engine/units/baseUnit'
 import {BaseCommand, CommandStatus} from '@/engine/units/commands/baseCommand'
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
+import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 
 const { unit } = defineProps<{ unit: BaseUnit }>()
 const { t } = useI18n()
@@ -11,6 +14,14 @@ const { t } = useI18n()
 const commands = computed(() => {
   refreshKey.value;
   return unit.getCommands() ?? []
+})
+
+const totalEstimate = computed(() => {
+  let result = 0
+  for (const cmd of commands.value) {
+    result += cmd.estimate(unit)
+  }
+  return result
 })
 
 function cmdKey(cmd: BaseCommand<any, any>) {
@@ -88,6 +99,24 @@ function sync(data: { reason: string }) {
   refreshKey.value++
 }
 
+function getUnitCommandAbility(cmd: BaseCommand<any, any>, unit: BaseUnit): UnitAbilityType | null {
+  if (
+    !(cmd instanceof MoveCommand)
+    && !(cmd instanceof AttackCommand)
+  ) {
+    return null
+  }
+
+  const abilities = cmd.getState().state.abilities
+
+  for (const ability of abilities) {
+    if (unit.abilities.includes(ability)) {
+      return ability
+    }
+  }
+  return null
+}
+
 /* LIFE CYCLE */
 
 onMounted(() => {
@@ -102,7 +131,7 @@ onUnmounted(() => {
 <template>
   <div class="commands-panel" :key="`commands_panel_${refreshKey}`">
     <div class="header">
-      {{ t('tools.commands') }}
+      {{ t('tools.commands') }} {{ estimate(totalEstimate) }}
     </div>
 
     <div class="list">
@@ -128,6 +157,10 @@ onUnmounted(() => {
 
         <div class="desc">
           {{ description(cmd) }}
+        </div>
+
+        <div class="ability" v-if="getUnitCommandAbility(cmd, unit)">
+          {{ t('command.ability') }}: {{ t(`ability.${getUnitCommandAbility(cmd, unit)}`) }}
         </div>
 
         <div class="estimate" v-if="cmd.estimate(unit) > 0 && cmd.estimate(unit) < Infinity">
@@ -212,6 +245,10 @@ onUnmounted(() => {
   font-size: 10px;
   color: #cbd5f5;
   margin-top: 2px;
+}
+
+.ability {
+  color: #d5d5d5;
 }
 
 .status {

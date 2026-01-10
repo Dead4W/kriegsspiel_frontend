@@ -76,16 +76,16 @@ function cancel() {
 
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
-      <button class="btn cancel" @click="cancel">
-        {{ t('tools.command.cancel') }}
-      </button>
-
       <button
         class="btn confirm"
         :disabled="!selectedFormation"
         @click="confirm"
       >
         {{ t('tools.command.apply') }}
+      </button>
+
+      <button class="btn cancel" @click="cancel">
+        {{ t('tools.command.cancel') }}
       </button>
     </div>
   </div>

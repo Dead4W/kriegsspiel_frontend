@@ -189,15 +189,15 @@ onUnmounted(cleanup)
 
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
-      <button class="btn cancel" @click="emit('close')">
-        {{ t('tools.command.cancel') }}
-      </button>
       <button
         class="btn confirm"
         :disabled="!targets.length"
         @click="confirm"
       >
         {{ t('tools.command.delivery_confirm') }}
+      </button>
+      <button class="btn cancel" @click="emit('close')">
+        {{ t('tools.command.cancel') }}
       </button>
     </div>
 

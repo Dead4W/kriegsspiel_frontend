@@ -55,20 +55,26 @@ export class AttackCommand extends BaseCommand<
         unit.damage
         * percentHp
         * this.state.damageModifier
-        / 60 * dt
+        * (dt / 60)
       ) / targets.length
 
     for (const target of targets) {
       let unitDmg = baseDmg
       const formula: string[] = []
 
-      formula.push(
-        `${unit.damage.toFixed(2)}`
-        + `×hp(${percentHp.toFixed(2)})`
-        + `×mod(${this.state.damageModifier})`
-        + `÷60×dt`
-        + `÷${targets.length}`
-      )
+      formula.push(`stat.damage(${unit.stats.damage.toFixed(2)})`)
+      const statModifiers = unit.getStatModifierInfo('damage')
+      for (const statModifierSource of statModifiers.sources) {
+        if (statModifierSource.multiplier !== 1) {
+          formula.push(`${statModifierSource.type}.${statModifierSource.state}(${statModifierSource.multiplier})`)
+        }
+      }
+      formula.push(`hp(${percentHp.toFixed(2)})`)
+      if (this.state.damageModifier) {
+        formula.push(`attackCommandModifier(${this.state.damageModifier})`)
+      }
+      formula.push(`minutes(${dt/60})`)
+      formula.push(`÷ countTargets(${targets.length})`)
 
       /* ===== Артиллерия / окружение ===== */
 
@@ -76,7 +82,7 @@ export class AttackCommand extends BaseCommand<
         for (const env of ARTILLERY_IGNORE_ENVS) {
           if (target.envState.includes(env)) {
             unitDmg *= 2
-            formula.push(`ignoreArtillery(${env})×2`)
+            formula.push(`ignoreEnvArtillery(${env})×2`)
           }
         }
       }
@@ -121,7 +127,7 @@ export class AttackCommand extends BaseCommand<
           ? unitDmgAfterDefense / unitDmg
           : 1
 
-      formula.push(`def×${defenseModifier.toFixed(2)}`)
+      formula.push(`def(${defenseModifier.toFixed(2)})`)
 
       /* ===== ЛОГ ===== */
       window.ROOM_WORLD.logs.value.push({

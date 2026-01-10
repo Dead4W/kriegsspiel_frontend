@@ -605,6 +605,9 @@ onMounted(() => {
 
   unsubscribe = window.ROOM_WORLD.events.on('changed', ({ reason }) => {
     if (reason === 'overlay' || reason === 'animation' || reason === 'camera') return
+    if (reason === 'select') {
+      movingUnits.value = window.ROOM_WORLD.units.list().filter(u => u.selected)
+    }
     rebuildMoveOverlay()
   })
 
@@ -723,16 +726,15 @@ onUnmounted(() => {
 
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
-      <button class="btn cancel" @click="emit('close')">
-        {{ t('tools.command.cancel') }}
-      </button>
-
       <button
         class="btn confirm"
         :disabled="!targets.length"
         @click="confirm"
       >
         {{ t('tools.command.move') }}
+      </button>
+      <button class="btn cancel" @click="emit('close')">
+        {{ t('tools.command.cancel') }}
       </button>
     </div>
   </div>

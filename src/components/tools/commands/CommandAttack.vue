@@ -89,6 +89,9 @@ function syncTargets() {
   targets.value = window.ROOM_WORLD.units
     .list()
     .filter(u => u.selected && u.team !== attackers.value[0]?.team)
+  attackers.value = window.ROOM_WORLD.units
+    .list()
+    .filter(u => u.selected && u.team === attackers.value[0]?.team)
 }
 
 /* ================= ACTION ================= */
@@ -149,7 +152,10 @@ let timer: number | null = null;
 let unsubscribe: unsub;
 
 onMounted(() => {
-  attackers.value = [...props.units]
+  if (props.units.length > 0) {
+    attackers.value = props.units.filter(u => u.team === props.units[0]!.team)
+    targets.value = props.units.filter(u => u.team !== props.units[0]!.team)
+  }
   syncTargets()
 
   rebuildAttackOverlay()
@@ -253,16 +259,16 @@ onUnmounted(() => {
 
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
-      <button class="btn cancel" @click="emit('close')">
-        {{ t('tools.command.cancel') }}
-      </button>
-
       <button
         class="btn confirm"
         :disabled="!targets.length"
         @click="confirm"
       >
         {{ t('tools.command.attack') }}
+      </button>
+
+      <button class="btn cancel" @click="emit('close')">
+        {{ t('tools.command.cancel') }}
       </button>
     </div>
 

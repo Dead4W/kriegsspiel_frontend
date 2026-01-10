@@ -140,6 +140,7 @@ export class AttackCommand extends BaseCommand<
       /* ===== ЛОГ ===== */
       window.ROOM_WORLD.logs.value.push({
         id: Date.now() + Math.random(),
+        time: window.ROOM_WORLD.time,
         tokens: [
           { t: 'unit', u: unit.id },
           { t: 'i18n', v: `tools.logs.attack` },

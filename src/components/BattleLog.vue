@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type {uuid} from '@/engine'
 import { useI18n } from 'vue-i18n'
+import {computed} from "vue";
 
 const { t } = useI18n()
 
-const logs = window.ROOM_WORLD.logs
+const reversedLogs = computed(() => {
+  return [...window.ROOM_WORLD.logs.value].reverse()
+})
 
 /* =========================
    WORLD HELPERS
@@ -42,26 +45,47 @@ function formatNumber(value: number): string {
 
   return value.toFixed(2)
 }
+
+function formatTime(time: string) {
+  const d = new Date(time)
+
+  if (isNaN(d.getTime())) {
+    return time // если уже готовая строка
+  }
+
+  return d.toLocaleTimeString([localStorage.getItem('i18n_locale') ?? 'en'], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
 </script>
 
 <template>
   <div class="battle-log-wrapper no-select">
     <div class="battle-log">
       <div
-        v-for="log in logs"
+        v-for="log in reversedLogs"
         :key="log.id"
         class="battle-log-entry"
       >
+  <span class="time">
+    {{ formatTime(log.time) }}
+  </span>
+
         <template v-for="(token, i) in log.tokens" :key="i">
           <span v-if="token.t === 'text'">
             {{ token.v }}
           </span>
-          <span v-if="token.t === 'i18n'"> {{ ` ${t(token.v)} ` }} </span>
+
+          <span v-else-if="token.t === 'i18n'">
+            {{ ` ${t(token.v)} ` }}
+          </span>
 
           <span
             v-else-if="token.t === 'unit'"
             class="unit"
-            :class="getUnitTeam(token.u)"
+            :class="getUnitTeam(token.u).toLowerCase()"
           >
             {{ getUnitName(token.u) }}
           </span>
@@ -85,13 +109,14 @@ function formatNumber(value: number): string {
   top: 64px;
   left: 16px;
   pointer-events: auto;
+  z-index: 1000;
 }
 
 /* ===== Panel ===== */
 
 .battle-log {
   width: 360px;
-  max-height: 260px;
+  max-height: calc(100vh - 140px);
   overflow-y: auto;
 
   background: #020617ee;
@@ -112,6 +137,13 @@ function formatNumber(value: number): string {
 
 .battle-log-entry:last-child {
   border-bottom: none;
+}
+
+.time {
+  color: #64748b;
+  font-size: 11px;
+  margin-right: 6px;
+  font-family: monospace;
 }
 
 /* ===== Tokens ===== */

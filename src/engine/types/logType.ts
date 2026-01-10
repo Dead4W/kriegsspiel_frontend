@@ -10,5 +10,6 @@ export type BattleLogToken =
 
 export interface BattleLogEntry {
   id: number
+  time: string
   tokens: BattleLogToken[]
 }

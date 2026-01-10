@@ -68,6 +68,7 @@
     "attack": "Attack",
     "environment_editor": "Environment Modifiers",
     "commands": "Commands",
+    "chart": "Chart",
     "admin": {
       "title": "Administration",
       "start_war": "Start war",

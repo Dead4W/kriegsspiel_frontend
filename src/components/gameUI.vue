@@ -12,14 +12,23 @@ import AdminTool from "@/components/tools/AdminTool.vue";
 import ForcesBar from "@/components/ForcesBar.vue";
 import NotificationsPanel from "@/components/NotificationsPanel.vue";
 import BattleLog from "@/components/BattleLog.vue";
+import ChartTool from "@/components/tools/ChartTool.vue";
 
 const { t } = useI18n()
 
-const activeTool = ref<'spawn' | 'ruler' | 'admin' | 'logs' | null>(null)
+enum Tools {
+  SPAWN = 'spawn',
+  RULER = 'ruler',
+  ADMIN = 'admin',
+  LOGS = 'logs',
+  CHART = 'chart',
+}
+
+const activeTool = ref<Tools | null>(null)
 
 const world = computed(() => window.ROOM_WORLD)
 
-function toggle(e: MouseEvent, tool: 'spawn' | 'ruler' | 'admin' | 'logs') {
+function toggle(e: MouseEvent, tool: Tools) {
   e.preventDefault()
   e.stopPropagation()
   activeTool.value = activeTool.value === tool ? null : tool
@@ -34,6 +43,10 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     activeTool.value = null
   }
+}
+
+function close() {
+  activeTool.value = null
 }
 
 onMounted(() => {
@@ -57,58 +70,72 @@ onUnmounted(() => {
     <div class="toolbar no-select">
       <button
         v-if="isAdmin()"
-        :class="{ active: activeTool === 'logs' }"
+        :class="{ active: activeTool === Tools.LOGS}"
         @pointerdown.stop.prevent
-        @click="toggle($event, 'logs')"
+        @click="toggle($event, Tools.LOGS)"
       >
         📜 {{ t('tools.logs.title') }}
       </button>
 
       <button
         v-if="isAdmin()"
-        :class="{ active: activeTool === 'admin' }"
+        :class="{ active: activeTool === Tools.ADMIN }"
         @pointerdown.stop.prevent
-        @click="toggle($event, 'admin')"
+        @click="toggle($event, Tools.ADMIN)"
       >
         🛡️ {{ t('team.admin') }}
       </button>
 
       <button
-        :class="{ active: activeTool === 'spawn' }"
+        v-if="isAdmin()"
+        :class="{ active: activeTool === Tools.CHART }"
         @pointerdown.stop.prevent
-        @click="toggle($event, 'spawn')"
+        @click="toggle($event, Tools.CHART)"
+      >
+        📈 {{ t('tools.chart') }}
+      </button>
+
+      <button
+        :class="{ active: activeTool === Tools.SPAWN }"
+        @pointerdown.stop.prevent
+        @click="toggle($event, Tools.SPAWN)"
       >
         ➕ {{ t('tools.add_unit') }}
       </button>
 
       <button
-        :class="{ active: activeTool === 'ruler' }"
+        :class="{ active: activeTool === Tools.RULER }"
         @pointerdown.stop.prevent
-        @click="toggle($event, 'ruler')"
+        @click="toggle($event, Tools.RULER)"
       >
         📏 {{ t('tools.ruler') }}
       </button>
     </div>
 
     <AdminTool
-      v-if="isAdmin() && activeTool === 'admin'"
+      v-if="isAdmin() && activeTool === Tools.ADMIN"
       :world="world"
       class="no-select"
     />
 
+    <ChartTool
+      v-if="isAdmin() && activeTool === Tools.CHART"
+      @close="close"
+    />
+
     <BattleLog
-      v-if="isAdmin() && activeTool === 'logs'"
+      v-if="isAdmin() && activeTool === Tools.LOGS"
     />
 
     <!-- Инструменты -->
     <SpawnTool
-      v-if="activeTool === 'spawn'"
+      v-if="activeTool === Tools.SPAWN"
       :world="world"
       class="no-select"
     />
 
     <RulerTool
-      v-if="activeTool === 'ruler'"
+      v-if="activeTool === Tools.RULER"
       :world="world"
       class="no-select"
     />

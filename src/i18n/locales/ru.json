@@ -70,6 +70,7 @@
     "attack": "Атака",
     "environment_editor": "Модификаторы окружения",
     "commands": "Приказы",
+    "chart": "График",
     "admin": {
       "title": "Администрирование",
       "start_war": "Начать войну",

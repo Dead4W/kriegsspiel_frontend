@@ -60,13 +60,6 @@ function processUnitCommands(dt: number) {
       } else {
         if (left_dt > 0) {
           const estimate = cmd.estimate(unit);
-          if (cmd instanceof MoveCommand) {
-            if (cmd.getState().state.modifier) {
-              unit.envState = [cmd.getState().state.modifier!]
-            } else {
-              unit.envState = []
-            }
-          }
           cmd.start(unit)
           if (estimate > left_dt) {
             cmd.update(unit, left_dt)

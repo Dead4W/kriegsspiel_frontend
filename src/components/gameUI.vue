@@ -42,6 +42,8 @@ function onKeydown(e: KeyboardEvent) {
   nextTick();
   if (e.key === 'Escape') {
     activeTool.value = null
+  } else if (e.key.toUpperCase() === 'V') {
+    activeTool.value = activeTool.value === Tools.RULER ? null : Tools.RULER
   }
 }
 
@@ -107,6 +109,7 @@ onUnmounted(() => {
         :class="{ active: activeTool === Tools.RULER }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.RULER)"
+        :title="`${t('hotkey')}: V`"
       >
         📏 {{ t('tools.ruler') }}
       </button>

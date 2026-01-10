@@ -1,4 +1,4 @@
-import { UnitEnvironmentState } from './UnitStates'
+import { UnitEnvironmentState } from '../enums/UnitStates.ts'
 import {unitType} from "@/engine";
 
 export interface EnvStatMultiplier {

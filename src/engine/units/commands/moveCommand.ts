@@ -33,6 +33,13 @@ export class MoveCommand extends BaseCommand<
     const dist = Math.hypot(dx, dy)
     if (dist === 0) return
 
+    // Activate env
+    unit.envState = []
+    if (this.state.modifier) {
+      unit.envState = [this.state.modifier]
+    }
+
+    // Activate ability
     unit.activateAbility(null)
     for (const ability of this.state.abilities) {
       if (unit.abilities.includes(ability)) {
@@ -106,11 +113,32 @@ export class MoveCommand extends BaseCommand<
   }
 
   estimate(unit: BaseUnit): number {
+    // save values
+    const saveEnv = [...unit.envState]
+    const saveAbilityType = unit.activeAbilityType
+
+    unit.envState = []
+    if (this.state.modifier) {
+      unit.envState = [this.state.modifier]
+    }
+    unit.activeAbilityType = null
+    for (const ability of this.state.abilities) {
+      if (unit.abilities.includes(ability)) {
+        unit.activeAbilityType = ability
+      }
+    }
+
+    const unitSpeed = unit.speed
+
+    // restore values
+    unit.envState = saveEnv
+    unit.activeAbilityType = saveAbilityType
+
     const dx = this.state.target.x - unit.pos.x
     const dy = this.state.target.y - unit.pos.y
     const dist = Math.hypot(dx, dy)
 
-    return Math.ceil(dist / (unit.speed / 60) * window.ROOM_WORLD.map.metersPerPixel)
+    return Math.ceil(dist / (unitSpeed / 60) * window.ROOM_WORLD.map.metersPerPixel)
   }
 
   getState(): { type: UnitCommandTypes.Move; status: CommandStatus; state: MoveCommandState } {

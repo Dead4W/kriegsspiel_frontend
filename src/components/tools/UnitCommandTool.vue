@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import {onMounted, onUnmounted, ref} from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 
@@ -21,9 +21,18 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
+const hotkeys: Record<string, UnitCommandTypes> = {
+  '1': UnitCommandTypes.Attack,
+  '2': UnitCommandTypes.Move,
+  '3': UnitCommandTypes.ChangeFormation,
+  '4': UnitCommandTypes.Wait,
+  '5': UnitCommandTypes.Delivery,
+}
+
 const activeOrder = ref<UnitCommandTypes | null>(null)
 
 function open(order: UnitCommandTypes) {
+  if (isCommandDisabled(order)) return
   activeOrder.value = order
 }
 
@@ -44,6 +53,62 @@ function clearCommands() {
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
 }
 
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    if (activeOrder.value) {
+      close()
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    return
+  }
+
+  // если уже открыта команда — не перехватываем
+  if (activeOrder.value) return
+
+  const command = hotkeys[e.key]
+  if (!command) return
+
+  // условия доступности
+  if (command === UnitCommandTypes.Attack && isMessenger()) return
+  if (command === UnitCommandTypes.ChangeFormation && isMessenger()) return
+  if (command === UnitCommandTypes.Delivery && !isMessenger()) return
+
+  open(command)
+}
+
+function getHotkey(command: UnitCommandTypes): string | null {
+  for (const [key, value] of Object.entries(hotkeys)) {
+    if (value === command) return key
+  }
+  return null
+}
+
+function hotkeyTitle(command: UnitCommandTypes) {
+  const key = getHotkey(command)
+  return key ? `${t('hotkey')}: ${key}` : ''
+}
+
+function isCommandDisabled(command: UnitCommandTypes): boolean {
+  if (!props.units.length) return true
+
+  if (command === UnitCommandTypes.Attack && isMessenger()) return true
+  if (command === UnitCommandTypes.ChangeFormation && isMessenger()) return true
+  if (command === UnitCommandTypes.Delivery && !isMessenger()) return true
+
+  return false
+}
+
+// LIFE CYCLE
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+})
+
 </script>
 
 <template>
@@ -51,27 +116,42 @@ function clearCommands() {
 
     <!-- ===== BUTTONS ===== -->
     <div v-if="!activeOrder" class="orders-buttons">
-      <button class="order-btn attack" @click="open(UnitCommandTypes.Attack)" v-if="!isMessenger()">
+      <button
+        class="order-btn attack"
+        @click="open(UnitCommandTypes.Attack)"
+        :disabled="isCommandDisabled(UnitCommandTypes.Attack)"
+        :title="hotkeyTitle(UnitCommandTypes.Attack)"
+      >
         <span class="icon">⚔</span>
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.attack') }}</span>
       </button>
 
-      <button class="order-btn" @click="open(UnitCommandTypes.Move)">
+      <button
+        class="order-btn"
+        @click="open(UnitCommandTypes.Move)"
+        :disabled="isCommandDisabled(UnitCommandTypes.Move)"
+        :title="hotkeyTitle(UnitCommandTypes.Move)"
+      >
         <span class="icon">🚶</span>
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.move') }}</span>
       </button>
 
-      <button class="order-btn" @click="open(UnitCommandTypes.Delivery)" v-if="isMessenger()">
-        <span class="icon">✉️</span>
-        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.delivery') }}</span>
-      </button>
-
-      <button class="order-btn" @click="open(UnitCommandTypes.ChangeFormation)" v-if="!isMessenger()">
+      <button
+        class="order-btn"
+        @click="open(UnitCommandTypes.ChangeFormation)"
+        :disabled="isCommandDisabled(UnitCommandTypes.ChangeFormation)"
+        :title="hotkeyTitle(UnitCommandTypes.ChangeFormation)"
+      >
         <span class="icon icon-formation">■■■</span>
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.formation') }}</span>
       </button>
 
-      <button class="order-btn" @click="open(UnitCommandTypes.Wait)">
+      <button
+        class="order-btn"
+        @click="open(UnitCommandTypes.Wait)"
+        :disabled="isCommandDisabled(UnitCommandTypes.Wait)"
+        :title="hotkeyTitle(UnitCommandTypes.Wait)"
+      >
         <span class="icon">⏳</span>
         <span class="label">
           {{ t('tools.command.command') }}<br>
@@ -79,7 +159,20 @@ function clearCommands() {
         </span>
       </button>
 
-      <button class="order-btn" @click="clearCommands">
+      <button
+        class="order-btn"
+        @click="open(UnitCommandTypes.Delivery)"
+        :disabled="isCommandDisabled(UnitCommandTypes.Delivery)"
+        :title="hotkeyTitle(UnitCommandTypes.Delivery)"
+      >
+        <span class="icon">✉️</span>
+        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.delivery') }}</span>
+      </button>
+
+      <button
+        class="order-btn"
+        @click="clearCommands"
+      >
         <span class="icon icon-formation">❌</span>
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.clear_commands') }}</span>
       </button>
@@ -162,6 +255,18 @@ function clearCommands() {
 
 .order-btn:active {
   transform: translateY(1px);
+}
+
+.order-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: #1e293b;
+  transform: none;
+}
+
+.order-btn:disabled:hover {
+  background: #020617;
+  border-color: #1e293b;
 }
 
 .order-btn .icon {

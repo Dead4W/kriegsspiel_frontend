@@ -11,7 +11,7 @@ export class Infantry extends BaseUnit {
     damage: 1,
     speed: 80,
     takeDamageMod: 1,
-    attackRange: 1000,
+    attackRange: 2000,
     visionRange: 1000,
     ammoMax: 30,
   }

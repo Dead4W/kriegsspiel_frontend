@@ -288,7 +288,6 @@ export function bindUnitInteraction(
   function onKeyDown(e: KeyboardEvent) {
     if (e.ctrlKey) ctrlKeyActive = true
     if (e.shiftKey) shiftKeyActive = true
-    if (document.querySelector('.toolbar .active')) return
     if (e.key !== 'Delete' || e.repeat) return
 
     const selected = w.units.getSelected()

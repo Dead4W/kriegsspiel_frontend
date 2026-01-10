@@ -10,7 +10,7 @@ export class Militia extends BaseUnit {
     damage: 0.5,
     speed: 80,
     takeDamageMod: 1,
-    attackRange: 1000,
+    attackRange: 2000,
     visionRange: 1000,
     ammoMax: 15,
   }

@@ -10,7 +10,7 @@ export class Marine extends BaseUnit {
     damage: 2,
     speed: 80,
     takeDamageMod: 1,
-    attackRange: 1000,
+    attackRange: 2000,
     visionRange: 1000,
     ammoMax: 25,
   }

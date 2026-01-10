@@ -10,7 +10,7 @@ export class Messenger extends BaseUnit {
     damage: 0.01,
     speed: 400,
     takeDamageMod: 1,
-    attackRange: 1000,
+    attackRange: 2000,
     visionRange: 1000,
     ammoMax: 0,
   }

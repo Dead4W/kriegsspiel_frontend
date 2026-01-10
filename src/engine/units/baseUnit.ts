@@ -10,9 +10,9 @@ import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {
   UnitEnvironmentState
 } from "@/engine/units/enums/UnitStates.ts";
-import {ENV_MULTIPLIERS} from '@/engine/units/enums/UnitEnvModifiers'
+import {ENV_MULTIPLIERS} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
 import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engine/util.ts";
-import {FORMATION_STAT_MULTIPLIERS} from "@/engine/units/enums/UnitFormationModifiers.ts";
+import {FORMATION_STAT_MULTIPLIERS} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
 import {createUnitCommand} from "@/engine/units/commands";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {clamp} from "@/engine/math.ts";
@@ -71,22 +71,22 @@ export abstract class BaseUnit {
 
   abstract stats: UnitStats
   abstract abilities: UnitAbilityType[]
-  private activeAbilityType: UnitAbilityType | null = null
+  public activeAbilityType: UnitAbilityType | null = null
 
   envState: UnitEnvironmentState[] = []
 
-  private dirtyMoveStartAt = 0;
-  private lastDirtyMoveAt = 0
+  protected dirtyMoveStartAt = 0;
+  protected lastDirtyMoveAt = 0
 
-  private remoteMoveFrames: MoveFrame[] = []
-  private remoteMoveFrameTimer: RafInterval | null = null
-  private remoteMoveFrameStart = 0;
+  protected remoteMoveFrames: MoveFrame[] = []
+  protected remoteMoveFrameTimer: RafInterval | null = null
+  protected remoteMoveFrameStart = 0;
 
-  private commands: commandstate[] = []
+  protected commands: commandstate[] = []
 
-  private formation: FormationType;
+  protected formation: FormationType;
 
-  private messagesLinked: MessageLinked[] = []
+  protected messagesLinked: MessageLinked[] = []
 
   lastSelected: number = 0;
 
@@ -97,7 +97,6 @@ export abstract class BaseUnit {
     this.team = s.team
     this.pos = s.pos;
 
-    this.heading = s.heading ?? 0
     this.label = s.label ?? ''
     this.hp = 0;
     this.morale = s.morale ?? 0;
@@ -174,7 +173,6 @@ export abstract class BaseUnit {
       team: this.team,
       pos: this.pos,
 
-      heading: this.heading,
       label: this.label,
 
       hp: this.hp,
@@ -231,7 +229,7 @@ export abstract class BaseUnit {
     // }
   }
 
-  private getStatMultiplier<K extends StatKey>(
+  protected getStatMultiplier<K extends StatKey>(
     key: K
   ): number {
     let mul = 1
@@ -258,7 +256,7 @@ export abstract class BaseUnit {
     return mul
   }
 
-  private getFormationMultiplier<K extends keyof UnitStats | 'damage'>(
+  protected getFormationMultiplier<K extends keyof UnitStats | 'damage'>(
     key: K
   ): number {
     return FORMATION_STAT_MULTIPLIERS[this.formation]?.[key] ?? 1
@@ -350,7 +348,7 @@ export abstract class BaseUnit {
     this.remoteMoveFrameTimer.start();
   }
 
-  private playNextRemoteFrame() {
+  protected playNextRemoteFrame() {
     if (!this.remoteMoveFrames.length) {
       this.remoteMoveFrameTimer?.stop();
       this.remoteMoveFrameTimer = null
@@ -361,7 +359,7 @@ export abstract class BaseUnit {
     while (
       this.remoteMoveFrames.length &&
       this.remoteMoveFrames[0]!.t <= now - this.remoteMoveFrameStart
-    ) {
+      ) {
       const frame = this.remoteMoveFrames.shift()!
       this.pos = frame.pos;
     }

@@ -41,7 +41,6 @@ export interface unitstate {
   team: unitTeam
   pos: vec2
 
-  heading?: number
   label?: string
 
   hp?: number

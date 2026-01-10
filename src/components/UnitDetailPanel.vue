@@ -165,6 +165,16 @@ onUnmounted(() => {
           </div>
         </div>
 
+        <!-- MORALE -->
+        <div class="stat" v-if="isAdmin()">
+          <label>{{ t('stat.morale') }}</label>
+          <input
+            type="number"
+            v-model="unit.morale"
+            @keydown.stop
+          />
+        </div>
+
         <!-- TOGGLE STATS -->
         <div class="stats-toggle" @click="isStatsOpen = !isStatsOpen">
           <span>{{ t('stat.details') }}</span>

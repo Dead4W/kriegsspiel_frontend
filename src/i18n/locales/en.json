@@ -122,6 +122,7 @@
     "name": "Unit name",
     "damage": "Damage",
     "hp": "HP",
+    "morale": "Morale",
     "ammo": "Ammo",
     "speed": "Speed",
     "takeDamageMod": "Take damage",

@@ -130,7 +130,7 @@ export class GameSocket {
       busMessages = [];
 
       if (messages.length) {
-        this.send(messages)
+        this.sendBatched(messages)
       }
     });
     this.syncTimer.start();

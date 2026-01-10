@@ -198,21 +198,15 @@ if (window.PLAYER.team !== Team.ADMIN && window.PLAYER.team !== Team.SPECTATOR) 
   activeTeam.value = window.PLAYER.team;
   teams = [
     { id: window.PLAYER.team, label: t(`team.${Team.ADMIN}`) },
+    { id: Team.ADMIN, label: t('chat.units_messages')}
   ];
 } else {
   activeTeam.value = Team.RED;
   teams = [
     { id: Team.RED, label: window.ROOM_SETTINGS.redTeamName ?? t(`team.${Team.RED}`) },
     { id: Team.BLUE, label: window.ROOM_SETTINGS.blueTeamName ?? t(`team.${Team.BLUE}`) },
+    { id: Team.ADMIN, label: t('chat.units_messages')}
   ];
-
-  // 👇 новая вкладка
-  if (window.PLAYER.team === Team.ADMIN) {
-    teams.push({
-      id: Team.ADMIN,
-      label: t('chat.units_messages'),
-    })
-  }
 }
 
 function parseTime(t: string): number {

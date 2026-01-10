@@ -14,6 +14,7 @@ type Cam = {
 
 export class overlaylayer {
   private lineDashOffset = 0
+  private lastDastOffsetEdit = 0
 
   draw(ctx: CanvasRenderingContext2D, w: world) {
     const cam = w.camera as Cam
@@ -44,7 +45,10 @@ export class overlaylayer {
     for (const c of circles) this.drawCircle(ctx, cam, canvas, c)
     for (const r of rects) this.drawRect(ctx, cam, canvas, r)
     for (const t of texts) this.drawText(ctx, cam, canvas, t)
-    this.lineDashOffset++
+    if (performance.now() - this.lastDastOffsetEdit > 10) { // every 10ms
+      this.lineDashOffset++
+      this.lastDastOffsetEdit = performance.now()
+    }
   }
 
   // ============================================================

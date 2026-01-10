@@ -8,6 +8,7 @@ import {
 
 const { t } = useI18n()
 import { reactive } from 'vue'
+import {Team} from "@/enums/teamKeys.ts";
 
 
 const settings = reactive(window.CLIENT_SETTINGS)
@@ -45,6 +46,10 @@ function playTestSound() {
   const messageSound = new Audio('/assets/sounds/message.wav')
   messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
   messageSound.play();
+}
+
+function isAdmin() {
+  return window.PLAYER.team === Team.ADMIN
 }
 
 onMounted(() => {
@@ -214,7 +219,7 @@ onUnmounted(() => {
       {{ t('client_settings.show_unit_vision') }}
     </label>
 
-    <label class="setting indent">
+    <label class="setting indent" v-if="isAdmin()">
       <input
         type="checkbox"
         :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]"
@@ -225,7 +230,7 @@ onUnmounted(() => {
     </label>
 
     <!-- FOREST MAP -->
-    <label class="setting">
+    <label class="setting" v-if="isAdmin()">
       <input
         type="checkbox"
         :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_FOREST_MAP]"
@@ -235,7 +240,7 @@ onUnmounted(() => {
     </label>
 
     <!-- HEIGHT MAP -->
-    <label class="setting">
+    <label class="setting" v-if="isAdmin()">
       <input
         type="checkbox"
         :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]"

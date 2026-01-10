@@ -19,19 +19,19 @@ export const UnitEnvironmentStateIcon: Record<UnitEnvironmentState, string> = {
   [UnitEnvironmentState.InField]: '🌾',            // Поля
   [UnitEnvironmentState.InPlainField]: '🚜',       // Пашни
   [UnitEnvironmentState.InSoftField]: '🟤',        // Мягкая почва
-  [UnitEnvironmentState.InSwampOrDirty]: '🪵',     // Болото / грязь
+  [UnitEnvironmentState.InSwampOrDirty]: '💩',     // Болото / грязь
 
-  [UnitEnvironmentState.InBrench]: '🪖',           // Блиндаж
+  [UnitEnvironmentState.InBrench]: '🚧',           // Блиндаж
 
-  [UnitEnvironmentState.InCoverTrenches]: '🕳️',   // Окопы / укрытия
+  [UnitEnvironmentState.InCoverTrenches]: '🪜',   // Окопы / укрытия
 
   [UnitEnvironmentState.InHouse]: '🏢',
-  [UnitEnvironmentState.InCoverHouse]: '🛖',
+  [UnitEnvironmentState.InCoverHouse]: '🧱',
 
   [UnitEnvironmentState.InForest]: '🌲',
 
   [UnitEnvironmentState.OnRoad]: '👣',
-  [UnitEnvironmentState.OnGoodRoad]: '🛞',
+  [UnitEnvironmentState.OnGoodRoad]: '🛣️',
 
   [UnitEnvironmentState.InWater]: '🌊',
 }

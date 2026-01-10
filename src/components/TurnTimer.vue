@@ -68,6 +68,9 @@ function processUnitCommands(dt: number) {
             cmd.update(unit, estimate)
             left_dt -= estimate;
           }
+        } else {
+          goodCommands.push(cmd)
+          continue
         }
       }
 

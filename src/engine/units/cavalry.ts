@@ -9,13 +9,13 @@ export class Cavalry extends BaseUnit {
   stats: UnitStats = {
     maxHp: 64,
     damage: 0.6,
-    speed: 100,
+    speed: 80,
     takeDamageMod: 1,
     attackRange: 2000,
     visionRange: 1000,
   }
 
-  abilities = [UnitAbilityType.CHARGE]
+  abilities = [UnitAbilityType.CHARGE, UnitAbilityType.GALLOP, UnitAbilityType.THROTTLE]
 
   constructor(s: unitstate) {
     super(s)

@@ -16,7 +16,7 @@ export class Artillery extends BaseUnit {
     ammoMax: 10,
   }
 
-  abilities = [UnitAbilityType.INACCURACY_FIRE]
+  abilities = [UnitAbilityType.INACCURACY_FIRE, UnitAbilityType.THROTTLE]
 
   constructor(s: unitstate) {
     super(s)

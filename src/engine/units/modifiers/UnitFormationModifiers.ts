@@ -27,6 +27,7 @@ export const FORMATION_STAT_MULTIPLIERS: Record<
   [FormationType.OnHorse]: {
     takeDamageMod: 8.0,
     damage: 0.12,
+    speed: 1.25,
   },
 
   [FormationType.Column]: {

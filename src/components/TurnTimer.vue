@@ -101,6 +101,7 @@ async function startTurn() {
   const MAX_STEP = 5 * 60 // 300 секунд
 
   window.ROOM_WORLD.units.withNewCommandsTmp.clear()
+  window.ROOM_WORLD.socketLock = true
 
   while (totalSeconds.value > 0 && running.value) {
     if (!running.value) return;
@@ -118,7 +119,6 @@ async function startTurn() {
   window.ROOM_WORLD.events.emit('changed', { reason: 'timer' });
 
   running.value = false
-  window.ROOM_WORLD.skipTime(value)
   displayWorldTime.value = window.ROOM_WORLD.time
 
   // DirectView general
@@ -138,6 +138,10 @@ async function startTurn() {
   for (const unitId of window.ROOM_WORLD.units.withNewCommandsTmp) {
     window.ROOM_WORLD.units.withNewCommands.add(unitId)
   }
+
+  // ВСЕГДА В КОНЦЕ
+  window.ROOM_WORLD.skipTime(value)
+  window.ROOM_WORLD.socketLock = false
 }
 
 function stopTurn() {

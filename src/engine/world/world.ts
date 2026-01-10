@@ -25,6 +25,9 @@ export class world {
   id: uuid = '';
   time: string = '1882-06-12 09:00:00';
 
+  // Блокировка сокета на отправку/приёмку событий
+  socketLock: boolean = false;
+
   stage: RoomGameStage = RoomGameStage.PLANNING;
 
   events = new emitter<worldevents>()

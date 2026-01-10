@@ -91,6 +91,8 @@ export class GameSocket {
     })
 
     this.syncTimer = createRafInterval(500, () => {
+      if (window.ROOM_WORLD.socketLock) return
+
       const dirtyUnitObjects = this.world.units.getDirty()
       const dirtyUnitRemove = this.world.units.getDirtyRemove()
       const dirtyChatMessages = this.world.messages.getDirty()
@@ -156,6 +158,8 @@ export class GameSocket {
   private handleMessage(msg: InMessage) {
     if (msg.type === 'messages') {
       for (const m of msg.messages) {
+        if (this.world.socketLock) return
+
         if (m.type === 'unit') {
           let unitPos = m.data.pos;
           if (m.frames && m.frames.length) {

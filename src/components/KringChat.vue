@@ -73,8 +73,11 @@ function isUnreadMessage(m: ChatMessage): boolean {
   let currentAuthorTeam = window.PLAYER.team;
   if (currentAuthorTeam === Team.SPECTATOR) currentAuthorTeam = Team.ADMIN;
 
-  return m.status === ChatMessageStatus.Delivered
-    && m.author_team !== currentAuthorTeam
+  if (currentAuthorTeam === Team.ADMIN) {
+    return m.author_team !== currentAuthorTeam && m.status !== ChatMessageStatus.Read
+  } else {
+    return m.author_team !== currentAuthorTeam && m.delivered
+  }
 }
 
 function canSpawnMessenger(m: ChatMessage): boolean {
@@ -290,7 +293,8 @@ function send() {
     time: window.ROOM_WORLD.time,
     team: team,
     status: ChatMessageStatus.Sent,
-  };
+    delivered: false,
+  } as ChatMessage;
 
   window.ROOM_WORLD.addMessage(m);
 

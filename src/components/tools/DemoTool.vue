@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api/client'
 import {unitregistry} from "@/engine/world/unitregistry.ts";
-import type {unitstate} from "@/engine";
+import type {unitstate, uuid} from "@/engine";
 
 const props = defineProps<{
   world: any
@@ -59,13 +59,14 @@ async function loadSnapshot() {
 
 /* ---------- world ---------- */
 
-function applySnapshot(time: string, data: { units: unitstate[]; paint: any }) {
+function applySnapshot(time: string, data: { units: Record<uuid, unitstate>; paint: any }) {
   const w = window.ROOM_WORLD;
 
   w.clear()
 
-  for (const unitUuid in data.units) {
-    w.units.upsert(data.units[unitUuid], 'remote')
+  for (const unitId in data.units) {
+    const unit = data.units[unitId] as unitstate;
+    w.units.upsert(unit, 'remote');
   }
   w.updateTime(time.replace('T', ' ').replace(".000000Z", ""))
   w.events.emit('changed', { reason: 'unit' })

@@ -54,7 +54,7 @@ async function loadSnapshots() {
   const uuid = route.params.uuid as string
 
   try {
-    const res = await api.get(`/room/${uuid}/snapshots/chart`, {
+    const res = await api.get(`/room/${uuid}/snapshotsChart`, {
       params: {
         key: window.ROOM_KEYS.admin_key ?? '',
       },

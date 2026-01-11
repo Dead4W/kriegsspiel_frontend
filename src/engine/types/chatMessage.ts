@@ -4,7 +4,6 @@ import type {uuid} from "@/engine";
 export enum ChatMessageStatus {
   Sent = "sent",
   Read = "read",
-  Delivered = "delivered",
 }
 
 export type ChatMessage = {
@@ -16,4 +15,5 @@ export type ChatMessage = {
   time: string
   team: Team
   status: ChatMessageStatus
+  delivered: boolean
 }

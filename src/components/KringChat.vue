@@ -65,7 +65,7 @@ function syncPlayerChatReadState() {
   }
 
   if (needRefreshWorld) {
-    onChangedWorld();
+    onChangedWorld({ reason: 'init'});
   }
 }
 
@@ -164,7 +164,7 @@ function focusUnits(units: BaseUnit[]) {
   cam.pos.y = centerY - halfH
 
   cam.clampToWorld()
-  w.events.emit('changed', { reason: 'camera' })
+  // w.events.emit('changed', { reason: 'camera' })
 }
 
 function onUnitsBlockClick(units: BaseUnit[]) {
@@ -351,7 +351,7 @@ function onClickMarkAsRead(message_id: uuid) {
   if (message) {
     window.ROOM_WORLD.messages.markAsRead(message_id);
   }
-  onChangedWorld();
+  onChangedWorld({ reason: 'read'});
 }
 
 function onClickMarkAllAsRead() {
@@ -364,7 +364,7 @@ function onClickMarkAllAsRead() {
   if (lastId) {
     setLastReadMessageId(window.PLAYER.team, lastId);
   }
-  onChangedWorld();
+  onChangedWorld({ reason: 'read'});
 }
 
 /* =======================
@@ -470,6 +470,7 @@ function onChangedWorld(event: { reason: string }) {
 
   messages.value = window.ROOM_WORLD.messages.list()
   selectedUnits.value = window.ROOM_WORLD.units.getSelected()
+  selectedUnits.value = selectedUnits.value.filter(u => u.type !== unitType.MESSENGER);
   if (isPlayer()) {
     selectedUnits.value = selectedUnits.value.filter(u => u.team === window.PLAYER.team);
   }

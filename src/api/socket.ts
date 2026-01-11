@@ -4,7 +4,8 @@ import {createRafInterval, type RafInterval} from "@/engine/util.ts";
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import type {CursorObject} from "@/engine/world/cursorregistry.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
-import type {Team} from "@/enums/teamKeys.ts";
+import {Team} from "@/enums/teamKeys.ts";
+import { translate } from '@/i18n'
 
 export type OutMessage =
   | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage} }
@@ -18,7 +19,7 @@ export type OutMessage =
   | { type: 'set_stage'; data: RoomGameStage }
   | { type: 'copy_board'; data: Team }
   | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
-  | { type: 'direct_view'; team: Team; data: {id: uuid, pos: vec2, hp: number}[] }
+  | { type: 'direct_view'; team: Team; data: unitstate[] }
 
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
@@ -59,11 +60,13 @@ export class GameSocket {
     }
 
     this.ws.onclose = () => {
-      console.log('[WS] closed')
+      alert('Socket closed.\nPage will restarted.')
+      window.location.reload()
       this.stopSync()
     }
 
     this.ws.onerror = (e) => {
+      alert('Socket error.\nProbably you need to restart page and check last changes.')
       console.error('[WS] error', e)
     }
   }
@@ -130,7 +133,7 @@ export class GameSocket {
       busMessages = [];
 
       if (messages.length) {
-        this.sendBatched(messages)
+        this.send(messages)
       }
     });
     this.syncTimer.start();
@@ -207,15 +210,25 @@ export class GameSocket {
           }
         } else if (m.type === 'direct_view') {
           for (const u of window.ROOM_WORLD.units.list()) {
-            u.directView = false;
+            if (u.directView) {
+              if (u.team !== window.PLAYER.team && window.PLAYER.team !== Team.ADMIN) {
+                window.ROOM_WORLD.units.remove(u.id)
+              } else {
+                u.directView = false;
+              }
+            }
           }
 
-          for (const {id: unitId, pos: unitPos, hp: unitHp} of m.data) {
-            const u = window.ROOM_WORLD.units.get(unitId)!;
-            if (!u) continue;
-            u.pos = unitPos;
-            u.hp = unitHp;
-            u.directView = true;
+          for (const unitDirectView of m.data) {
+            const u = window.ROOM_WORLD.units.get(unitDirectView.id)!;
+            if (!u) {
+              unitDirectView.directView = true
+              window.ROOM_WORLD.units.upsert(unitDirectView, 'remote');
+            } else {
+              // Update only some fields
+              Object.assign(u, unitDirectView)
+              u.directView = true;
+            }
           }
         }
 

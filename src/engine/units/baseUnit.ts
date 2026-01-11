@@ -1,15 +1,13 @@
 import {
   type commandstate,
   FormationType,
-  type unitTeam,
   type unitstate,
+  type unitTeam,
   type unitType,
   type uuid
 } from './types'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
-import {
-  UnitEnvironmentState
-} from "@/engine/units/enums/UnitStates.ts";
+import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {ENV_MULTIPLIERS} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
 import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engine/util.ts";
 import {FORMATION_STAT_MULTIPLIERS} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
@@ -20,6 +18,8 @@ import {type ChatMessage} from "@/engine/types/chatMessage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import {BaseAbility, type UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 import {createAbility} from "@/engine/units/abilities";
+import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import { translate } from '@/i18n'
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
 
@@ -56,7 +56,6 @@ export abstract class BaseUnit {
 
   team: unitTeam
   pos: vec2
-  heading = 0
   label = ''
 
   selected = false
@@ -97,7 +96,7 @@ export abstract class BaseUnit {
     this.team = s.team
     this.pos = s.pos;
 
-    this.label = s.label ?? ''
+    this.label = s.label ?? translate(`unit.${s.type}`)
     this.hp = 0;
     this.morale = s.morale ?? 0;
     this.commands = s.commands ?? [];
@@ -108,7 +107,6 @@ export abstract class BaseUnit {
     this.envState = s.envState ?? [];
     this.messagesLinked = s.messagesLinked ?? [];
     this.directView = s.directView ?? false
-    this.activeAbilityType = s.activeAbility ?? null
     this.refreshEnvState();
   }
 
@@ -190,7 +188,7 @@ export abstract class BaseUnit {
 
       directView: this.directView,
 
-      activeAbility: this.activeAbilityType,
+      activeAbilityType: this.activeAbilityType,
     }
   }
 
@@ -371,6 +369,13 @@ export abstract class BaseUnit {
     if (replace) {
       this.clearCommands()
     }
+    this.commands = this.commands.filter(cmd =>
+      !(cmd.type === UnitCommandTypes.Wait &&
+        (cmd.state.wait === 0 || cmd.state.wait === Infinity))
+    )
+    if (command.type === UnitCommandTypes.Attack) {
+      this.commands = this.commands.filter(cmd => cmd.type !== UnitCommandTypes.Attack)
+    }
     this.commands.push(command)
     this.setDirty()
     window.ROOM_WORLD.units.withNewCommands.delete(this.id)
@@ -432,5 +437,9 @@ export abstract class BaseUnit {
   activateAbility(newAbilityType: UnitAbilityType | null) {
     this.activeAbilityType = newAbilityType
     this.setDirty()
+  }
+
+  getFormation(): FormationType {
+    return this.formation
   }
 }

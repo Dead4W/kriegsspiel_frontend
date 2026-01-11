@@ -247,10 +247,9 @@ export function bindUnitInteraction(
     const minY = centerWorld.y - halfH
     const maxY = centerWorld.y + halfH
 
-    const targetType = hit.type
-
     for (const u of w.units.list()) {
-      if (u.type !== targetType) continue
+      if (u.type !== hit.type) continue
+      if (u.team !== hit.team) continue
 
       const { x, y } = u.pos
 

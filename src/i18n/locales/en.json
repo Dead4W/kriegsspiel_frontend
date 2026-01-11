@@ -223,7 +223,8 @@
     "show_hp_unit_on_map": "Show unit HP on map",
     "show_unit_modificators": "Show icon modificators on unit",
     "show_unit_vision": "Show unit vision radius",
-    "show_unit_vision_forest_raycast": "[BETA] Use forest map (raycast)",
+    "showUnitVisionOnlySelected": "Show unit vision radius",
+    "show_unit_vision_only_selected": "Use forest map (raycast)",
     "forest_map": "Show forest map",
     "height_map": "Show height map",
     "performance_debug": "Performance debug"
@@ -233,12 +234,12 @@
     "redTeamName": {
       "label": "Red team name",
       "description": "Optional name for the red side",
-      "placeholder": "e.g. USA"
+      "placeholder": "e.g. Great Britain"
     },
     "blueTeamName": {
       "label": "Blue team name",
       "description": "Optional name for the blue side",
-      "placeholder": "e.g. Britain"
+      "placeholder": "e.g. USA"
     },
     "limitedAmmo": {
       "label": "Limited ammunition",

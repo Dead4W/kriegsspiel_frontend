@@ -38,7 +38,7 @@ export function bindKeyboard(w: world) {
       cam.pos.y += dy * speed * dt
 
       cam.clampToWorld()
-      w.events.emit('changed', { reason: 'camera' })
+      // w.events.emit('changed', { reason: 'camera' })
     }
 
     requestAnimationFrame(loop)

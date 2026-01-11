@@ -42,7 +42,7 @@ function onKeydown(e: KeyboardEvent) {
   nextTick();
   if (e.key === 'Escape') {
     activeTool.value = null
-  } else if (e.key.toUpperCase() === 'V') {
+  } else if (e.code === 'KeyV') {
     activeTool.value = activeTool.value === Tools.RULER ? null : Tools.RULER
   }
 }

@@ -105,7 +105,7 @@ function rebuildOverlay() {
   if (points.value.length && preview.value) {
     items.push({
       type: 'line',
-      from: points.value.at(-1)!,
+      from: points.value[points.value.length - 1]!,
       to: preview.value,
       color: '#3cff0088',
       width: 1,

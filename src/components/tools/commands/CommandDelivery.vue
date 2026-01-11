@@ -145,6 +145,11 @@ onMounted(() => {
 })
 
 onUnmounted(cleanup)
+
+defineExpose({
+  confirm,
+})
+
 </script>
 
 <template>

@@ -9,7 +9,6 @@ import {
 } from "@/engine/units/modifiers/UnitDistanceModifier.ts";
 import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 import {
-  ArtilleryAngleTable, defaultAngleTable,
   getDamageModifierByHeights
 } from "@/engine/units/modifiers/UnitHeightModifier.ts";
 

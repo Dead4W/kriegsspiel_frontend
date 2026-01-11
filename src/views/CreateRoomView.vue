@@ -38,6 +38,7 @@ async function createRoom() {
     }
 
     localStorage.setItem(`room_key_${data.uuid}`, data.admin_key)
+    localStorage.setItem(`room_admin_key_${data.uuid}`, data.admin_key)
 
     // 👉 редирект в комнату по uuid
     await router.push(`/room/${data.uuid}`)

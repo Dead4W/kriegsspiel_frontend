@@ -163,15 +163,15 @@ function barStyle(value: number, max: number) {
         :key="u.id"
         class="mini-card"
         :class="{ active: u === focusedUnit }"
-        @click="toggleFocus(u)"
+        @click="toggleFocus(u as BaseUnit)"
       >
         <div class="mini-type">
           <span class="team-dot" :class="u.team" />
-          {{ unitTypeLabel(u) }}
+          {{ unitTypeLabel(u as BaseUnit) }}
 
           <span class="env-icons">
             <span
-              v-for="{icon, state} in envIcons(u)"
+              v-for="{icon, state} in envIcons(u as BaseUnit)"
               :key="icon"
               class="env-icon"
               :title="t(`env.${state}`)"

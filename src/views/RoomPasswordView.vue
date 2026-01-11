@@ -19,7 +19,9 @@ async function submit() {
   loading.value = true
   error.value = ''
 
-  const key = localStorage.getItem(`room_key_${uuid}`) ?? ''
+  const key = localStorage.getItem(`room_admin_key_${uuid}`)
+    ?? localStorage.getItem(`room_key_${uuid}`)
+    ?? ''
 
   try {
     // пробуем зайти в комнату с паролем

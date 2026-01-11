@@ -47,6 +47,7 @@ export async function buildForestMap(
       : Object.assign(document.createElement('canvas'), { width, height })
 
   const ctx = canvas.getContext('2d')!
+  // @ts-ignore
   ctx.clearRect(0, 0, width, height)
 
   // исходное изображение
@@ -56,11 +57,14 @@ export async function buildForestMap(
       : Object.assign(document.createElement('canvas'), { width, height })
 
   const srcCtx = srcCanvas.getContext('2d')!
+  // @ts-ignore
   srcCtx.drawImage(bitmap, 0, 0, width, height)
 
+  // @ts-ignore
   const img = srcCtx.getImageData(0, 0, width, height)
   const d = img.data
 
+  // @ts-ignore
   ctx.fillStyle = 'rgba(0,255,0,1)'
 
   for (let y = 0; y < height; y++) {
@@ -72,8 +76,11 @@ export async function buildForestMap(
       const b = d[i + 2]!
 
       if (isForestPixel(r, g, b)) {
+        // @ts-ignore
         ctx.beginPath()
+        // @ts-ignore
         ctx.arc(x, y, radius, 0, Math.PI * 2)
+        // @ts-ignore
         ctx.fill()
       }
     }

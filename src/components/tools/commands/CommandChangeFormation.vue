@@ -50,6 +50,11 @@ function confirm() {
 function cancel() {
   emit('close')
 }
+
+defineExpose({
+  confirm,
+})
+
 </script>
 
 <template>

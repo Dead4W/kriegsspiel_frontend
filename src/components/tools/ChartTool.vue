@@ -37,7 +37,8 @@ const emit = defineEmits<{
 
 interface Snapshot {
   ingame_time: string
-  units: Record<string, unitstate>
+  red: number
+  blue: number
 }
 
 /* ---------------- state ---------------- */
@@ -75,21 +76,28 @@ const chartData = computed(() => {
   const redData: number[] = []
   const blueData: number[] = []
 
+  // snapshots.value.forEach(snapshot => {
+  //   labels.push(new Date(snapshot.ingame_time.replace(' ', 'T')))
+  //
+  //   let redCommands = 0
+  //   let blueCommands = 0
+  //
+  //   Object.values(snapshot.units).forEach(unit => {
+  //     const hp = unit.hp ?? 0
+  //
+  //     if (unit.team === 'red') redCommands += hp
+  //     if (unit.team === 'blue') blueCommands += hp
+  //   })
+  //
+  //   redData.push(redCommands)
+  //   blueData.push(blueCommands)
+  // })
+
   snapshots.value.forEach(snapshot => {
     labels.push(new Date(snapshot.ingame_time.replace(' ', 'T')))
 
-    let redCommands = 0
-    let blueCommands = 0
-
-    Object.values(snapshot.units).forEach(unit => {
-      const hp = unit.hp ?? 0
-
-      if (unit.team === 'red') redCommands += hp
-      if (unit.team === 'blue') blueCommands += hp
-    })
-
-    redData.push(redCommands)
-    blueData.push(blueCommands)
+    redData.push(snapshot.red)
+    blueData.push(snapshot.blue)
   })
 
   return {

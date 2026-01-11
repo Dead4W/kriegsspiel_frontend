@@ -222,6 +222,16 @@ onUnmounted(() => {
     <label class="setting indent">
       <input
         type="checkbox"
+        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED]"
+        :disabled="!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION]"
+        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED)"
+      />
+      {{ t('client_settings.show_unit_vision_only_selected') }}
+    </label>
+
+    <label class="setting indent">
+      <input
+        type="checkbox"
         :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]"
         :disabled="!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION]"
         @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST)"

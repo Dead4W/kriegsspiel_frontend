@@ -176,6 +176,10 @@ onUnmounted(() => {
   window.ROOM_WORLD.clearOverlay()
 })
 
+defineExpose({
+  confirm,
+})
+
 </script>
 
 <template>

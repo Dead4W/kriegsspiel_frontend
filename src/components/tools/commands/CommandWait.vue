@@ -51,6 +51,11 @@ function confirm() {
 onMounted(() => {
   unitsSnapshot.value = [...props.units]
 })
+
+defineExpose({
+  confirm,
+})
+
 </script>
 
 <template>

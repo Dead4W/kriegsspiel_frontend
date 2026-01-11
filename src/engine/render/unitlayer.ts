@@ -50,6 +50,8 @@ export class unitlayer {
 
   private move_orders: Record<string, MoveOrderRange> = {}
 
+  private unitScale: number = 1
+
   constructor() {
     for (const type of Object.values(unitType)) {
       this.unitTypesLabel.set(type, translate(`unit.${type}`))
@@ -63,6 +65,7 @@ export class unitlayer {
   draw(ctx: CanvasRenderingContext2D, w: world) {
     const cam = w.camera
     const settings = window.CLIENT_SETTINGS
+    this.unitScale = settings[CLIENT_SETTING_KEYS.SIZE_UNIT]
 
     this.drawVision(ctx, w, settings)
     this.updateMoveOrders()
@@ -90,7 +93,7 @@ export class unitlayer {
       !settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]
     ) {
       debugPerformance('drawUnitVision', () => {
-        drawUnitVision(ctx, w)
+        drawUnitVision(ctx, w, settings)
       })
     }
   }
@@ -110,7 +113,6 @@ export class unitlayer {
         ? settings[CLIENT_SETTING_KEYS.OPACITY_UNIT] ?? 1
         : 0.3
 
-      const unitScale = settings[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1
       const p = cam.worldToScreen(unit.pos)
 
       const { r, g, b } = getTeamColor(unit.team)
@@ -121,8 +123,8 @@ export class unitlayer {
       })
 
 
-      const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * unitScale
-      const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * unitScale
+      const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * this.unitScale
+      const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * this.unitScale
 
       debugPerformance('drawUnitBody', () => {
         this.drawUnitBody(ctx, cam, unit, p, wUnit, hUnit)
@@ -304,8 +306,8 @@ export class unitlayer {
       return
 
     const hpRatio = unit.hp / unit.stats.maxHp
-    const barH = 4 * cam.zoom
-    const y = p.y + h / 2 + 4 * cam.zoom
+    const barH = 4 * cam.zoom * this.unitScale
+    const y = p.y + h / 2 + 4 * cam.zoom * this.unitScale
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)'
     ctx.fillRect(p.x - w / 2, y, w, barH)
@@ -335,14 +337,14 @@ export class unitlayer {
     if (!icons.length) return
 
     const text = icons.join(' ')
-    ctx.font = `${14 * cam.zoom}px system-ui`
+    ctx.font = `${14 * cam.zoom * this.unitScale}px system-ui`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
     const metrics = ctx.measureText(text)
-    const bgW = metrics.width + 12 * cam.zoom
-    const bgH = 20 * cam.zoom
-    const y = p.y - h / 2 - bgH - 25 * cam.zoom
+    const bgW = metrics.width + 12 * cam.zoom * this.unitScale
+    const bgH = 20 * cam.zoom * this.unitScale
+    const y = p.y - h / 2 - bgH - 25 * cam.zoom * this.unitScale
 
     ctx.fillStyle = 'rgba(0,0,0,0.5)'
     drawRoundRect(ctx, p.x - bgW / 2, y, bgW, bgH, 4 * cam.zoom)
@@ -364,14 +366,14 @@ export class unitlayer {
     if (!unit.directView) return
 
     const icon = '👁'
-    ctx.font = `${14 * cam.zoom}px system-ui`
+    ctx.font = `${14 * cam.zoom * this.unitScale}px system-ui`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
     const metrics = ctx.measureText(icon)
-    const bgW = metrics.width + 12 * cam.zoom
-    const bgH = 20 * cam.zoom
-    const y = p.y - h / 2 - bgH - 48 * cam.zoom
+    const bgW = metrics.width + 12 * cam.zoom * this.unitScale
+    const bgH = 18 * cam.zoom * this.unitScale
+    const y = p.y - h / 2 - bgH - 6 * cam.zoom * this.unitScale
 
     ctx.fillStyle = 'rgba(0,0,0,0.5)'
     drawRoundRect(ctx, p.x - bgW / 2, y, bgW, bgH, 4 * cam.zoom)
@@ -397,14 +399,14 @@ export class unitlayer {
       text += ` (${this.unitTypesLabel.get(unit.type)!})`
     }
 
-    ctx.font = `${12 * cam.zoom}px system-ui`
+    ctx.font = `${12 * cam.zoom * this.unitScale}px system-ui`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
     const metrics = ctx.measureText(text)
-    const bgW = metrics.width + 12 * cam.zoom
-    const bgH = 18 * cam.zoom
-    const y = p.y - h / 2 - bgH - 6 * cam.zoom
+    const bgW = metrics.width + 12 * cam.zoom * this.unitScale
+    const bgH = 18 * cam.zoom * this.unitScale
+    const y = p.y - h / 2 - bgH - 6 * cam.zoom * this.unitScale
 
     ctx.fillStyle = unit.isSelected()
       ? 'rgba(74,222,128,0.55)'

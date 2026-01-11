@@ -1,23 +1,18 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
-import {useI18n} from 'vue-i18n'
 import {Team} from '@/enums/teamKeys'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
-
-const { t } = useI18n()
+import type {unitTeam} from "@/engine";
 
 const displayWorldTime = ref(window.ROOM_WORLD.time)
 
-const minutes = ref(5)
+const minutes = ref(1)
 const seconds = ref(0)
 
 const totalSeconds = ref(0)
 const running = ref(false)
-
-let timerId: number | null = null
 
 /* ===== helpers ===== */
 
@@ -41,6 +36,8 @@ function processUnitCommands(dt: number) {
   const units = window.ROOM_WORLD.units.list()
 
   for (const unit of units) {
+    if (!unit.alive) continue
+
     const commands = unit.getCommands()
     if (commands.length === 0) continue;
 
@@ -56,7 +53,7 @@ function processUnitCommands(dt: number) {
 
       if (cmd.type === UnitCommandTypes.Attack) {
         cmd.start(unit)
-        cmd.update(unit, left_dt)
+        cmd.update(unit, dt)
       } else {
         if (left_dt > 0) {
           const estimate = cmd.estimate(unit);
@@ -120,12 +117,20 @@ async function startTurn() {
   // DirectView general
   const directViewByTeam = window.ROOM_WORLD.units.getDirectView();
   for (const team of [Team.RED, Team.BLUE]) {
-    window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team)!.map(uuid => {
+    window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team as unitTeam)!.map(uuid => {
         const u = window.ROOM_WORLD.units.get(uuid)!
         return {
           id: u.id,
+          type: u.type,
+          team: u.team,
           pos: u.pos,
+
           hp: u.hp,
+          ammo: u.ammo,
+
+          envState: u.envState,
+          formation: u.getFormation(),
+          activeAbilityType: u.activeAbilityType,
         }
     })})
   }

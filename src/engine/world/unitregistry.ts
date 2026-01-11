@@ -80,15 +80,15 @@ export class unitregistry {
   }
 
   remove(id: uuid, source: 'local' | 'remote' = 'local') {
-    const u = this.get(id)!;
-    if (
-      source === 'local'
-      && window.ROOM_WORLD.stage !== RoomGameStage.PLANNING
-      && window.PLAYER.team !== Team.ADMIN
-      && u.team === window.PLAYER.team
-    ) {
-      return;
-    }
+    // const u = this.get(id)!;
+    // if (
+    //   source === 'local'
+    //   && window.ROOM_WORLD.stage !== RoomGameStage.PLANNING
+    //   && window.PLAYER.team !== Team.ADMIN
+    //   && u.team === window.PLAYER.team
+    // ) {
+    //   return;
+    // }
     this.map.delete(id)
     if (source === 'local') this.dirtyRemove.add(id)
   }
@@ -161,8 +161,6 @@ export class unitregistry {
 
       const visionPoly = buildVisionPolygon(generalUnit, window.ROOM_WORLD)
       for (const unit of this.list()) {
-        if (unit.team !== generalUnit.team) continue;
-
         const a = generalUnit.pos
         const b = unit.pos
 

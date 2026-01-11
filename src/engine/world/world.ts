@@ -70,7 +70,7 @@ export class world {
 
   setViewport(w: number, h: number) {
     this.camera.setViewport(w, h);
-    this.events.emit('changed', { reason: 'viewport' })
+    // this.events.emit('changed', { reason: 'viewport' })
   }
 
   setOverlay(item: OverlayItem[]) {

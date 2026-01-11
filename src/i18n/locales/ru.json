@@ -224,7 +224,8 @@
     "show_hp_unit_on_map": "Показывать HP на карте",
     "show_unit_modificators": "Показывать иконки модификаторов юнита",
     "show_unit_vision": "Показывать область видимости юнитов",
-    "show_unit_vision_forest_raycast": "[BETA] Использовать карту леса (raycast)",
+    "show_unit_vision_only_selected": "Только выделенные юниты",
+    "show_unit_vision_forest_raycast": "Использовать карту леса (raycast)",
     "forest_map": "Показать карту лесов",
     "height_map": "Показать карту высот",
     "performance_debug": "Дебаг производительности"
@@ -234,12 +235,12 @@
     "redTeamName": {
       "label": "Название красной команды",
       "description": "Опциональное название для красной стороны",
-      "placeholder": "Например: США"
+      "placeholder": "Например: Британия"
     },
     "blueTeamName": {
       "label": "Название синей команды",
       "description": "Опциональное название для синей стороны",
-      "placeholder": "Например: Британия"
+      "placeholder": "Например: США"
     },
     "limitedAmmo": {
       "label": "Патроны не бесконечные",

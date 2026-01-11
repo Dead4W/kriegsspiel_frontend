@@ -78,7 +78,8 @@ async function loadRoom() {
 
   // key из URL имеет приоритет
   const keyFromRoute = route.params.key as string | undefined
-  const keyFromStorage = localStorage.getItem(`room_key_${uuid}`)
+  const keyFromStorage = localStorage.getItem(`room_admin_key_${uuid}`)
+    ?? localStorage.getItem(`room_key_${uuid}`)
   const key = keyFromRoute || keyFromStorage
 
   // если key пришёл из URL — сохраним
@@ -139,7 +140,9 @@ async function onTeamSelected(team: Team) {
     roomId: route.params.uuid as string,
     team: window.PLAYER.team,
     password: localStorage.getItem(`room_pass_${route.params.uuid}`) ?? undefined,
-    key: localStorage.getItem(`room_key_${route.params.uuid}`) ?? undefined,
+    key: localStorage.getItem(`room_admin_key_${route.params.uuid}`)
+      ?? localStorage.getItem(`room_key_${route.params.uuid}`)
+      ?? undefined,
     world: w!,
   })
 }

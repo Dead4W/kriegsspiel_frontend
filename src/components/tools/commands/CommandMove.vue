@@ -622,6 +622,11 @@ onUnmounted(() => {
   window.ROOM_WORLD.clearOverlay()
   window.INPUT.IGNORE_DRAG = false;
 })
+
+defineExpose({
+  confirm,
+})
+
 </script>
 
 <template>

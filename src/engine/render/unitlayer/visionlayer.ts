@@ -1,10 +1,12 @@
 import {getTeamColor} from "@/engine/render/util.ts";
 import {type vec2, world} from "@/engine";
-import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 
-const FOREST_THREASHHOLD = 15;
+// Meters
+const FOREST_THREASHHOLD = 200;
+const NOT_IN_FOREST_MODIFIER = 0.25;
 
 function isForestPixel(
   w: world,
@@ -17,14 +19,15 @@ function isForestPixel(
   if (x < 0 || y < 0 || x >= img.width || y >= img.height) return false
 
   const i = (Math.floor(y) * img.width + Math.floor(x)) * 4
-  return img.data[i + 3]! > 0
+  return img.data[i + 3]! > 200
 }
 
 function castRay(
   w: world,
   origin: { x: number; y: number },
   angle: number,
-  maxDist: number
+  maxDist: number,
+  fromForest: boolean,
 ) {
   const step = 5
   const dx = Math.cos(angle) * step
@@ -34,19 +37,16 @@ function castRay(
   let y = origin.y
   let dist = 0
 
-  let leaveFirstForest = true;
   let forestThresholdTimer = 0;
+  const forestThreshold = (fromForest ? FOREST_THREASHHOLD : FOREST_THREASHHOLD * NOT_IN_FOREST_MODIFIER)
+    / window.ROOM_WORLD.map.metersPerPixel
 
   while (dist < maxDist) {
-    if (isForestPixel(w, x, y) && dist > (step * 10)) {
-      if (leaveFirstForest) {
+    if (isForestPixel(w, x, y)) {
+      forestThresholdTimer += step
+      if (forestThresholdTimer >= forestThreshold) {
         return { x, y }
       }
-    }
-
-    forestThresholdTimer++;
-    if (forestThresholdTimer > FOREST_THREASHHOLD) {
-      leaveFirstForest = true;
     }
 
     x += dx
@@ -66,7 +66,7 @@ export function buildVisionPolygon(u: BaseUnit, w: world) {
 
   for (let i = 0; i < rays; i++) {
     const angle = (i / rays) * Math.PI * 2
-    points.push(castRay(w, origin, angle, maxRange))
+    points.push(castRay(w, origin, angle, maxRange, u.envState.includes(UnitEnvironmentState.InForest)))
   }
 
   return points
@@ -89,12 +89,17 @@ function samePos(a: { x: number; y: number }, b: { x: number; y: number }) {
  */
 export function drawUnitVision(
   ctx: CanvasRenderingContext2D,
-  w: world
+  w: world,
+  settings: typeof window.CLIENT_SETTINGS,
 ) {
   for (const u of w.units.list()) {
     if (!u.alive || !u.stats.visionRange) {
       visionCache.delete(u.id);
       continue;
+    }
+
+    if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED] && !u.selected) {
+      continue
     }
 
     const { r: cr, g: cg, b: cb } = getTeamColor(u.team)
@@ -119,7 +124,8 @@ export function drawUnitVision(
     }
 
     // ===== КЕШ =====
-    let cache = visionCache.get(u.id)
+    const unitInForest = u.envState.includes(UnitEnvironmentState.InForest)
+    let cache = visionCache.get(`${u.id}_${unitInForest}`)
     let poly: vec2[]
 
     if (!cache || !samePos(cache.pos, u.pos)) {

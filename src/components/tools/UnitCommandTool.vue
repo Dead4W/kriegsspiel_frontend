@@ -31,6 +31,12 @@ const hotkeys: Record<string, UnitCommandTypes> = {
 
 const activeOrder = ref<UnitCommandTypes | null>(null)
 
+const attackRef = ref<any>(null)
+const moveRef = ref<any>(null)
+const formationRef = ref<any>(null)
+const waitRef = ref<any>(null)
+const deliveryRef = ref<any>(null)
+
 function open(order: UnitCommandTypes) {
   if (isCommandDisabled(order)) return
   activeOrder.value = order
@@ -54,6 +60,30 @@ function clearCommands() {
 }
 
 function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && activeOrder.value) {
+    e.preventDefault()
+    e.stopPropagation()
+
+    switch (activeOrder.value) {
+      case UnitCommandTypes.Attack:
+        attackRef.value?.confirm?.()
+        break
+      case UnitCommandTypes.Move:
+        moveRef.value?.confirm?.()
+        break
+      case UnitCommandTypes.ChangeFormation:
+        formationRef.value?.confirm?.()
+        break
+      case UnitCommandTypes.Wait:
+        waitRef.value?.confirm?.()
+        break
+      case UnitCommandTypes.Delivery:
+        deliveryRef.value?.confirm?.()
+        break
+    }
+    return
+  }
+
   if (e.key === 'Escape') {
     if (activeOrder.value) {
       close()
@@ -181,30 +211,35 @@ onUnmounted(() => {
     <!-- ===== DETAILS ===== -->
     <CommandAttack
       v-if="activeOrder === UnitCommandTypes.Attack"
+      ref="attackRef"
       :units="units"
       @close="close"
     />
 
     <CommandMove
       v-if="activeOrder === UnitCommandTypes.Move"
+      ref="moveRef"
       :units="units"
       @close="close"
     />
 
     <CommandDelivery
       v-if="activeOrder === UnitCommandTypes.Delivery"
+      ref="deliveryRef"
       :units="units"
       @close="close"
     />
 
     <CommandChangeFormation
       v-if="activeOrder === UnitCommandTypes.ChangeFormation"
+      ref="formationRef"
       :units="units"
       @close="close"
     />
 
     <CommandWait
       v-if="activeOrder === UnitCommandTypes.Wait"
+      ref="waitRef"
       :units="units"
       @close="close"
     />

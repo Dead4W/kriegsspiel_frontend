@@ -48,7 +48,7 @@ function focusUnits(units: BaseUnit[]) {
   cam.pos.y = centerY - halfH
 
   cam.clampToWorld()
-  w.events.emit('changed', { reason: 'camera' })
+  // w.events.emit('changed', { reason: 'camera' })
 }
 
 function refreshNotifications() {

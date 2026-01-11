@@ -65,8 +65,8 @@ function percentClass(key: StatKey, p: number): string {
 
 // PROXIES
 function commitInput() {
-  unit.hp = clamp(Number(hpProxy.value), 0, unit.stats.maxHp);
-  unit.ammo = clamp(Number(ammoProxy.value), 0, unit.stats.ammoMax);
+  unit.hp = clamp(Number(hpProxy.value), 0, unit.stats.maxHp!);
+  unit.ammo = clamp(Number(ammoProxy.value), 0, unit.stats.ammoMax!);
   onEdit();
 }
 
@@ -110,13 +110,14 @@ function isEnabledAmmo() {
 
 // force refresh on changed
 const refreshKey = ref(0)
-function syncSelection() {
+function syncSelection(data: {reason: string}) {
+  console.log(data.reason)
   isMessenger.value = unit.type === unitType.MESSENGER;
   refreshKey.value++
 }
 onMounted(() => {
   window.ROOM_WORLD.events.on('changed', syncSelection)
-  syncSelection()
+  syncSelection({reason: 'init'})
 })
 onUnmounted(() => {
   window.ROOM_WORLD.events.off('changed', syncSelection)

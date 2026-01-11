@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
+import {computed, type ComputedRef, nextTick, onMounted, onUnmounted, ref} from 'vue'
 import SpawnTool from '@/components/tools/SpawnTool.vue'
 import RulerTool from '@/components/tools/RulerTool.vue'
 import {useI18n} from 'vue-i18n'
@@ -13,6 +13,8 @@ import ForcesBar from "@/components/ForcesBar.vue";
 import NotificationsPanel from "@/components/NotificationsPanel.vue";
 import BattleLog from "@/components/BattleLog.vue";
 import ChartTool from "@/components/tools/ChartTool.vue";
+import DemoTool from "@/components/tools/DemoTool.vue";
+import {RoomGameStage} from "@/enums/roomStage.ts";
 
 const { t } = useI18n()
 
@@ -26,7 +28,8 @@ enum Tools {
 
 const activeTool = ref<Tools | null>(null)
 
-const world = computed(() => window.ROOM_WORLD)
+const world = ref(window.ROOM_WORLD)
+const isEnd = ref(false)
 
 function toggle(e: MouseEvent, tool: Tools) {
   e.preventDefault()
@@ -51,11 +54,18 @@ function close() {
   activeTool.value = null
 }
 
-onMounted(() => {
-  window.addEventListener('keydown', onKeydown)
-})
+function sync() {
+  world.value = window.ROOM_WORLD
+  isEnd.value = world.value.stage === RoomGameStage.END
+}
 
+onMounted(() => {
+  window.ROOM_WORLD.events.on('changed', sync)
+  window.addEventListener('keydown', onKeydown)
+  sync()
+})
 onUnmounted(() => {
+  window.ROOM_WORLD.events.off('changed', sync)
   window.removeEventListener('keydown', onKeydown)
 })
 </script>
@@ -71,7 +81,7 @@ onUnmounted(() => {
     <!-- Панель инструментов -->
     <div class="toolbar no-select">
       <button
-        v-if="isAdmin()"
+        v-if="isAdmin() && !isEnd"
         :class="{ active: activeTool === Tools.LOGS}"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.LOGS)"
@@ -98,6 +108,7 @@ onUnmounted(() => {
       </button>
 
       <button
+        v-if="!isEnd"
         :class="{ active: activeTool === Tools.SPAWN }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.SPAWN)"
@@ -114,6 +125,12 @@ onUnmounted(() => {
         📏 {{ t('tools.ruler') }}
       </button>
     </div>
+
+    <DemoTool
+      v-if="isAdmin() && isEnd"
+      :world="world"
+      @close="close"
+    />
 
     <AdminTool
       v-if="isAdmin() && activeTool === Tools.ADMIN"
@@ -145,6 +162,7 @@ onUnmounted(() => {
 
     <SelectionPanel
       :world="world"
+      :isEnd="isEnd"
       class="no-select"
     />
 
@@ -152,7 +170,7 @@ onUnmounted(() => {
 
     <KringChat />
 
-    <NotificationsPanel v-if="isAdmin()"/>
+    <NotificationsPanel v-if="isAdmin() && !isEnd"/>
   </div>
 </template>
 

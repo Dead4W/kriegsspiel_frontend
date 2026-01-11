@@ -16,7 +16,7 @@ const { t } = useI18n()
 
 /* ================= props ================= */
 
-const { world } = defineProps<{ world: worldType }>()
+const { world } = defineProps<{ world: worldType, isEnd: boolean }>()
 
 /* ================= state ================= */
 
@@ -139,6 +139,7 @@ function barStyle(value: number, max: number) {
 
     <!-- ===== ACTIONS ===== -->
     <UnitActionPanel
+      v-if="!isEnd"
       :units="selectedUnits"
       @edit="notifyEdit"
     />

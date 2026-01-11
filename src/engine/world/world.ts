@@ -1,7 +1,7 @@
 import type {unitstate, uuid} from '@/engine/units/types'
-import { emitter } from '../events'
-import { camera } from './camera'
-import { unitregistry } from './unitregistry'
+import {emitter} from '../events'
+import {camera} from './camera'
+import {unitregistry} from './unitregistry'
 import {overlaystate} from "@/engine/world/overlay.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
 import type {mapmeta} from "@/engine/types.ts";
@@ -11,9 +11,9 @@ import {cursorregistry} from "@/engine/world/cursorregistry.ts";
 import {createHeightSampler, type HeightSampler} from "@/engine/assets/heightmap.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import type {OutMessage} from "@/api/socket.ts";
-import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import {type Ref, ref} from "vue";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
+import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 
 type worldevents = {
   changed: { reason: string }
@@ -138,13 +138,23 @@ export class world {
 
   updateTime(time: string) {
     this.time = time;
-    const messageSound = new Audio('/assets/sounds/message.wav')
-    messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-    messageSound.play();
+    if (this.stage !== RoomGameStage.END) {
+      const messageSound = new Audio('/assets/sounds/message.wav')
+      messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME] ?? 0.3
+      messageSound.play();
+    }
   }
 
   setStage(stage: RoomGameStage) {
     this.stage = stage;
     this.events.emit('api', { type: 'set_stage', data: stage});
+  }
+
+  clear() {
+    this.units = new unitregistry()
+    this.clearOverlay()
+    this.messages = new messageregistry()
+    this.cursor = new cursorregistry()
+    this.logs.value = []
   }
 }

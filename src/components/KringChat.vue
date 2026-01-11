@@ -277,12 +277,15 @@ const input = ref('')
 function send() {
   if (!input.value.trim()) return
 
-  const team = window.ROOM_WORLD.units.getSelected()[0]!.team as Team;
+  const selected = window.ROOM_WORLD.units.getSelected()
+    .filter(u => u.type !== unitType.MESSENGER)
+
+  const team = selected[0]!.team as Team;
   const m = {
     id: crypto.randomUUID(),
     author: window.PLAYER.name,
     author_team: window.PLAYER.team,
-    unitIds: window.ROOM_WORLD.units.getSelected().map(u => u.id),
+    unitIds: selected.map(u => u.id),
     text: input.value,
     time: window.ROOM_WORLD.time,
     team: team,
@@ -291,7 +294,7 @@ function send() {
 
   window.ROOM_WORLD.addMessage(m);
 
-  for (const u of window.ROOM_WORLD.units.getSelected()) {
+  for (const u of selected) {
     u.linkMessage(m.id);
     u.setDirty()
   }

@@ -202,6 +202,9 @@ onUnmounted(() => {
   left: 50%;
   transform: translateX(-50%);
 
+  width: 220px;
+  text-align: center;
+
   pointer-events: auto;
   z-index: 20;
 

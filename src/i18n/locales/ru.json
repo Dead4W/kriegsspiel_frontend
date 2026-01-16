@@ -53,11 +53,12 @@
     "clear": "Очистить приказы",
     "move_pick": "Назначить точку",
     "damage_modifier": "Модификатор урона",
-    "changeFormation": "Смена формации"
+    "changeFormation": "Смена формации",
+    "inaccuracy_radius": "Радиус артиллерии"
   },
   "command_desc": {
     "move": "Движение к точке ({x}, {y})",
-    "attack": "Атака целей: {count}, модификатор урона {dmg}%",
+    "attack": "Атака целей: {count}, модификатор урона {dmg}",
     "changeFormation": "Смена построения на «{formation}»"
   },
   "command_status": {
@@ -282,6 +283,7 @@
   "ability": {
     "double_time_move": "Ускоренный марш",
     "charge": "Кавалерийская атака",
-    "inaccuracy_fire": "Неточный артиллерийский огонь"
+    "inaccuracy_fire": "Неточный артиллерийский огонь",
+    "throttle": "Подавление"
   }
 }

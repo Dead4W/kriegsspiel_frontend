@@ -1,23 +1,22 @@
-import type { world } from '../world/world'
+import type {world} from '../world/world'
 import {drawRoundRect, getTeamColor} from '@/engine/render/util.ts'
-import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
-import { translate } from '@/i18n'
+import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys'
+import {translate} from '@/i18n'
 import {drawUnitVision} from "@/engine/render/unitlayer/visionlayer.ts";
 import {getUnitTexture} from "@/engine/assets/textures.ts";
-import {
-  drawAttackWaveIcons,
-  drawMoveArrowChainIcons
-} from "@/engine/render/canvasUtil.ts";
+import {drawAttackWaveIcons, drawMoveArrowChainIcons} from "@/engine/render/canvasUtil.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
-import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
+import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {unitType} from "@/engine";
 import {
   type UnitEnvironmentState,
   UnitEnvironmentStateIcon
 } from "@/engine/units/enums/UnitStates.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
+import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 
 type MoveOrderRange = {
   min: number
@@ -236,18 +235,47 @@ export class unitlayer {
 
         case UnitCommandTypes.Attack: {
           const command = cmd as AttackCommand
-          const targets = command.getPriorityTargets(unit)
+          const cmdState: AttackCommandState = cmd.getState().state as AttackCommandState;
+          if (
+            cmdState.abilities.includes(UnitAbilityType.INACCURACY_FIRE)
+            && cmdState.inaccuracyPoint
+          ) {
+            drawAttackWaveIcons(
+              ctx,
+              unit.pos,
+              cmdState.inaccuracyPoint,
+              color,
+              cam.zoom
+            )
 
-          for (const target of targets) {
-            debugPerformance('drawAttackWaveIcons', () => {
-              drawAttackWaveIcons(
-                ctx,
-                unit.pos,
-                target.pos,
-                color,
-                cam.zoom
-              )
-            })
+            ctx.save();
+            ctx.fillStyle = 'rgba(168,85,247,0.45)'
+            ctx.strokeStyle = 'black'
+            ctx.lineWidth = 1 * cam.zoom
+
+            const radiusMeters = computeInaccuracyRadius(unit, cmdState.inaccuracyPoint);
+            const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel;
+
+            const {x,y} = cam.worldToScreen(cmdState.inaccuracyPoint)
+
+            ctx.beginPath()
+            ctx.arc(x, y, radiusPixels * cam.zoom, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.stroke()
+            ctx.restore()
+          } else {
+            const targets = command.getPriorityTargets(unit)
+            for (const target of targets) {
+              debugPerformance('drawAttackWaveIcons', () => {
+                drawAttackWaveIcons(
+                  ctx,
+                  unit.pos,
+                  target.pos,
+                  color,
+                  cam.zoom
+                )
+              })
+            }
           }
           break
         }
@@ -307,7 +335,7 @@ export class unitlayer {
 
     const hpRatio = unit.hp / unit.stats.maxHp
     const barH = 4 * cam.zoom * this.unitScale
-    const y = p.y + h / 2 + 4 * cam.zoom * this.unitScale
+    const y = p.y + h / 2 + 2 * cam.zoom * this.unitScale
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)'
     ctx.fillRect(p.x - w / 2, y, w, barH)

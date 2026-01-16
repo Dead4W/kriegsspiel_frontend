@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
-import type { BaseUnit } from '@/engine/units/baseUnit'
-import { useI18n } from 'vue-i18n'
-import type {OverlayItem, OverlayLine} from "@/engine/types/overlayTypes.ts";
+import {computed, onMounted, onUnmounted, ref, type UnwrapRef, watch} from 'vue'
+import type {BaseUnit} from '@/engine/units/baseUnit'
+import {useI18n} from 'vue-i18n'
+import type {OverlayCircle, OverlayItem, OverlayLine} from "@/engine/types/overlayTypes.ts";
 import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
 import {getTeamColor} from "@/engine/render/util.ts";
 import {type unitTeam, unitType} from "@/engine";
-import type { unsub } from "@/engine/events";
-import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import type {unsub} from "@/engine/events";
+import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 
 const {t} = useI18n()
 
@@ -32,6 +33,9 @@ const attackers = ref<BaseUnit[]>([])
 /** Цели — считаются по текущему выделению */
 const targets = ref<BaseUnit[]>([])
 
+const inaccuracyRadius = ref(0)
+const inaccuracyPoint = ref<{ pos: { x: number; y: number } } | null>(null)
+
 const selectedAbilities = ref<UnitAbilityType[]>([])
 function toggleAbility(a: UnitAbilityType) {
   if (selectedAbilities.value.includes(a)) {
@@ -39,11 +43,11 @@ function toggleAbility(a: UnitAbilityType) {
   } else {
     selectedAbilities.value.push(a)
   }
+  syncTargets()
 }
 
 const availableAbilities = computed<UnitAbilityType[]>(() => {
   const set = new Set<UnitAbilityType>()
-
   for (const u of attackers.value) {
     for (const a of u.abilities) {
       set.add(a)
@@ -83,6 +87,15 @@ const targetsGrouped = computed(() => group(targets.value))
 
 const damageModifier = ref(1.0)
 
+watch(selectedAbilities, (list) => {
+  if (!list.includes(UnitAbilityType.INACCURACY_FIRE)) {
+    inaccuracyPoint.value = null
+  }
+})
+watch(inaccuracyRadius, rebuildAttackOverlay)
+watch(selectedAbilities, rebuildAttackOverlay)
+watch(inaccuracyPoint, rebuildAttackOverlay)
+
 /* ================= SELECTION SYNC ================= */
 
 function syncTargets() {
@@ -92,17 +105,22 @@ function syncTargets() {
   attackers.value = window.ROOM_WORLD.units
     .list()
     .filter(u => u.selected && u.team === attackers.value[0]?.team)
+  if (selectedAbilities.value.includes(UnitAbilityType.INACCURACY_FIRE)) {
+    attackers.value = attackers.value.filter(u => u.type === unitType.ARTILLERY);
+    targets.value = [];
+  }
 }
 
 /* ================= ACTION ================= */
 
 function confirm() {
-  if (!targets.value.length) return
+  if (!targets.value.length && !inaccuracyPoint.value) return
 
   const cmd = new AttackCommand({
     targets: targets.value.map(u => u.id),
     damageModifier: damageModifier.value,
     abilities: selectedAbilities.value,
+    inaccuracyPoint: inaccuracyPoint.value ? inaccuracyPoint.value.pos : null,
   })
 
   for (const u of attackers.value) {
@@ -117,41 +135,102 @@ function confirm() {
   window.ROOM_WORLD.clearOverlay()
   emit('close')
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
+
+  inaccuracyPoint.value = null
 }
 
 // OVERLAY
 
 function rebuildAttackOverlay() {
-  if (!attackers.value.length || !targets.value.length) {
+  if (!attackers.value.length) {
     window.ROOM_WORLD.clearOverlay()
     return
   }
 
   const items: OverlayItem[] = []
 
-  for (const a of attackers.value) {
-    for (const t of targets.value) {
-      items.push({
-        type: 'line',
-        from: a.pos,
-        to: t.pos,
-        color: '#facc15',
-        width: 1,
-        dash: [6, 6],
-        dashOffset: -1,
-      } satisfies OverlayLine)
+  /* точка + радиус неточного огня */
+  if (
+    selectedAbilities.value.includes(UnitAbilityType.INACCURACY_FIRE)
+  ) {
+    if (inaccuracyPoint.value) {
+      items.push(
+        {
+          type: 'circle',
+          center: inaccuracyPoint.value.pos,
+          radius: inaccuracyRadius.value / window.ROOM_WORLD.map.metersPerPixel,
+          color: 'rgba(168,85,247,0.45)',
+          fill: true,
+        } satisfies OverlayCircle
+      )
+      for (const a of attackers.value) {
+        items.push({
+          type: 'line',
+          from: a.pos,
+          to: inaccuracyPoint.value.pos,
+          color: '#facc15',
+          width: 1,
+          dash: [6, 6],
+          dashOffset: -1,
+        } satisfies OverlayLine)
+      }
+    }
+  } else {
+    /* линии атаки (если есть обычные цели) */
+    for (const a of attackers.value) {
+      for (const t of targets.value) {
+        items.push({
+          type: 'line',
+          from: a.pos,
+          to: t.pos,
+          color: '#facc15',
+          width: 1,
+          dash: [6, 6],
+          dashOffset: -1,
+        } satisfies OverlayLine)
+      }
     }
   }
 
   window.ROOM_WORLD.setOverlay(items)
 }
 
+
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 2) return
+  if (!selectedAbilities.value.includes(UnitAbilityType.INACCURACY_FIRE)) return
+  if ((e.target as HTMLElement)?.closest('.order-attack')) return
+
+  e.stopPropagation()
+  e.preventDefault()
+
+  const world = window.ROOM_WORLD
+  const pos = world.camera.screenToWorld({
+    x: e.clientX,
+    y: e.clientY,
+  })
+
+  // ПКМ — задать / переместить точку атаки
+  inaccuracyPoint.value = { pos }
+
+  let sumDist = 0;
+  for (const a of attackers.value) {
+    sumDist += computeInaccuracyRadius(
+      a as BaseUnit,
+      pos,
+    )
+  }
+  inaccuracyRadius.value = sumDist / attackers.value.length;
+
+  rebuildAttackOverlay()
+}
+
 // LIFE CYCLE
 
-let timer: number | null = null;
 let unsubscribe: unsub;
 
 onMounted(() => {
+  inaccuracyPoint.value = null
   if (props.units.length > 0) {
     attackers.value = props.units.filter(u => u.team === props.units[0]!.team)
     targets.value = props.units.filter(u => u.team !== props.units[0]!.team)
@@ -165,6 +244,8 @@ onMounted(() => {
     syncTargets()
     rebuildAttackOverlay()
   })
+
+  window.addEventListener('pointerdown', onPointerDown, true)
 })
 
 onUnmounted(() => {
@@ -174,6 +255,8 @@ onUnmounted(() => {
 
   window.ROOM_WORLD.events.off('changed', syncTargets)
   window.ROOM_WORLD.clearOverlay()
+
+  window.removeEventListener('pointerdown', onPointerDown, true)
 })
 
 defineExpose({
@@ -208,20 +291,29 @@ defineExpose({
       <div class="title">{{ t('tools.command.targets') }}</div>
       <div class="cards">
         <div
-          v-if="!targetsGrouped.length"
+          v-if="!targetsGrouped.length && !inaccuracyPoint"
           class="hint"
         >
           {{ t('tools.command.attackHint') }}
         </div>
 
-        <div
-          v-for="targetGroup in targetsGrouped"
-          :key="targetGroup.type + targetGroup.team"
-          class="card"
-          :style="{ color: teamColor(targetGroup.team) }"
-        >
-          {{ t(`unit.${targetGroup.type}`) }} × {{ targetGroup.count }}
-        </div>
+        <template v-if="targetsGrouped.length > 0">
+          <div
+            v-for="targetGroup in targetsGrouped"
+            :key="targetGroup.type + targetGroup.team"
+            class="card"
+            :style="{ color: teamColor(targetGroup.team) }"
+          >
+            {{ t(`unit.${targetGroup.type}`) }} × {{ targetGroup.count }}
+          </div>
+        </template>
+        <template v-if="inaccuracyPoint">
+          <div
+            class="card"
+          >
+            x={{ inaccuracyPoint.pos.x.toFixed(0) }}, y={{ inaccuracyPoint.pos.y.toFixed(0) }}
+          </div>
+        </template>
       </div>
     </div>
 
@@ -249,23 +341,25 @@ defineExpose({
 
     <!-- ===== SETTINGS ===== -->
     <div class="column settings">
+      <!-- damage modifier -->
       <div class="title">
-        {{ t('command.damage_modifier') }} × {{ damageModifier.toFixed(1) }}
+        {{ t('command.damage_modifier') }} × {{ damageModifier.toFixed(2) }}
       </div>
       <input
         type="range"
-        min="0"
-        max="3"
-        step="0.1"
+        min="0.00"
+        max="2"
+        step="0.05"
         v-model.number="damageModifier"
       />
     </div>
+
 
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
       <button
         class="btn confirm"
-        :disabled="!targets.length"
+        :disabled="!targets.length && !inaccuracyPoint"
         @click="confirm"
       >
         {{ t('tools.command.attack') }}
@@ -316,7 +410,7 @@ defineExpose({
 }
 
 .column.settings {
-  min-width: 140px;
+  min-width: 160px;
 }
 
 .column.actions {

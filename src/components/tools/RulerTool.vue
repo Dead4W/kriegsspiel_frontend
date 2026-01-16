@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import {ref, onMounted, onBeforeUnmount, type UnwrapRef} from 'vue'
 import type { world } from '@/engine'
 import type {
   OverlayLine,

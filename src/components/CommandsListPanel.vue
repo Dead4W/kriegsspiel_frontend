@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
 import {useI18n} from 'vue-i18n'
 import type {BaseUnit} from '@/engine/units/baseUnit'
 import {BaseCommand, CommandStatus} from '@/engine/units/commands/baseCommand'
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
-import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
+import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 import type {vec2} from "@/engine";
 
@@ -65,9 +65,15 @@ function description(cmd: BaseCommand<any, any>) {
       })
 
     case UnitCommandTypes.Attack:
+      const attackState = state as AttackCommandState
+      const attackCmd = cmd as AttackCommand
+      let targets = attackState.targets.length;
+      if (attackState.inaccuracyPoint) {
+        targets = attackCmd.getUnitsInInaccuracyRadius(unit).length;
+      }
       return t('command_desc.attack', {
-        count: state.targets.length,
-        dmg: Math.round((state.damageModifier - 1) * 100),
+        count: targets,
+        dmg: state.damageModifier.toFixed(2),
       })
 
     case UnitCommandTypes.ChangeFormation:

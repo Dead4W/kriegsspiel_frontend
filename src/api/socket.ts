@@ -1,11 +1,11 @@
-import type {unitstate, unitTeam, uuid} from '@/engine/units/types'
-import {type MoveFrame, type vec2, world} from '@/engine'
+import type {unitstate, uuid} from '@/engine/units/types'
+import {type MoveFrame, world} from '@/engine'
 import {createRafInterval, type RafInterval} from "@/engine/util.ts";
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import type {CursorObject} from "@/engine/world/cursorregistry.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
-import { translate } from '@/i18n'
+import type {unsub} from "@/engine/events.ts";
 
 export type OutMessage =
   | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage} }
@@ -30,7 +30,7 @@ export type InMessage =
 export class GameSocket {
   private ws!: WebSocket
   private world!: world
-  private intervalId?: number
+  private apiEventsListenerUnsub?: unsub;
 
   connect(params: {
     roomId: string
@@ -39,6 +39,7 @@ export class GameSocket {
     key?: string
     world: world
   }) {
+    this.disconnect();
     const query = new URLSearchParams({
       room_id: params.roomId,
       team: params.team,
@@ -55,14 +56,19 @@ export class GameSocket {
     }
 
     this.ws.onmessage = (e) => {
-      const msg: InMessage = JSON.parse(e.data)
-      this.handleMessage(msg)
+      try {
+        const msg: InMessage = JSON.parse(e.data)
+        this.handleMessage(msg)
+      } catch (err) {
+        console.error('[WS] invalid message', e.data, err)
+        alert("SOCKET ERROR PARSE MESSAGE");
+      }
     }
 
     this.ws.onclose = () => {
+      this.stopSync()
       alert('Socket closed.\nPage will restarted.')
       window.location.reload()
-      this.stopSync()
     }
 
     this.ws.onerror = (e) => {
@@ -74,7 +80,7 @@ export class GameSocket {
   /* ================== OUT ================== */
   private syncTimer?: RafInterval
 
-  private sendBatched(messages: OutMessage[], batchSize = 100) {
+  private sendBatched(messages: OutMessage[], batchSize = 10) {
     if (this.ws.readyState !== WebSocket.OPEN) return
 
     for (let i = 0; i < messages.length; i += batchSize) {
@@ -133,16 +139,18 @@ export class GameSocket {
       busMessages = [];
 
       if (messages.length) {
-        this.send(messages)
+        this.sendBatched(messages)
       }
     });
     this.syncTimer.start();
   }
 
   private stopSync() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId)
-      this.intervalId = undefined
+    if (this.apiEventsListenerUnsub) {
+      this.apiEventsListenerUnsub();
+    }
+    if (this.syncTimer) {
+      this.syncTimer.stop();
     }
   }
 
@@ -164,19 +172,19 @@ export class GameSocket {
         if (this.world.socketLock) return
 
         if (m.type === 'unit') {
-          let unitPos = m.data.pos;
+          const mData = {...m.data};
           if (m.frames && m.frames.length) {
-            const unit = this.world.units.get(m.data.id);
+            const unit = this.world.units.get(mData.id);
             if (unit) {
-              m.data.pos = unit.pos;
+              mData.pos = unit.pos;
             }
           }
 
-          this.world.units.upsert(m.data, 'remote');
+          this.world.units.upsert(mData, 'remote');
 
 
           if (m.frames && m.frames.length) {
-            this.world.units.get(m.data.id)!.applyRemoteFrames(m.frames);
+            this.world.units.get(mData.id)!.applyRemoteFrames(m.frames);
           }
         } else if (m.type === 'unit-remove') {
           for (const unitId of m.data) {
@@ -220,7 +228,7 @@ export class GameSocket {
           }
 
           for (const unitDirectView of m.data) {
-            const u = window.ROOM_WORLD.units.get(unitDirectView.id)!;
+            const u = window.ROOM_WORLD.units.get(unitDirectView.id);
             if (!u) {
               unitDirectView.directView = true
               window.ROOM_WORLD.units.upsert(unitDirectView, 'remote');

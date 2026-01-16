@@ -129,7 +129,7 @@ function getUnitPlannedPos(u: BaseUnit): vec2 {
   return p
 }
 
-type MovePlanItem = { unit: BaseUnit; orderIndex: number; startPos: vec2 }
+type MovePlanItem = { unit: UnwrapRef<BaseUnit>; orderIndex: number; startPos: vec2 }
 
 /** План (порядок) колонны считается по первой точке маршрута */
 const movePlan = computed<MovePlanItem[]>(() => {

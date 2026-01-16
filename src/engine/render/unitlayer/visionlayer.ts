@@ -1,5 +1,5 @@
 import {getTeamColor} from "@/engine/render/util.ts";
-import {type vec2, world} from "@/engine";
+import {type unitTeam, type vec2, world} from "@/engine";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
@@ -84,6 +84,35 @@ function samePos(a: { x: number; y: number }, b: { x: number; y: number }) {
   return a.x === b.x && a.y === b.y
 }
 
+type TeamVisionLayer = {
+  canvas: HTMLCanvasElement
+  ctx: CanvasRenderingContext2D
+}
+const teamVisionLayers = new Map<unitTeam, TeamVisionLayer>()
+
+function getTeamVisionCtx(
+  teamId: unitTeam,
+  width: number,
+  height: number
+): CanvasRenderingContext2D {
+  let layer = teamVisionLayers.get(teamId)
+
+  if (!layer) {
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")!
+
+    layer = { canvas, ctx }
+    teamVisionLayers.set(teamId, layer)
+  }
+
+  if (layer.canvas.width !== width || layer.canvas.height !== height) {
+    layer.canvas.width = width
+    layer.canvas.height = height
+  }
+
+  return layer.ctx
+}
+
 /**
  * Основной вызов
  */
@@ -92,7 +121,17 @@ export function drawUnitVision(
   w: world,
   settings: typeof window.CLIENT_SETTINGS,
 ) {
-  for (const u of w.units.list()) {
+  for (const layer of teamVisionLayers.values()) {
+    layer.ctx.setTransform(1, 0, 0, 1, 0, 0)
+    layer.ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  }
+
+  const units = [...w.units.list()].sort((a, b) => {
+    if (a.selected === b.selected) return 0
+    return a.selected ? 1 : -1
+  })
+
+  for (const u of units) {
     if (!u.alive || !u.stats.visionRange) {
       visionCache.delete(u.id);
       continue;
@@ -102,63 +141,78 @@ export function drawUnitVision(
       continue
     }
 
-    const { r: cr, g: cg, b: cb } = getTeamColor(u.team)
-    const fillAlpha = u.isSelected() ? 0.18 : 0.1
+    const vCtx = getTeamVisionCtx(u.team, ctx.canvas.width, ctx.canvas.height)
 
-    // В лесу — простой круг, кеш не нужен
-    if (!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]) {
+    let { r, g, b } = getTeamColor(u.team)
+    if (u.selected) {
+      r = Math.min(r * 1.5, 255);
+      g = Math.min(g * 1.5, 255);
+      b = Math.min(b * 1.5, 255);
+    }
+
+    // ===== ПРОСТОЙ КРУГ =====
+    if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]) {
       const p = w.camera.worldToScreen(u.pos)
-      const r = (u.visionRange / w.map.metersPerPixel) * w.camera.zoom
+      const rPx = (u.visionRange / w.map.metersPerPixel) * w.camera.zoom
 
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
+      vCtx.beginPath()
+      vCtx.arc(p.x, p.y, rPx, 0, Math.PI * 2)
 
-      ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.7)`
-      ctx.lineWidth = 1 * w.camera.zoom
-      ctx.stroke()
+      vCtx.strokeStyle = `rgb(${r},${g},${b})`
+      vCtx.lineWidth = 1 * w.camera.zoom
+      vCtx.stroke()
 
-      ctx.fillStyle = `rgba(${cr},${cg},${cb},${fillAlpha})`
-      ctx.fill()
-      visionCache.delete(u.id);
+      vCtx.fillStyle = `rgb(${r},${g},${b})`
+      vCtx.fill()
+
+      visionCache.delete(u.id)
       continue
     }
 
     // ===== КЕШ =====
     const unitInForest = u.envState.includes(UnitEnvironmentState.InForest)
-    let cache = visionCache.get(`${u.id}_${unitInForest}`)
+    const cacheKey = `${u.id}_${unitInForest}`
+    const cache = visionCache.get(cacheKey)
+
     let poly: vec2[]
 
     if (!cache || !samePos(cache.pos, u.pos)) {
       poly = buildVisionPolygon(u, w)
-
-      visionCache.set(u.id, {
-        pos: { x: u.pos.x, y: u.pos.y },
-        polygon: poly
+      visionCache.set(cacheKey, {
+        pos: { ...u.pos },
+        polygon: poly,
       })
     } else {
       poly = cache.polygon
     }
 
-    const { r, g, b } = getTeamColor(u.team)
-
-    ctx.beginPath()
+    // ===== ПОЛИГОН =====
+    vCtx.beginPath()
     const start = w.camera.worldToScreen(poly[0]!)
-    ctx.moveTo(start.x, start.y)
+    vCtx.moveTo(start.x, start.y)
 
     for (let i = 1; i < poly.length; i++) {
       const p = w.camera.worldToScreen(poly[i]!)
-      ctx.lineTo(p.x, p.y)
+      vCtx.lineTo(p.x, p.y)
     }
 
-    ctx.closePath()
+    vCtx.closePath()
 
-    ctx.strokeStyle = `rgba(${r},${g},${b},0.7)`
-    ctx.lineWidth = w.camera.zoom
-    ctx.stroke()
+    vCtx.strokeStyle = `rgb(${r},${g},${b})`
+    vCtx.lineWidth = w.camera.zoom
+    vCtx.stroke()
 
-    ctx.fillStyle = `rgba(${cr},${cg},${cb},${fillAlpha})`
-    ctx.fill()
+    vCtx.fillStyle = `rgb(${r},${g},${b})`
+    vCtx.fill()
   }
+
+  // === НАКЛАДЫВАЕМ НА ОСНОВНОЙ CANVAS ===
+  ctx.save()
+  ctx.globalAlpha = 0.5
+  for (const layer of teamVisionLayers.values()) {
+    ctx.drawImage(layer.canvas, 0, 0)
+  }
+  ctx.restore()
 }
 
 export function pointInPolygon(point: vec2, polygon: vec2[]): boolean {

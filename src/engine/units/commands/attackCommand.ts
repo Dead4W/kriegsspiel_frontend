@@ -1,21 +1,23 @@
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {BaseCommand} from "./baseCommand.ts";
-import {unitType, type uuid} from "@/engine";
+import {unitType, type uuid, type vec2} from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {
   ARTILLERY_DISTANCE_MODIFIERS, DISTANCE_MODIFIERS,
   getUnitDistanceModifier
 } from "@/engine/units/modifiers/UnitDistanceModifier.ts";
-import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 import {
   getDamageModifierByHeights
 } from "@/engine/units/modifiers/UnitHeightModifier.ts";
+import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 
 export interface AttackCommandState {
   targets: uuid[]
   damageModifier: number
   abilities: UnitAbilityType[]
+  inaccuracyPoint: vec2 | null
 }
 
 export class AttackCommand extends BaseCommand<
@@ -41,8 +43,7 @@ export class AttackCommand extends BaseCommand<
 
     if (this.isFinished(unit)) return
 
-    const targets = this.getPriorityTargets(unit)
-    if (targets.length === 0) return
+    let targets: BaseUnit[];
 
     unit.activateAbility(null)
     for (const ability of this.state.abilities) {
@@ -52,13 +53,25 @@ export class AttackCommand extends BaseCommand<
     }
 
     const percentHp = unit.hp / unit.stats.maxHp
-    const baseDmg =
+    let baseDmg =
       (
         unit.damage
         * percentHp
         * this.state.damageModifier
         * (dt / 60)
-      ) / targets.length
+      )
+
+    let isInaccuracyFire = unit.type === unitType.ARTILLERY &&
+      this.state.abilities.includes(UnitAbilityType.INACCURACY_FIRE) &&
+      this.state.inaccuracyPoint;
+
+    if (isInaccuracyFire) {
+      targets = this.getUnitsInInaccuracyRadius(unit)
+    } else {
+      targets = this.getPriorityTargets(unit);
+      if (targets.length === 0) return;
+      baseDmg /= targets.length;
+    }
 
     for (const target of targets) {
       let unitDmg = baseDmg
@@ -78,8 +91,10 @@ export class AttackCommand extends BaseCommand<
         formula.push(`attackCommandModifier(${this.state.damageModifier})`)
       }
       formula.push(`minutes(${dt/60})`)
-      if (targets.length > 1) {
-        formula.push(`÷ countTargets(${targets.length})`)
+      if (!isInaccuracyFire) {
+        if (targets.length > 1) {
+          formula.push(`÷ countTargets(${targets.length})`)
+        }
       }
 
       /* ===== Артиллерия / окружение ===== */
@@ -159,7 +174,7 @@ export class AttackCommand extends BaseCommand<
   }
 
   isFinished(unit: BaseUnit): boolean {
-    return this.getPriorityTargets(unit).length === 0
+    return this.getPriorityTargets(unit).length === 0 && !this.state.inaccuracyPoint
   }
 
   estimate(unit: BaseUnit): number {
@@ -194,6 +209,21 @@ export class AttackCommand extends BaseCommand<
       activeTargets = activeTargets.slice(0, this.PRIORITY_TARGETS)
     }
     return activeTargets
+  }
+
+  getUnitsInInaccuracyRadius(unit: BaseUnit): BaseUnit[] {
+    const inaccuracyRadius = computeInaccuracyRadius(unit, this.state.inaccuracyPoint!)
+    const radiusPx = inaccuracyRadius / window.ROOM_WORLD.map.metersPerPixel
+    const r2 = radiusPx * radiusPx
+
+    return window.ROOM_WORLD.units
+      .list()
+      .filter(u => u.alive)
+      .filter(u => {
+        const dx = u.pos.x - this.state.inaccuracyPoint!.x
+        const dy = u.pos.y - this.state.inaccuracyPoint!.y
+        return dx * dx + dy * dy <= r2
+      })
   }
 
   getState() {

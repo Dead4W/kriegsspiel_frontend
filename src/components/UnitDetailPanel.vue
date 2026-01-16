@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import {useI18n} from 'vue-i18n'
 import type {BaseUnit, StatKey} from '@/engine/units/baseUnit'
-import {computed, onMounted, onUnmounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from "vue";
 import {Team} from "@/enums/teamKeys.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {unitType} from "@/engine";
 import {clamp} from "@/engine/math.ts";
 
-const { unit } = defineProps<{ unit: BaseUnit }>()
+const { unit } = defineProps<{ unit: UnwrapRef<BaseUnit> }>()
 
 const emit = defineEmits<{
   (e: 'edit'): void

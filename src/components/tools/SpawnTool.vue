@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import {ref, computed, onMounted, onBeforeUnmount, type UnwrapRef} from 'vue'
 import type { world } from '@/engine'
 import type { unitstate, unitTeam } from '@/engine'
 import { unitType as UnitType } from '@/engine'

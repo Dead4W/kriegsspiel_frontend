@@ -51,11 +51,12 @@
     "delivery": "Delivery",
     "move_pick": "Move to target",
     "damage_modifier": "Damage modifier",
-    "changeFormation": "Change formation"
+    "changeFormation": "Change formation",
+    "inaccuracy_radius": "Artillery radius"
   },
   "command_desc": {
     "move": "Move to position ({x}, {y})",
-    "attack": "Attack targets: {count}, damage modifier {dmg}%",
+    "attack": "Attack targets: {count}, damage modifier {dmg}",
     "changeFormation": "Change formation to \"{formation}\""
   },
   "command_status": {
@@ -281,6 +282,7 @@
   "ability": {
     "double_time_move": "Double time move",
     "charge": "Cavalry Charge",
-    "inaccuracy_fire": "Artillery Inaccuracy fire"
+    "inaccuracy_fire": "Artillery Inaccuracy fire",
+    "throttle": "Throttle"
   }
 }

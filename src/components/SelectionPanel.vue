@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
 import {useI18n} from 'vue-i18n'
 import type {world as worldType} from '@/engine'
 import UnitDetailPanel from '@/components/UnitDetailPanel.vue'
@@ -129,7 +129,7 @@ function barStyle(value: number, max: number) {
     <!-- ===== DETAIL & COMMANDS ===== -->
     <div v-if="focusedUnit" class="detail-anchor">
       <div class="detail-stack">
-        <CommandsListPanel :unit="focusedUnit" v-if="isAdmin()" />
+        <CommandsListPanel :unit="focusedUnit as BaseUnit" v-if="isAdmin()" />
         <UnitDetailPanel
           :unit="focusedUnit"
           @edit="notifyEdit"

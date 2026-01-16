@@ -3,7 +3,7 @@ import type {world} from '@/engine'
 import {useI18n} from 'vue-i18n'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
-import {onMounted, onUnmounted, ref} from "vue";
+import {onMounted, onUnmounted, ref, type UnwrapRef} from "vue";
 
 const { t } = useI18n()
 

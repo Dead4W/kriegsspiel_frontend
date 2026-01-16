@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted} from 'vue'
+import {computed, onMounted, onUnmounted, type UnwrapRef} from 'vue'
 import type {BaseUnit} from '@/engine/units/baseUnit'
 import {Team} from '@/enums/teamKeys'
 import UnitEnvModifierTool from "@/components/tools/UnitEnvModifierTool.vue";
@@ -13,7 +13,7 @@ const {t} = useI18n()
 /* ================= props / emits ================= */
 
 const props = defineProps<{
-  units: BaseUnit[]
+  units: UnwrapRef<BaseUnit[]>
 }>()
 
 const emit = defineEmits<{
@@ -54,13 +54,13 @@ function edit() {
     <!-- ===== ENV MODIFIERS ===== -->
     <UnitEnvModifierTool
       v-if="!isMessenger()"
-      :units="units"
+      :units="units as BaseUnit[]"
       @edit="edit"
     />
 
     <UnitCommandTool
       v-if="isAdmin"
-      :units="units"
+      :units="units as BaseUnit[]"
       @attack="attack"
       @move="edit"
       @formation="edit"

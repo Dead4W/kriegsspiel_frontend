@@ -86,6 +86,7 @@
       "move": "Move",
       "changeFormation": "Change formation",
       "wait": "Wait",
+      "wait_column": "Wait column",
       "total_seconds": "Total seconds",
       "comment": "Comment",
       "delivery": "Delivery",

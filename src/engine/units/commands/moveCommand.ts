@@ -12,6 +12,7 @@ export interface MoveCommandState {
   abilities: UnitAbilityType[]
   orderIndex: number
   uniqueId: uuid
+  segIndex?: number
 }
 
 export class MoveCommand extends BaseCommand<
@@ -134,8 +135,8 @@ export class MoveCommand extends BaseCommand<
     unit.envState = saveEnv
     unit.activeAbilityType = saveAbilityType
 
-    const dx = this.state.target.x - unit.pos.x
-    const dy = this.state.target.y - unit.pos.y
+    const dx = this.state.target.x - startPos.x
+    const dy = this.state.target.y - startPos.y
     const dist = Math.hypot(dx, dy)
 
     return Math.ceil(dist / (unitSpeed / 60) * window.ROOM_WORLD.map.metersPerPixel)

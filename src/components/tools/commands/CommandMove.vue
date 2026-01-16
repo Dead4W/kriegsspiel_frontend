@@ -13,6 +13,8 @@ import {normalize, sub} from "@/engine/math.ts";
 import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enums/UnitStates.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
+import {WaitCommand} from "@/engine/units/commands/waitCommand.ts";
 
 const { t } = useI18n()
 
@@ -269,7 +271,7 @@ function getColumnPosition(
     return [];
   }
 
-  for (let i = targets.length-1; i >= segIndex; i--) {
+  for (let i = currentSegmentIndex; i >= segIndex; i--) {
     const iterationSegPrev = i > 0 ? targets[i-1]!.pos : plan[Math.abs(i)]!.startPos;
     const iterationSegNext = targets[i]!.pos;
     const iterationSegment = sub(iterationSegPrev, iterationSegNext);
@@ -509,6 +511,25 @@ function rebuildMoveOverlay() {
 
 /* ================= ACTION ================= */
 
+function calcUnitCommandsEstimate(u: BaseUnit): { est: number, lastPos: vec2 } {
+  let result = 0;
+  const cmds = u.getCommands();
+  let lastPos = u.pos
+  for (const cmd of cmds) {
+    const cmdEstimate = cmd instanceof MoveCommand ? cmd.estimate(u as BaseUnit, lastPos) : cmd.estimate(u as BaseUnit)
+    if (cmdEstimate > 0 && cmdEstimate < Infinity) {
+      result += cmdEstimate;
+    }
+    if (cmd instanceof MoveCommand) {
+      lastPos = cmd.getState().state.target
+    }
+  }
+  return {
+    est: result,
+    lastPos: lastPos,
+  }
+}
+
 function confirm() {
   if (!movingUnits.value.length || !targets.value.length) {
     return
@@ -521,12 +542,10 @@ function confirm() {
     return
   }
 
-  const items: OverlayItem[] = []
-
   // используем план, чтобы порядок был стабильный
   const plan = movePlan.value
 
-  const new_commands: Map<uuid, commandstate[]> = new Map()
+  const new_commands: Map<uuid, BaseCommand<any, any>[]> = new Map()
 
   plan.forEach(({ unit: u, orderIndex }, planIdx) => {
     let from = u.pos
@@ -566,8 +585,9 @@ function confirm() {
           orderIndex: orderIndex,
           uniqueId: uniqueId,
           abilities: selectedAbilities.value,
+          segIndex: segIndex,
         })
-        new_commands.get(u.id)!.push(cmd.getState())
+        new_commands.get(u.id)!.push(cmd)
         from = to;
       }
       if (to_points.length) from = to_points[to_points.length-1]!

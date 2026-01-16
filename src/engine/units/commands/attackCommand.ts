@@ -70,8 +70,8 @@ export class AttackCommand extends BaseCommand<
     } else {
       targets = this.getPriorityTargets(unit);
       if (targets.length === 0) return;
-      baseDmg /= targets.length;
     }
+    baseDmg /= targets.length;
 
     for (const target of targets) {
       let unitDmg = baseDmg
@@ -91,10 +91,8 @@ export class AttackCommand extends BaseCommand<
         formula.push(`attackCommandModifier(${this.state.damageModifier})`)
       }
       formula.push(`minutes(${dt/60})`)
-      if (!isInaccuracyFire) {
-        if (targets.length > 1) {
-          formula.push(`÷ countTargets(${targets.length})`)
-        }
+      if (targets.length > 1) {
+        formula.push(`÷ countTargets(${targets.length})`)
       }
 
       /* ===== Артиллерия / окружение ===== */

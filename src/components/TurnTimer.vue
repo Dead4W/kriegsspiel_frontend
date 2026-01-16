@@ -91,10 +91,11 @@ async function startTurn() {
   totalSeconds.value = value
   running.value = true
 
-  const MAX_STEP = 5 * 60 // 300 секунд
+  const MAX_STEP = 10 // cекунд
 
   window.ROOM_WORLD.units.withNewCommandsTmp.clear()
   window.ROOM_WORLD.socketLock = true
+  let runningSteps = 0
 
   while (totalSeconds.value > 0 && running.value) {
     if (!running.value) return;
@@ -105,14 +106,15 @@ async function startTurn() {
 
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
 
-    // отдаём управление браузеру
-    await new Promise(requestAnimationFrame)
+    runningSteps++
+
+    if (runningSteps % 10 === 0) {
+      // отдаём управление браузеру
+      await new Promise(requestAnimationFrame)
+    }
   }
 
   window.ROOM_WORLD.events.emit('changed', { reason: 'timer' });
-
-  running.value = false
-  displayWorldTime.value = window.ROOM_WORLD.time
 
   // DirectView general
   const directViewByTeam = window.ROOM_WORLD.units.getDirectView();
@@ -143,6 +145,9 @@ async function startTurn() {
   // ВСЕГДА В КОНЦЕ
   window.ROOM_WORLD.skipTime(value)
   window.ROOM_WORLD.socketLock = false
+
+  running.value = false
+  displayWorldTime.value = window.ROOM_WORLD.time
 }
 
 function stopTurn() {
@@ -187,7 +192,7 @@ onUnmounted(() => {
         <span>:</span>
         <input type="number" min="0" max="59" v-model.number="seconds" />
 
-        <button @click="startTurn" :disabled="running">
+        <button @pointerdown="startTurn" :class="{disabled: running}">
           ▶
         </button>
       </div>
@@ -270,6 +275,14 @@ onUnmounted(() => {
   border-color: #334155;
   color: #64748b;
 
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button.disabled {
+  background: #020617;
+  border-color: #334155;
+  color: #64748b;
   cursor: not-allowed;
   opacity: 0.6;
 }

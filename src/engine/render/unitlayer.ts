@@ -51,6 +51,8 @@ export class unitlayer {
 
   private unitScale: number = 1
 
+  private inaccuracyRenderedPoints: string[] = [];
+
   constructor() {
     for (const type of Object.values(unitType)) {
       this.unitTypesLabel.set(type, translate(`unit.${type}`))
@@ -62,6 +64,8 @@ export class unitlayer {
   // =============================
 
   draw(ctx: CanvasRenderingContext2D, w: world) {
+    this.inaccuracyRenderedPoints = [];
+
     const cam = w.camera
     const settings = window.CLIENT_SETTINGS
     this.unitScale = settings[CLIENT_SETTING_KEYS.SIZE_UNIT]
@@ -248,21 +252,25 @@ export class unitlayer {
               cam.zoom
             )
 
-            ctx.save();
-            ctx.fillStyle = 'rgba(168,85,247,0.45)'
-            ctx.strokeStyle = 'black'
-            ctx.lineWidth = 1 * cam.zoom
+            const inaccuracyPointKey = `${cmdState.inaccuracyPoint.x.toFixed(1)}_${cmdState.inaccuracyPoint.y.toFixed(1)}`
+            if (!this.inaccuracyRenderedPoints.includes(inaccuracyPointKey)) {
+              ctx.save();
+              ctx.fillStyle = 'rgba(168,85,247,0.45)'
+              ctx.strokeStyle = 'black'
+              ctx.lineWidth = 1 * cam.zoom
 
-            const radiusMeters = computeInaccuracyRadius(unit, cmdState.inaccuracyPoint);
-            const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel;
+              const radiusMeters = computeInaccuracyRadius(unit, cmdState.inaccuracyPoint);
+              const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel;
 
-            const {x,y} = cam.worldToScreen(cmdState.inaccuracyPoint)
+              const {x,y} = cam.worldToScreen(cmdState.inaccuracyPoint)
 
-            ctx.beginPath()
-            ctx.arc(x, y, radiusPixels * cam.zoom, 0, Math.PI * 2)
-            ctx.fill()
-            ctx.stroke()
-            ctx.restore()
+              ctx.beginPath()
+              ctx.arc(x, y, radiusPixels * cam.zoom, 0, Math.PI * 2)
+              ctx.fill()
+              ctx.stroke()
+              ctx.restore()
+              this.inaccuracyRenderedPoints.push(inaccuracyPointKey);
+            }
           } else {
             const targets = command.getPriorityTargets(unit)
             for (const target of targets) {

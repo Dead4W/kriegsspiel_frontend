@@ -110,7 +110,7 @@ const chartData = computed(() => {
         tension: 0.3,
       },
       {
-        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.RED_TEAM_NAME] ?? t('team.blue'),
+        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue'),
         data: blueData,
         borderColor: '#1890ff',
         tension: 0.3,

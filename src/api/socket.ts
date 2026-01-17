@@ -80,7 +80,7 @@ export class GameSocket {
   /* ================== OUT ================== */
   private syncTimer?: RafInterval
 
-  private sendBatched(messages: OutMessage[], batchSize = 10) {
+  private sendBatched(messages: OutMessage[], batchSize = 100) {
     if (this.ws.readyState !== WebSocket.OPEN) return
 
     for (let i = 0; i < messages.length; i += batchSize) {

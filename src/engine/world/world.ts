@@ -153,7 +153,7 @@ export class world {
   clear() {
     this.units = new unitregistry()
     this.clearOverlay()
-    this.messages = new messageregistry()
+    // this.messages = new messageregistry()
     this.cursor = new cursorregistry()
     this.logs.value = []
   }

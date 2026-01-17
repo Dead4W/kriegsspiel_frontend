@@ -147,9 +147,6 @@ export class unitlayer {
       debugPerformance('drawModifiers', () => {
         this.drawModifiers(ctx, cam, unit, p, wUnit, hUnit, settings)
       })
-      debugPerformance('drawDirectView', () => {
-        this.drawDirectView(ctx, cam, unit, p, wUnit, hUnit, settings)
-      })
       debugPerformance('drawLabel', () => {
         this.drawLabel(ctx, cam, unit, p, wUnit, hUnit, settings)
       })
@@ -364,11 +361,18 @@ export class unitlayer {
     if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]) return
 
     const states: UnitEnvironmentState[] = unit.envState
-    if (!states.length) return
 
-    const icons = states
+    let icons: string[] = [];
+
+    if (unit.directView) {
+      icons.push('👁')
+    }
+
+    const envIcons = states
       .map(s => UnitEnvironmentStateIcon[s])
       .filter(Boolean)
+
+    icons = [...icons, ...envIcons];
 
     if (!icons.length) return
 
@@ -388,35 +392,6 @@ export class unitlayer {
 
     ctx.fillStyle = 'white'
     ctx.fillText(text, p.x, y + bgH / 2)
-  }
-
-  private drawDirectView(
-    ctx: CanvasRenderingContext2D,
-    cam: world['camera'],
-    unit: BaseUnit,
-    p: { x: number; y: number },
-    w: number,
-    h: number,
-    settings: typeof window.CLIENT_SETTINGS
-  ) {
-    if (!unit.directView) return
-
-    const icon = '👁'
-    ctx.font = `${14 * cam.zoom * this.unitScale}px system-ui`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-
-    const metrics = ctx.measureText(icon)
-    const bgW = metrics.width + 12 * cam.zoom * this.unitScale
-    const bgH = 18 * cam.zoom * this.unitScale
-    const y = p.y - h / 2 - bgH - 6 * cam.zoom * this.unitScale
-
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'
-    drawRoundRect(ctx, p.x - bgW / 2, y, bgW, bgH, 4 * cam.zoom)
-    ctx.fill()
-
-    ctx.fillStyle = 'white'
-    ctx.fillText(icon, p.x, y + bgH / 2)
   }
 
   private drawLabel(

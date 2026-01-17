@@ -111,7 +111,7 @@ function isEnabledAmmo() {
 // force refresh on changed
 const refreshKey = ref(0)
 function syncSelection(data: {reason: string}) {
-  if (data.reason === '') {
+  if (data.reason === 'ws') {
     return;
   }
   isMessenger.value = unit.type === unitType.MESSENGER;

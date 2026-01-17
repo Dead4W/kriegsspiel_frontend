@@ -221,7 +221,7 @@ export class GameSocket {
             if (u.directView) {
               if (
                 u.team !== window.PLAYER.team && window.PLAYER.team !== Team.ADMIN
-                || u.type === unitType.MESSENGER
+                || u.type === unitType.MESSENGER && window.PLAYER.team !== Team.ADMIN
               ) {
                 window.ROOM_WORLD.units.remove(u.id)
               } else {
@@ -254,7 +254,7 @@ export class GameSocket {
         // }
       }
 
-      this.world.events.emit('changed', { reason: 'ws' })
+      // this.world.events.emit('changed', { reason: 'ws' })
     }
 
     if (msg.type === 'error') {

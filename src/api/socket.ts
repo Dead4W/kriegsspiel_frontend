@@ -1,4 +1,4 @@
-import type {unitstate, uuid} from '@/engine/units/types'
+import {type unitstate, unitType, type uuid} from '@/engine/units/types'
 import {type MoveFrame, world} from '@/engine'
 import {createRafInterval, type RafInterval} from "@/engine/util.ts";
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
@@ -219,7 +219,10 @@ export class GameSocket {
         } else if (m.type === 'direct_view') {
           for (const u of window.ROOM_WORLD.units.list()) {
             if (u.directView) {
-              if (u.team !== window.PLAYER.team && window.PLAYER.team !== Team.ADMIN) {
+              if (
+                u.team !== window.PLAYER.team && window.PLAYER.team !== Team.ADMIN
+                || u.type === unitType.MESSENGER
+              ) {
                 window.ROOM_WORLD.units.remove(u.id)
               } else {
                 u.directView = false;

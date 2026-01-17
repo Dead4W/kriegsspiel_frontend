@@ -365,7 +365,7 @@ export class unitlayer {
     let icons: string[] = [];
 
     if (unit.directView) {
-      icons.push('👁')
+      icons.push('👁️')
     }
 
     const envIcons = states

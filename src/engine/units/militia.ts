@@ -1,6 +1,7 @@
 import { BaseUnit } from './baseUnit'
 import type { UnitStats } from './baseUnit'
 import {type unitstate, unitType} from './types'
+import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
 
 export class Militia extends BaseUnit {
   type: unitType = unitType.MILITIA
@@ -15,7 +16,7 @@ export class Militia extends BaseUnit {
     ammoMax: 15,
   }
 
-  abilities = []
+  abilities = [UnitAbilityType.DOUBLE_TIME_MOVE]
 
   constructor(s: unitstate) {
     super(s)

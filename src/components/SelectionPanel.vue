@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
 import {useI18n} from 'vue-i18n'
-import type {world as worldType} from '@/engine'
 import UnitDetailPanel from '@/components/UnitDetailPanel.vue'
 import UnitActionPanel from "@/components/UnitActionPanel.vue";
 import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enums/UnitStates.ts";
@@ -16,7 +15,7 @@ const { t } = useI18n()
 
 /* ================= props ================= */
 
-const { world } = defineProps<{ world: worldType, isEnd: boolean }>()
+defineProps<{ isEnd: boolean }>()
 
 /* ================= state ================= */
 
@@ -29,7 +28,7 @@ function syncSelection(data: {reason: string}) {
   debugPerformance('SelectionPanel.syncSelection', () => {
     if (['camera', 'drag'].includes(data.reason)) return;
 
-    const next = world.units.list().filter((u: BaseUnit) => u.selected)
+    const next = window.ROOM_WORLD.units.list().filter((u: BaseUnit) => u.selected)
     selectedUnits.value = next
 
     if (next.length === 1) {
@@ -44,12 +43,12 @@ function syncSelection(data: {reason: string}) {
 }
 
 onMounted(() => {
-  world.events.on('changed', syncSelection)
+  window.ROOM_WORLD.events.on('changed', syncSelection)
   syncSelection({ reason: "init" })
 })
 
 onUnmounted(() => {
-  world.events.off('changed', syncSelection)
+  window.ROOM_WORLD.events.off('changed', syncSelection)
 })
 
 /* ================= computed ================= */
@@ -77,7 +76,7 @@ const selectionSummary = computed(() => {
 const unitTypeLabel = (u: BaseUnit) => t(`unit.${u.type}`)
 
 const notifyEdit = () => {
-  world.events.emit('changed', { reason: 'edit-unit' })
+  window.ROOM_WORLD.events.emit('changed', { reason: 'edit-unit' })
 }
 
 function envIcons(u: BaseUnit) {

@@ -12,7 +12,7 @@ import {unitlayer} from "@/engine/render/unitlayer.ts";
 import {normalize, sub} from "@/engine/math.ts";
 import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enums/UnitStates.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {WaitCommand} from "@/engine/units/commands/waitCommand.ts";
 

@@ -1,7 +1,7 @@
 import { BaseUnit } from './baseUnit'
 import type { UnitStats } from './baseUnit'
 import {type unitstate, unitType} from './types'
-import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 
 export class Infantry extends BaseUnit {
   type: unitType = unitType.INFANTRY
@@ -13,7 +13,7 @@ export class Infantry extends BaseUnit {
     takeDamageMod: 1,
     attackRange: 2000,
     visionRange: 1000,
-    ammoMax: 30,
+    ammoMax: 10,
   }
 
   abilities = [UnitAbilityType.DOUBLE_TIME_MOVE]

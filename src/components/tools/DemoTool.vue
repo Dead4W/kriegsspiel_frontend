@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api/client'
-import {unitregistry} from "@/engine/world/unitregistry.ts";
 import type {unitstate, uuid} from "@/engine";
-
-const props = defineProps<{
-  world: any
-}>()
 
 const emit = defineEmits<{
   (e: 'close'): void

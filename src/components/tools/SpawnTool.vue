@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import {ref, computed, onMounted, onBeforeUnmount, type UnwrapRef} from 'vue'
-import type { world } from '@/engine'
-import type { unitstate, unitTeam } from '@/engine'
+import {type unitTeam, world} from '@/engine'
 import { unitType as UnitType } from '@/engine'
 import { useI18n } from 'vue-i18n'
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {Team} from "@/enums/teamKeys.ts";
 
 const { t } = useI18n()
-
-/* ================= props ================= */
-
-const props = defineProps<{
-  world: world
-}>()
 
 /* ================= state ================= */
 
@@ -130,7 +123,7 @@ function onClick(e: PointerEvent) {
 
   if ((e.target as HTMLElement)?.closest('.spawn-panel')) return
 
-  const w = props.world
+  const w = window.ROOM_WORLD
   if (!w) return
 
   const origin = w.camera.screenToWorld({

@@ -5,8 +5,14 @@ import {RoomGameStage} from "@/enums/roomStage.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import type {unitTeam} from "@/engine";
+import { ROOM_SETTING_KEYS } from "@/enums/roomSettingsKeys";
+import type {TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 
-const displayWorldTime = ref(window.ROOM_WORLD.time)
+const displayWorldTime = ref<string>(window.ROOM_WORLD.time)
+const timeOfDay = ref<TimeOfDay>(window.ROOM_WORLD.getTimeOfDay())
+const weather = window.ROOM_WORLD.weather
 
 const minutes = ref(1)
 const seconds = ref(0)
@@ -28,6 +34,32 @@ function isAdmin() {
 
 function isWar() {
   return window.ROOM_WORLD.stage === RoomGameStage.WAR;
+}
+
+function isEnabledTimeModifiers() {
+  return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.TIME_MODIFIERS]
+}
+
+function isEnabledWeatherModifiers() {
+  return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]
+}
+
+function onWheelNumber(
+  e: WheelEvent,
+  timeType: 'seconds' | 'minutes',
+  min = -Infinity,
+  max = Infinity
+) {
+  e.preventDefault()
+
+  const delta = e.deltaY < 0 ? 1 : -1
+  if (timeType === 'seconds') {
+    seconds.value += delta
+    seconds.value = Math.min(max, Math.max(min, seconds.value))
+  } else if (timeType === 'minutes') {
+    minutes.value += delta
+    minutes.value = Math.min(max, Math.max(min, minutes.value))
+  }
 }
 
 /* ===== Commands ==== */
@@ -117,24 +149,31 @@ async function startTurn() {
   window.ROOM_WORLD.events.emit('changed', { reason: 'timer' });
 
   // DirectView general
-  const directViewByTeam = window.ROOM_WORLD.units.getDirectView();
-  for (const team of [Team.RED, Team.BLUE]) {
-    window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team as unitTeam)!.map(uuid => {
-        const u = window.ROOM_WORLD.units.get(uuid)!
-        return {
-          id: u.id,
-          type: u.type,
-          team: u.team,
-          pos: u.pos,
+  if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.GENERAL_VISION_UPDATE]) {
+    const directViewByTeam = window.ROOM_WORLD.units.getDirectView();
+    for (const team of [Team.RED, Team.BLUE]) {
+      window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team as unitTeam)!.map(uuid => {
+          const u = window.ROOM_WORLD.units.get(uuid)!
+          return {
+            id: u.id,
+            type: u.type,
+            team: u.team,
+            pos: u.pos,
 
-          hp: u.hp,
-          ammo: u.ammo,
+            hp: u.hp,
+            ammo: u.ammo,
 
-          envState: u.envState,
-          formation: u.getFormation(),
-          activeAbilityType: u.activeAbilityType,
-        }
-    })})
+            envState: u.envState,
+            formation: u.getFormation(),
+            activeAbilityType: u.activeAbilityType,
+          }
+        })})
+    }
+  }
+
+  if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]) {
+    window.ROOM_WORLD.events.emit('api', {type: 'weather', data: window.ROOM_WORLD.newWeather.value});
+    window.ROOM_WORLD.weather.value = window.ROOM_WORLD.newWeather.value;
   }
 
   // units with new commands
@@ -148,6 +187,7 @@ async function startTurn() {
 
   running.value = false
   displayWorldTime.value = window.ROOM_WORLD.time
+  timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
 }
 
 function stopTurn() {
@@ -164,6 +204,7 @@ function sync(data: {reason: string}) {
     if (['camera', 'drag'].includes(data.reason)) return;
     refreshKey.value++
     displayWorldTime.value = window.ROOM_WORLD.time
+    timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
   })
 }
 
@@ -188,30 +229,45 @@ onUnmounted(() => {
           ⏱ {{ displayTurnTime }}
         </div>
 
-        <input type="number" min="0" v-model.number="minutes" />
+        <input
+          type="number"
+          min="0"
+          v-model.number="minutes"
+          @wheel="e => onWheelNumber(e, 'minutes', 0)"
+        />
         <span>:</span>
-        <input type="number" min="0" max="59" v-model.number="seconds" />
+        <input
+          type="number"
+          min="0"
+          max="59"
+          v-model.number="seconds"
+          @wheel="e => onWheelNumber(e, 'seconds', 0)"
+        />
 
         <button @pointerdown="startTurn" :class="{disabled: running}">
           ▶
         </button>
       </div>
     </div>
+
+    <div class="world-time-state">
+      <span class="label" v-if="isEnabledTimeModifiers()">
+        {{ t(`time.${timeOfDay}`) }}
+      </span>
+      <span class="separator" v-if="isEnabledTimeModifiers() && isEnabledWeatherModifiers()">
+        •
+      </span>
+      <span class="label" v-if="isEnabledWeatherModifiers()">
+        {{ t(`weather.${weather}`) }}
+      </span>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .turn-timer {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-
   width: 220px;
   text-align: center;
-
-  pointer-events: auto;
-  z-index: 20;
 
   background: #020617cc;
   border: 1px solid #334155;
@@ -224,7 +280,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+
+  pointer-events: auto;
 }
+
 
 .world-time {
   text-align: center;
@@ -285,6 +344,34 @@ button.disabled {
   color: #64748b;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.world-time-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  font-size: 11px;
+  opacity: 0.75;
+
+  white-space: nowrap;
+}
+
+.world-time-state .icon {
+  font-size: 14px;
+}
+
+.world-time-state .label {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.world-time-state .separator {
+  opacity: 0.4;
+  margin: 0 2px;
 }
 
 </style>

@@ -6,10 +6,11 @@ import type {CursorObject} from "@/engine/world/cursorregistry.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import type {unsub} from "@/engine/events.ts";
+import type {WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 
 export type OutMessage =
-  | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage} }
-  | { type: 'unit'; data: unitstate; frames: MoveFrame[] }
+  | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: WeatherEnum} }
+  | { type: 'unit'; data: unitstate; frames?: MoveFrame[] }
   | { type: 'unit-remove'; data: uuid[] }
   | { type: 'paint'; pos_list: number[] }
   | { type: 'chat'; data: ChatMessage; meta?: {ignore?: boolean} }
@@ -20,6 +21,7 @@ export type OutMessage =
   | { type: 'copy_board'; data: Team }
   | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
   | { type: 'direct_view'; team: Team; data: unitstate[] }
+  | { type: 'weather'; data: WeatherEnum }
 
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
@@ -212,6 +214,8 @@ export class GameSocket {
         } else if (m.type === 'room') {
           this.world.time = m.data.ingame_time;
           this.world.stage = m.data.stage;
+          this.world.weather.value = m.data.weather;
+          this.world.newWeather.value = m.data.weather;
         } else if (m.type === 'set_stage') {
           if (this.world.stage === RoomGameStage.PLANNING) {
             this.world.stage = m.data;
@@ -241,6 +245,9 @@ export class GameSocket {
               u.directView = true;
             }
           }
+        } else if (m.type === 'weather') {
+          window.ROOM_WORLD.weather.value = m.data
+          window.ROOM_WORLD.newWeather.value = m.data
         }
 
         // TODO: paint
@@ -254,7 +261,7 @@ export class GameSocket {
         // }
       }
 
-      // this.world.events.emit('changed', { reason: 'ws' })
+      this.world.events.emit('changed', { reason: 'ws' })
     }
 
     if (msg.type === 'error') {

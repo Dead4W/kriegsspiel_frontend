@@ -1,7 +1,7 @@
 import type {UnitStats} from './baseUnit'
 import {BaseUnit} from './baseUnit'
 import {type unitstate, unitType} from './types'
-import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 
 export class Artillery extends BaseUnit {
   type: unitType = unitType.ARTILLERY
@@ -13,7 +13,7 @@ export class Artillery extends BaseUnit {
     takeDamageMod: 1,
     attackRange: 4500,
     visionRange: 1000,
-    ammoMax: 10,
+    ammoMax: 32,
   }
 
   abilities = [UnitAbilityType.INACCURACY_FIRE, UnitAbilityType.THROTTLE]

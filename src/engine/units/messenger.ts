@@ -12,7 +12,7 @@ export class Messenger extends BaseUnit {
     takeDamageMod: 1,
     attackRange: 2000,
     visionRange: 1000,
-    ammoMax: 0,
+    ammoMax: 1,
   }
 
   abilities = []

@@ -7,11 +7,12 @@ import {
   ARTILLERY_DISTANCE_MODIFIERS, DISTANCE_MODIFIERS,
   getUnitDistanceModifier
 } from "@/engine/units/modifiers/UnitDistanceModifier.ts";
-import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {
   getDamageModifierByHeights
 } from "@/engine/units/modifiers/UnitHeightModifier.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
+import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 
 export interface AttackCommandState {
   targets: uuid[]
@@ -169,9 +170,16 @@ export class AttackCommand extends BaseCommand<
         ]
       })
     }
+
+    unit.ammo -= dt / 60 / 60
   }
 
   isFinished(unit: BaseUnit): boolean {
+    if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]) {
+      if (unit.ammo <= 0) {
+        return true;
+      }
+    }
     return this.getPriorityTargets(unit).length === 0 && !this.state.inaccuracyPoint
   }
 

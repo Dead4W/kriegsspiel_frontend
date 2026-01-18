@@ -119,6 +119,17 @@
       "title": "Логи",
       "attack": "атакует"
     },
+    "help": {
+      "button": "Помощь",
+      "title": "Модификаторы Юнитов",
+      "sections": {
+        "environment": "Окружение",
+        "formation": "Формации",
+        "time": "Время",
+        "weather": "Погода",
+        "ability": "Способности"
+      }
+    },
     "command_remove": "Удалить приказ"
   },
 
@@ -127,7 +138,7 @@
     "damage": "Урон",
     "hp": "Здоровье",
     "morale": "Мораль",
-    "ammo": "Боеприпасы",
+    "ammo": "Патроны",
     "speed": "Скорость",
     "takeDamageMod": "Вход. урон",
     "attackRange": "Даль. атаки",
@@ -237,12 +248,14 @@
     "redTeamName": {
       "label": "Название красной команды",
       "description": "Опциональное название для красной стороны",
-      "placeholder": "Например: Британия"
+      "placeholder": "Например: Британия",
+      "default": "Британия"
     },
     "blueTeamName": {
       "label": "Название синей команды",
       "description": "Опциональное название для синей стороны",
-      "placeholder": "Например: США"
+      "placeholder": "Например: США",
+      "default": "США"
     },
     "limitedAmmo": {
       "label": "Патроны не бесконечные",
@@ -254,22 +267,36 @@
     },
     "autoStatsUpdate": {
       "label": "Автоматическое обновление статов",
-      "description": "Статы юнита обновляются автоматически при получении рапортов (HP, Ammo, и т.д.)"
+      "description": "Статы юнита обновляются автоматически для игрока при получении рапортов (HP, патроны, позиция)"
+    },
+    "timeModifiers": {
+      "label": "Модификаторы времени суток",
+      "description": "Характеристики юнита изменяются в зависимости от времени суток."
+    },
+    "weatherModifiers": {
+      "label": "Модификаторы погоды",
+      "description": "Характеристики юнита изменяются в зависимости от погоды."
     }
   },
 
   "formation": {
     "default": "Обычная",
     "column": "Колонна",
-    "springing": "Springing",
-    "kneelingVolley": "Залп с колена",
+    "springing": "Тактическое продвижение",
+    "kneelingVolley": "Стрельба с колена",
     "forceWalking": "Форсированный марш",
-    "onHorse": "Верхом"
+    "onHorse": "На лошади"
   },
 
   "time": {
+    "morning": "Утро",
+    "day": "День",
+    "evening": "Вечер",
+    "night": "Ночь",
+
     "minute": "минут",
     "second": "секунд",
+    "hours": "часов",
     "seconds": "{count} сек.",
     "minutes": "{count} мин.",
     "minutes_seconds": "{minutes} мин. {seconds} сек.",
@@ -285,6 +312,17 @@
     "double_time_move": "Ускоренный марш",
     "charge": "Кавалерийская атака",
     "inaccuracy_fire": "Неточный артиллерийский огонь",
-    "throttle": "THROTTLE"
+    "throttle": "Рывок",
+    "gallop": "Галопом"
+  },
+
+  "weather": {
+    "title": "Погода",
+    "clear": "Ясно",
+    "cloudy": "Облачно",
+    "rain": "Дождь",
+    "heavy_rain": "Сильный дождь",
+    "fog": "Туман",
+    "snow": "Снегопад"
   }
 }

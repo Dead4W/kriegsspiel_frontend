@@ -15,8 +15,9 @@ import {
   UnitEnvironmentStateIcon
 } from "@/engine/units/enums/UnitStates.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
-import {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
+import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 
 type MoveOrderRange = {
   min: number
@@ -141,8 +142,8 @@ export class unitlayer {
       debugPerformance('drawSelection', () => {
         this.drawSelection(ctx, cam, unit, p, wUnit, hUnit)
       })
-      debugPerformance('drawHp', () => {
-        this.drawHp(ctx, cam, unit, p, wUnit, hUnit, settings)
+      debugPerformance('drawHpAmmo', () => {
+        this.drawHpAmmo(ctx, cam, unit, p, wUnit, hUnit, settings)
       })
       debugPerformance('drawModifiers', () => {
         this.drawModifiers(ctx, cam, unit, p, wUnit, hUnit, settings)
@@ -323,7 +324,7 @@ export class unitlayer {
   // UI PARTS (HP / LABELS / ICONS)
   // =============================
 
-  private drawHp(
+  private drawHpAmmo(
     ctx: CanvasRenderingContext2D,
     cam: world['camera'],
     unit: BaseUnit,
@@ -347,6 +348,18 @@ export class unitlayer {
 
     ctx.fillStyle = hpGradientColor(hpRatio)
     ctx.fillRect(p.x - w / 2, y, w * hpRatio, barH)
+
+    if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]) {
+      const ammoY = y + barH
+      const ammoRatio = unit.ammo / unit.stats.ammoMax
+
+
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'
+      ctx.fillRect(p.x - w / 2, ammoY, w, barH)
+
+      ctx.fillStyle = 'rgb(255,106,0)'
+      ctx.fillRect(p.x - w / 2, ammoY, w * ammoRatio, barH)
+    }
   }
 
   private drawModifiers(
@@ -387,7 +400,12 @@ export class unitlayer {
     const y = p.y - h / 2 - bgH - 25 * cam.zoom * this.unitScale
 
     ctx.fillStyle = 'rgba(0,0,0,0.5)'
-    drawRoundRect(ctx, p.x - bgW / 2, y, bgW, bgH, 4 * cam.zoom)
+    ctx.fillRect(
+      p.x - bgW / 2,
+      y,
+      bgW,
+      bgH
+    )
     ctx.fill()
 
     ctx.fillStyle = 'white'

@@ -118,6 +118,17 @@
       "title": "Logs",
       "attack": "attack"
     },
+    "help": {
+      "button": "Help",
+      "title": "Unit Modifiers",
+      "sections": {
+        "environment": "Environments",
+        "formation": "Formations",
+        "time": "Time",
+        "weather": "Weather",
+        "ability": "Abilities"
+      }
+    },
     "command_remove": "Remove command"
   },
 
@@ -236,12 +247,14 @@
     "redTeamName": {
       "label": "Red team name",
       "description": "Optional name for the red side",
-      "placeholder": "e.g. Great Britain"
+      "placeholder": "e.g. Britain",
+      "default": "Britain"
     },
     "blueTeamName": {
       "label": "Blue team name",
       "description": "Optional name for the blue side",
-      "placeholder": "e.g. USA"
+      "placeholder": "e.g. USA",
+      "default": "USA"
     },
     "limitedAmmo": {
       "label": "Limited ammunition",
@@ -253,7 +266,15 @@
     },
     "autoStatsUpdate": {
       "label": "Automatic stats update",
-      "description": "Stats of unit are updated automatically upon receiving reports (HP, Ammo, etc..)"
+      "description": "Stats of unit are updated automatically for player upon receiving reports (HP, Ammo, position)"
+    },
+    "timeModifiers": {
+      "label": "Time of day modifiers",
+      "description": "Unit stats change depending on the time of day."
+    },
+    "weatherModifiers": {
+      "label": "Weather modifiers",
+      "description": "Unit stats change depending on the weather."
     }
   },
 
@@ -267,8 +288,14 @@
   },
 
   "time": {
+    "morning": "Morning",
+    "day": "Day",
+    "evening": "Evening",
+    "night": "Night",
+
     "minute": "minutes",
     "second": "seconds",
+    "hours": "hours",
     "seconds": "{count} sec",
     "minutes": "{count} min",
     "minutes_seconds": "{minutes} min {seconds} sec",
@@ -284,6 +311,17 @@
     "double_time_move": "Double time move",
     "charge": "Cavalry Charge",
     "inaccuracy_fire": "Artillery Inaccuracy fire",
-    "throttle": "Throttle"
+    "throttle": "Throttle",
+    "gallop": "Gallop"
+  },
+
+  "weather": {
+    "title": "Погода",
+    "clear": "Clear",
+    "cloudy": "Cloudy",
+    "rain": "Rain",
+    "heavy_rain": "Heavy rain",
+    "fog": "Fog",
+    "snow": "Snow"
   }
 }

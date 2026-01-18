@@ -1,10 +1,10 @@
-import type { vec2 } from "@/engine/types.ts";
-import { BaseUnit } from "@/engine/units/baseUnit.ts";
+import type {vec2} from "@/engine/types.ts";
+import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {BaseCommand, CommandStatus} from "./baseCommand.ts";
-import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
-import { UnitEnvironmentState } from "@/engine/units/enums/UnitStates.ts";
-import type {uuid} from "@/engine";
-import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
+import {unitType, type uuid} from "@/engine";
+import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 
 export interface MoveCommandState {
   target: vec2
@@ -63,11 +63,14 @@ export class MoveCommand extends BaseCommand<
   }
 
   private canMove(unit: BaseUnit): boolean {
+    if (unit.type === unitType.MESSENGER) return true;
+
     const units = window.ROOM_WORLD.units.list()
 
     const collisionUnits = units.filter(other =>
-      other.id !== unit.id &&
-      Math.hypot(
+      other.id !== unit.id
+      && other.type !== unitType.MESSENGER
+      && Math.hypot(
         other.pos.x - unit.pos.x,
         other.pos.y - unit.pos.y
       ) <= BaseUnit.COLLISION_RANGE

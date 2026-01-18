@@ -15,7 +15,7 @@ export class General extends BaseUnit {
     takeDamageMod: 1,
     attackRange: 2000,
     visionRange: 1000,
-    ammoMax: 10,
+    ammoMax: 1,
   }
 
   abilities = []

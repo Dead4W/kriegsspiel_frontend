@@ -14,6 +14,8 @@ import type {OutMessage} from "@/api/socket.ts";
 import {type Ref, ref} from "vue";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import {TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
+import {WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 
 type worldevents = {
   changed: { reason: string }
@@ -31,6 +33,9 @@ export class world {
   stage: RoomGameStage = RoomGameStage.PLANNING;
 
   events = new emitter<worldevents>()
+
+  weather: Ref<WeatherEnum> = ref(WeatherEnum.Clear);
+  newWeather: Ref<WeatherEnum> = ref(WeatherEnum.Clear);
 
   map: mapmeta
 
@@ -156,5 +161,15 @@ export class world {
     // this.messages = new messageregistry()
     this.cursor = new cursorregistry()
     this.logs.value = []
+  }
+
+  getTimeOfDay(): TimeOfDay {
+    const date = new Date(this.time.replace(' ', 'T'))
+    const h = date.getHours()
+
+    if (h >= 9 && h < 12) return TimeOfDay.Morning
+    if (h >= 12 && h < 18) return TimeOfDay.Day
+    if (h >= 18 && h < 22) return TimeOfDay.Evening
+    return TimeOfDay.Night
   }
 }

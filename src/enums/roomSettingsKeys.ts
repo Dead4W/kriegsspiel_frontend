@@ -8,6 +8,9 @@ export const ROOM_SETTING_KEYS = {
   LIMITED_AMMO: 'limitedAmmo',
   GENERAL_VISION_UPDATE: 'generalVisionUpdate',
   AUTO_STATS_UPDATE: 'autoStatsUpdate',
+
+  TIME_MODIFIERS: 'timeModifiers',
+  WEATHER_MODIFIERS: 'weatherModifiers',
 } as const
 
 export type RoomSettingKey =

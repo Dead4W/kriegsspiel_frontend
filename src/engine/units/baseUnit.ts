@@ -16,10 +16,13 @@ import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {clamp} from "@/engine/math.ts";
 import {type ChatMessage} from "@/engine/types/chatMessage.ts";
 import {Team} from "@/enums/teamKeys.ts";
-import {BaseAbility, type UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
-import {createAbility} from "@/engine/units/abilities";
+import {type UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import { translate } from '@/i18n'
+import {TIME_MULTIPLIERS, TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
+import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
+import {WEATHER_MULTIPLIERS, WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
+import {ABILITY_MULTIPLIERS} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
 
@@ -27,8 +30,8 @@ export interface StatModifierInfo {
   totalMultiplier: number
   percent: number
   sources: {
-    type: 'env' | 'formation' | 'ability',
-    state: UnitEnvironmentState | FormationType | UnitAbilityType,
+    type: 'env' | 'formation' | 'ability' | 'time' | 'weather',
+    state: UnitEnvironmentState | FormationType | UnitAbilityType | TimeOfDay | WeatherEnum,
     multiplier: number
   }[]
 }
@@ -40,7 +43,7 @@ export interface UnitStats {
   takeDamageMod: number
   attackRange: number
   visionRange: number
-  ammoMax?: number
+  ammoMax: number
 }
 
 export interface MessageLinked {
@@ -64,7 +67,7 @@ export abstract class BaseUnit {
   isDirty = false
 
   hp: number
-  ammo?: number
+  ammo: number
 
   morale: number
 
@@ -98,6 +101,7 @@ export abstract class BaseUnit {
 
     this.label = s.label ?? translate(`unit.${s.type}`)
     this.hp = 0;
+    this.ammo = 0;
     this.morale = s.morale ?? 0;
     this.commands = s.commands ?? [];
 
@@ -148,10 +152,7 @@ export abstract class BaseUnit {
   /** вызывается ПОСЛЕ super() в наследнике */
   protected initStats(s: unitstate) {
     this.hp = clamp(s.hp ?? this.stats.maxHp, 0, this.stats.maxHp)
-
-    if (this.stats.ammoMax !== undefined) {
-      this.ammo = clamp(s.ammo ?? this.stats.ammoMax, 0, this.stats.ammoMax)
-    }
+    this.ammo = clamp(s.ammo ?? this.stats.ammoMax, 0, this.stats.ammoMax)
   }
 
   takeDamage(amount: number): number {
@@ -230,28 +231,7 @@ export abstract class BaseUnit {
   protected getStatMultiplier<K extends StatKey>(
     key: K
   ): number {
-    let mul = 1
-
-    for (const state of this.envState) {
-      // @ts-ignore
-      let m = ENV_MULTIPLIERS[state]?.[key];
-      if (
-        ENV_MULTIPLIERS[state]
-        && ENV_MULTIPLIERS[state].byTypes
-        && ENV_MULTIPLIERS[state].byTypes[this.type]
-        && ENV_MULTIPLIERS[state].byTypes[this.type]![key]
-      ) {
-        m = ENV_MULTIPLIERS[state]?.byTypes[this.type]![key]
-      }
-      if (m !== undefined) mul *= m
-    }
-
-    mul *= this.getFormationMultiplier(key)
-    if (this.activeAbility) {
-      mul *= this.activeAbility.getStatMultiplier!(key, this)
-    }
-
-    return mul
+    return this.getStatModifierInfo(key).totalMultiplier
   }
 
   protected getFormationMultiplier<K extends keyof UnitStats | 'damage'>(
@@ -308,17 +288,39 @@ export abstract class BaseUnit {
       }
     }
 
+    // formation
     if (this.getFormationMultiplier(key) != 1) {
       const m = this.getFormationMultiplier(key)
       total *= m
       sources.push({ type: 'formation', state: this.formation, multiplier: m })
     }
 
-    if (this.activeAbility) {
-      const m = this.activeAbility.getStatMultiplier!(key, this)
-      if (m !== 1) {
+    // ability
+    if (this.activeAbilityType) {
+      const m = ABILITY_MULTIPLIERS[this.activeAbilityType]?.[key]
+      if (m && m !== 1) {
         total *= m
         sources.push({ type: 'ability', state: this.activeAbilityType!, multiplier: m })
+      }
+    }
+
+    // time
+    if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.TIME_MODIFIERS]) {
+      const timeOfDay = window.ROOM_WORLD.getTimeOfDay()
+      const m = TIME_MULTIPLIERS[timeOfDay]?.[key]
+      if (m && m !== 1) {
+        total *= m
+        sources.push({ type: 'time', state: timeOfDay, multiplier: m })
+      }
+    }
+
+    // weather
+    if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]) {
+      const weather = window.ROOM_WORLD.weather.value
+      const weatherMul = WEATHER_MULTIPLIERS[weather]?.[key]
+      if (weatherMul && weatherMul !== 1) {
+        total *= weatherMul
+        sources.push({ type: 'weather', state: weather, multiplier: weatherMul })
       }
     }
 
@@ -427,11 +429,6 @@ export abstract class BaseUnit {
     }
 
     return result
-  }
-
-  get activeAbility(): BaseAbility | null {
-    if (!this.activeAbilityType) return null;
-    return createAbility(this.activeAbilityType)
   }
 
   activateAbility(newAbilityType: UnitAbilityType | null) {

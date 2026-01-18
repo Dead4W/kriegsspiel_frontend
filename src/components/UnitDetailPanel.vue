@@ -168,6 +168,27 @@ onUnmounted(() => {
           </div>
         </div>
 
+        <!-- Ammo -->
+        <div v-if="isEnabledAmmo() && unit.stats.ammoMax != null" class="stat">
+          <label>{{ t('stat.ammo') }} ({{ t('time.hours') }})</label>
+          <input
+            type="number"
+            v-model="ammoProxy"
+            min="0"
+            :max="unit.stats.ammoMax"
+            @keydown.stop
+            @change="commitInput"
+          />
+          <span>/ {{ unit.stats.ammoMax }}</span>
+
+          <div class="bar ammo">
+            <div
+              class="fill"
+              :style="barStyle(unit.ammo ?? 0, 0, unit.stats.ammoMax)"
+            />
+          </div>
+        </div>
+
         <!-- MORALE -->
         <div class="stat" v-if="isAdmin()">
           <label>{{ t('stat.morale') }}</label>
@@ -207,27 +228,6 @@ onUnmounted(() => {
           </template>
 
           <template v-if="unit.type !== unitType.MESSENGER">
-            <!-- Ammo -->
-            <div v-if="isEnabledAmmo() && unit.stats.ammoMax != null" class="stat">
-              <label>{{ t('stat.ammo') }}</label>
-              <input
-                type="number"
-                v-model="ammoProxy"
-                min="0"
-                :max="unit.stats.ammoMax"
-                @keydown.stop
-                @change="commitInput"
-              />
-              <span>/ {{ unit.stats.ammoMax }}</span>
-
-              <div class="bar ammo">
-                <div
-                  class="fill"
-                  :style="barStyle(unit.ammo ?? 0, 0, unit.stats.ammoMax)"
-                />
-              </div>
-            </div>
-
             <!-- Readonly stats -->
             <div
               v-for="statKey in ['damage','speed','takeDamageMod','attackRange','visionRange']"
@@ -269,14 +269,8 @@ onUnmounted(() => {
                   class="modifier-card"
                   :class="percentClass(statKey as StatKey, Math.round((m.multiplier) * 100))"
                 >
-                  <span class="env" v-if="m.type === 'env'">
-                    {{ t(`env.${m.state}`) }}
-                  </span>
-                  <span class="env" v-if="m.type === 'formation'">
-                    {{ t(`formation.${m.state}`) }}
-                  </span>
-                  <span class="env" v-if="m.type === 'ability'">
-                    {{ t(`ability.${m.state}`) }}
+                  <span class="env">
+                    {{ t(`${m.type}.${m.state}`) }}
                   </span>
                   <span class="percent">
                     {{ Math.round((m.multiplier) * 100) }}%

@@ -4,7 +4,7 @@ import {useI18n} from 'vue-i18n'
 import type {BaseUnit} from '@/engine/units/baseUnit'
 import {BaseCommand, CommandStatus} from '@/engine/units/commands/baseCommand'
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 import type {vec2} from "@/engine";

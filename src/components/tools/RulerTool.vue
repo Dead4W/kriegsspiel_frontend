@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import {ref, onMounted, onBeforeUnmount, type UnwrapRef} from 'vue'
-import type { world } from '@/engine'
 import type {
   OverlayLine,
   OverlayText,
   OverlayItem,
 } from '@/engine/types/overlayTypes'
-
-const props = defineProps<{ world: world }>()
 
 const points = ref<{ x: number; y: number }[]>([])
 const preview = ref<{ x: number; y: number } | null>(null)
@@ -54,7 +51,7 @@ function rebuildOverlay() {
     const a = points.value[i]
     const b = points.value[i + 1]
 
-    const d = distance(a, b) * props.world.map.metersPerPixel;
+    const d = distance(a, b) * window.ROOM_WORLD.map.metersPerPixel;
     totalDistance += d;
     const m = mid(a, b)
     const rawAngle = angleAtan2(a, b);
@@ -112,7 +109,7 @@ function rebuildOverlay() {
     })
   }
 
-  props.world.setOverlay(items)
+  window.ROOM_WORLD.setOverlay(items)
 }
 
 /* ===== input ===== */
@@ -124,7 +121,7 @@ function down(e: PointerEvent) {
     return
   }
 
-  const p = props.world.camera.screenToWorld({
+  const p = window.ROOM_WORLD.camera.screenToWorld({
     x: e.clientX,
     y: e.clientY,
   })
@@ -137,7 +134,7 @@ function down(e: PointerEvent) {
 function resetRuler() {
   points.value = []
   preview.value = null
-  props.world.clearOverlay()
+  window.ROOM_WORLD.clearOverlay()
 }
 
 function onKeyDown(e: KeyboardEvent) {
@@ -149,7 +146,7 @@ function onKeyDown(e: KeyboardEvent) {
 function move(e: PointerEvent) {
   if (!points.value.length) return
 
-  preview.value = props.world.camera.screenToWorld({
+  preview.value = window.ROOM_WORLD.camera.screenToWorld({
     x: e.clientX,
     y: e.clientY,
   })
@@ -175,7 +172,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointermove', move)
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('pointerup', up)
-  props.world.clearOverlay();
+  window.ROOM_WORLD.clearOverlay();
 })
 </script>
 

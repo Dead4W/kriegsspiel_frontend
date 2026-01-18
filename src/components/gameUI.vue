@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, type ComputedRef, nextTick, onMounted, onUnmounted, ref} from 'vue'
+import {nextTick, onMounted, onUnmounted, ref} from 'vue'
 import SpawnTool from '@/components/tools/SpawnTool.vue'
 import RulerTool from '@/components/tools/RulerTool.vue'
 import {useI18n} from 'vue-i18n'
@@ -15,6 +15,9 @@ import BattleLog from "@/components/BattleLog.vue";
 import ChartTool from "@/components/tools/ChartTool.vue";
 import DemoTool from "@/components/tools/DemoTool.vue";
 import {RoomGameStage} from "@/enums/roomStage.ts";
+import HelpPanel from "@/components/tools/HelpPanel.vue";
+import WeatherControl from "@/components/WeatherControl.vue";
+import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 
 const { t } = useI18n()
 
@@ -24,6 +27,7 @@ enum Tools {
   ADMIN = 'admin',
   LOGS = 'logs',
   CHART = 'chart',
+  HELP = 'help',
 }
 
 const activeTool = ref<Tools | null>(null)
@@ -40,6 +44,10 @@ function toggle(e: MouseEvent, tool: Tools) {
 function isAdmin() {
   return window.PLAYER.team === Team.ADMIN;
 }
+function isEnabledWeatherModifiers() {
+  return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]
+}
+
 
 function onKeydown(e: KeyboardEvent) {
   nextTick();
@@ -76,6 +84,7 @@ onUnmounted(() => {
 
     <div class="top-bar no-select">
       <TurnTimer />
+      <WeatherControl class="weather-under" v-if="isAdmin() && isEnabledWeatherModifiers()" />
     </div>
 
     <!-- Панель инструментов -->
@@ -124,17 +133,23 @@ onUnmounted(() => {
       >
         📏 {{ t('tools.ruler') }}
       </button>
+
+      <button
+        :class="{ active: activeTool === Tools.HELP }"
+        @pointerdown.stop.prevent
+        @click="toggle($event, Tools.HELP)"
+      >
+        ❓ {{ t('tools.help.button') }}
+      </button>
     </div>
 
     <DemoTool
       v-if="isAdmin() && isEnd"
-      :world="world"
       @close="close"
     />
 
     <AdminTool
       v-if="isAdmin() && activeTool === Tools.ADMIN"
-      :world="world"
       class="no-select"
     />
 
@@ -150,20 +165,22 @@ onUnmounted(() => {
     <!-- Инструменты -->
     <SpawnTool
       v-if="activeTool === Tools.SPAWN"
-      :world="world"
       class="no-select"
     />
 
     <RulerTool
       v-if="activeTool === Tools.RULER"
-      :world="world"
       class="no-select"
     />
 
     <SelectionPanel
-      :world="world"
       :isEnd="isEnd"
       class="no-select"
+    />
+
+    <HelpPanel
+      v-if="activeTool === Tools.HELP"
+      @close="close"
     />
 
     <ClientSettingsPanel />
@@ -220,4 +237,21 @@ onUnmounted(() => {
 .toolbar button.active {
   background: var(--accent);
 }
+
+.top-bar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  display: flex;
+  flex-direction: column;   /* 🔑 ВЕРТИКАЛЬНО */
+  align-items: center;
+  gap: 6px;
+
+  pointer-events: auto;
+  z-index: 20;
+}
+
+
 </style>

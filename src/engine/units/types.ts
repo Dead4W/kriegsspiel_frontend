@@ -8,7 +8,7 @@ import type {WaitCommandState} from "@/engine/units/commands/waitCommand.ts";
 import type {DeliveryCommandState} from "@/engine/units/commands/deliveryCommand.ts";
 import {CommandStatus} from "@/engine/units/commands/baseCommand.ts";
 import type {MessageLinked} from "@/engine/units/baseUnit.ts";
-import type {UnitAbilityType} from "@/engine/units/abilities/baseAbility.ts";
+import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 
 export type uuid = string
 

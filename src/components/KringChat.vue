@@ -246,7 +246,9 @@ const visibleMessages = computed(() => {
   }
 
   // обычные чаты
-  return messages.value.filter(m => m.team === activeTeam.value)
+  return messages.value
+    .filter(m => m.time >= window.ROOM_WORLD.time)
+    .filter(m => m.team === activeTeam.value)
 })
 const textarea = ref<HTMLTextAreaElement | null>(null)
 

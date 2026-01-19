@@ -21,6 +21,7 @@ type worldevents = {
   changed: { reason: string }
   changed_overlay: { reason: string }
   api: OutMessage
+  camera: {}
 }
 
 export class world {

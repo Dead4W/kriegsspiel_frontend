@@ -260,8 +260,12 @@ const unreadByTeam = computed<Record<Team, number>>(() => {
   const result = {} as Record<Team, number>
 
   for (const t of teams.map(t => t.id)) {
+    if (window.ROOM_WORLD.stage === RoomGameStage.END) {
+      result[t] = 0
+      continue
+    }
     result[t] = messages.value.filter(
-      m => m.team === t && isUnreadMessage(m)
+      m => m.team === t && isUnreadMessage(m) && m.time <= window.ROOM_WORLD.time
     ).length
   }
 

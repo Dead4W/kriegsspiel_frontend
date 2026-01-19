@@ -538,7 +538,10 @@ export abstract class BaseUnit {
     // Targets
     const targets = this.commands
       .filter(cmd => cmd.type === UnitCommandTypes.Attack)
-      .map(cmd => window.ROOM_WORLD.units.get(cmd.state?.targetId))
+      .map(
+        cmd => cmd.state.targets.map(t => window.ROOM_WORLD.units.get(t))
+      )
+      .flat()
       .filter((u): u is BaseUnit => Boolean(u && u.alive))
     selfInfo.push(``)
     selfInfo.push(`TARGETS:`)

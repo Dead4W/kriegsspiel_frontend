@@ -9,7 +9,7 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
-import {unitType} from "@/engine";
+import {unitType, type vec2} from "@/engine";
 import {
   type UnitEnvironmentState,
   UnitEnvironmentStateIcon
@@ -162,7 +162,7 @@ export class unitlayer {
     ctx: CanvasRenderingContext2D,
     cam: world['camera'],
     unit: BaseUnit,
-    p: { x: number; y: number },
+    p: vec2,
     w: number,
     h: number
   ) {

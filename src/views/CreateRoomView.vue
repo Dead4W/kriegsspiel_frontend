@@ -14,7 +14,8 @@ const selectedMapId = ref<string>('essex')
 
 const customMapUrl = ref('')
 const customHeightMapUrl = ref('')
-const customMetersPerPixel = ref()
+const customMetersPerPixel = ref('')
+const gameDate = ref('1882-06-12 09:00:00')
 
 type RoomSettingsState = Record<string, boolean | string | number>
 /** состояние настроек комнаты */
@@ -63,11 +64,11 @@ function applyMapSettings() {
   if (map.custom) {
     settings.value.MAP_URL = customMapUrl.value || ''
     settings.value.HEIGHT_MAP_URL = customHeightMapUrl.value || ''
-    settings.value.MAP_METERS_PER_PIXEL = customMetersPerPixel.value || 1
+    settings.value.MAP_METERS_PER_PIXEL = +(customMetersPerPixel.value || 1)
   } else {
     settings.value.MAP_URL = map.mapUrl!
     settings.value.HEIGHT_MAP_URL = map.heightMapUrl!
-    settings.value.MAP_METERS_PER_PIXEL = map.metersPerPixel || 1
+    settings.value.MAP_METERS_PER_PIXEL = +(map.metersPerPixel || 1)
   }
 }
 applyMapSettings()
@@ -78,6 +79,7 @@ async function createRoom() {
   const payload = {
     name: roomName.value.trim(),
     options: settings.value,
+    time: gameDate.value,
   }
 
   try {
@@ -117,6 +119,19 @@ async function createRoom() {
         </button>
 
         <div v-if="showAdvanced" class="advanced">
+          <!-- Дата и время игры -->
+          <div class="field">
+            <label>{{ t('settings.gameDate') }}</label>
+            <input
+              v-model="gameDate"
+              placeholder="1882-06-12 09:00:00"
+              pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+            />
+            <small>
+              {{ t('settings.gameDateFormat') }}: YYYY-MM-DD HH:mm:ss
+            </small>
+          </div>
+
           <div class="map-selector">
             <h3>{{ t('settings.customMap.title') }}</h3>
 
@@ -160,6 +175,7 @@ async function createRoom() {
                 <label>{{ t('settings.customMap.metersPerPixel') }}</label>
                 <input
                   v-model="customMetersPerPixel"
+                  type="number"
                   min="0"
                   step="0.01"
                   placeholder="1.00"

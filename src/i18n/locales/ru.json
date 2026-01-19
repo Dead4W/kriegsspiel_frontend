@@ -271,7 +271,9 @@
       "mapUrl": "URL Карты",
       "heightMapUrl": "URL Карты высот",
       "metersPerPixel": "Метров на пиксель"
-    }
+    },
+    "gameDate": "Игровая дата",
+    "gameDateFormat": "Формат"
   },
 
   "formation": {

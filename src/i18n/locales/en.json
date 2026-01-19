@@ -270,7 +270,9 @@
       "mapUrl": "Map URL",
       "heightMapUrl": "Height map URL",
       "metersPerPixel": "Meters per pixel"
-    }
+    },
+    "gameDate": "Game Date",
+    "gameDateFormat": "Format"
   },
 
   "formation": {

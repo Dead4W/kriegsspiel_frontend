@@ -19,14 +19,6 @@ function endWar() {
   window.ROOM_WORLD.setStage(RoomGameStage.END);
 }
 
-function copyBlueBoard() {
-  window.ROOM_WORLD.events.emit('api', {type: "copy_board", data: Team.BLUE})
-}
-
-function copyRedBoard() {
-  window.ROOM_WORLD.events.emit('api', {type: "copy_board", data: Team.RED})
-}
-
 function sync() {
   stage.value = window.ROOM_WORLD.stage;
 }
@@ -73,14 +65,6 @@ onUnmounted(() => {
 
     <button class="danger" @click="endWar" v-if="stage === RoomGameStage.WAR">
       ⚔️ {{ t('tools.admin.end_war') }}
-    </button>
-
-    <button @click="copyBlueBoard" v-if="stage === RoomGameStage.PLANNING">
-      📋 {{ t('tools.admin.copy_blue') }}
-    </button>
-
-    <button @click="copyRedBoard" v-if="stage === RoomGameStage.PLANNING">
-      📋 {{ t('tools.admin.copy_red') }}
     </button>
 
     <button @click="copyTeamLink(Team.ADMIN)">

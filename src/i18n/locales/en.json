@@ -75,8 +75,6 @@
       "title": "Administration",
       "start_war": "Start war",
       "end_war": "End war",
-      "copy_blue": "Copy blue board",
-      "copy_red": "Copy red board",
       "clear_commands": "Clear commands",
       "copy_team_link": "Copy link team"
     },

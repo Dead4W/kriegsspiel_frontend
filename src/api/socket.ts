@@ -18,7 +18,6 @@ export type OutMessage =
   | { type: 'cursor'; data: CursorObject }
   | { type: 'skip_time'; data: string }
   | { type: 'set_stage'; data: RoomGameStage }
-  | { type: 'copy_board'; data: Team }
   | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
   | { type: 'direct_view'; team: Team; data: unitstate[] }
   | { type: 'weather'; data: WeatherEnum }

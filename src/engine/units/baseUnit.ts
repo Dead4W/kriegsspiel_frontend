@@ -16,13 +16,16 @@ import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {clamp} from "@/engine/math.ts";
 import {type ChatMessage} from "@/engine/types/chatMessage.ts";
 import {Team} from "@/enums/teamKeys.ts";
-import {type UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import {
+  ABILITY_MULTIPLIERS,
+  type UnitAbilityType
+} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import { translate } from '@/i18n'
+import {translate} from '@/i18n'
 import {TIME_MULTIPLIERS, TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {WEATHER_MULTIPLIERS, WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
-import {ABILITY_MULTIPLIERS} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import {RoomGameStage} from "@/enums/roomStage.ts";
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
 
@@ -118,6 +121,7 @@ export abstract class BaseUnit {
     if (this.directView && window.PLAYER.team !== Team.ADMIN) {
       return;
     }
+    if (window.ROOM_WORLD.stage === RoomGameStage.END) return
 
     to.x = clamp(to.x, 0, window.ROOM_WORLD.map.width);
     to.y = clamp(to.y, 0, window.ROOM_WORLD.map.height);

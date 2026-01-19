@@ -7,6 +7,7 @@ import {Team} from "@/enums/teamKeys.ts";
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {type unitstate, unitType, type uuid} from "@/engine";
+import {RoomGameStage} from "@/enums/roomStage.ts";
 
 const { t } = useI18n()
 
@@ -129,6 +130,10 @@ function getSendWarningMessage() {
   }
 
   return null;
+}
+
+function isEnd() {
+  return window.ROOM_WORLD.stage === RoomGameStage.END
 }
 
 function getMessageUnits(m: ChatMessage): BaseUnit[] {
@@ -647,8 +652,9 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- input -->
-    <template v-if="!getSendWarningMessage()">
-      <form class="chat-input" @submit.prevent="send">
+    <template v-if="!isEnd()">
+      <template v-if="!getSendWarningMessage()">
+        <form class="chat-input" @submit.prevent="send">
       <textarea
         ref="textarea"
         v-model="input"
@@ -659,21 +665,22 @@ onBeforeUnmount(() => {
         @input="autoResizeInput"
         @keydown.stop
       />
-        <button type="submit">➤</button>
-      </form>
-    </template>
-    <template v-else>
-      <div class="chat-selection-warning">
-        <div class="warning-icon">⚠️</div>
-        <div class="warning-text">
-          <div class="title">
-            {{ t('chat.selection_warning') }}
-          </div>
-          <div class="hint">
-            {{ getSendWarningMessage() }}
+          <button type="submit">➤</button>
+        </form>
+      </template>
+      <template v-else>
+        <div class="chat-selection-warning">
+          <div class="warning-icon">⚠️</div>
+          <div class="warning-text">
+            <div class="title">
+              {{ t('chat.selection_warning') }}
+            </div>
+            <div class="hint">
+              {{ getSendWarningMessage() }}
+            </div>
           </div>
         </div>
-      </div>
+      </template>
     </template>
 
     <div

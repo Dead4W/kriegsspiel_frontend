@@ -88,7 +88,6 @@ function next() {
 /* ---------- lifecycle ---------- */
 
 onMounted(async () => {
-  window.ROOM_WORLD.socketLock = true
   await loadSnapshotsList()
   await loadSnapshot()
 })

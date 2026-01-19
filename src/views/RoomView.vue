@@ -98,11 +98,8 @@ async function loadRoom() {
     localStorage.setItem(`room_key_${uuid}`, keyFromRoute)
   }
 
-  const password = localStorage.getItem(`room_pass_${uuid}`)
-
   try {
     const res = await api.get(`/room/${uuid}`, {
-      headers: password ? { 'X-Room-Password': password } : undefined,
       params: { key },
     })
 
@@ -124,10 +121,7 @@ async function loadRoom() {
       onTeamSelected(roomData.value!.team)
     }
   } catch (e: any) {
-    if (e.response?.status === 403) {
-      error.value = 'error.bad_password'
-      stage.value = RoomStage.ERROR
-    } else if (e.response?.status === 422) {
+    if (e.response?.status === 403 || e.response?.status === 422) {
       error.value = 'error.wrong_key'
       stage.value = RoomStage.ERROR
     } else {
@@ -155,7 +149,6 @@ async function onTeamSelected(team: Team) {
     socket.connect({
       roomId: route.params.uuid as string,
       team: window.PLAYER.team,
-      password: localStorage.getItem(`room_pass_${route.params.uuid}`) ?? undefined,
       key: localStorage.getItem(`room_admin_key_${route.params.uuid}`)
         ?? localStorage.getItem(`room_key_${route.params.uuid}`)
         ?? undefined,

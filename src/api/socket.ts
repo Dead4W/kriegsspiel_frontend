@@ -36,7 +36,6 @@ export class GameSocket {
   connect(params: {
     roomId: string
     team: string
-    password?: string
     key?: string
     world: world
   }) {
@@ -44,7 +43,6 @@ export class GameSocket {
     const query = new URLSearchParams({
       room_id: params.roomId,
       team: params.team,
-      password: params.password ?? '',
       key: params.key ?? '',
     })
 

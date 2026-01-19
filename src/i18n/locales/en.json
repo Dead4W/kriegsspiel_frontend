@@ -20,11 +20,6 @@
       "required": "Please enter a room name"
     },
 
-    "password": {
-      "label": "Password (optional)",
-      "placeholder": "••••••"
-    },
-
     "advanced": {
       "toggle": "Advanced settings",
       "beta": "BETA",
@@ -176,15 +171,9 @@
     "canvas_not_mounted": "Canvas for render not mounted (Tech error).",
     "canvas_overlay_not_mounted": "Canvas for render overlay not mounted (Tech error).",
     "bad_token": "Auth token expired or not exist.",
-    "bad_password": "Wrong room password.",
     "room_not_found": "Room not found.",
     "wrong_key": "Wrong link key. Try with new link.",
     "map_url_empty": "Empty map url."
-  },
-
-  "room": {
-    "enter_password": "Enter room password",
-    "password": "password"
   },
 
   "continue": "Continue",

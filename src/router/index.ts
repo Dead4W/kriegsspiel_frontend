@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import CreateRoomView from '@/views/CreateRoomView.vue'
 import RoomView from '@/views/RoomView.vue'
-import RoomPasswordView from '@/views/RoomPasswordView.vue'
 import api from '@/api/client'
 
 const router = createRouter({
@@ -23,12 +22,6 @@ const router = createRouter({
       path: '/room/:uuid',
       name: 'room',
       component: RoomView,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/room/:uuid/password',
-      name: 'room-password',
-      component: RoomPasswordView,
       meta: { requiresAuth: true },
     },
     {

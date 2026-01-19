@@ -9,7 +9,6 @@ const router = useRouter()
 const { t } = useI18n()
 
 const roomName = ref('')
-const password = ref('')
 const showAdvanced = ref(false)
 const selectedMapId = ref<string>('essex')
 
@@ -73,16 +72,11 @@ async function createRoom() {
 
   const payload = {
     name: roomName.value.trim(),
-    password: password.value ? password.value : null,
     options: settings.value,
   }
 
   try {
     const { data } = await api.put('/room', payload)
-
-    if (password.value) {
-      localStorage.setItem(`room_pass_${data.uuid}`, password.value);
-    }
 
     localStorage.setItem(`room_key_${data.uuid}`, data.admin_key)
     localStorage.setItem(`room_admin_key_${data.uuid}`, data.admin_key)
@@ -110,16 +104,6 @@ async function createRoom() {
             :placeholder="t('createRoom.roomName.placeholder')"
           />
         </div>
-
-  <!--      &lt;!&ndash; Пароль &ndash;&gt;-->
-  <!--      <div class="field">-->
-  <!--        <label>Пароль (опционально)</label>-->
-  <!--        <input-->
-  <!--          v-model="password"-->
-  <!--          type="password"-->
-  <!--          placeholder="••••••"-->
-  <!--        />-->
-  <!--      </div>-->
 
         <!-- Дополнительные настройки -->
         <button class="advanced-toggle" @click="showAdvanced = !showAdvanced">

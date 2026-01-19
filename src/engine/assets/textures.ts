@@ -23,6 +23,7 @@ function getTexture(url: string): HTMLImageElement {
 
 export function preloadTextures(): void {
   for (const type of Object.values(unitType)) {
+    if (type === unitType.MESSENGER) continue;
     getUnitTexture(type)
   }
   getCursorTexture();

@@ -75,7 +75,7 @@ export function bindPointer(canvas: HTMLCanvasElement, w: world) {
       cam.pos.y += before.y - after.y
 
       cam.clampToWorld()
-      // w.events.emit('changed', { reason: 'camera' })
+      w.events.emit('camera', {}).then()
     },
     { passive: false }
   )

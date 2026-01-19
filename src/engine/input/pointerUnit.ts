@@ -100,6 +100,11 @@ export function bindUnitInteraction(
     requestTick()
   })
 
+  w.events.on('camera', () => {
+    dirty = true
+    requestTick()
+  })
+
   w.events.on('changed', ({ reason }) => {
     if (reason === 'camera') {
       dirty = true

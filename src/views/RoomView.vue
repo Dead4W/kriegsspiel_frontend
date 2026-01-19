@@ -162,6 +162,7 @@ async function onTeamSelected(team: Team) {
 async function initWorld(room: RoomData) {
   let defaultMapUrl = 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg';
   let defaultHeightMapUrl = 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png';
+  let defaultMetersPerPixel = 5.38
 
   if (window.location.hostname === 'localhost') {
     defaultMapUrl = '/assets/default_map.jpeg'
@@ -171,14 +172,15 @@ async function initWorld(room: RoomData) {
   if (!room.options.mapUrl) {
     room.options.mapUrl = defaultMapUrl
     room.options.heightMapUrl = defaultHeightMapUrl
+    room.options.metersPerPixel = defaultMetersPerPixel
   }
 
   const map: mapmeta = {
     imageUrl: room.options.mapUrl,
     heightMapUrl: room.options.heightMapUrl ?? '',
-    width: 9703,
-    height: 7553,
-    metersPerPixel: 5.38,
+    width: 0,
+    height: 0,
+    metersPerPixel: room.options.metersPerPixel || 1,
   }
 
   let loadMapProgress = 0
@@ -212,6 +214,9 @@ async function initWorld(room: RoomData) {
       }
     )
   }
+
+  map.width = bitmap.width
+  map.height = bitmap.height
 
   await nextTick()
   await new Promise(requestAnimationFrame)

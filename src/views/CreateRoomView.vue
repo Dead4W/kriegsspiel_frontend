@@ -14,8 +14,9 @@ const selectedMapId = ref<string>('essex')
 
 const customMapUrl = ref('')
 const customHeightMapUrl = ref('')
+const customMetersPerPixel = ref()
 
-type RoomSettingsState = Record<string, boolean | string>
+type RoomSettingsState = Record<string, boolean | string | number>
 /** состояние настроек комнаты */
 const settings = ref<RoomSettingsState>(
   Object.fromEntries(
@@ -30,6 +31,7 @@ type GameMap = {
   preview: string
   mapUrl?: string
   heightMapUrl?: string
+  metersPerPixel?: number
   custom?: boolean
 }
 
@@ -40,6 +42,7 @@ const GAME_MAPS: GameMap[] = [
     preview: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map_preview.jpeg',
     mapUrl: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg',
     heightMapUrl: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png',
+    metersPerPixel: 5.38,
   },
   {
     id: 'custom',
@@ -60,9 +63,11 @@ function applyMapSettings() {
   if (map.custom) {
     settings.value.MAP_URL = customMapUrl.value || ''
     settings.value.HEIGHT_MAP_URL = customHeightMapUrl.value || ''
+    settings.value.MAP_METERS_PER_PIXEL = customMetersPerPixel.value || 1
   } else {
     settings.value.MAP_URL = map.mapUrl!
     settings.value.HEIGHT_MAP_URL = map.heightMapUrl!
+    settings.value.MAP_METERS_PER_PIXEL = map.metersPerPixel || 1
   }
 }
 applyMapSettings()
@@ -106,7 +111,7 @@ async function createRoom() {
         </div>
 
         <!-- Дополнительные настройки -->
-        <button class="advanced-toggle" @click="showAdvanced = !showAdvanced">
+        <button class="advanced-toggle" @click="showAdvanced = !showAdvanced" type="button">
           {{ t('createRoom.advanced.toggle') }}
           <span :class="{ open: showAdvanced }">▾</span>
         </button>
@@ -122,6 +127,7 @@ async function createRoom() {
                 class="map-card"
                 :class="{ active: selectedMapId === map.id }"
                 @click="selectedMapId = map.id"
+                type="button"
               >
                 <div
                   class="preview"
@@ -148,6 +154,17 @@ async function createRoom() {
               <div class="field">
                 <label>{{ t('settings.customMap.heightMapUrl') }}</label>
                 <input v-model="customHeightMapUrl" placeholder="https://example.com/height_map.jpeg" @input="applyMapSettings" />
+              </div>
+
+              <div class="field">
+                <label>{{ t('settings.customMap.metersPerPixel') }}</label>
+                <input
+                  v-model="customMetersPerPixel"
+                  min="0"
+                  step="0.01"
+                  placeholder="1.00"
+                  @input="applyMapSettings"
+                />
               </div>
             </div>
           </div>
@@ -213,7 +230,7 @@ async function createRoom() {
             {{ t('createRoom.actions.create') }}
           </button>
 
-          <button class="secondary" @click="router.back()">
+          <button class="secondary" @click="router.back()" type="button">
             {{ t('createRoom.actions.cancel') }}
           </button>
         </div>

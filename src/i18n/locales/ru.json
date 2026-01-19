@@ -269,7 +269,8 @@
     "customMap": {
       "title": "Карта",
       "mapUrl": "URL Карты",
-      "heightMapUrl": "URL Карты высот"
+      "heightMapUrl": "URL Карты высот",
+      "metersPerPixel": "Метров на пиксель"
     }
   },
 

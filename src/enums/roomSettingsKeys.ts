@@ -14,6 +14,7 @@ export const ROOM_SETTING_KEYS = {
 
   MAP_URL: 'mapUrl',
   HEIGHT_MAP_URL: 'heightMapUrl',
+  MAP_METERS_PER_PIXEL: 'metersPerPixel',
 } as const
 
 export type RoomSettingKey =

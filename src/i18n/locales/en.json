@@ -268,7 +268,8 @@
     "customMap": {
       "title": "Map",
       "mapUrl": "Map URL",
-      "heightMapUrl": "Height map URL"
+      "heightMapUrl": "Height map URL",
+      "metersPerPixel": "Meters per pixel"
     }
   },
 

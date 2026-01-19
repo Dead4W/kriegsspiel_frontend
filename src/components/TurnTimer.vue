@@ -150,7 +150,7 @@ async function startTurn() {
 
   // DirectView general
   if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.GENERAL_VISION_UPDATE]) {
-    const directViewByTeam = window.ROOM_WORLD.units.getDirectView();
+    const directViewByTeam = window.ROOM_WORLD.units.getDirectViewByGenerals();
     for (const team of [Team.RED, Team.BLUE]) {
       window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team as unitTeam)!.map(uuid => {
           const u = window.ROOM_WORLD.units.get(uuid)!

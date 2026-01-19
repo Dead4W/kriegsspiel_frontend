@@ -4,7 +4,7 @@ import {camera} from './camera'
 import {unitregistry} from './unitregistry'
 import {overlaystate} from "@/engine/world/overlay.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
-import type {mapmeta} from "@/engine/types.ts";
+import type {mapmeta, vec2} from "@/engine/types.ts";
 import {messageregistry} from "@/engine/world/messageregistry"
 import type {ChatMessage} from "@/engine/types/chatMessage.ts";
 import {cursorregistry} from "@/engine/world/cursorregistry.ts";
@@ -171,5 +171,10 @@ export class world {
     if (h >= 12 && h < 18) return TimeOfDay.Day
     if (h >= 18 && h < 22) return TimeOfDay.Evening
     return TimeOfDay.Night
+  }
+
+  getHeightAt(pos: vec2) {
+    if (!this.heightMap) return 0
+    return this.heightMap.getHeightAt(pos)
   }
 }

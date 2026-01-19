@@ -2,6 +2,8 @@
  * Height from ImageBitmap (on-demand, bilinear)
  * ============================================ */
 
+import type {vec2} from "@/engine";
+
 export type HeightColor = {
   r: number
   g: number
@@ -161,7 +163,7 @@ function readPixelHeight(
  * ============================================ */
 
 export type HeightSampler = {
-  getHeightAt(x: number, y: number): number
+  getHeightAt(pos: vec2): number
 }
 
 /**
@@ -174,7 +176,10 @@ export async function createHeightSampler(
   width: number,
   height: number,
 ): Promise<HeightSampler> {
-  function getHeightAt(x: number, y: number): number {
+  function getHeightAt(pos: vec2): number {
+    const x = pos.x;
+    const y = pos.y;
+
     if (
       x < 0 || y < 0 ||
       x >= width - 1 || y >= height - 1

@@ -48,6 +48,14 @@ export const ROOM_SETTINGS: readonly RoomSetting[] = [
     level: 'stable',
     default: true,
   },
+  {
+    key: ROOM_SETTING_KEYS.WEATHER_MODIFIERS,
+    type: 'boolean',
+    i18nLabel: 'settings.weatherModifiers.label',
+    i18nDescription: 'settings.weatherModifiers.description',
+    level: 'stable',
+    default: true,
+  },
 
   // === beta ===
   {
@@ -63,14 +71,6 @@ export const ROOM_SETTINGS: readonly RoomSetting[] = [
     type: 'boolean',
     i18nLabel: 'settings.timeModifiers.label',
     i18nDescription: 'settings.timeModifiers.description',
-    level: 'beta',
-    default: false,
-  },
-  {
-    key: ROOM_SETTING_KEYS.WEATHER_MODIFIERS,
-    type: 'boolean',
-    i18nLabel: 'settings.weatherModifiers.label',
-    i18nDescription: 'settings.weatherModifiers.description',
     level: 'beta',
     default: false,
   },

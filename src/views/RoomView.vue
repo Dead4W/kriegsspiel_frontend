@@ -18,7 +18,7 @@ import {
   world,
 } from '@/engine'
 
-import {ROOM_SETTING_KEYS} from '@/enums/roomSettingsKeys'
+import {ROOM_SETTING_KEYS, type RoomSettingKey} from '@/enums/roomSettingsKeys'
 import {createClientSettings} from '@/enums/clientSettingsKeys'
 import {Team} from '@/enums/teamKeys'
 import {RoomStage} from '@/enums/roomStage'
@@ -39,16 +39,27 @@ const { t } = useI18n()
 const canvasEl = ref<HTMLCanvasElement | null>(null)
 const canvasOverlayEl = ref<HTMLCanvasElement | null>(null)
 
+type RoomData = {
+  uuid: uuid,
+  team: Team,
+  name: string,
+  admin_id: number,
+  options: Record<RoomSettingKey, any>,
+
+  // ADMIN VALUES
+  admin_key?: string,
+  red_key?: string,
+  blue_key?: string,
+}
+
 const error = ref('')
 const mapProgress = ref(0)
-const roomData = ref<any>(null)
+const roomData = ref<RoomData | null>()
 
 /* ================== engine refs ================== */
 
 let w: world | null = null
 let renderer: canvasrenderer | null = null
-let unsubscribeRenderMain: (() => void) | null = null
-let unsubscribeRenderOverlay: (() => void) | null = null
 
 /* ================== helpers ================== */
 
@@ -95,26 +106,30 @@ async function loadRoom() {
       params: { key },
     })
 
-    roomData.value = res.data
+    roomData.value = res.data!
     applyRoomSettings(uuid, res.data.options)
 
-    if (roomData.value.team === Team.ADMIN) {
+    if (roomData.value!.team === Team.ADMIN) {
       stage.value = RoomStage.TEAM_SELECT
       window.ROOM_KEYS = {
-        admin_key: roomData.value.admin_key,
-        blue_key: roomData.value.blue_key,
-        red_key: roomData.value.red_key,
+        admin_key: roomData.value!.admin_key!,
+        blue_key: roomData.value!.blue_key!,
+        red_key: roomData.value!.red_key!,
       }
     } else {
       if (keyFromRoute) {
         await router.push(`/room/${uuid}`)
       }
       stage.value = RoomStage.LOADING_MAP
-      onTeamSelected(roomData.value.team)
+      onTeamSelected(roomData.value!.team)
     }
   } catch (e: any) {
     if (e.response?.status === 403) {
-      router.replace(`/room/${uuid}/password`)
+      error.value = 'error.bad_password'
+      stage.value = RoomStage.ERROR
+    } else if (e.response?.status === 422) {
+      error.value = 'error.wrong_key'
+      stage.value = RoomStage.ERROR
     } else {
       error.value = 'error.room_not_found'
       stage.value = RoomStage.ERROR
@@ -133,23 +148,25 @@ async function onTeamSelected(team: Team) {
   preloadTextures();
 
   await nextTick()
-  await initWorld(roomData.value)
+  await initWorld(roomData.value!)
 
-  socket = new GameSocket()
-  socket.connect({
-    roomId: route.params.uuid as string,
-    team: window.PLAYER.team,
-    password: localStorage.getItem(`room_pass_${route.params.uuid}`) ?? undefined,
-    key: localStorage.getItem(`room_admin_key_${route.params.uuid}`)
-      ?? localStorage.getItem(`room_key_${route.params.uuid}`)
-      ?? undefined,
-    world: w!,
-  })
+  if (w) {
+    socket = new GameSocket()
+    socket.connect({
+      roomId: route.params.uuid as string,
+      team: window.PLAYER.team,
+      password: localStorage.getItem(`room_pass_${route.params.uuid}`) ?? undefined,
+      key: localStorage.getItem(`room_admin_key_${route.params.uuid}`)
+        ?? localStorage.getItem(`room_key_${route.params.uuid}`)
+        ?? undefined,
+      world: w!,
+    })
+  }
 }
 
 /* ================== world init ================== */
 
-async function initWorld(room: any) {
+async function initWorld(room: RoomData) {
   let defaultMapUrl = 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg';
   let defaultHeightMapUrl = 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png';
 
@@ -158,10 +175,14 @@ async function initWorld(room: any) {
     defaultHeightMapUrl = '/assets/default_height_map.png'
   }
 
+  if (!room.options.mapUrl) {
+    room.options.mapUrl = defaultMapUrl
+    room.options.heightMapUrl = defaultHeightMapUrl
+  }
+
   const map: mapmeta = {
-    // imageUrl: room.options?.mapImage ?? '/assets/default_map.jpeg',
-    imageUrl: room.options?.mapImage ?? defaultMapUrl,
-    heightMapUrl: room.options?.heightMapImage ?? defaultHeightMapUrl,
+    imageUrl: room.options.mapUrl,
+    heightMapUrl: room.options.heightMapUrl ?? '',
     width: 9703,
     height: 7553,
     metersPerPixel: 5.38,
@@ -170,22 +191,34 @@ async function initWorld(room: any) {
   let loadMapProgress = 0
   let loadHeightMapProgress = 0
 
-  const [bitmap, bitmapHeightMap] = await Promise.all([
-    loadImageWithProgress(
+  let bitmap;
+  let bitmapHeightMap;
+  if (map.heightMapUrl) {
+    [bitmap, bitmapHeightMap] = await Promise.all([
+      loadImageWithProgress(
+        map.imageUrl,
+        (p) => {
+          loadMapProgress = p * 0.5
+          mapProgress.value = loadMapProgress + loadHeightMapProgress
+        }
+      ),
+      loadImageWithProgress(
+        map.heightMapUrl,
+        (p) => {
+          loadHeightMapProgress = p * 0.5
+          mapProgress.value = loadMapProgress + loadHeightMapProgress
+        }
+      )
+    ])
+  } else {
+    bitmap = await loadImageWithProgress(
       map.imageUrl,
       (p) => {
-        loadMapProgress = p * 0.5
-        mapProgress.value = loadMapProgress + loadHeightMapProgress
-      }
-    ),
-    loadImageWithProgress(
-      map.heightMapUrl,
-      (p) => {
-        loadHeightMapProgress = p * 0.5
-        mapProgress.value = loadMapProgress + loadHeightMapProgress
+        loadMapProgress = p
+        mapProgress.value = loadMapProgress
       }
     )
-  ])
+  }
 
   await nextTick()
   await new Promise(requestAnimationFrame)
@@ -193,7 +226,7 @@ async function initWorld(room: any) {
   if (!canvasEl.value) {
     error.value = 'error.canvas_not_mounted'
     stage.value = RoomStage.ERROR
-    return
+    return null
   }
 
   window.ROOM_WORLD = w = new world(map)
@@ -202,7 +235,7 @@ async function initWorld(room: any) {
   if (!canvasOverlayEl.value) {
     error.value = 'error.canvas_overlay_not_mounted'
     stage.value = RoomStage.ERROR
-    return
+    return null
   }
 
   renderer = new canvasrenderer(
@@ -229,7 +262,9 @@ async function initWorld(room: any) {
   ));
 
   // load height map
-  await w.setHeightMap(bitmapHeightMap);
+  if (bitmapHeightMap) {
+    await w.setHeightMap(bitmapHeightMap);
+  }
 
   bindPointer(canvasEl.value, w)
   bindKeyboard(w)
@@ -243,6 +278,7 @@ async function initWorld(room: any) {
   render();
 
   stage.value = RoomStage.READY
+  return w
 }
 
 /* ================== lifecycle ================== */

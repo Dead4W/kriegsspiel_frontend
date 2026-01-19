@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import {ref, watch} from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ROOM_SETTINGS } from '@/game/roomSettings'
+import api from '@/api/client'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -10,8 +11,10 @@ const { t } = useI18n()
 const roomName = ref('')
 const password = ref('')
 const showAdvanced = ref(false)
+const selectedMapId = ref<string>('essex')
 
-import api from '@/api/client'
+const customMapUrl = ref('')
+const customHeightMapUrl = ref('')
 
 type RoomSettingsState = Record<string, boolean | string>
 /** состояние настроек комнаты */
@@ -20,6 +23,50 @@ const settings = ref<RoomSettingsState>(
     ROOM_SETTINGS.map(s => [s.key, s.default])
   )
 )
+
+/* MAPS */
+type GameMap = {
+  id: string
+  name: string
+  preview: string
+  mapUrl?: string
+  heightMapUrl?: string
+  custom?: boolean
+}
+
+const GAME_MAPS: GameMap[] = [
+  {
+    id: 'essex',
+    name: 'Essex 1882',
+    preview: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map_preview.jpeg',
+    mapUrl: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg',
+    heightMapUrl: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png',
+  },
+  {
+    id: 'custom',
+    name: 'Custom map',
+    preview: '',
+    custom: true,
+  },
+]
+
+// Map selector
+watch(selectedMapId, () => {
+  applyMapSettings()
+})
+function applyMapSettings() {
+  const map = GAME_MAPS.find(m => m.id === selectedMapId.value)
+  if (!map) return
+
+  if (map.custom) {
+    settings.value.MAP_URL = customMapUrl.value || ''
+    settings.value.HEIGHT_MAP_URL = customHeightMapUrl.value || ''
+  } else {
+    settings.value.MAP_URL = map.mapUrl!
+    settings.value.HEIGHT_MAP_URL = map.heightMapUrl!
+  }
+}
+applyMapSettings()
 
 async function createRoom() {
   if (!roomName.value.trim()) return
@@ -50,101 +97,144 @@ async function createRoom() {
 
 <template>
   <section class="create">
-    <div class="card">
-      <h1>{{ t('createRoom.title') }}</h1>
+    <form @submit.prevent="createRoom">
+      <div class="card">
+        <h1>{{ t('createRoom.title') }}</h1>
 
-      <!-- Название комнаты -->
-      <div class="field">
-        <label>{{ t('createRoom.roomName.label') }}</label>
-        <input
-          v-model="roomName"
-          :placeholder="t('createRoom.roomName.placeholder')"
-        />
-      </div>
+        <!-- Название комнаты -->
+        <div class="field">
+          <label>{{ t('createRoom.roomName.label') }}</label>
+          <input
+            required
+            v-model="roomName"
+            :placeholder="t('createRoom.roomName.placeholder')"
+          />
+        </div>
 
-<!--      &lt;!&ndash; Пароль &ndash;&gt;-->
-<!--      <div class="field">-->
-<!--        <label>Пароль (опционально)</label>-->
-<!--        <input-->
-<!--          v-model="password"-->
-<!--          type="password"-->
-<!--          placeholder="••••••"-->
-<!--        />-->
-<!--      </div>-->
+  <!--      &lt;!&ndash; Пароль &ndash;&gt;-->
+  <!--      <div class="field">-->
+  <!--        <label>Пароль (опционально)</label>-->
+  <!--        <input-->
+  <!--          v-model="password"-->
+  <!--          type="password"-->
+  <!--          placeholder="••••••"-->
+  <!--        />-->
+  <!--      </div>-->
 
-      <!-- Дополнительные настройки -->
-      <button class="advanced-toggle" @click="showAdvanced = !showAdvanced">
-        {{ t('createRoom.advanced.toggle') }}
-        <span :class="{ open: showAdvanced }">▾</span>
-      </button>
+        <!-- Дополнительные настройки -->
+        <button class="advanced-toggle" @click="showAdvanced = !showAdvanced">
+          {{ t('createRoom.advanced.toggle') }}
+          <span :class="{ open: showAdvanced }">▾</span>
+        </button>
 
-      <div v-if="showAdvanced" class="advanced">
-        <div
-          v-for="setting in ROOM_SETTINGS"
-          :key="setting.key"
-          class="setting"
-          :class="[setting.level, setting.type]"
-        >
-          <!-- Boolean -->
-          <label v-if="setting.type === 'boolean'" class="checkbox">
-            <input
-              type="checkbox"
-              v-model="settings[setting.key]"
-            />
+        <div v-if="showAdvanced" class="advanced">
+          <div class="map-selector">
+            <h3>{{ t('settings.customMap.title') }}</h3>
 
-            <div>
-              <div class="label">
-                <span
-                  v-if="setting.level !== 'stable'"
-                  class="badge"
+            <div class="map-grid">
+              <button
+                v-for="map in GAME_MAPS"
+                :key="map.id"
+                class="map-card"
+                :class="{ active: selectedMapId === map.id }"
+                @click="selectedMapId = map.id"
+              >
+                <div
+                  class="preview"
+                  :style="map.preview ? { backgroundImage: `url(${map.preview})` } : {}"
                 >
-                  {{ setting.level.toUpperCase() }}
-                </span>
-                {{ t(setting.i18nLabel) }}
+                  <span v-if="map.custom">
+                    Custom
+                    <br>
+                    PNG, JPEG
+                  </span>
+                </div>
+
+                <div class="name">{{ map.name }}</div>
+              </button>
+            </div>
+
+            <!-- Кастомная карта -->
+            <div v-if="selectedMapId === 'custom'" class="custom-map">
+              <div class="field">
+                <label>{{ t('settings.customMap.mapUrl') }}</label>
+                <input required v-model="customMapUrl"  placeholder="https://example.com/map.jpeg" @input="applyMapSettings" />
               </div>
+
+              <div class="field">
+                <label>{{ t('settings.customMap.heightMapUrl') }}</label>
+                <input v-model="customHeightMapUrl" placeholder="https://example.com/height_map.jpeg" @input="applyMapSettings" />
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-for="setting in ROOM_SETTINGS"
+            :key="setting.key"
+            class="setting"
+            :class="[setting.level, setting.type]"
+          >
+            <!-- Boolean -->
+            <label v-if="setting.type === 'boolean'" class="checkbox">
+              <input
+                type="checkbox"
+                v-model="settings[setting.key]"
+              />
+
+              <div>
+                <div class="label">
+                  <span
+                    v-if="setting.level !== 'stable'"
+                    class="badge"
+                  >
+                    {{ setting.level.toUpperCase() }}
+                  </span>
+                  {{ t(setting.i18nLabel) }}
+                </div>
+
+                <small v-if="setting.i18nDescription">
+                  {{ t(setting.i18nDescription) }}
+                </small>
+              </div>
+            </label>
+
+            <!-- String -->
+            <div v-else class="field">
+              <label>
+                  <span
+                    v-if="setting.level !== 'stable'"
+                    class="badge"
+                  >
+                    {{ setting.level.toUpperCase() }}
+                  </span>
+                {{ t(setting.i18nLabel) }}
+              </label>
+
+              <input
+                type="text"
+                v-model="settings[setting.key]"
+                :placeholder="setting.placeholderI18n ? t(setting.placeholderI18n) : ''"
+              />
 
               <small v-if="setting.i18nDescription">
                 {{ t(setting.i18nDescription) }}
               </small>
             </div>
-          </label>
-
-          <!-- String -->
-          <div v-else class="field">
-            <label>
-                <span
-                  v-if="setting.level !== 'stable'"
-                  class="badge"
-                >
-                  {{ setting.level.toUpperCase() }}
-                </span>
-              {{ t(setting.i18nLabel) }}
-            </label>
-
-            <input
-              type="text"
-              v-model="settings[setting.key]"
-              :placeholder="setting.placeholderI18n ? t(setting.placeholderI18n) : ''"
-            />
-
-            <small v-if="setting.i18nDescription">
-              {{ t(setting.i18nDescription) }}
-            </small>
           </div>
         </div>
-      </div>
 
-      <!-- Действия -->
-      <div class="actions">
-        <button class="primary" @click="createRoom">
-          {{ t('createRoom.actions.create') }}
-        </button>
+        <!-- Действия -->
+        <div class="actions">
+          <button class="primary" type="submit">
+            {{ t('createRoom.actions.create') }}
+          </button>
 
-        <button class="secondary" @click="router.back()">
-          {{ t('createRoom.actions.cancel') }}
-        </button>
+          <button class="secondary" @click="router.back()">
+            {{ t('createRoom.actions.cancel') }}
+          </button>
+        </div>
       </div>
-    </div>
+    </form>
   </section>
 </template>
 
@@ -285,4 +375,63 @@ input:focus {
   border: 1px solid var(--secondary);
   border-radius: 10px;
 }
+
+.map-selector {
+  margin-bottom: 1.5rem;
+  color: var(--text);
+}
+
+.map-selector h3 {
+  font-size: 0.9rem;
+  margin-bottom: 0.6rem;
+  color: #cbd5f5;
+  margin-top: 0px;
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.8rem;
+}
+
+.map-card {
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  background: #020617;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.map-card:hover {
+  transform: translateY(-2px);
+}
+
+.map-card.active {
+  border-color: var(--accent);
+}
+
+.map-card .preview {
+  height: 90px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.map-card .name {
+  padding: 0.4rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.custom-map {
+  margin-top: 1rem;
+}
+
 </style>

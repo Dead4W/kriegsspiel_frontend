@@ -149,7 +149,7 @@ export class unitregistry {
     }
   }
 
-  getDirectView(): Map<unitTeam, uuid[]> {
+  getDirectViewByGenerals(): Map<unitTeam, uuid[]> {
     const directViewByTeam = new Map<unitTeam, uuid[]>();
     directViewByTeam.set(Team.RED, [])
     directViewByTeam.set(Team.BLUE, [])
@@ -159,21 +159,30 @@ export class unitregistry {
       if (generalUnit.type !== unitType.GENERAL) continue;
       generalUnit.directView = true;
 
-      const visionPoly = buildVisionPolygon(generalUnit, window.ROOM_WORLD)
-      for (const unit of this.list()) {
-        const a = generalUnit.pos
-        const b = unit.pos
-
-        const d = Math.hypot(b.x - a.x, b.y - a.y);
-
-        if (d > generalUnit.visionRange / window.ROOM_WORLD.map.metersPerPixel) continue;
-
-        if (pointInPolygon(unit.pos, visionPoly)) {
-          directViewByTeam.get(generalUnit.team)!.push(unit.id)
-        }
-      }
+      const visionUnits = this.getDirectView(generalUnit)
+      directViewByTeam
+        .get(generalUnit.team)!
+        .push(...visionUnits.map(v => v.id));
     }
 
     return directViewByTeam;
+  }
+
+  getDirectView(unit: BaseUnit): BaseUnit[] {
+    const result = []
+    const visionPoly = buildVisionPolygon(unit, window.ROOM_WORLD)
+    for (const u of this.list()) {
+      if (u.id === unit.id) continue
+      const a = unit.pos
+      const b = u.pos
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+
+      if (d > unit.visionRange / window.ROOM_WORLD.map.metersPerPixel) continue;
+
+      if (pointInPolygon(unit.pos, visionPoly)) {
+        result.push(u)
+      }
+    }
+    return result
   }
 }

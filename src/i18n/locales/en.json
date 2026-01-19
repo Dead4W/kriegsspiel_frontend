@@ -175,11 +175,13 @@
 
   "error": {
     "error_auth_required": "Auth required.",
+    "canvas_not_mounted": "Canvas for render not mounted (Tech error).",
+    "canvas_overlay_not_mounted": "Canvas for render overlay not mounted (Tech error).",
     "bad_token": "Auth token expired or not exist.",
     "bad_password": "Wrong room password.",
     "room_not_found": "Room not found.",
-    "alert_ctrl_w": "CTRL+W pressed!\nThis hotkey force close for browser!\nIf you don't need to close tab please enter no.",
-    "wrong_key": "Wrong link key. Try with new link"
+    "wrong_key": "Wrong link key. Try with new link.",
+    "map_url_empty": "Empty map url."
   },
 
   "room": {
@@ -275,6 +277,11 @@
     "weatherModifiers": {
       "label": "Weather modifiers",
       "description": "Unit stats change depending on the weather."
+    },
+    "customMap": {
+      "title": "Map",
+      "mapUrl": "Map URL",
+      "heightMapUrl": "Height map URL"
     }
   },
 

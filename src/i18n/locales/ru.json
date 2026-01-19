@@ -176,11 +176,13 @@
 
   "error": {
     "error_auth_required": "Необходима авторизация.",
+    "canvas_not_mounted": "Холст для рендеринга не смонтирован (Тех. ошибка).",
+    "canvas_overlay_not_mounted": "Холст для рендеринга оверлея не смонтирован (Тех. ошибка).",
     "bad_token": "Похоже токен истек или что-то пошло не так.",
     "bad_password": "Неверный пароль комнаты.",
     "room_not_found": "Комната не найдена.",
-    "alert_ctrl_w": "CTRL+W pressed!\nThis hotkey force close for browser!\nIf you don't need to close tab please enter no.",
-    "wrong_key": "Wrong link key. Try with new link"
+    "wrong_key": "Неверный ключ комнаты, попробуйте другую ссылку.",
+    "map_url_empty": "Пустой URL карты."
   },
 
   "room": {
@@ -276,6 +278,11 @@
     "weatherModifiers": {
       "label": "Модификаторы погоды",
       "description": "Характеристики юнита изменяются в зависимости от погоды."
+    },
+    "customMap": {
+      "title": "Карта",
+      "mapUrl": "URL Карты",
+      "heightMapUrl": "URL Карты высот"
     }
   },
 

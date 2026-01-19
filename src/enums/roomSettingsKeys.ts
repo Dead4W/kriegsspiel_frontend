@@ -11,6 +11,9 @@ export const ROOM_SETTING_KEYS = {
 
   TIME_MODIFIERS: 'timeModifiers',
   WEATHER_MODIFIERS: 'weatherModifiers',
+
+  MAP_URL: 'mapUrl',
+  HEIGHT_MAP_URL: 'heightMapUrl',
 } as const
 
 export type RoomSettingKey =

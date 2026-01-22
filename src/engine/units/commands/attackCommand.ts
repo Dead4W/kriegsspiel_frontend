@@ -156,7 +156,7 @@ export class AttackCommand extends BaseCommand<
 
       /* ===== ЛОГ ===== */
       window.ROOM_WORLD.logs.value.push({
-        id: Date.now() + Math.random(),
+        id: crypto.randomUUID(),
         time: window.ROOM_WORLD.time,
         tokens: [
           { t: 'unit', u: unit.id },
@@ -167,7 +167,8 @@ export class AttackCommand extends BaseCommand<
           { t: 'text', v: ' (' },
           { t: 'formula', v: formula.join(' × ') },
           { t: 'text', v: ')' },
-        ]
+        ],
+        is_new: true,
       })
     }
 

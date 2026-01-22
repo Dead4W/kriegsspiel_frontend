@@ -7,6 +7,7 @@ import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import type {unsub} from "@/engine/events.ts";
 import type {WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
+import type {BattleLogEntry} from "@/engine/types/logType.ts";
 
 export type OutMessage =
   | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: WeatherEnum} }
@@ -21,6 +22,7 @@ export type OutMessage =
   | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
   | { type: 'direct_view'; team: Team; data: unitstate[] }
   | { type: 'weather'; data: WeatherEnum }
+  | { type: 'log'; data: BattleLogEntry }
 
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
@@ -245,6 +247,8 @@ export class GameSocket {
         } else if (m.type === 'weather') {
           window.ROOM_WORLD.weather.value = m.data
           window.ROOM_WORLD.newWeather.value = m.data
+        } else if (m.type === 'log') {
+          window.ROOM_WORLD.logs.value.push(m.data)
         }
 
         // TODO: paint

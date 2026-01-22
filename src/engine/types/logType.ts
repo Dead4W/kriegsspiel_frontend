@@ -9,7 +9,8 @@ export type BattleLogToken =
 
 
 export interface BattleLogEntry {
-  id: number
+  id: uuid
   time: string
   tokens: BattleLogToken[]
+  is_new: boolean
 }

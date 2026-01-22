@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {computed, type ComputedRef, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 
 import {useI18n} from 'vue-i18n'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
@@ -222,7 +222,7 @@ function parseTime(t: string): number {
 }
 
 // Фильтр сообщений по чату
-const visibleMessages = computed(() => {
+const visibleMessages: ComputedRef<ChatMessage[]> = computed(() => {
   // 👇 вкладка сообщений выделенных юнитов
   if (activeTeam.value === Team.ADMIN) {
     if (!selectedUnits.value.length) return []

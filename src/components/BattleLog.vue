@@ -5,14 +5,15 @@ import {computed, onMounted, onUnmounted, ref} from "vue";
 import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {unsub} from "@/engine/events.ts";
+import type {BattleLogEntry} from "@/engine/types/logType.ts";
 
 const { t } = useI18n()
 
 /* FORMULA */
 
-const openedFormulas = ref<Set<string>>(new Set())
+const openedFormulas = ref<Set<uuid>>(new Set())
 
-function formulaKey(logId: number, tokenIndex: number) {
+function formulaKey(logId: uuid, tokenIndex: number) {
   return `${logId}:${tokenIndex}`
 }
 
@@ -57,7 +58,7 @@ const logsWithHeaders = computed(() => {
 
   const result: Array<
     | { type: 'header'; label: string }
-    | { type: 'log'; log: any }
+    | { type: 'log'; log: BattleLogEntry }
   > = []
 
   let lastKey: string | null = null

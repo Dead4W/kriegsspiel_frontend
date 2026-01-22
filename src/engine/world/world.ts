@@ -11,7 +11,7 @@ import {cursorregistry} from "@/engine/world/cursorregistry.ts";
 import {createHeightSampler, type HeightSampler} from "@/engine/assets/heightmap.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import type {OutMessage} from "@/api/socket.ts";
-import {type Ref, ref} from "vue";
+import {type Ref, ref, watch} from "vue";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import {TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
@@ -62,6 +62,19 @@ export class world {
   constructor(map: mapmeta) {
     this.map = map
     this.camera.setWorldSize(map.width, map.height)
+
+    watch(
+      () => this.logs.value.length,
+      (newLen, oldLen) => {
+        if (newLen > oldLen) {
+          const newEntries = this.logs.value.slice(oldLen)
+          for (const entry of newEntries) {
+            entry.is_new = false;
+            window.ROOM_WORLD.events.emit('api', {type: 'log', data: entry});
+          }
+        }
+      }
+    )
   }
 
   addUnits(states: unitstate[]) {

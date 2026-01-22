@@ -1,13 +1,62 @@
 <script setup lang="ts">
-import type {uuid} from '@/engine'
+import {unitType, type uuid} from '@/engine'
 import { useI18n } from 'vue-i18n'
-import {computed} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
+import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import type {BaseUnit} from "@/engine/units/baseUnit.ts";
+import type {unsub} from "@/engine/events.ts";
 
 const { t } = useI18n()
 
+/* FORMULA */
+
+const openedFormulas = ref<Set<string>>(new Set())
+
+function formulaKey(logId: number, tokenIndex: number) {
+  return `${logId}:${tokenIndex}`
+}
+
+function toggleFormula(key: string) {
+  if (openedFormulas.value.has(key)) {
+    openedFormulas.value.delete(key)
+  } else {
+    openedFormulas.value.add(key)
+  }
+}
+
+/* Select unit */
+function selectUnit(id: uuid, e?: MouseEvent) {
+  const unit = getUnit(id)
+  if (!unit) return
+
+  const multi = e?.shiftKey
+
+  if (!multi) {
+    // снять выделение со всех
+    world.units.list().forEach(u => (u.selected = false))
+  }
+
+  window.ROOM_WORLD.units.select(unit)
+
+  // если у вас есть система событий
+  world.events.emit?.('changed', { reason: 'unit-selected' })
+}
+
+/* LOGS */
+
 const reversedLogs = computed(() => {
-  return [...window.ROOM_WORLD.logs.value].reverse()
+  let logs = window.ROOM_WORLD.logs.value;
+
+  if (selectedUnits.value.length > 0) {
+    logs = logs.filter(log => {
+      return log.tokens.some(token => token.t === 'unit' && selectedUnits.value.includes(token.u))
+    })
+  }
+
+  return [...logs].reverse()
 })
+
+const selectedUnits = ref<uuid[]>([])
 
 /* =========================
    WORLD HELPERS
@@ -24,8 +73,16 @@ function getUnitName(id: uuid) {
   return unit?.label ?? id.slice(0, 6)
 }
 
-function getUnitTeam(id: uuid) {
-  return getUnit(id)?.team ?? 'UNKNOWN'
+function getUnitClasses(id: uuid) {
+  let classes = [];
+  const u = getUnit(id);
+
+  classes.push(u?.team ?? 'UNKNOWN')
+  if (u?.selected) {
+    classes.push('selected')
+  }
+
+  return classes.join(' ')
 }
 
 function formatNumber(value: number): string {
@@ -59,6 +116,29 @@ function formatTime(time: string) {
     second: '2-digit',
   })
 }
+
+
+function syncTargets() {
+  selectedUnits.value = window.ROOM_WORLD.units
+    .list()
+    .filter(u => u.selected)
+    .map(u => u.id)
+}
+
+let unsubscribe: unsub;
+
+onMounted(() => {
+  syncTargets()
+  unsubscribe = window.ROOM_WORLD.events.on('changed', ({ reason }) => {
+    syncTargets()
+  })
+})
+
+onUnmounted(() => {
+  selectedUnits.value = [];
+  unsubscribe();
+})
+
 </script>
 
 <template>
@@ -85,7 +165,8 @@ function formatTime(time: string) {
           <span
             v-else-if="token.t === 'unit'"
             class="unit"
-            :class="getUnitTeam(token.u).toLowerCase()"
+            :class="getUnitClasses(token.u).toLowerCase()"
+            @click.stop="selectUnit(token.u, $event)"
           >
             {{ getUnitName(token.u) }}
           </span>
@@ -94,8 +175,17 @@ function formatTime(time: string) {
             {{ formatNumber(token.v) }}
           </span>
 
-          <span v-else-if="token.t === 'formula'" class="formula">
-            {{ token.v }}
+          <span
+            v-else-if="token.t === 'formula'"
+            class="formula"
+            @click="toggleFormula(formulaKey(log.id, i))"
+          >
+            <template v-if="openedFormulas.has(formulaKey(log.id, i))">
+              {{ token.v }}
+            </template>
+            <template v-else>
+              <span class="formula-hidden">[...]</span>
+            </template>
           </span>
         </template>
       </div>
@@ -151,15 +241,26 @@ function formatTime(time: string) {
 .unit {
   font-weight: 600;
   margin: 0 2px;
+  cursor: pointer;
+}
+
+.unit.selected {
+  text-decoration: underline;
+  filter: brightness(1.2);
+}
+
+.unit:hover {
+  text-decoration: underline;
+  filter: brightness(1.1);
 }
 
 /* команды — имена как enum */
 .unit.red {
-  color: #f87171;
+  color: #ff7474;
 }
 
 .unit.blue {
-  color: #60a5fa;
+  color: #73b2ff;
 }
 
 .unit.unknown, .unit.neutral {
@@ -175,5 +276,15 @@ function formatTime(time: string) {
   color: #94a3b8;
   font-family: monospace;
   font-size: 12px;
+  cursor: pointer;
+}
+
+.formula-hidden {
+  color: #475569;
+  font-style: italic;
+}
+
+.formula:hover {
+  color: #e5e7eb;
 }
 </style>

@@ -129,6 +129,11 @@ export class unitregistry {
     return null
   }
 
+  select(u: BaseUnit): void {
+    u.selected = true
+    u.lastSelected = performance.now();
+  }
+
   selectInRect(a: vec2, b: vec2, isPreview: boolean) {
     const minX = Math.min(a.x, b.x)
     const maxX = Math.max(a.x, b.x)

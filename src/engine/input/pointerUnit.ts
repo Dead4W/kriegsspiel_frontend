@@ -132,7 +132,7 @@ export function bindUnitInteraction(
       if (e.ctrlKey) {
         // CTRL → toggle off
         hit.selected = false
-      } else if (e.shiftKey) {
+      } else if (e.shiftKey || !document.querySelector('.orders-buttons')) {
         // SHIFT → add
         hit.selected = true
       } else {
@@ -163,7 +163,7 @@ export function bindUnitInteraction(
     startWorld = worldPos
     previewBaseSelection.clear()
 
-    if (e.shiftKey) {
+    if (e.shiftKey || !document.querySelector('.orders-buttons')) {
       // SHIFT → include (сохраняем базу)
       for (const u of w.units.list()) {
         if (u.selected) previewBaseSelection.add(u.id)
@@ -223,7 +223,7 @@ export function bindUnitInteraction(
 
     if (!hit) return
 
-    if (!shiftKeyActive) {
+    if (!shiftKeyActive && document.querySelector('.orders-buttons')) {
       for (const u of w.units.list()) {
         if (u.id != hit.id) {
           u.selected = false

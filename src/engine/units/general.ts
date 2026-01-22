@@ -25,10 +25,4 @@ export class General extends BaseUnit {
     this.initStats(s)
   }
 
-  override move(to: vec2) {
-    if (window.PLAYER.team !== Team.ADMIN && window.ROOM_WORLD.stage !== RoomGameStage.PLANNING) {
-      return
-    }
-    super.move(to)
-  }
 }

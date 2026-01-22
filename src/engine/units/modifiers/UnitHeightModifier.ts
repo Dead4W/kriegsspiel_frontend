@@ -13,8 +13,8 @@ type AngleModifier = {
 
 const angleTable: AngleModifier[] = [
   { angle: -6, modifier: 0.5 },
-  { angle: -5, modifier: 0.85 },
-  { angle: -3, modifier: 0.7 },
+  { angle: -5, modifier: 0.7 },
+  { angle: -3, modifier: 0.85 },
   { angle: 0, modifier: 1.0 },
 ];
 

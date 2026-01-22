@@ -11,6 +11,14 @@
   "clear": "Clear",
   "copied": "Copied",
   "hotkey": "Hotkey",
+
+  "seo": {
+    "title": "KRIEGSSPIEL — Tactical War Strategy",
+    "description": "KRIEGSSPIEL is a tactical war strategy game inspired by the classic Kriegsspiel.",
+    "ogTitle": "KRIEGSSPIEL — Tactical War Strategy",
+    "ogDescription": "A tactical war strategy game inspired by the classic Kriegsspiel."
+  },
+
   "createRoom": {
     "title": "Create room",
 

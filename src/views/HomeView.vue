@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useHead } from '@vueuse/head'
 import api from '@/api/client'
 
 const route = useRoute()
@@ -14,22 +15,84 @@ const nickname = ref('')
 const loading = ref(false)
 const error = ref('')
 
+useHead(() => ({
+  title: t('seo.title'),
+  htmlAttrs: {
+    lang: locale.value
+  },
+  link: [
+    {
+      rel: 'alternate',
+      hreflang: 'ru',
+      href: `${location.origin}/ru${route.path.replace(/^\/(ru|en)/, '')}`
+    },
+    {
+      rel: 'alternate',
+      hreflang: 'en',
+      href: `${location.origin}/ru${route.path.replace(/^\/(ru|en)/, '')}`
+    }
+  ],
+  meta: [
+    {
+      name: 'description',
+      content: t('seo.description')
+    },
+    {
+      property: 'og:title',
+      content: t('seo.ogTitle')
+    },
+    {
+      property: 'og:description',
+      content: t('seo.ogDescription')
+    },
+    {
+      property: 'og:locale',
+      content: locale.value === 'ru' ? 'ru_RU' : 'en_US'
+    },
+    { name: 'twitter:title', content: t('seo.ogTitle') },
+    { name: 'twitter:description', content: t('seo.ogDescription') }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "KRIEGSSPIEL",
+        "description": t('seo.description'),
+        "genre": ["Strategy", "War"],
+        "playMode": "MultiPlayer",
+        "applicationCategory": "BrowserGame",
+        "operatingSystem": "Web"
+      })
+    }
+  ],
+}))
+
 const redirect = route.query.redirect_url as string | undefined
 if (redirect) {
   router.replace(redirect);
 }
 
 function createRoom() {
-  router.push('/create')
-}
-
-function joinRoom() {
-  router.push('/join')
+  router.push({
+    name: 'create-room',
+    params: { locale: route.params.locale }
+  })
 }
 
 function setLang(lang: 'ru' | 'en') {
   localStorage.setItem('i18n_locale', lang)
+  router.push({
+    name: route.name!,
+    params: {
+      ...route.params,
+      locale: lang
+    },
+    query: route.query
+  })
   locale.value = lang
+  // location.reload()
 }
 
 // проверка токена
@@ -82,13 +145,13 @@ onMounted(checkAuth)
     <!-- переключатель языка -->
     <div class="lang">
       <button
-        :class="{ active: locale === 'ru' }"
+        :class="{ active: route.params.locale === 'ru' }"
         @click="setLang('ru')"
       >
         RU
       </button>
       <button
-        :class="{ active: locale === 'en' }"
+        :class="{ active: route.params.locale === 'en' }"
         @click="setLang('en')"
       >
         EN
@@ -169,7 +232,7 @@ onMounted(checkAuth)
       rgba(2, 6, 23, 0.75),
       rgba(2, 6, 23, 0.9)
     ),
-    url('https://i0.wp.com/militaryhistorynow.com/wp-content/uploads/2018/05/kriegsspiel-1.jpg?fit=700%2C503&ssl=1');
+    url('/assets/bg.webp');
 
   background-size: cover;
   background-position: center;

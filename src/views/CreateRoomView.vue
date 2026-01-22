@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import {ref, watch} from 'vue'
-import { useRouter } from 'vue-router'
+import {useRoute, useRouter} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ROOM_SETTINGS } from '@/game/roomSettings'
 import api from '@/api/client'
 
+const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 
@@ -89,7 +90,10 @@ async function createRoom() {
     localStorage.setItem(`room_admin_key_${data.uuid}`, data.admin_key)
 
     // 👉 редирект в комнату по uuid
-    await router.push(`/room/${data.uuid}`)
+    await router.push({
+      name: 'room',
+      params: {locale: route.params.locale, uuid: data.uuid}
+    })
   } catch (e) {
     console.error('CREATE ROOM ERROR:', e)
   }
@@ -268,7 +272,7 @@ async function createRoom() {
       rgba(2, 6, 23, 0.75),
       rgba(2, 6, 23, 0.9)
     ),
-    url('https://i0.wp.com/militaryhistorynow.com/wp-content/uploads/2018/05/kriegsspiel-1.jpg?fit=700%2C503&ssl=1');
+    url('/assets/bg.webp');
 
   background-size: cover;
   background-position: center;

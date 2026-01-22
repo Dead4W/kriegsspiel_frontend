@@ -64,7 +64,10 @@ let renderer: canvasrenderer | null = null
 /* ================== helpers ================== */
 
 function goHome() {
-  router.push('/')
+  router.push({
+    name: 'home',
+    params: {locale: route.params.locale}
+  })
 }
 
 function applyRoomSettings(id: uuid, options?: Record<string, any>) {
@@ -115,7 +118,11 @@ async function loadRoom() {
       }
     } else {
       if (keyFromRoute) {
-        await router.push(`/room/${uuid}`)
+        await router.push({
+          name: 'room',
+          params: {locale: route.params.locale, uuid: uuid}
+        })
+        return
       }
       stage.value = RoomStage.LOADING_MAP
       onTeamSelected(roomData.value!.team)

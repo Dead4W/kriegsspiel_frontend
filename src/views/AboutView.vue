@@ -63,7 +63,7 @@ useHead(() => ({
               target="_blank"
               rel="noopener noreferrer"
             >
-              Backend (API)
+              Backend (PHP Laravel)
             </a>
           </li>
         </ul>

@@ -29,7 +29,7 @@ useHead(() => ({
     {
       rel: 'alternate',
       hreflang: 'en',
-      href: `${location.origin}/ru${route.path.replace(/^\/(ru|en)/, '')}`
+      href: `${location.origin}/en${route.path.replace(/^\/(ru|en)/, '')}`
     }
   ],
   meta: [

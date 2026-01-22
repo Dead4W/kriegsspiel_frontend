@@ -44,16 +44,42 @@ function selectUnit(id: uuid, e?: MouseEvent) {
 
 /* LOGS */
 
-const reversedLogs = computed(() => {
-  let logs = window.ROOM_WORLD.logs.value;
+const logsWithHeaders = computed(() => {
+  let logs = window.ROOM_WORLD.logs.value
 
   if (selectedUnits.value.length > 0) {
-    logs = logs.filter(log => {
-      return log.tokens.some(token => token.t === 'unit' && selectedUnits.value.includes(token.u))
+    logs = logs.filter(log =>
+      log.tokens.some(
+        token => token.t === 'unit' && selectedUnits.value.includes(token.u)
+      )
+    )
+  }
+
+  const result: Array<
+    | { type: 'header'; label: string }
+    | { type: 'log'; log: any }
+  > = []
+
+  let lastKey: string | null = null
+
+  for (const log of [...logs].reverse()) {
+    const key = timeGroupKey(log.time)
+
+    if (key !== lastKey) {
+      result.push({
+        type: 'header',
+        label: key,
+      })
+      lastKey = key
+    }
+
+    result.push({
+      type: 'log',
+      log,
     })
   }
 
-  return [...logs].reverse()
+  return result
 })
 
 const selectedUnits = ref<uuid[]>([])
@@ -117,6 +143,22 @@ function formatTime(time: string) {
   })
 }
 
+function timeGroupKey(time: string) {
+  const d = new Date(time)
+  if (isNaN(d.getTime())) return time
+
+  return d.toLocaleTimeString(
+    [localStorage.getItem('i18n_locale') ?? 'en'],
+    {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }
+  )
+}
+
+
+/* SYNC SELECTED */
 
 function syncTargets() {
   selectedUnits.value = window.ROOM_WORLD.units
@@ -145,49 +187,63 @@ onUnmounted(() => {
   <div class="battle-log-wrapper no-select">
     <div class="battle-log">
       <div
-        v-for="log in reversedLogs"
-        :key="log.id"
-        class="battle-log-entry"
+        v-for="(item, idx) in logsWithHeaders"
+        :key="idx"
       >
-  <span class="time">
-    {{ formatTime(log.time) }}
-  </span>
+        <div
+          v-if="item.type === 'header'"
+          class="battle-log-header"
+        >
+          {{ item.label }}
+        </div>
 
-        <template v-for="(token, i) in log.tokens" :key="i">
-          <span v-if="token.t === 'text'">
-            {{ token.v }}
+        <div
+          v-else
+          class="battle-log-entry"
+        >
+          <span class="time">
+            {{ formatTime(item.log.time) }}
           </span>
 
-          <span v-else-if="token.t === 'i18n'">
-            {{ ` ${t(token.v)} ` }}
-          </span>
-
-          <span
-            v-else-if="token.t === 'unit'"
-            class="unit"
-            :class="getUnitClasses(token.u).toLowerCase()"
-            @click.stop="selectUnit(token.u, $event)"
+          <template
+            v-for="(token, i) in item.log.tokens"
+            :key="i"
           >
-            {{ getUnitName(token.u) }}
-          </span>
-
-          <span v-else-if="token.t === 'number'" class="number">
-            {{ formatNumber(token.v) }}
-          </span>
-
-          <span
-            v-else-if="token.t === 'formula'"
-            class="formula"
-            @click="toggleFormula(formulaKey(log.id, i))"
-          >
-            <template v-if="openedFormulas.has(formulaKey(log.id, i))">
+            <span v-if="token.t === 'text'">
               {{ token.v }}
-            </template>
-            <template v-else>
-              <span class="formula-hidden">[...]</span>
-            </template>
-          </span>
-        </template>
+            </span>
+
+            <span v-else-if="token.t === 'i18n'">
+              {{ ` ${t(token.v)} ` }}
+            </span>
+
+            <span
+              v-else-if="token.t === 'unit'"
+              class="unit"
+              :class="getUnitClasses(token.u).toLowerCase()"
+              @click.stop="selectUnit(token.u, $event)"
+            >
+              {{ getUnitName(token.u) }}
+            </span>
+
+            <span v-else-if="token.t === 'number'" class="number">
+              {{ formatNumber(token.v) }}
+            </span>
+
+            <span
+              v-else-if="token.t === 'formula'"
+              class="formula"
+              @click="toggleFormula(formulaKey(item.log.id, i))"
+            >
+              <template v-if="openedFormulas.has(formulaKey(item.log.id, i))">
+                {{ token.v }}
+              </template>
+              <template v-else>
+                <span class="formula-hidden">[...]</span>
+              </template>
+            </span>
+          </template>
+        </div>
       </div>
     </div>
   </div>
@@ -200,6 +256,20 @@ onUnmounted(() => {
   left: 16px;
   pointer-events: auto;
   z-index: 1000;
+}
+
+.battle-log-header {
+  margin: 8px 0 4px;
+  padding: 2px 6px;
+
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  color: #94a3b8;
+  background: #020617;
+  border-left: 2px solid #334155;
 }
 
 /* ===== Panel ===== */

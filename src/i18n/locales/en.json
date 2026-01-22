@@ -223,6 +223,7 @@
 
   "client_settings": {
     "title": "Settings",
+    "language": "Language",
     "dark_theme": "Dark theme",
     "sound_volume": "Sound volume",
     "test_sound": "Test",

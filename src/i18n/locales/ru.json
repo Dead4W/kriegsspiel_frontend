@@ -224,6 +224,7 @@
 
   "client_settings": {
     "title": "Настройки",
+    "language": "Язык",
     "dark_theme": "Тёмная тема",
     "sound_volume": "Громкость",
     "test_sound": "Тест",

@@ -6,14 +6,32 @@ import {
   type ClientSettingKey,
 } from '@/enums/clientSettingsKeys'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 import { reactive } from 'vue'
 import {Team} from "@/enums/teamKeys.ts";
+import {useRoute, useRouter} from "vue-router";
 
+
+const router = useRouter()
+const route = useRoute()
 
 const settings = reactive(window.CLIENT_SETTINGS)
 
 const isOpen = ref(false)
+
+function setLang(lang: 'ru' | 'en') {
+  if (route.params.locale === lang) return
+
+  router.push({
+    name: route.name!,
+    params: {
+      ...route.params,
+      locale: lang
+    },
+    query: route.query
+  })
+  locale.value = lang
+}
 
 /**
  * boolean
@@ -80,6 +98,30 @@ onUnmounted(() => {
     <h3 class="title">
       {{ t('client_settings.title') }}
     </h3>
+
+    <div class="setting column">
+      <span>{{ t('client_settings.language') }}</span>
+
+      <div style="display: flex; gap: 6px;">
+        <button
+          class="lang-btn"
+          :class="{ active: route.params.locale === 'ru' }"
+          @click="setLang('ru')"
+        >
+          RU
+        </button>
+
+        <button
+          class="lang-btn"
+          :class="{ active: route.params.locale === 'en' }"
+          @click="setLang('en')"
+        >
+          EN
+        </button>
+      </div>
+    </div>
+
+    <hr />
 
     <!-- DARK THEME -->
     <label class="setting">
@@ -312,6 +354,24 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
+.lang-btn {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.lang-btn.active {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .setting {
   display: flex;
   align-items: center;
@@ -360,4 +420,5 @@ hr {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 </style>

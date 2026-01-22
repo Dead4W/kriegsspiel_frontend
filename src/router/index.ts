@@ -6,6 +6,7 @@ import LocaleLayout from "@/views/layouts/LocaleLayout.vue";
 const HomeView = () => import('@/views/HomeView.vue')
 const CreateRoomView = () => import('@/views/CreateRoomView.vue')
 const RoomView = () => import('@/views/RoomView.vue')
+const AboutView  = () => import('@/views/AboutView.vue')
 
 const supportedLocales = ['ru', 'en']
 const defaultLocale = 'en'
@@ -38,6 +39,11 @@ const router = createRouter({
           path: '',
           name: 'home',
           component: HomeView,
+        },
+        {
+          path: 'about',
+          name: 'about',
+          component: AboutView,
         },
         {
           path: 'create',

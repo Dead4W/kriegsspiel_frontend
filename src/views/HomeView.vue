@@ -181,13 +181,14 @@ onMounted(checkAuth)
           {{ t('createRoomBtn') }}
         </button>
 
-<!--        <button-->
-<!--          class="secondary"-->
-<!--          @click="joinRoom"-->
-<!--          :disabled="!user"-->
-<!--        >-->
-<!--          {{ t('joinRoom') }}-->
-<!--        </button>-->
+      </div>
+
+      <div class="about-link">
+        <router-link
+          :to="{ name: 'about', params: { locale: route.params.locale } }"
+        >
+          {{ t('about') }}
+        </router-link>
       </div>
     </div>
 
@@ -264,6 +265,7 @@ onMounted(checkAuth)
 }
 
 .card {
+  position: relative;
   background: linear-gradient(180deg, #020617, #020617cc);
   border: 1px solid #1e293b;
   padding: 3rem 4rem;
@@ -316,14 +318,22 @@ button:disabled {
   transform: translateY(-1px);
 }
 
-.secondary {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--secondary);
+.about-link {
+  margin-top: 1.5rem;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
 }
 
-.secondary:hover:not(:disabled) {
-  background: var(--secondary);
+.about-link a {
+  color: #94a3b8;
+  text-decoration: underline;
+  font-size: 0.95rem;
+}
+
+.about-link a:hover {
+  color: var(--accent);
 }
 
 /* модалка */

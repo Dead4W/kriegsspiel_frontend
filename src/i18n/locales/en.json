@@ -11,12 +11,28 @@
   "clear": "Clear",
   "copied": "Copied",
   "hotkey": "Hotkey",
+  "about": "About project",
 
   "seo": {
     "title": "KRIEGSSPIEL — Tactical War Strategy",
     "description": "Play KRIEGSSPIEL online! KRIEGSSPIEL is a tactical war strategy game online inspired by the classic Kriegsspiel.",
     "ogTitle": "Play KRIEGSSPIEL online! KRIEGSSPIEL — Tactical War Strategy",
     "ogDescription": "A tactical war strategy game inspired by the classic Kriegsspiel."
+  },
+
+  "aboutSections": {
+    "whatIs": {
+      "title": "What is Kriegsspiel",
+      "text": "Kriegsspiel is a long-form war game where players make decisions with limited and incomplete information. The focus is on thinking, analysis, and uncertainty rather than mechanics.",
+      "bookLink": "Read more in the book about Kriegsspiel"
+    },
+    "story": {
+      "title": "Project story",
+      "text": "I made this game over a couple of New Year holidays mainly to play with friends and experiment with the Kriegsspiel format online."
+    },
+    "github": {
+      "title": "Source code"
+    }
   },
 
   "createRoom": {

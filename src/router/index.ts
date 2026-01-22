@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '@/views/HomeView.vue'
-import CreateRoomView from '@/views/CreateRoomView.vue'
-import RoomView from '@/views/RoomView.vue'
+const HomeView = () => import('@/views/HomeView.vue')
+const CreateRoomView = () => import('@/views/CreateRoomView.vue')
+const RoomView = () => import('@/views/RoomView.vue')
 import api from '@/api/client'
 
 const router = createRouter({

@@ -204,7 +204,7 @@ onUnmounted(() => {
         @click="clearCommands"
       >
         <span class="icon icon-formation">❌</span>
-        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.clear_commands') }}</span>
+        <span class="label">{{ t('tools.command.clear_commands') }}</span>
       </button>
     </div>
 

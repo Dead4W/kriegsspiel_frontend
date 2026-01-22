@@ -321,7 +321,7 @@
     "seconds": "{count} sec",
     "minutes": "{count} min",
     "minutes_seconds": "{minutes} min {seconds} sec",
-    "infinity": "Бесконечность"
+    "infinity": "Infinity"
   },
 
   "notifications": {

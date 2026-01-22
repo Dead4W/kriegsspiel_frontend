@@ -9,6 +9,7 @@ const RoomView = () => import('@/views/RoomView.vue')
 
 const supportedLocales = ['ru', 'en']
 const defaultLocale = 'en'
+const browserLocale = navigator.language.startsWith('ru') ? 'ru' : 'en'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,6 +21,9 @@ const router = createRouter({
         const locale = to.params.locale as "ru" | "en"
 
         if (!supportedLocales.includes(locale)) {
+          if (supportedLocales.includes(browserLocale)) {
+            return next(`/${browserLocale}`)
+          }
           return next(`/${defaultLocale}`)
         }
 
@@ -58,10 +62,17 @@ const router = createRouter({
 
     // редирект с /
     {
-      path: '/',
-      redirect: () => {
+      path: '/:pathMatch(.*)*',
+      redirect: (to) => {
+        // если путь уже с локалью — не трогаем
+        if (/^\/(ru|en)(\/|$)/.test(to.fullPath)) {
+          return to.fullPath
+        }
+
         const saved = localStorage.getItem('i18n_locale')
-        return `/${saved || defaultLocale}`
+        const locale = saved || browserLocale || defaultLocale
+
+        return `/${locale}${to.fullPath}`
       }
     }
   ]

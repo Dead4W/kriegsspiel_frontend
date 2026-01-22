@@ -232,7 +232,7 @@ onMounted(checkAuth)
       rgba(2, 6, 23, 0.75),
       rgba(2, 6, 23, 0.9)
     ),
-    url('/assets/bg.webp');
+    url('/assets/bg.png');
 
   background-size: cover;
   background-position: center;

@@ -58,7 +58,7 @@ useHead(() => ({
       innerHTML: JSON.stringify({
         "@context": "https://schema.org",
         "@type": "VideoGame",
-        "name": "KRIEGSSPIEL",
+        "name": "KRIEGSSPIEL online",
         "description": t('seo.description'),
         "genre": ["Strategy", "War"],
         "playMode": "MultiPlayer",

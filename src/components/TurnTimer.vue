@@ -123,7 +123,7 @@ async function startTurn() {
   totalSeconds.value = value
   running.value = true
 
-  const MAX_STEP = 10 // cекунд
+  const MAX_STEP = 60 // cекунд
 
   window.ROOM_WORLD.units.withNewCommandsTmp.clear()
   window.ROOM_WORLD.socketLock = true
@@ -139,6 +139,10 @@ async function startTurn() {
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
 
     runningSteps++
+
+    window.ROOM_WORLD.skipTime(step, false)
+    displayWorldTime.value = window.ROOM_WORLD.time
+    timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
 
     if (runningSteps % 10 === 0) {
       // отдаём управление браузеру
@@ -182,7 +186,7 @@ async function startTurn() {
   }
 
   // ВСЕГДА В КОНЦЕ
-  window.ROOM_WORLD.skipTime(value)
+  window.ROOM_WORLD.skipTime(0)
   window.ROOM_WORLD.socketLock = false
 
   running.value = false

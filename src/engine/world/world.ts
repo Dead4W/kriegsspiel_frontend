@@ -124,7 +124,7 @@ export class world {
     this.heightMap = await createHeightSampler(img.data, this.map.width, this.map.height);
   }
 
-  skipTime(seconds: number) {
+  skipTime(seconds: number, update: boolean = true) {
     if (!seconds || seconds <= 0) return
 
     // приводим строку к Date
@@ -139,7 +139,7 @@ export class world {
     this.time = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
       `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 
-    this.events.emit('api', { type: 'skip_time', data: this.time});
+    if (update) this.events.emit('api', { type: 'skip_time', data: this.time});
   }
 
   updateTime(time: string) {

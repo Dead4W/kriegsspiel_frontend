@@ -142,22 +142,6 @@ onMounted(checkAuth)
 
 <template>
   <section class="home">
-    <!-- переключатель языка -->
-    <div class="lang">
-      <button
-        :class="{ active: route.params.locale === 'ru' }"
-        @click="setLang('ru')"
-      >
-        RU
-      </button>
-      <button
-        :class="{ active: route.params.locale === 'en' }"
-        @click="setLang('en')"
-      >
-        EN
-      </button>
-    </div>
-
     <!-- основной экран -->
     <div class="card">
       <h1>{{ t('title') }}</h1>
@@ -171,6 +155,22 @@ onMounted(checkAuth)
           {{ t('welcome') }}, {{ user.name }}
         </span>
       </p>
+
+      <!-- переключатель языка -->
+      <div class="lang">
+        <button
+          :class="{ active: route.params.locale === 'ru' }"
+          @click="setLang('ru')"
+        >
+          RU
+        </button>
+        <button
+          :class="{ active: route.params.locale === 'en' }"
+          @click="setLang('en')"
+        >
+          EN
+        </button>
+      </div>
 
       <div class="actions">
         <button
@@ -241,11 +241,10 @@ onMounted(checkAuth)
 
 /* переключатель языка */
 .lang {
-  position: absolute;
-  top: 1.5rem;
-  right: 2rem;
   display: flex;
+  justify-content: center;
   gap: 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .lang button {

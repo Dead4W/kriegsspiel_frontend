@@ -46,7 +46,7 @@ export function getAngle(
   }
 
   const deltaH = h1 - h2;
-  return radToDeg(Math.atan(deltaH / distance));
+  return radToDeg(Math.atan2(deltaH, distance));
 }
 
 // --------------------

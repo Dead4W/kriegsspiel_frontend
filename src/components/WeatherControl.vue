@@ -29,7 +29,6 @@ const options = Object.values(WeatherEnum)
         v-for="w in options"
         :key="w"
         :value="w"
-        @change="onChangeWeather"
       >
         {{ t(`weather.${w}`) }}
       </option>

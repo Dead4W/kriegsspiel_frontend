@@ -125,7 +125,7 @@ export class world {
   }
 
   skipTime(seconds: number, update: boolean = true) {
-    if (!seconds || seconds <= 0) return
+    if (!seconds || seconds <= 0) seconds = 0
 
     // приводим строку к Date
     const date = new Date(this.time.replace(' ', 'T'))

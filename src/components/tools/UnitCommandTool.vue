@@ -272,7 +272,6 @@ onUnmounted(() => {
   padding: 6px;
   border-radius: 8px;
   border: 1px solid #334155;
-  //background: linear-gradient(180deg, #020617, #020617cc);
   background: #020617;
   color: #e5e7eb;
 

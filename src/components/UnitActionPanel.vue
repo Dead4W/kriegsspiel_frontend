@@ -73,8 +73,6 @@ function edit() {
   display: flex;
   gap: 8px;
   padding: 6px 12px;
-  //background: #020617ee;
-  //border-top: 1px solid #1e293b;
 
   align-items: stretch;
 }

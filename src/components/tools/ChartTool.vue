@@ -2,6 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api/client'
+import type { ChartOptions } from 'chart.js'
 
 import {
   Chart as ChartJS,
@@ -119,7 +120,7 @@ const chartData = computed(() => {
   }
 })
 
-const chartOptions = {
+const chartOptions: ChartOptions<'line'> = {
   responsive: true,
   maintainAspectRatio: false,
   scales: {

@@ -597,7 +597,7 @@ function confirm() {
   for (const u of movingUnits.value) {
     const cmds = new_commands.get(u.id)!
     for (const cmd of cmds) {
-      u.addCommand(cmd)
+      u.addCommand(cmd.getState())
     }
     u.setDirty()
   }

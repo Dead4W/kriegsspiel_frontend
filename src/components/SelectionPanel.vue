@@ -217,8 +217,6 @@ function barStyle(value: number, max: number) {
   flex-wrap: wrap;
   gap: 8px;
   padding: 4px 12px;
-  //background: #020617ee;
-  //border-top: 1px solid #1e293b;
   font-size: 11px;
   color: #cbd5f5;
   pointer-events: none;
@@ -248,8 +246,6 @@ function barStyle(value: number, max: number) {
   flex-wrap: wrap;
   gap: 2px;
   padding: 6px 12px;
-  //background: #020617ee;
-  //border-top: 1px solid #334155;
   pointer-events: auto;
   max-height: 150px;
   overflow-y: auto;

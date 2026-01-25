@@ -38,5 +38,6 @@ __screenshots__/
 public/assets/default_map.png
 
 .env
+.env.production
 
 deploy.sh

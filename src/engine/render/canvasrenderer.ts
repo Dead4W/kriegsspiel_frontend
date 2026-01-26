@@ -4,6 +4,7 @@ import { unitlayer } from './unitlayer'
 import { overlaylayer } from './overlaylayer'
 import {cursorlayer} from "@/engine/render/cursorlayer.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
+import {WeatherLayer} from "@/engine/render/weatherlayer.ts";
 
 export class canvasrenderer {
   private canvas: HTMLCanvasElement
@@ -16,13 +17,12 @@ export class canvasrenderer {
   private units = new unitlayer()
   private overlay = new overlaylayer();
   private cursor = new cursorlayer();
+  private weather = new WeatherLayer();
 
-  private lastMainFrame = 0
-  private lastOverlayFrame = 0
-
-  readonly FPS_PER_SECOND = 90;
-
-  constructor(canvas: HTMLCanvasElement, overlayCanvas: HTMLCanvasElement) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    overlayCanvas: HTMLCanvasElement,
+  ) {
     this.canvas = canvas
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('no_canvas_2d')
@@ -45,13 +45,12 @@ export class canvasrenderer {
     this.canvas.height = Math.floor(h * dpr)
     this.canvas.style.width = `${w}px`
     this.canvas.style.height = `${h}px`
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     this.overlayCanvas.width = Math.floor(w * dpr)
     this.overlayCanvas.height = Math.floor(h * dpr)
     this.overlayCanvas.style.width = `${w}px`
     this.overlayCanvas.style.height = `${h}px`
-
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     this.overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
   }
 
@@ -67,6 +66,9 @@ export class canvasrenderer {
       // слои
       debugPerformance('map.draw', () => {
         this.map.draw(this.ctx, w)
+      })
+      debugPerformance('weather.draw', () => {
+        this.weather.draw(this.ctx, w)
       })
       debugPerformance('units.draw', () => {
         this.units.draw(this.ctx, w)

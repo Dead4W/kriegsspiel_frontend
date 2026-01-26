@@ -276,7 +276,7 @@ onUnmounted(() => {
 /* ===== Panel ===== */
 
 .battle-log {
-  width: 360px;
+  width: 440px;
   max-height: calc(100vh - 140px);
   overflow-y: auto;
 

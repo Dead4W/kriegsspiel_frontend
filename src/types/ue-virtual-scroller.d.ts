@@ -1,7 +1,34 @@
 declare module 'vue-virtual-scroller' {
-  import { DefineComponent } from 'vue'
+  import type { DefineComponent, VNodeChild, SlotsType } from 'vue'
 
-  export const RecycleScroller: DefineComponent<any, any, any>
-  export const DynamicScroller: DefineComponent<any, any, any>
-  export const DynamicScrollerItem: DefineComponent<any, any, any>
+  export type DefaultSlotProps<T = any> = {
+    item: T
+    index?: number
+    active?: boolean
+  }
+
+  export const DynamicScroller: DefineComponent<
+    {
+      items: any[]
+      keyField?: string
+      minItemSize?: number
+    },
+    {},
+    {},
+    {},
+    {},
+    {},
+    {},
+    SlotsType<{
+      default(props: DefaultSlotProps): VNodeChild
+    }>
+  >
+
+  export const DynamicScrollerItem: DefineComponent<{
+    item: any
+    active?: boolean
+    sizeDependencies?: any[]
+  }>
+
+  export const RecycleScroller: DefineComponent<any>
 }

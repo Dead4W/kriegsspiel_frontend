@@ -226,9 +226,9 @@ onUnmounted(() => {
               <span
                 v-else-if="token.t === 'formula'"
                 class="formula"
-                @click="toggleFormula(formulaKey(item.log.id, i))"
+                @click="toggleFormula(formulaKey(item.log.id, +i))"
               >
-                <template v-if="openedFormulas.has(formulaKey(item.log.id, i))">
+                <template v-if="openedFormulas.has(formulaKey(item.log.id, +i))">
                   {{ token.v }}
                 </template>
                 <template v-else>

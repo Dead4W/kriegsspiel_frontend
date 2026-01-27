@@ -131,25 +131,46 @@ export class unitlayer {
       const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * this.unitScale
 
       debugPerformance('drawUnitBody', () => {
+        ctx.save()
         this.drawUnitBody(ctx, cam, unit, p, wUnit, hUnit)
+        ctx.restore()
+        ctx.closePath()
       })
       debugPerformance('drawTexture', () => {
+        ctx.save()
         this.drawTexture(ctx, unit, p, wUnit, hUnit, unitOpacity)
+        ctx.restore()
+        ctx.closePath()
       })
       debugPerformance('drawOutline', () => {
+        ctx.save()
         this.drawOutline(ctx, cam, unit, p, wUnit, hUnit)
+        ctx.restore()
+        ctx.closePath()
       })
       debugPerformance('drawSelection', () => {
+        ctx.save()
         this.drawSelection(ctx, cam, unit, p, wUnit, hUnit)
+        ctx.restore()
+        ctx.closePath()
       })
       debugPerformance('drawHpAmmo', () => {
+        ctx.save()
         this.drawHpAmmo(ctx, cam, unit, p, wUnit, hUnit, settings)
+        ctx.restore()
+        ctx.closePath()
       })
       debugPerformance('drawModifiers', () => {
+        ctx.save()
         this.drawModifiers(ctx, cam, unit, p, wUnit, hUnit, settings)
+        ctx.restore()
+        ctx.closePath()
       })
       debugPerformance('drawLabel', () => {
+        ctx.save()
         this.drawLabel(ctx, cam, unit, p, wUnit, hUnit, settings)
+        ctx.restore()
+        ctx.closePath()
       })
     })
   }
@@ -406,7 +427,6 @@ export class unitlayer {
       bgW,
       bgH
     )
-    ctx.fill()
 
     ctx.fillStyle = 'white'
     ctx.fillText(text, p.x, y + bgH / 2)
@@ -513,5 +533,4 @@ export class unitlayer {
       )
     }
   }
-
 }

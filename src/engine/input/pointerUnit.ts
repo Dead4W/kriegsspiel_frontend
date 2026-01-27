@@ -2,6 +2,7 @@ import type {world} from '../world/world'
 import type {vec2} from '../types'
 import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys.ts'
 import {RoomGameStage} from "@/enums/roomStage.ts";
+import {Team} from "@/enums/teamKeys.ts";
 
 export function bindUnitInteraction(
   canvas: HTMLCanvasElement,
@@ -34,6 +35,10 @@ export function bindUnitInteraction(
     if (rafId == null) {
       rafId = requestAnimationFrame(tick)
     }
+  }
+
+  function isAdminCommandActive() {
+    return window.PLAYER.team === Team.ADMIN && !document.querySelector('.orders-buttons')
   }
 
   function tick() {
@@ -132,7 +137,7 @@ export function bindUnitInteraction(
       if (e.ctrlKey) {
         // CTRL → toggle off
         hit.selected = false
-      } else if (e.shiftKey || !document.querySelector('.orders-buttons')) {
+      } else if (e.shiftKey || isAdminCommandActive()) {
         // SHIFT → add
         hit.selected = true
       } else {
@@ -163,7 +168,7 @@ export function bindUnitInteraction(
     startWorld = worldPos
     previewBaseSelection.clear()
 
-    if (e.shiftKey || !document.querySelector('.orders-buttons')) {
+    if (e.shiftKey || isAdminCommandActive()) {
       // SHIFT → include (сохраняем базу)
       for (const u of w.units.list()) {
         if (u.selected) previewBaseSelection.add(u.id)
@@ -223,7 +228,7 @@ export function bindUnitInteraction(
 
     if (!hit) return
 
-    if (!shiftKeyActive && document.querySelector('.orders-buttons')) {
+    if (!shiftKeyActive && !isAdminCommandActive()) {
       for (const u of w.units.list()) {
         if (u.id != hit.id) {
           u.selected = false

@@ -123,7 +123,10 @@ export class unitlayer {
       ctx.fillStyle = `rgba(${r},${g},${b},${unitOpacity})`
 
       debugPerformance('drawCommands', () => {
+        ctx.save()
         this.drawCommands(ctx, cam, unit)
+        ctx.restore()
+        ctx.closePath()
       })
 
 
@@ -273,7 +276,6 @@ export class unitlayer {
 
             const inaccuracyPointKey = `${cmdState.inaccuracyPoint.x.toFixed(1)}_${cmdState.inaccuracyPoint.y.toFixed(1)}`
             if (!this.inaccuracyRenderedPoints.includes(inaccuracyPointKey)) {
-              ctx.save();
               ctx.fillStyle = 'rgba(168,85,247,0.45)'
               ctx.strokeStyle = 'black'
               ctx.lineWidth = 1 * cam.zoom
@@ -287,7 +289,6 @@ export class unitlayer {
               ctx.arc(x, y, radiusPixels * cam.zoom, 0, Math.PI * 2)
               ctx.fill()
               ctx.stroke()
-              ctx.restore()
               this.inaccuracyRenderedPoints.push(inaccuracyPointKey);
             }
           } else {

@@ -63,18 +63,18 @@ export class world {
     this.map = map
     this.camera.setWorldSize(map.width, map.height)
 
-    watch(
-      () => this.logs.value.length,
-      (newLen, oldLen) => {
-        if (newLen > oldLen) {
-          const newEntries = this.logs.value.slice(oldLen)
-          for (const entry of newEntries) {
-            entry.is_new = false;
-            window.ROOM_WORLD.events.emit('api', {type: 'log', data: entry});
-          }
-        }
-      }
-    )
+    // watch(
+    //   () => this.logs.value.length,
+    //   (newLen, oldLen) => {
+    //     if (newLen > oldLen) {
+    //       const newEntries = this.logs.value.slice(oldLen)
+    //       for (const entry of newEntries) {
+    //         entry.is_new = false;
+    //         window.ROOM_WORLD.events.emit('api', {type: 'log', data: entry});
+    //       }
+    //     }
+    //   }
+    // )
   }
 
   addUnits(states: unitstate[]) {

@@ -38,6 +38,7 @@ type GameMap = {
   custom?: boolean
 }
 
+
 const GAME_MAPS: GameMap[] = [
   {
     id: 'essex',

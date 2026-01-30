@@ -4,6 +4,7 @@ import {useRoute, useRouter} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ROOM_SETTINGS } from '@/game/roomSettings'
 import api from '@/api/client'
+import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 
 const route = useRoute()
 const router = useRouter()
@@ -63,13 +64,13 @@ function applyMapSettings() {
   if (!map) return
 
   if (map.custom) {
-    settings.value.MAP_URL = customMapUrl.value || ''
-    settings.value.HEIGHT_MAP_URL = customHeightMapUrl.value || ''
-    settings.value.MAP_METERS_PER_PIXEL = +(customMetersPerPixel.value || 1)
+    settings.value[ROOM_SETTING_KEYS.MAP_URL] = customMapUrl.value || ''
+    settings.value[ROOM_SETTING_KEYS.HEIGHT_MAP_URL] = customHeightMapUrl.value || ''
+    settings.value[ROOM_SETTING_KEYS.MAP_METERS_PER_PIXEL] = +(customMetersPerPixel.value || 1)
   } else {
-    settings.value.MAP_URL = map.mapUrl!
-    settings.value.HEIGHT_MAP_URL = map.heightMapUrl!
-    settings.value.MAP_METERS_PER_PIXEL = +(map.metersPerPixel || 1)
+    settings.value[ROOM_SETTING_KEYS.MAP_URL] = map.mapUrl!
+    settings.value[ROOM_SETTING_KEYS.HEIGHT_MAP_URL] = map.heightMapUrl!
+    settings.value[ROOM_SETTING_KEYS.MAP_METERS_PER_PIXEL] = +(map.metersPerPixel || 1)
   }
 }
 applyMapSettings()

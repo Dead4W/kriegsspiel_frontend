@@ -50,8 +50,8 @@ const GAME_MAPS: GameMap[] = [
   {
     id: 'saint_petersburg',
     name: 'Saint-Petersburg 1828',
-    preview: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/spb.jpeg',
-    mapUrl: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/spb_preview.jpeg',
+    preview: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/spb.jpg',
+    mapUrl: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/spb_preview.jpg',
     heightMapUrl: '',
     metersPerPixel: 1.075,
   },

@@ -9,6 +9,8 @@ import type {unsub} from "@/engine/events.ts";
 import type {WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
 import type {PaintStroke} from "@/engine/types/paintTypes.ts";
+import type {vec2} from "@/engine/types.ts";
+import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
 
 export type OutMessage =
   | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: WeatherEnum} }
@@ -16,6 +18,7 @@ export type OutMessage =
   | { type: 'unit-remove'; data: uuid[] }
   | { type: 'paint_add'; data: PaintStroke }
   | { type: 'paint_undo'; data: { id: string } }
+  | { type: 'ruler'; data: { points: vec2[] } }
   | { type: 'chat'; data: ChatMessage; meta?: {ignore?: boolean} }
   | { type: 'chat_read'; data: uuid[] }
   | { type: 'cursor'; data: CursorObject }
@@ -36,6 +39,74 @@ export class GameSocket {
   private ws!: WebSocket
   private world!: world
   private apiEventsListenerUnsub?: unsub;
+
+  private buildRulerOverlay(points: vec2[]): OverlayItem[] {
+    if (points.length < 2) return []
+
+    const items: OverlayItem[] = []
+    const metersPerPixel = this.world.map.metersPerPixel
+
+    const distance = (a: vec2, b: vec2) => Math.hypot(b.x - a.x, b.y - a.y)
+    const mid = (a: vec2, b: vec2) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
+    const angleAtan2 = (a: vec2, b: vec2) => Math.atan2(b.y - a.y, b.x - a.x)
+    const readableAngle = (angle: number) => {
+      if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
+        return { angle: angle + Math.PI, flipped: true }
+      }
+      return { angle, flipped: false }
+    }
+
+    let totalDistance = 0
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i]!
+      const b = points[i + 1]!
+
+      const d = distance(a, b) * metersPerPixel
+      totalDistance += d
+
+      const m = mid(a, b)
+      const rawAngle = angleAtan2(a, b)
+      const { angle, flipped } = readableAngle(rawAngle)
+      const sign = flipped ? -1 : 1
+      const normalOffset = 14
+
+      // black outline
+      items.push({
+        type: 'line',
+        from: a,
+        to: b,
+        color: '#000',
+        width: 5,
+      })
+
+      // green line
+      items.push({
+        type: 'line',
+        from: a,
+        to: b,
+        color: '#3cff00',
+        width: 4,
+      })
+
+      // distance label (cumulative)
+      items.push({
+        type: 'text',
+        pos: {
+          x: m.x - Math.sin(angle) * normalOffset * sign,
+          y: m.y + Math.cos(angle) * normalOffset * sign,
+        },
+        text: `${Math.round(totalDistance)} M`,
+        angle,
+        size: 24,
+        strokeColor: '#000',
+        strokeWidth: 1,
+        color: '#3cff00',
+      })
+    }
+
+    return items
+  }
 
   connect(params: {
     roomId: string
@@ -255,6 +326,13 @@ export class GameSocket {
           this.world.addPaintStroke(m.data)
         } else if (m.type === 'paint_undo') {
           this.world.removePaintStrokeById(m.data.id)
+        } else if (m.type === 'ruler') {
+          const items = this.buildRulerOverlay(m.data.points ?? [])
+          if (items.length) {
+            this.world.setOverlay(items)
+          } else {
+            this.world.clearOverlay()
+          }
         }
       }
 

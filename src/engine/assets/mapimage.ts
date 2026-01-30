@@ -1,4 +1,19 @@
+
+const PROXY =  import.meta.env.VITE_API_URL + "/proxy/image?url="
+
 export async function loadImageWithProgress(
+  url: string,
+  onProgress?: (percent: number) => void
+): Promise<ImageBitmap> {
+  try {
+    return await loadWithProgress(url, onProgress)
+  } catch (e) {
+    // CORS / network → retry via proxy
+    return await loadWithProgress(PROXY + encodeURIComponent(url), onProgress)
+  }
+}
+
+async function loadWithProgress(
   url: string,
   onProgress?: (percent: number) => void
 ): Promise<ImageBitmap> {

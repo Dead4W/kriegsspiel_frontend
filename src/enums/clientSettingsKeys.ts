@@ -46,6 +46,9 @@ export const CLIENT_SETTING_KEYS = {
   CHAT_HEIGHT: 'chatHeight',
   CHAT_WIDTH: 'chatWidth',
 
+  // Weather shaders
+  SHOW_WEATHER_SHADERS: 'showWeatherShaders',
+
   // Performance debug
   ENABLE_PERFORMANCE_DEBUG: 'enablePerformanceDebug'
 } as const
@@ -56,19 +59,37 @@ export type ClientSettingKey =
 // Load client settings
 function loadClientSettings(): Partial<Record<ClientSettingKey, any>> {
   try {
+    const defaults = getDefaultSettings()
     const raw = localStorage.getItem(CLIENT_SETTINGS_STORAGE_KEY)
+
     if (!raw) {
-      const params = getDefaultSettings();
-      localStorage.setItem(CLIENT_SETTINGS_STORAGE_KEY, JSON.stringify(params));
-      return params;
+      localStorage.setItem(
+        CLIENT_SETTINGS_STORAGE_KEY,
+        JSON.stringify(defaults)
+      )
+      return { ...defaults }
     }
 
-    const parsed = JSON.parse(raw);
-    if (typeof parsed !== 'object' || !parsed) return {}
+    const parsed = JSON.parse(raw)
+    if (typeof parsed !== 'object' || !parsed) {
+      return { ...defaults }
+    }
 
-    return parsed
+    // merge: saved values override defaults
+    const merged = {
+      ...defaults,
+      ...parsed,
+    }
+
+    // optional: persist merged config (useful when new keys were added)
+    localStorage.setItem(
+      CLIENT_SETTINGS_STORAGE_KEY,
+      JSON.stringify(merged)
+    )
+
+    return merged
   } catch {
-    return {}
+    return { ...getDefaultSettings() }
   }
 }
 
@@ -87,6 +108,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]: true,
     [CLIENT_SETTING_KEYS.SHOW_FOREST_MAP]: false,
     [CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]: false,
+    [CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS]: true,
     [CLIENT_SETTING_KEYS.CHAT_HEIGHT]: null,
     [CLIENT_SETTING_KEYS.CHAT_WIDTH]: null,
     [CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]: false,

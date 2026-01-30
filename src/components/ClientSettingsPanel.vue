@@ -301,6 +301,16 @@ onUnmounted(() => {
       {{ t('client_settings.height_map') }}
     </label>
 
+    <!-- FOREST MAP -->
+    <label class="setting">
+      <input
+        type="checkbox"
+        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS]"
+        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS)"
+      />
+      {{ t('client_settings.show_weather_shaders') }}
+    </label>
+
     <!-- Performance debug -->
     <label class="setting">
       <input

@@ -5,16 +5,15 @@ import type { camera } from "@/engine/world/camera.ts";
 const MASK_SIZE = 1024;
 
 // Base fog movement (world units per second)
-const FOG_SPEED_X = 0.010;
-const FOG_SPEED_Y = 0.006;
+const FOG_SPEED_X = 0.020;
+const FOG_SPEED_Y = 0.012;
 
 // Secondary swirl movement
-const SWIRL_SPEED_X = 0.004;
-const SWIRL_SPEED_Y = 0.006;
+const SWIRL_SPEED_X = 0.008;
+const SWIRL_SPEED_Y = 0.012;
 
 // Opacity per layer
-const FOG_OPACITY_LAYER1 = 0.35;
-const FOG_OPACITY_LAYER2 = 0.2;
+const FOG_OPACITY_LAYER1 = 0.4;
 
 // Noise shape
 const FOG_SCALE = 4;
@@ -217,7 +216,8 @@ function drawFogLayer(
 export function drawFog(
   ctx: CanvasRenderingContext2D,
   cam: camera,
-  time: number
+  time: number,
+  mult: number,
 ) {
   if (!maskCanvas) generateMask();
 
@@ -226,8 +226,5 @@ export function drawFog(
   lastTime = time;
 
   // Back layer — большие медленные клубни
-  drawFogLayer(ctx, cam, layerBack, dt, FOG_OPACITY_LAYER1, 1.0);
-
-  // Front layer — более быстрый и лёгкий
-  drawFogLayer(ctx, cam, layerFront, dt, FOG_OPACITY_LAYER2, 1.6);
+  drawFogLayer(ctx, cam, layerBack, dt, FOG_OPACITY_LAYER1 * mult, 1.0);
 }

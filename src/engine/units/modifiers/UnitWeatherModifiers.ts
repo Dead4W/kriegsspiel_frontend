@@ -6,6 +6,7 @@ export enum WeatherEnum {
   Rain = 'rain',
   HeavyRain = 'heavy_rain',
   Fog = 'fog',
+  HeavyFog = 'heavy_fog',
   Snow = 'snow',
 }
 
@@ -32,6 +33,11 @@ export const WEATHER_MULTIPLIERS: Record<WeatherEnum, WeatherStatMultiplier> = {
   [WeatherEnum.Fog]: {
     visionRange: 0.5,
     attackRange: 0.6,
+  },
+
+  [WeatherEnum.HeavyFog]: {
+    visionRange: 0.15,
+    attackRange: 0.25,
   },
 
   [WeatherEnum.Snow]: {

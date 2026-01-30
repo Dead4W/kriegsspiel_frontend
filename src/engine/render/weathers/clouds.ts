@@ -3,8 +3,8 @@ import type { camera } from "@/engine/world/camera.ts";
 /* ===== SETTINGS ===== */
 
 const MASK_SIZE = 1024 * 2;          // px, size of generated mask
-const CLOUD_SPEED_X = 0.022;
-const CLOUD_SPEED_Y = 0.012;
+const CLOUD_SPEED_X = 0.22 * 0.5;
+const CLOUD_SPEED_Y = 0.12 * 0.5;
 
 const MASK_OPACITY = 0.25;       // final darkness
 

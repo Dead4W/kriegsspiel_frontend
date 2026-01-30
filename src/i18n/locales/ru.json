@@ -255,6 +255,7 @@
     "show_unit_vision_forest_raycast": "Использовать карту леса (raycast)",
     "forest_map": "Показать карту лесов",
     "height_map": "Показать карту высот",
+    "show_weather_shaders": "Показывать эффекты погоды",
     "performance_debug": "Дебаг производительности"
   },
 
@@ -345,6 +346,7 @@
     "rain": "Дождь",
     "heavy_rain": "Сильный дождь",
     "fog": "Туман",
+    "heavy_fog": "Сильный туман",
     "snow": "Снегопад"
   }
 }

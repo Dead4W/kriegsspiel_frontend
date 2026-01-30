@@ -56,6 +56,19 @@ const error = ref('')
 const mapProgress = ref(0)
 const roomData = ref<RoomData | null>()
 
+function getOrCreateClientId(roomId: string) {
+  const key = `client_id_${roomId}`
+  let id = localStorage.getItem(key)
+  if (!id) {
+    // Fallback for older browsers (shouldn't really happen).
+    id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? (crypto as Crypto).randomUUID()
+      : `${Date.now()}_${Math.random().toString(16).slice(2)}`
+    localStorage.setItem(key, id)
+  }
+  return id
+}
+
 /* ================== engine refs ================== */
 
 let w: world | null = null
@@ -74,6 +87,7 @@ function applyRoomSettings(id: uuid, options?: Record<string, any>) {
   window.ROOM_SETTINGS ??= {}
   window.INPUT = {
     IGNORE_DRAG: false,
+    IGNORE_UNIT_INTERACTION: false,
   }
   if (!options) return
 
@@ -143,6 +157,7 @@ async function loadRoom() {
 async function onTeamSelected(team: Team) {
   window.CLIENT_SETTINGS = createClientSettings()
   window.PLAYER.team = team;
+  window.CLIENT_ID = getOrCreateClientId(route.params.uuid as string)
 
   stage.value = RoomStage.LOADING_MAP;
 

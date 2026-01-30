@@ -18,12 +18,14 @@ import {RoomGameStage} from "@/enums/roomStage.ts";
 import HelpPanel from "@/components/tools/HelpPanel.vue";
 import WeatherControl from "@/components/WeatherControl.vue";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
+import PaintTool from "@/components/tools/PaintTool.vue";
 
 const { t } = useI18n()
 
 enum Tools {
   SPAWN = 'spawn',
   RULER = 'ruler',
+  PAINT = 'paint',
   ADMIN = 'admin',
   LOGS = 'logs',
   CHART = 'chart',
@@ -135,6 +137,14 @@ onUnmounted(() => {
       </button>
 
       <button
+        :class="{ active: activeTool === Tools.PAINT }"
+        @pointerdown.stop.prevent
+        @click="toggle($event, Tools.PAINT)"
+      >
+        🖌️ {{ t('tools.paint.title') }}
+      </button>
+
+      <button
         :class="{ active: activeTool === Tools.HELP }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.HELP)"
@@ -170,6 +180,11 @@ onUnmounted(() => {
 
     <RulerTool
       v-if="activeTool === Tools.RULER"
+      class="no-select"
+    />
+
+    <PaintTool
+      v-if="activeTool === Tools.PAINT"
       class="no-select"
     />
 

@@ -86,6 +86,14 @@
   "tools": {
     "add_unit": "Unit",
     "ruler": "Ruler",
+    "paint": {
+      "title": "Paint",
+      "color": "Color",
+      "opacity": "Opacity",
+      "size": "Size",
+      "undo": "Undo",
+      "hint": "LMB — draw, RMB — erase"
+    },
     "attack": "Attack",
     "environment_editor": "Environment Modifiers",
     "commands": "Commands",

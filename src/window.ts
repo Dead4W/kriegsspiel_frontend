@@ -7,9 +7,11 @@ declare global {
   interface Window {
     ROOM_SETTINGS: Partial<Record<RoomSettingKey, any>>
     CLIENT_SETTINGS: Partial<Record<ClientSettingKey, any>>
+    CLIENT_ID: string
     ROOM_WORLD: world,
     INPUT: {
       IGNORE_DRAG: boolean,
+      IGNORE_UNIT_INTERACTION: boolean,
     }
     PLAYER: PlayerInfo;
     ROOM_KEYS: {

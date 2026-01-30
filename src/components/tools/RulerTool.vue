@@ -161,6 +161,7 @@ function up() {
 /* ===== lifecycle ===== */
 
 onMounted(() => {
+  window.INPUT.IGNORE_UNIT_INTERACTION = true
   window.addEventListener('pointerdown', down)
   window.addEventListener('pointermove', move)
   window.addEventListener('keydown', onKeyDown)
@@ -168,6 +169,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.INPUT.IGNORE_UNIT_INTERACTION = false
   window.removeEventListener('pointerdown', down)
   window.removeEventListener('pointermove', move)
   window.removeEventListener('keydown', onKeyDown)

@@ -8,12 +8,14 @@ import {Team} from "@/enums/teamKeys.ts";
 import type {unsub} from "@/engine/events.ts";
 import type {WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
+import type {PaintStroke} from "@/engine/types/paintTypes.ts";
 
 export type OutMessage =
   | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: WeatherEnum} }
   | { type: 'unit'; data: unitstate; frames?: MoveFrame[] }
   | { type: 'unit-remove'; data: uuid[] }
-  | { type: 'paint'; pos_list: number[] }
+  | { type: 'paint_add'; data: PaintStroke }
+  | { type: 'paint_undo'; data: { id: string } }
   | { type: 'chat'; data: ChatMessage; meta?: {ignore?: boolean} }
   | { type: 'chat_read'; data: uuid[] }
   | { type: 'cursor'; data: CursorObject }
@@ -249,17 +251,11 @@ export class GameSocket {
           window.ROOM_WORLD.newWeather.value = m.data
         } else if (m.type === 'log') {
           window.ROOM_WORLD.logs.value.push(m.data)
+        } else if (m.type === 'paint_add') {
+          this.world.addPaintStroke(m.data)
+        } else if (m.type === 'paint_undo') {
+          this.world.removePaintStrokeById(m.data.id)
         }
-
-        // TODO: paint
-        // if (m.type === 'paint') {
-        //   for (const pos of m.pos_list) {
-        //     this.world.overlay.add({
-        //       type: 'paint',
-        //       pos,
-        //     })
-        //   }
-        // }
       }
 
       this.world.events.emit('changed', { reason: 'ws' })

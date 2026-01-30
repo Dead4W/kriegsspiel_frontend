@@ -3,7 +3,9 @@ import {emitter} from '../events'
 import {camera} from './camera'
 import {unitregistry} from './unitregistry'
 import {overlaystate} from "@/engine/world/overlay.ts";
+import {paintstate} from "@/engine/world/paint.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
+import type {PaintStroke} from "@/engine/types/paintTypes.ts";
 import type {mapmeta, vec2} from "@/engine/types.ts";
 import {messageregistry} from "@/engine/world/messageregistry"
 import type {ChatMessage} from "@/engine/types/chatMessage.ts";
@@ -52,6 +54,8 @@ export class world {
   units = new unitregistry()
 
   overlay = new overlaystate()
+
+  paint = new paintstate()
 
   messages = new messageregistry()
 
@@ -105,6 +109,32 @@ export class world {
   clearOverlay() {
     this.overlay.clear()
     this.events.emit('changed', { reason: 'overlay' })
+  }
+
+  addPaintStroke(stroke: PaintStroke) {
+    this.paint.add(stroke)
+    this.events.emit('changed', { reason: 'paint' })
+  }
+
+  removePaintStrokeById(id: string) {
+    const removed = this.paint.removeById(id)
+    if (removed) this.events.emit('changed', { reason: 'paint' })
+    return removed
+  }
+
+  undoPaint(ownerId?: string) {
+    const removed = ownerId ? this.paint.undoByOwner(ownerId) : this.paint.undo()
+    this.events.emit('changed', { reason: 'paint' })
+    return removed
+  }
+
+  clearPaint() {
+    this.paint.clear()
+    this.events.emit('changed', { reason: 'paint' })
+  }
+
+  touchPaint() {
+    this.paint.touch()
   }
 
   setForestMap(map: OffscreenCanvas | HTMLCanvasElement) {

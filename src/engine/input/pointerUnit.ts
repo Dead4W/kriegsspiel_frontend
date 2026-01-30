@@ -99,6 +99,12 @@ export function bindUnitInteraction(
   /* ================= EVENTS ================= */
 
   canvas.addEventListener('pointermove', (e) => {
+    if (window.INPUT.IGNORE_UNIT_INTERACTION) {
+      // If something else captured pointer (e.g. paint tool),
+      // cancel any active unit interaction immediately.
+      if (mode !== 'idle') cleanup(e.pointerId)
+      return
+    }
     screenX = e.clientX
     screenY = e.clientY
     dirty = true
@@ -188,6 +194,10 @@ export function bindUnitInteraction(
   })
 
   canvas.addEventListener('pointerup', (e) => {
+    if (window.INPUT.IGNORE_UNIT_INTERACTION) {
+      if (mode !== 'idle') cleanup(e.pointerId)
+      return
+    }
     if (mode === 'select') {
       for (const u of w.units.list()) {
         if (e.ctrlKey) {
@@ -212,6 +222,10 @@ export function bindUnitInteraction(
   })
 
   canvas.addEventListener('pointerleave', () => {
+    if (window.INPUT.IGNORE_UNIT_INTERACTION) {
+      cleanup()
+      return
+    }
     cleanup()
   })
 
@@ -298,6 +312,7 @@ export function bindUnitInteraction(
     if (e.ctrlKey) ctrlKeyActive = true
     if (e.shiftKey) shiftKeyActive = true
     if (e.key !== 'Delete' || e.repeat) return
+    if (window.INPUT.IGNORE_UNIT_INTERACTION) return
 
     const selected = w.units.getSelected()
     if (!selected.length) return

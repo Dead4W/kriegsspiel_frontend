@@ -5,6 +5,7 @@ import { overlaylayer } from './overlaylayer'
 import {cursorlayer} from "@/engine/render/cursorlayer.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {WeatherLayer} from "@/engine/render/weatherlayer.ts";
+import {PaintLayer} from "@/engine/render/paintlayer.ts";
 
 export class canvasrenderer {
   private canvas: HTMLCanvasElement
@@ -18,6 +19,7 @@ export class canvasrenderer {
   private overlay = new overlaylayer();
   private cursor = new cursorlayer();
   private weather = new WeatherLayer();
+  private paint = new PaintLayer();
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -66,6 +68,9 @@ export class canvasrenderer {
       // слои
       debugPerformance('map.draw', () => {
         this.map.draw(this.ctx, w)
+      })
+      debugPerformance('paint.draw', () => {
+        this.paint.draw(this.ctx, w)
       })
       debugPerformance('weather.draw', () => {
         this.weather.draw(this.ctx, w)

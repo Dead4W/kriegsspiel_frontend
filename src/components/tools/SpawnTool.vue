@@ -180,11 +180,13 @@ function onKeyDown(e: KeyboardEvent) {
 /* ================= lifecycle ================= */
 
 onMounted(() => {
+  window.INPUT.IGNORE_UNIT_INTERACTION = true
   window.addEventListener('pointerdown', onClick)
   window.addEventListener('keydown', onKeyDown)
 })
 
 onBeforeUnmount(() => {
+  window.INPUT.IGNORE_UNIT_INTERACTION = false
   window.removeEventListener('pointerdown', onClick)
   window.removeEventListener('keydown', onKeyDown)
 })

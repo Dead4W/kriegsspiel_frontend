@@ -3,7 +3,7 @@ import {
   FormationType,
   type unitstate,
   type unitTeam,
-  type unitType,
+  unitType,
   type uuid
 } from './types'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
@@ -13,6 +13,7 @@ import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engi
 import {FORMATION_STAT_MULTIPLIERS} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
 import {createUnitCommand} from "@/engine/units/commands";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
+import {CommandStatus} from "@/engine/units/commands/baseCommand.ts";
 import {clamp} from "@/engine/math.ts";
 import {type ChatMessage} from "@/engine/types/chatMessage.ts";
 import {Team} from "@/enums/teamKeys.ts";
@@ -26,6 +27,8 @@ import {TIME_MULTIPLIERS, TimeOfDay} from "@/engine/units/modifiers/UnitTimeModi
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {WEATHER_MULTIPLIERS, WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
+import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
+import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
 
@@ -169,6 +172,164 @@ export abstract class BaseUnit {
     }
     this.setDirty()
     return afterMod
+  }
+
+  /**
+   * Auto-set Retreat command based on a 2d6 morale/stability check.
+   * Called from attack command after damage is applied.
+   *
+   * Rules (per request):
+   * - Roll 2d6 + modifiers, compare vs "morale" as target number.
+   * - If failed: Retreat 1–2 turns; big fail: Flee; critical: unit disbands.
+   */
+  public autoSetRetreatCommandFromAttack(attacker: BaseUnit, damage: number) {
+    // Only when damage is actually taken
+    if (!damage || damage <= 0) return
+    if (!this.alive) return
+
+    // Don't spam while already retreating
+    if (this.hasCommand(UnitCommandTypes.Retreat) || this.isTimeout) return
+
+    // Morale not configured => skip (prevents constant checks for default 0)
+    const moraleTarget = this.morale ?? 0
+
+    const dice1 = this.rollDie(6)
+    const dice2 = this.rollDie(6)
+    const diceSum = dice1 + dice2
+
+    const mods: Array<{ key: string; value: number; applied: boolean }> = []
+
+    // In formation (+1)
+    const inFormation = [
+      FormationType.Default,
+      FormationType.KneelingVolley,
+      FormationType.Column,
+    ].includes(this.formation)
+    mods.push({ key: `formation(${this.formation})`, value: 1, applied: inFormation })
+
+    // In fortification (+2)
+    const inFortification =
+      this.envState.includes(UnitEnvironmentState.InCoverHouse) ||
+      this.envState.includes(UnitEnvironmentState.InCoverTrenches) ||
+      this.envState.includes(UnitEnvironmentState.InHouse)
+    mods.push({ key: `fortification`, value: 2, applied: inFortification })
+
+    // No commander (−2): friendly General within radius
+    const hasCommander = this.type === unitType.GENERAL || this.hasNearbyFriendlyGeneral(300)
+    mods.push({ key: `commander`, value: -2, applied: !hasCommander })
+
+    // Losses > 25% (−2)
+    const lossesMoreThan25 = this.hp / this.stats.maxHp < (1 - 0.25)
+    mods.push({ key: `losses>25%`, value: -2, applied: lossesMoreThan25 })
+
+    // Losses > 35% (−1)
+    const lossesMoreThan35 = this.hp / this.stats.maxHp < (1 - 0.35)
+    mods.push({ key: `losses>35%`, value: -1, applied: lossesMoreThan35 })
+
+    // Losses > 50% (−2)
+    const lossesMoreThan50 = this.hp / this.stats.maxHp < (1 - 0.50)
+    mods.push({ key: `losses>50%`, value: -2, applied: lossesMoreThan50 })
+
+    // Elite (+2): treat marines as elite (until a dedicated tag exists)
+    const isElite = this.type === unitType.MARINE
+    mods.push({ key: `elite`, value: 2, applied: isElite })
+
+    // Militia (−2)
+    const isMilitia = this.type === unitType.MILITIA
+    mods.push({ key: `militia`, value: -2, applied: isMilitia })
+
+    const modifierSum = mods
+      .filter(m => m.applied)
+      .reduce((acc, m) => acc + m.value, 0)
+
+    const total = diceSum + modifierSum
+    const margin = total - moraleTarget
+
+    type MoraleOutcome = 'pass' | 'retreat' | 'flee' | 'disband'
+    let outcome: MoraleOutcome = 'pass'
+
+    // Thresholds by margin of failure
+    if (margin >= 0) {
+      outcome = 'pass'
+    } else if (margin >= -2) {
+      outcome = 'retreat'
+    } else if (margin >= -5) {
+      outcome = 'flee'
+    } else {
+      outcome = 'disband'
+    }
+
+    // ===== LOG (similar style to AttackCommand) =====
+    const formula: string[] = []
+    formula.push(`2d6(${dice1}+${dice2})=${diceSum}`)
+    for (const m of mods) {
+      if (m.applied && m.value !== 0) {
+        const sign = m.value > 0 ? '+' : ''
+        formula.push(`${m.key}(${sign}${m.value})`)
+      }
+    }
+    formula.push(`= total(${total})`)
+    formula.push(`vs morale(${moraleTarget})`)
+    formula.push(`margin(${margin})`)
+
+    window.ROOM_WORLD.logs.value.push({
+      id: crypto.randomUUID(),
+      time: window.ROOM_WORLD.time,
+      tokens: [
+        { t: 'unit', u: this.id },
+        { t: 'i18n', v: `tools.logs.morale_check_from` },
+        { t: 'unit', u: attacker.id },
+        { t: 'text', v: ' → ' },
+        { t: 'i18n', v: `tools.logs.morale_${outcome}` },
+        { t: 'text', v: ' (' },
+        { t: 'formula', v: formula.join(' + ') },
+        { t: 'text', v: ')' },
+      ],
+      is_new: true,
+    })
+
+    // ===== APPLY EFFECT =====
+    if (outcome === 'pass') return
+
+    if (outcome === 'disband') {
+      // unit disbands
+      this.hp = 0
+    } else {
+      this.clearCommands()
+      const cmd = new RetreatCommand({
+        elapsed: 0,
+        duration: 60 * 60 * 24,
+        comment: "AUTO"
+      })
+      this.setCommands([cmd]);
+    }
+
+    this.isTimeout = true
+    this.setDirty()
+    window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
+  }
+
+  private rollDie(sides: number): number {
+    return 1 + Math.floor(Math.random() * sides)
+  }
+
+  private hasCommand(type: UnitCommandTypes): boolean {
+    return this.commands.some(c => c.type === type)
+  }
+
+  private hasNearbyFriendlyGeneral(radiusMeters: number): boolean {
+    const rPx = radiusMeters / window.ROOM_WORLD.map.metersPerPixel
+    const r2 = rPx * rPx
+    for (const u of window.ROOM_WORLD.units.list()) {
+      if (!u.alive) continue
+      if (u.isTimeout) continue
+      if (u.team !== this.team) continue
+      if (u.type !== unitType.GENERAL) continue
+      const dx = u.pos.x - this.pos.x
+      const dy = u.pos.y - this.pos.y
+      if (dx * dx + dy * dy <= r2) return true
+    }
+    return false
   }
 
   toState(): unitstate {
@@ -402,6 +563,7 @@ export abstract class BaseUnit {
   }
 
   clearCommands() {
+    this.isTimeout = false;
     this.commands = []
     this.setDirty();
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });

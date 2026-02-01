@@ -5,6 +5,7 @@ import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
 export interface RetreatCommandState {
   elapsed: number
   duration: number
+  comment?: string
 }
 
 export class RetreatCommand extends BaseCommand<

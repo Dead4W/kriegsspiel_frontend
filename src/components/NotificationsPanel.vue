@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, type Ref, ref} from "vue";
+import {onMounted, onUnmounted, type Ref, ref} from "vue";
 import {useI18n} from 'vue-i18n'
-import {world} from "@/engine";
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
+import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
 
 const { t } = useI18n()
 
@@ -55,7 +56,17 @@ function refreshNotifications() {
   const units = window.ROOM_WORLD.units.list()
 
   const unitsWithNewOrder = units.filter(u => window.ROOM_WORLD.units.withNewCommands.has(u.id))
-  const unitsWithoutOrder = units.filter(u => u.getCommands().length === 0)
+  const unitsWithoutOrder = units
+    .filter(u => {
+      const cmds = u.getCommands()
+        .filter(c => {
+          if (c instanceof RetreatCommand) {
+            return c.getState().state.comment !== 'AUTO'
+          }
+          return true;
+        })
+      return cmds.length === 0
+    })
 
   const result = []
 

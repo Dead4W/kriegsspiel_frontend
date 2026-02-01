@@ -40,7 +40,9 @@ function apply() {
   })
 
   for (const u of unitsSnapshot.value) {
-    u.addCommand(cmd.getState(), true)
+    u.clearCommands()
+    u.setCommands([cmd])
+    u.isTimeout = true
     u.setDirty()
   }
 

@@ -86,7 +86,7 @@ function description(cmd: BaseCommand<any, any>) {
 
     case UnitCommandTypes.Retreat: {
       return t('command_desc.retreat', {
-        action: t('tools.command.retreat_confirm'),
+        action: cmd.getState().state.comment ?? '',
       })
     }
 

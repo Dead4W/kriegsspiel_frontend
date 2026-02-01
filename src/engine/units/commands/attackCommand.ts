@@ -144,6 +144,8 @@ export class AttackCommand extends BaseCommand<
       /* ===== Применение урона ===== */
 
       const unitDmgAfterDefense = target.takeDamage(unitDmg)
+      // auto morale/retreat check (with logging)
+      target.autoSetRetreatCommandFromAttack(unit, unitDmgAfterDefense)
 
       const defenseModifier =
         unitDmg > 0

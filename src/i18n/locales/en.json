@@ -148,7 +148,12 @@
     },
     "logs": {
       "title": "Logs",
-      "attack": "attack"
+      "attack": "attack",
+      "morale_check_from": "morale check (attack from)",
+      "morale_pass": "holds",
+      "morale_retreat": "retreat",
+      "morale_flee": "rout",
+      "morale_disband": "disbands"
     },
     "help": {
       "button": "Help",

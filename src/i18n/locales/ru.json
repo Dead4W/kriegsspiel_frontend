@@ -149,7 +149,12 @@
     },
     "logs": {
       "title": "Логи",
-      "attack": "атакует"
+      "attack": "атакует",
+      "morale_check_from": "проверка устойчивости (атака от)",
+      "morale_pass": "устоял",
+      "morale_retreat": "отступление",
+      "morale_flee": "бегство",
+      "morale_disband": "распад"
     },
     "help": {
       "button": "Помощь",

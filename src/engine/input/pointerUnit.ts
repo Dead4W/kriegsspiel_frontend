@@ -38,7 +38,7 @@ export function bindUnitInteraction(
   }
 
   function isAdminCommandActive() {
-    return window.PLAYER.team === Team.ADMIN && !document.querySelector('.orders-buttons')
+    return window.PLAYER.team === Team.ADMIN && !document.querySelector('.orders-buttons') && window.ROOM_WORLD.stage === RoomGameStage.WAR
   }
 
   function tick() {

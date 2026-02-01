@@ -138,7 +138,7 @@ function isEnd() {
   return window.ROOM_WORLD.stage === RoomGameStage.END
 }
 
-function getMessageUnits(m: ChatMessage): BaseUnit[] {
+function getMessageUnits(m: ChatMessage): BaseUnit[] | uuid[] {
   if (!m.unitIds.length) return []
 
   const w = window.ROOM_WORLD
@@ -649,15 +649,15 @@ onBeforeUnmount(() => {
           <div
             v-if="getMessageUnits(m).length"
             class="message-units"
-            @click.stop="onUnitsBlockClick(getMessageUnits(m))"
+            @click.stop="onUnitsBlockClick(getMessageUnits(m).filter(u => u instanceof BaseUnit))"
           >
             <div
               v-for="u in getMessageUnits(m)"
-              :key="u.id"
+              :key="u instanceof BaseUnit ? u.id : u"
               class="unit-card"
             >
               <div class="unit-name">
-                {{ u.label ?? `#${u}` }}
+                {{ u instanceof BaseUnit ? u.label : `#${u}`}}
               </div>
             </div>
           </div>

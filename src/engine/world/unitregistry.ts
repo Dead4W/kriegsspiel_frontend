@@ -168,6 +168,9 @@ export class unitregistry {
       directViewByTeam
         .get(generalUnit.team)!
         .push(...visionUnits.map(v => v.id));
+      directViewByTeam
+        .get(generalUnit.team)!
+        .push(generalUnit.id)
     }
 
     return directViewByTeam;

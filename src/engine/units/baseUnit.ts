@@ -214,6 +214,8 @@ export abstract class BaseUnit {
       this.envState.includes(UnitEnvironmentState.InHouse)
     mods.push({ key: `fortification`, value: 2, applied: inFortification })
 
+    mods.push({ key: `morale`, value: this.morale, applied: true })
+
     // No commander (−2): friendly General within radius
     const hasCommander = this.type === unitType.GENERAL || this.hasNearbyFriendlyGeneral(300)
     mods.push({ key: `commander`, value: -2, applied: !hasCommander })

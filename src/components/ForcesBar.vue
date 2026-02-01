@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
-import { Team } from '@/enums/teamKeys'
+import {Team} from '@/enums/teamKeys'
 import {debugPerformance} from "@/engine/debugPerformance.ts";
+import {unitType} from "@/engine";
 
 const redPower = ref(0);
 const bluePower = ref(0);
@@ -21,6 +22,7 @@ function sync(data: {reason: string}) {
     totalPower.value = 0;
 
     for (const u of window.ROOM_WORLD.units.list()) {
+      if (u.type === unitType.MESSENGER) continue;
       if (u.team === Team.RED) {
         redPower.value += u.hp;
       }

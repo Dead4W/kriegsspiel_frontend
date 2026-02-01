@@ -8,6 +8,8 @@ import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {type unitstate, unitType, type uuid} from "@/engine";
 import {RoomGameStage} from "@/enums/roomStage.ts";
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 const { t } = useI18n()
 
@@ -184,6 +186,15 @@ function onUnitsBlockClick(units: BaseUnit[]) {
   }
 
   focusUnits(units)
+}
+
+function renderMarkdown(text: string): string {
+  const html = marked.parse(text, {
+    breaks: true,
+    gfm: true,
+  }) as string
+
+  return DOMPurify.sanitize(html)
 }
 
 /* =======================
@@ -650,9 +661,10 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
-          <div class="text">
-            {{ m.text }}
-          </div>
+          <div
+            class="text markdown"
+            v-html="renderMarkdown(m.text)"
+          />
         </div>
       </div>
     </div>
@@ -851,6 +863,65 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
+/* Markdown */
+
+.markdown {
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.markdown p {
+  margin: 4px 0;
+}
+
+.markdown strong {
+  font-weight: 700;
+}
+
+.markdown em {
+  font-style: italic;
+}
+
+.markdown code {
+  background: rgba(255,255,255,0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.markdown pre {
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 8px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.markdown blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 8px;
+  margin: 6px 0;
+  opacity: 0.8;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+
+.markdown a {
+  color: #38bdf8;
+  text-decoration: underline;
+}
+
 /* input */
 .chat-input {
   display: flex;
@@ -862,7 +933,7 @@ onBeforeUnmount(() => {
 .chat-input textarea {
   flex: 1;
   resize: none;
-  overflow: hidden;
+  overflow: auto;
 
   background: #020617;
   border: 1px solid #334155;

@@ -403,6 +403,10 @@ export class unitlayer {
       icons.push('👁️')
     }
 
+    if (unit.isTimeout) {
+      icons.push('🏳️')
+    }
+
     const envIcons = states
       .map(s => UnitEnvironmentStateIcon[s])
       .filter(Boolean)

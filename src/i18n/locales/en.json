@@ -68,6 +68,7 @@
     "abilities": "Abilities",
     "wait": "Wait",
     "delivery": "Delivery",
+    "retreat": "Retreat",
     "move_pick": "Move to target",
     "damage_modifier": "Damage modifier",
     "changeFormation": "Change formation",
@@ -76,7 +77,8 @@
   "command_desc": {
     "move": "Move to position ({x}, {y})",
     "attack": "Attack targets: {count}, damage modifier {dmg}",
-    "changeFormation": "Change formation to \"{formation}\""
+    "changeFormation": "Change formation to \"{formation}\"",
+    "retreat": "{action}"
   },
   "command_status": {
     "pending": "In queue",
@@ -137,7 +139,11 @@
       "delivery_message": "Message",
       "delivery_confirm": "Confirm",
 
-      "clear_commands": "Clear commands"
+      "clear_commands": "Clear commands",
+
+      "retreat": "Retreat",
+      "retreat_confirm": "Retreat",
+      "retreat_hint": "Unit is temporarily out"
     },
     "logs": {
       "title": "Logs",

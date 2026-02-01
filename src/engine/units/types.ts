@@ -6,6 +6,7 @@ import type {ChangeFormationCommandState} from "@/engine/units/commands/changeFo
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import type {WaitCommandState} from "@/engine/units/commands/waitCommand.ts";
 import type {DeliveryCommandState} from "@/engine/units/commands/deliveryCommand.ts";
+import type {RetreatCommandState} from "@/engine/units/commands/retreatCommand.ts";
 import {CommandStatus} from "@/engine/units/commands/baseCommand.ts";
 import type {MessageLinked} from "@/engine/units/baseUnit.ts";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
@@ -41,6 +42,8 @@ export interface unitstate {
   team: unitTeam
   pos: vec2
 
+  isTimeout: boolean,
+
   label?: string
 
   hp?: number
@@ -66,3 +69,4 @@ export type commandstate =
   | { type: UnitCommandTypes.ChangeFormation; status: CommandStatus; state: ChangeFormationCommandState }
   | { type: UnitCommandTypes.Wait; status: CommandStatus; state: WaitCommandState }
   | { type: UnitCommandTypes.Delivery; status: CommandStatus; state: DeliveryCommandState }
+  | { type: UnitCommandTypes.Retreat; status: CommandStatus; state: RetreatCommandState }

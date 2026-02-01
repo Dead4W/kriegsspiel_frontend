@@ -10,6 +10,7 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import CommandDelivery from "@/components/tools/commands/CommandDelivery.vue";
 import CommandChangeFormation from "@/components/tools/commands/CommandChangeFormation.vue";
 import CommandWait from "@/components/tools/commands/CommandWait.vue";
+import CommandRetreat from "@/components/tools/commands/CommandRetreat.vue";
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -27,6 +28,7 @@ const hotkeys: Record<string, UnitCommandTypes> = {
   '3': UnitCommandTypes.ChangeFormation,
   '4': UnitCommandTypes.Wait,
   '5': UnitCommandTypes.Delivery,
+  '6': UnitCommandTypes.Retreat,
 }
 
 const activeOrder = ref<UnitCommandTypes | null>(null)
@@ -36,6 +38,7 @@ const moveRef = ref<any>(null)
 const formationRef = ref<any>(null)
 const waitRef = ref<any>(null)
 const deliveryRef = ref<any>(null)
+const retreatRef = ref<any>(null)
 
 function open(order: UnitCommandTypes) {
   if (isCommandDisabled(order)) return
@@ -79,6 +82,9 @@ function onKeydown(e: KeyboardEvent) {
         break
       case UnitCommandTypes.Delivery:
         deliveryRef.value?.confirm?.()
+        break
+      case  UnitCommandTypes.Retreat:
+        retreatRef.value?.confirm?.()
         break
     }
     return
@@ -200,6 +206,16 @@ onUnmounted(() => {
       </button>
 
       <button
+        class="order-btn retreat"
+        @click="open(UnitCommandTypes.Retreat)"
+        :disabled="isCommandDisabled(UnitCommandTypes.Retreat)"
+        :title="hotkeyTitle(UnitCommandTypes.Retreat)"
+      >
+        <span class="icon">🏳️</span>
+        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.retreat') }}</span>
+      </button>
+
+      <button
         class="order-btn"
         @click="clearCommands"
       >
@@ -240,6 +256,13 @@ onUnmounted(() => {
     <CommandWait
       v-if="activeOrder === UnitCommandTypes.Wait"
       ref="waitRef"
+      :units="units"
+      @close="close"
+    />
+
+    <CommandRetreat
+      v-if="activeOrder === UnitCommandTypes.Retreat"
+      ref="retreatRef"
       :units="units"
       @close="close"
     />
@@ -326,6 +349,15 @@ onUnmounted(() => {
 
 .order-btn.attack:hover {
   border-color: #ef4444;
+}
+
+.order-btn.retreat {
+  color: #fbbf24;
+  border-color: #78350f;
+}
+
+.order-btn.retreat:hover {
+  border-color: #f59e0b;
 }
 
 </style>

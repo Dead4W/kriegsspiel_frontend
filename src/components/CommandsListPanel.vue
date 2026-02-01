@@ -8,6 +8,7 @@ import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifier
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 import type {vec2} from "@/engine";
+import type {RetreatCommandState} from "@/engine/units/commands/retreatCommand.ts";
 
 const { unit } = defineProps<{ unit: BaseUnit }>()
 const { t } = useI18n()
@@ -83,6 +84,12 @@ function description(cmd: BaseCommand<any, any>) {
 
     case UnitCommandTypes.Wait:
       return cmd.getState().state.comment
+
+    case UnitCommandTypes.Retreat: {
+      return t('command_desc.retreat', {
+        action: t('tools.command.retreat_confirm'),
+      })
+    }
 
     default:
       return ''

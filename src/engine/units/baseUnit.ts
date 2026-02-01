@@ -63,6 +63,7 @@ export abstract class BaseUnit {
   team: unitTeam
   pos: vec2
   label = ''
+  isTimeout: boolean
 
   selected = false
   previewSelected = false // временное (рамка)
@@ -107,6 +108,7 @@ export abstract class BaseUnit {
     this.ammo = 0;
     this.morale = s.morale ?? 0;
     this.commands = s.commands ?? [];
+    this.isTimeout = s.isTimeout ?? false;
 
     this.formation = s.formation ?? FormationType.Default;
     this.activeAbilityType = s.activeAbilityType ?? null;
@@ -175,6 +177,8 @@ export abstract class BaseUnit {
       type: this.type,
       team: this.team,
       pos: this.pos,
+
+      isTimeout: this.isTimeout,
 
       label: this.label,
 

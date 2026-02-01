@@ -70,6 +70,7 @@
     "wait": "Ждать",
     "wait_column": "Ожидание колонны",
     "delivery": "Доставка",
+    "retreat": "Отступление",
     "clear": "Очистить приказы",
     "move_pick": "Назначить точку",
     "damage_modifier": "Модификатор урона",
@@ -79,7 +80,8 @@
   "command_desc": {
     "move": "Движение к точке ({x}, {y})",
     "attack": "Атака целей: {count}, модификатор урона {dmg}",
-    "changeFormation": "Смена построения на «{formation}»"
+    "changeFormation": "Смена построения на «{formation}»",
+    "retreat": "{action}"
   },
   "command_status": {
     "pending": "В очереди",
@@ -138,7 +140,11 @@
       "delivery_message": "Сообщение",
       "delivery_confirm": "Назначить доставку",
 
-      "clear_commands": "Очистить команды"
+      "clear_commands": "Очистить команды",
+
+      "retreat": "Отступление",
+      "retreat_confirm": "Отступить",
+      "retreat_hint": "Юнит временно выбывает"
     },
     "logs": {
       "title": "Логи",

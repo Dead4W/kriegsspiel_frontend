@@ -205,8 +205,6 @@ async function initWorld(room: RoomData) {
     metersPerPixel: room.options.metersPerPixel || 1,
   }
 
-  console.log(map);
-
   let loadMapProgress = 0
   let loadHeightMapProgress = 0
 

@@ -12,6 +12,10 @@ import {
   DeliveryCommand,
   type DeliveryCommandState
 } from "@/engine/units/commands/deliveryCommand.ts";
+import {
+  RetreatCommand,
+  type RetreatCommandState
+} from "@/engine/units/commands/retreatCommand.ts";
 
 export function initUnitCommand(state: commandstate) {
   switch (state.type) {
@@ -25,13 +29,15 @@ export function initUnitCommand(state: commandstate) {
       return new DeliveryCommand(state.state)
     case UnitCommandTypes.Wait:
       return new WaitCommand(state.state)
+    case UnitCommandTypes.Retreat:
+      return new RetreatCommand(state.state)
     default:
       // @ts-ignore
       throw new Error(`Unknown unit type: "${state.type}"`)
   }
 }
 
-export function createUnitCommand(state: commandstate): BaseCommand<UnitCommandTypes, AttackCommandState | ChangeFormationCommandState | MoveCommandState | WaitCommandState | DeliveryCommandState> {
+export function createUnitCommand(state: commandstate): BaseCommand<UnitCommandTypes, AttackCommandState | ChangeFormationCommandState | MoveCommandState | WaitCommandState | DeliveryCommandState | RetreatCommandState> {
   const cmd = initUnitCommand(state)
   cmd.status = state.status
   return cmd;

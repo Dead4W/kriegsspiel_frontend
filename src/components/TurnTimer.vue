@@ -83,7 +83,7 @@ function processUnitCommands(dt: number) {
         continue;
       }
 
-      if (cmd.type === UnitCommandTypes.Attack) {
+      if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat].includes(cmd.type)) {
         cmd.start(unit)
         cmd.update(unit, dt)
       } else {
@@ -163,6 +163,8 @@ async function startTurn() {
             type: u.type,
             team: u.team,
             pos: u.pos,
+
+            isTimeout: u.isTimeout,
 
             hp: u.hp,
             ammo: u.ammo,

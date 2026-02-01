@@ -42,7 +42,7 @@ export interface unitstate {
   team: unitTeam
   pos: vec2
 
-  isTimeout: boolean,
+  isTimeout?: boolean,
 
   label?: string
 

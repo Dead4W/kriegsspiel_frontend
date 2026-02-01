@@ -115,6 +115,7 @@
       "wait": "Wait",
       "wait_column": "Wait column",
       "total_seconds": "Total seconds",
+      "total_minutes": "Total minutes",
       "comment": "Comment",
       "delivery": "Delivery",
       "formation": "Formation",

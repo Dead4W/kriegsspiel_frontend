@@ -44,7 +44,6 @@ const totalEstimate = computed(() => {
 
 function cmdKey(cmd: BaseCommand<any, any>) {
   const { type, state } = cmd.getState()
-  // важно: выбирай только стабильные поля
   return JSON.stringify({ type, state })
 }
 

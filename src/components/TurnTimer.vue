@@ -69,6 +69,7 @@ function processUnitCommands(dt: number) {
 
   for (const unit of units) {
     if (!unit.alive) continue
+    unit.isTimeout = false;
 
     const commands = unit.getCommands()
     if (commands.length === 0) continue;

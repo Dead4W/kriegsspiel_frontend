@@ -2,10 +2,9 @@
 import type { BaseUnit } from "@/engine/units/baseUnit.ts";
 import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
 
-const RETREAT_DURATION_S = 60 * 60 * 24; // 24 hours
-
 export interface RetreatCommandState {
   elapsed: number
+  duration: number
 }
 
 export class RetreatCommand extends BaseCommand<
@@ -28,11 +27,11 @@ export class RetreatCommand extends BaseCommand<
   }
 
   isFinished(): boolean {
-    return Math.max(0, RETREAT_DURATION_S - this.state.elapsed) <= 0
+    return Math.max(0, this.state.duration - this.state.elapsed) <= 0
   }
 
   estimate(unit: BaseUnit): number {
-    return Math.max(0, RETREAT_DURATION_S - this.state.elapsed)
+    return Math.max(0, this.state.duration - this.state.elapsed)
   }
 
   getState(): { type: UnitCommandTypes.Retreat; status: CommandStatus; state: RetreatCommandState } {

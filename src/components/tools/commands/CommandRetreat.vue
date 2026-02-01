@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import { RetreatCommand } from '@/engine/units/commands/retreatCommand.ts'
@@ -18,10 +18,26 @@ const emit = defineEmits<{
 
 const unitsSnapshot = ref<BaseUnit[]>([])
 
+/* ===== STATE ===== */
+
+const hours = ref(24)
+const minutes = ref(0)
+
+const retreatTimeSeconds = computed(() => {
+  return hours.value * 60 * 60 + minutes.value * 60
+})
+
+const retreatTimeMinutes = computed(() => {
+  return hours.value * 60 + minutes.value
+})
+
 /* ===== ACTION ===== */
 
 function apply() {
-  const cmd = new RetreatCommand({ elapsed: 0 })
+  const cmd = new RetreatCommand({
+    elapsed: 0,
+    duration: retreatTimeSeconds.value > 0 ? retreatTimeSeconds.value : Infinity,
+  })
 
   for (const u of unitsSnapshot.value) {
     u.addCommand(cmd.getState(), true)
@@ -53,6 +69,40 @@ defineExpose({
       </div>
       <div class="hint">
         {{ t('tools.command.retreat_hint') }}
+      </div>
+
+      <div class="time-inputs">
+        <label>
+          {{ t('time.hours') }}
+          <input
+            type="number"
+            min="0"
+            step="1"
+            v-model.number="hours"
+            @keydown.stop
+          />
+        </label>
+
+        <span class="time-separator">:</span>
+
+        <label>
+          {{ t('time.minute') }}
+          <input
+            type="number"
+            min="0"
+            max="59"
+            step="1"
+            v-model.number="minutes"
+            @keydown.stop
+          />
+        </label>
+      </div>
+
+      <div class="hint" v-if="retreatTimeSeconds > 0">
+        {{ t('tools.command.total_minutes') }}: {{ retreatTimeMinutes.toFixed(0) }}
+      </div>
+      <div class="hint" v-if="retreatTimeSeconds === 0">
+        {{ t('tools.command.total_minutes') }}: {{ t('time.infinity') }}
       </div>
     </div>
 
@@ -102,6 +152,37 @@ defineExpose({
   font-size: 10px;
   color: #64748b;
   white-space: pre-line;
+}
+
+.time-inputs {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.time-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.time-separator {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px 4px;
+}
+
+.time-inputs input {
+  width: 56px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 11px;
 }
 
 .btn {

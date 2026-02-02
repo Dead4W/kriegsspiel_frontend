@@ -9,6 +9,7 @@ import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/at
 import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 import type {vec2} from "@/engine";
 import type {RetreatCommandState} from "@/engine/units/commands/retreatCommand.ts";
+import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 
 const { unit } = defineProps<{ unit: BaseUnit }>()
 const { t } = useI18n()
@@ -69,7 +70,8 @@ function description(cmd: BaseCommand<any, any>) {
       const attackCmd = cmd as AttackCommand
       let targets = attackState.targets.length;
       if (attackState.inaccuracyPoint) {
-        targets = attackCmd.getUnitsInInaccuracyRadius(unit).length;
+        const inaccuracyRadius = computeInaccuracyRadius(unit, attackState.inaccuracyPoint)
+        targets = attackCmd.getUnitsInInaccuracyRadius(inaccuracyRadius, unit).length;
       }
       return t('command_desc.attack', {
         count: targets,

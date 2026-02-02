@@ -1,4 +1,4 @@
-import type {BaseUnit} from "@/engine/units/baseUnit.ts";
+import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {BaseCommand} from "./baseCommand.ts";
 import {unitType, type uuid, type vec2} from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
@@ -45,6 +45,7 @@ export class AttackCommand extends BaseCommand<
     if (this.isFinished(unit)) return
 
     let targets: BaseUnit[];
+    let hitFactor = 1;
 
     unit.activateAbility(null)
     for (const ability of this.state.abilities) {
@@ -67,12 +68,16 @@ export class AttackCommand extends BaseCommand<
       this.state.inaccuracyPoint;
 
     if (isInaccuracyFire) {
-      targets = this.getUnitsInInaccuracyRadius(unit)
+      const inaccuracyRadius = computeInaccuracyRadius(unit, this.state.inaccuracyPoint!)
+      targets = this.getUnitsInInaccuracyRadius(inaccuracyRadius, unit)
+      const targetRadius = BaseUnit.COLLISION_RANGE * window.ROOM_WORLD.map.metersPerPixel;
+      hitFactor = (targetRadius * targetRadius) / (inaccuracyRadius * inaccuracyRadius);
+      baseDmg *= hitFactor;
     } else {
       targets = this.getPriorityTargets(unit);
       if (targets.length === 0) return;
+      baseDmg /= targets.length;
     }
-    baseDmg /= targets.length;
 
     for (const target of targets) {
       let unitDmg = baseDmg
@@ -92,8 +97,15 @@ export class AttackCommand extends BaseCommand<
         formula.push(`attackCommandModifier(${this.state.damageModifier})`)
       }
       formula.push(`minutes(${dt/60})`)
-      if (targets.length > 1) {
-        formula.push(`÷ countTargets(${targets.length})`)
+
+      if (isInaccuracyFire) {
+        if (hitFactor !== 1) {
+          formula.push(`÷ artilleryHitModifier(${hitFactor})`)
+        }
+      } else {
+        if (targets.length > 1) {
+          formula.push(`÷ countTargets(${targets.length})`)
+        }
       }
 
       /* ===== Артиллерия / окружение ===== */
@@ -222,8 +234,7 @@ export class AttackCommand extends BaseCommand<
     return activeTargets
   }
 
-  getUnitsInInaccuracyRadius(unit: BaseUnit): BaseUnit[] {
-    const inaccuracyRadius = computeInaccuracyRadius(unit, this.state.inaccuracyPoint!)
+  getUnitsInInaccuracyRadius(inaccuracyRadius: number, unit: BaseUnit): BaseUnit[] {
     const radiusPx = inaccuracyRadius / window.ROOM_WORLD.map.metersPerPixel
     const r2 = radiusPx * radiusPx
 

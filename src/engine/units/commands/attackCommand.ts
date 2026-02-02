@@ -68,6 +68,7 @@ export class AttackCommand extends BaseCommand<
       this.state.inaccuracyPoint;
 
     if (isInaccuracyFire) {
+      unit.activateAbility(UnitAbilityType.INACCURACY_FIRE)
       const inaccuracyRadius = computeInaccuracyRadius(unit, this.state.inaccuracyPoint!)
       targets = this.getUnitsInInaccuracyRadius(inaccuracyRadius, unit)
       const targetRadius = BaseUnit.COLLISION_RANGE * window.ROOM_WORLD.map.metersPerPixel;

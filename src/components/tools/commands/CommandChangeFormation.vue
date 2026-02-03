@@ -85,11 +85,12 @@ defineExpose({
         class="btn confirm"
         :disabled="!selectedFormation"
         @click="confirm"
+        :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.apply') }}
       </button>
 
-      <button class="btn cancel" @click="cancel">
+      <button class="btn cancel" @click="cancel" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
       </button>
     </div>

@@ -9,6 +9,7 @@ import {type unitTeam, unitType} from "@/engine";
 import type {unsub} from "@/engine/events";
 import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
+import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 
 const {t} = useI18n()
 
@@ -195,11 +196,26 @@ function rebuildAttackOverlay() {
   window.ROOM_WORLD.setOverlay(items)
 }
 
+function unitPickRadiusPx() {
+  return 15 * (window.CLIENT_SETTINGS?.[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1)
+}
+
+function isTargetInRangeOfAnyAttacker(target: BaseUnit) {
+  for (const a of attackers.value) {
+    if (!a.alive || a.isTimeout) continue
+    const dx = target.pos.x - a.pos.x
+    const dy = target.pos.y - a.pos.y
+    if (dx * dx + dy * dy <= a.attackRange * a.attackRange) return true
+  }
+  return false
+}
+
 
 function onPointerDown(e: PointerEvent) {
   if (e.button !== 2) return
-  if (!selectedAbilities.value.includes(UnitAbilityType.INACCURACY_FIRE)) return
-  if ((e.target as HTMLElement)?.closest('.order-attack')) return
+
+  // Don't treat RMB on UI as target selection.
+  if ((e.target as HTMLElement)?.closest('.krig-ui')) return
 
   e.stopPropagation()
   e.preventDefault()
@@ -210,19 +226,38 @@ function onPointerDown(e: PointerEvent) {
     y: e.clientY,
   })
 
-  // ПКМ — задать / переместить точку атаки
-  inaccuracyPoint.value = { pos }
+  // ===== Inaccuracy fire: RMB sets point =====
+  if (selectedAbilities.value.includes(UnitAbilityType.INACCURACY_FIRE)) {
+    // ПКМ — задать / переместить точку атаки
+    inaccuracyPoint.value = { pos }
 
-  let sumDist = 0;
-  for (const a of attackers.value) {
-    sumDist += computeInaccuracyRadius(
-      a as BaseUnit,
-      pos,
-    )
+    let sumDist = 0;
+    for (const a of attackers.value) {
+      sumDist += computeInaccuracyRadius(
+        a as BaseUnit,
+        pos,
+      )
+    }
+    inaccuracyRadius.value = sumDist / attackers.value.length;
+
+    rebuildAttackOverlay()
+    return
   }
-  inaccuracyRadius.value = sumDist / attackers.value.length;
 
-  rebuildAttackOverlay()
+  // ===== Normal fire: RMB selects/toggles target unit =====
+  if (!attackers.value.length) return
+  const attackerTeam = attackers.value[0]!.team
+
+  const hit = world.units.pickAt(pos, unitPickRadiusPx())
+  if (!hit) return
+  if (!hit.alive || hit.isTimeout) return
+  if (hit.team === attackerTeam) return
+
+  // All checks: at least one attacker can reach the target by range.
+  if (!isTargetInRangeOfAnyAttacker(hit)) return
+
+  hit.selected = !hit.selected
+  world.events.emit('changed', { reason: 'select' })
 }
 
 // LIFE CYCLE
@@ -361,11 +396,12 @@ defineExpose({
         class="btn confirm"
         :disabled="!targets.length && !inaccuracyPoint"
         @click="confirm"
+        :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.attack') }}
       </button>
 
-      <button class="btn cancel" @click="emit('close')">
+      <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
       </button>
     </div>

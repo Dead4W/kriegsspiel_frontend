@@ -3,12 +3,14 @@ import type {vec2} from '../types'
 import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys.ts'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
+import {emitUnitCommandRequest} from "@/engine/input/unitCommandBus.ts";
+import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 
 export function bindUnitInteraction(
   canvas: HTMLCanvasElement,
   w: world
 ) {
-  let mode: 'idle' | 'drag' | 'select' = 'idle'
+  let mode: 'idle' | 'drag' | 'select' | 'commandDrag' = 'idle'
 
   let startWorld: vec2 | null = null
   let currentWorld: vec2 | null = null
@@ -18,9 +20,11 @@ export function bindUnitInteraction(
 
   // preview-база
   const previewBaseSelection = new Set<string>()
+  const previewBaseFutureSelection = new Set<string>()
 
   // drag
   const dragOrigin = new Map<string, vec2>()
+  let commandDragPrepared = false
 
   // screen coords
   let screenX = 0
@@ -38,7 +42,20 @@ export function bindUnitInteraction(
   }
 
   function isAdminCommandActive() {
-    return window.PLAYER.team === Team.ADMIN && !document.querySelector('.orders-buttons') && window.ROOM_WORLD.stage === RoomGameStage.WAR
+    const ordersDiv = document.querySelector('.orders-root div')
+    return window.PLAYER.team === Team.ADMIN
+    && window.ROOM_WORLD.stage === RoomGameStage.WAR
+    && ordersDiv && !ordersDiv.classList.contains('orders-buttons')
+  }
+
+  function isHardModeEnabled() {
+    return shiftKeyActive
+  }
+
+  function shouldDragAsCommand() {
+    return window.PLAYER.team === Team.ADMIN
+      && window.ROOM_WORLD.stage === RoomGameStage.WAR
+      && !isHardModeEnabled()
   }
 
   function tick() {
@@ -63,10 +80,62 @@ export function bindUnitInteraction(
       return
     }
 
+    // ===== COMMAND DRAG (admin war, hard mode off) =====
+    if (mode === 'commandDrag') {
+      const dx = currentWorld.x - startWorld.x
+      const dy = currentWorld.y - startWorld.y
+      const dist = Math.hypot(dx, dy)
+
+      // don't open/refresh command for tiny movements
+      if (dist < 3) return
+
+      // Prepare once: if unit is NOT futureSelected, reset its Move chain.
+      // This must happen only when drag actually starts (dist>=3),
+      // otherwise a simple click would unexpectedly clear planned moves.
+      if (!commandDragPrepared) {
+        commandDragPrepared = true
+        for (const u of w.units.getSelected()) {
+          if (u.futureSelected) continue
+          const nonMove = u
+            .getCommands()
+            .filter((cmd) => cmd.type !== UnitCommandTypes.Move)
+          u.setCommands(nonMove)
+        }
+      }
+
+      const selected = w.units.getSelected()
+      if (!selected.length) return
+
+      // Drag semantics: translate whole selection (formation).
+      let cx = 0
+      let cy = 0
+      for (const u of selected) {
+        const origin = dragOrigin.get(u.id) ?? u.futurePos ?? u.pos
+        cx += origin.x
+        cy += origin.y
+        if (u.selected && !u.futureSelected) {
+          u.futureSelected = true;
+        }
+      }
+      const center = { x: cx / selected.length, y: cy / selected.length }
+      const target = { x: center.x + dx, y: center.y + dy }
+
+      emitUnitCommandRequest({
+        command: UnitCommandTypes.Move,
+        move: {
+          pos: target,
+          append: false,
+          moveMode: 'formation',
+        },
+      })
+      return
+    }
+
     // ===== SELECT PREVIEW =====
     if (mode === 'select') {
       for (const u of w.units.list()) {
         u.previewSelected = previewBaseSelection.has(u.id)
+        u.previewFutureSelected = previewBaseFutureSelection.has(u.id)
       }
 
       w.units.selectInRect(startWorld, currentWorld, true)
@@ -74,9 +143,12 @@ export function bindUnitInteraction(
       if (ctrlKeyActive) {
         // CTRL → exclude
         for (const u of w.units.list()) {
+          // попал в рамку → убираем
           if (u.previewSelected && !previewBaseSelection.has(u.id)) {
-            // попал в рамку → убираем
             u.previewSelected = false
+          }
+          if (u.previewFutureSelected && !previewBaseFutureSelection.has(u.id)) {
+            u.previewFutureSelected = false
           }
         }
       }
@@ -91,8 +163,6 @@ export function bindUnitInteraction(
           fillColor: 'rgba(60,255,0,0.15)',
         },
       ])
-
-      // w.events.emit('changed', { reason: 'select' })
     }
   }
 
@@ -131,10 +201,19 @@ export function bindUnitInteraction(
       y: e.clientY,
     })
 
-    const hit = w.units.pickAt(
+    let hit = w.units.pickAt(
       worldPos,
       15 * window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT]
     )
+    let isFutureHit = false;
+    if (!hit) {
+      hit = w.units.pickAt(
+        worldPos,
+        15 * window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT],
+        true
+      )
+      if (hit) isFutureHit = true;
+    }
 
     // ===== CLICK ON UNIT =====
     if (hit) {
@@ -142,26 +221,46 @@ export function bindUnitInteraction(
 
       if (e.ctrlKey) {
         // CTRL → toggle off
-        hit.selected = false
-      } else if (e.shiftKey || isAdminCommandActive()) {
-        // SHIFT → add
-        hit.selected = true
+        if (isFutureHit) {
+          hit.futureSelected = false;
+          hit.selected = false;
+        } else if (!hit.isFutureSelected()) {
+          hit.selected = false;
+        }
+      // } else if (e.shiftKey || isAdminCommandActive()) {
+      //   if (isFutureHit) {
+      //     hit.futureSelected = true;
+      //     hit.selected = true;
+      //   } else if (!hit.isFutureSelected()) {
+      //     hit.selected = true
+      //   }
+      //   // SHIFT → add
       } else {
         // обычный клик
         if (!wasSelected) {
           // клик по НЕвыделенному → сбрасываем всё
           w.units.clearSelection()
-          hit.selected = true
+          if (isFutureHit) {
+            hit.futureSelected = true;
+            hit.selected = true;
+          } else if (!hit.isFutureSelected()) {
+            hit.selected = true;
+          }
         }
         // если wasSelected === true → ничего не делаем (drag существующего selection)
       }
 
-      mode = 'drag'
+      const isCommandDrag = shouldDragAsCommand()
+      mode = isCommandDrag ? 'commandDrag' : 'drag'
       startWorld = worldPos
       dragOrigin.clear()
+      commandDragPrepared = false
 
       for (const u of w.units.getSelected()) {
-        dragOrigin.set(u.id, { ...u.pos })
+        const origin = isCommandDrag
+          ? (u.futureSelected ? (u.futurePos ?? u.pos) : u.pos)
+          : u.pos
+        dragOrigin.set(u.id, { ...origin })
       }
 
       canvas.setPointerCapture(e.pointerId)
@@ -173,16 +272,19 @@ export function bindUnitInteraction(
     mode = 'select'
     startWorld = worldPos
     previewBaseSelection.clear()
+    previewBaseFutureSelection.clear()
 
     if (e.shiftKey || isAdminCommandActive()) {
       // SHIFT → include (сохраняем базу)
       for (const u of w.units.list()) {
         if (u.selected) previewBaseSelection.add(u.id)
+        if (u.futureSelected) previewBaseFutureSelection.add(u.id)
       }
     } else if (e.ctrlKey) {
       // CTRL → exclude (база = текущее выделение)
       for (const u of w.units.list()) {
         if (u.selected) previewBaseSelection.add(u.id)
+        if (u.futureSelected) previewBaseFutureSelection.add(u.id)
       }
     } else {
       // обычное выделение
@@ -198,6 +300,46 @@ export function bindUnitInteraction(
       if (mode !== 'idle') cleanup(e.pointerId)
       return
     }
+    if (mode === 'commandDrag' && startWorld) {
+      const endWorld = w.camera.screenToWorld({ x: e.clientX, y: e.clientY })
+      const dx = endWorld.x - startWorld.x
+      const dy = endWorld.y - startWorld.y
+      const dist = Math.hypot(dx, dy)
+
+      const selected = w.units.getSelected()
+      // tiny movement = treat as click (no order)
+      if (selected.length && dist >= 3) {
+        if (!commandDragPrepared) {
+          commandDragPrepared = true
+          for (const u of selected) {
+            if (u.futureSelected) continue
+            const nonMove = u
+              .getCommands()
+              .filter((cmd) => cmd.type !== UnitCommandTypes.Move)
+            u.setCommands(nonMove)
+          }
+        }
+        let cx = 0
+        let cy = 0
+        for (const u of selected) {
+          const origin = dragOrigin.get(u.id) ?? u.futurePos ?? u.pos
+          cx += origin.x
+          cy += origin.y
+        }
+        const center = { x: cx / selected.length, y: cy / selected.length }
+        const target = { x: center.x + dx, y: center.y + dy }
+
+        emitUnitCommandRequest({
+          command: UnitCommandTypes.Move,
+          move: {
+            pos: target,
+            append: false,
+            moveMode: 'formation',
+            autoConfirm: true,
+          },
+        })
+      }
+    }
     if (mode === 'select') {
       for (const u of w.units.list()) {
         if (e.ctrlKey) {
@@ -205,13 +347,22 @@ export function bindUnitInteraction(
           if (u.previewSelected) {
             u.selected = false
           }
+          if (u.previewFutureSelected) {
+            u.selected = false
+            u.futureSelected = false
+          }
         } else {
           // SHIFT / обычный → include
           if (u.previewSelected) {
             u.selected = true
           }
+          if (u.previewFutureSelected) {
+            u.selected = true
+            u.futureSelected = true
+          }
         }
         u.previewSelected = false
+        u.previewFutureSelected = false
       }
     }
 
@@ -293,7 +444,9 @@ export function bindUnitInteraction(
   function cleanup(pointerId?: number) {
    if (mode !== 'idle') {
      previewBaseSelection.clear()
+     previewBaseFutureSelection.clear()
      dragOrigin.clear()
+     commandDragPrepared = false
      startWorld = null
      currentWorld = null
      dirty = false

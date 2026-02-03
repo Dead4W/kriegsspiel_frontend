@@ -29,6 +29,7 @@ import {WEATHER_MULTIPLIERS, WeatherEnum} from "@/engine/units/modifiers/UnitWea
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
 import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
+import type { MoveCommandState } from './commands/moveCommand';
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
 
@@ -65,11 +66,14 @@ export abstract class BaseUnit {
 
   team: unitTeam
   pos: vec2
+  futurePos: vec2 | null = null
   label = ''
   isTimeout: boolean
 
   selected = false
   previewSelected = false // временное (рамка)
+  futureSelected = false
+  previewFutureSelected = false
 
   isDirty = false
 
@@ -110,7 +114,7 @@ export abstract class BaseUnit {
     this.hp = 0;
     this.ammo = 0;
     this.morale = s.morale ?? 0;
-    this.commands = s.commands ?? [];
+    this.setCommands(s.commands?.map(c => createUnitCommand(c)) ?? []);
     this.isTimeout = s.isTimeout ?? false;
 
     this.formation = s.formation ?? FormationType.Default;
@@ -155,7 +159,11 @@ export abstract class BaseUnit {
   }
 
   public isSelected(): boolean {
-    return this.selected || this.previewSelected;
+    return this.selected || this.previewSelected || this.isFutureSelected();
+  }
+
+  public isFutureSelected(): boolean {
+    return this.futureSelected || this.previewFutureSelected;
   }
 
   /** вызывается ПОСЛЕ super() в наследнике */
@@ -550,6 +558,7 @@ export abstract class BaseUnit {
       this.commands = this.commands.filter(cmd => cmd.type !== UnitCommandTypes.Attack)
     }
     this.commands.push(command)
+    this.refreshFuturePos();
     this.setDirty()
     window.ROOM_WORLD.units.withNewCommands.delete(this.id)
   }
@@ -560,6 +569,7 @@ export abstract class BaseUnit {
 
   setCommands(commands: BaseCommand<any, any>[]) {
     this.commands = commands.map(c => c.getState());
+    this.refreshFuturePos();
     this.setDirty();
     window.ROOM_WORLD.units.withNewCommands.delete(this.id)
   }
@@ -567,6 +577,7 @@ export abstract class BaseUnit {
   clearCommands() {
     this.isTimeout = false;
     this.commands = []
+    this.refreshFuturePos();
     this.setDirty();
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
     window.ROOM_WORLD.units.withNewCommands.delete(this.id)
@@ -744,5 +755,16 @@ export abstract class BaseUnit {
     console.log(selfInfo.join('\n'))
 
     return result
+  }
+
+  refreshFuturePos(): void {
+    for (const cmd of this.getCommands().slice().reverse()) {
+      if (cmd.type !== UnitCommandTypes.Move) continue;
+
+      const state = cmd.getState().state as MoveCommandState
+      this.futurePos = state.target
+      return
+    }
+    this.futurePos = null
   }
 }

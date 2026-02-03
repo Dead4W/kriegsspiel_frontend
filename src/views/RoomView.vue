@@ -11,6 +11,7 @@ import {
   bindKeyboard,
   bindPointer,
   bindUnitInteraction,
+  bindUnitContextCommands,
   canvasrenderer,
   loadImageWithProgress,
   type mapmeta,
@@ -187,6 +188,7 @@ async function initWorld(room: RoomData) {
   let defaultMetersPerPixel = 5.38
 
   if (window.location.hostname === 'localhost') {
+    room.options.mapUrl = ''
     defaultMapUrl = '/assets/default_map.jpeg'
     defaultHeightMapUrl = '/assets/default_height_map.png'
   }
@@ -289,6 +291,7 @@ async function initWorld(room: RoomData) {
   bindPointer(canvasEl.value, w)
   bindKeyboard(w)
   bindUnitInteraction(canvasEl.value, w)
+  bindUnitContextCommands(w)
 
   function render() {
     renderer?.render(w!)

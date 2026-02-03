@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted, onUnmounted, ref} from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 
@@ -11,6 +11,7 @@ import CommandDelivery from "@/components/tools/commands/CommandDelivery.vue";
 import CommandChangeFormation from "@/components/tools/commands/CommandChangeFormation.vue";
 import CommandWait from "@/components/tools/commands/CommandWait.vue";
 import CommandRetreat from "@/components/tools/commands/CommandRetreat.vue";
+import { onUnitCommandRequest, type UnitCommandRequest } from '@/engine/input/unitCommandBus'
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -54,6 +55,11 @@ function isMessenger() {
   return props.units.filter(u => u.type === unitType.MESSENGER).length === props.units.length;
 }
 
+function isUiEventTarget(target: EventTarget | null) {
+  const el = target as HTMLElement | null
+  return !!el?.closest?.('.krig-ui')
+}
+
 function clearCommands() {
   for (const u of props.units) {
     u.clearCommands()
@@ -63,7 +69,20 @@ function clearCommands() {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' && activeOrder.value) {
+  // C — cancel/clear planned commands for selected units
+  if (e.code === 'KeyC' && !e.repeat) {
+    // Keep behavior consistent with the ❌ button.
+    if (props.units.length) {
+      clearCommands()
+      // If a command UI is open, close it after clearing.
+      if (activeOrder.value) close()
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    return
+  }
+
+  if ((e.key === 'Enter' || e.code === 'KeyE') && activeOrder.value) {
     e.preventDefault()
     e.stopPropagation()
 
@@ -90,7 +109,7 @@ function onKeydown(e: KeyboardEvent) {
     return
   }
 
-  if (e.key === 'Escape') {
+  if (e.key === 'Escape' || e.code === 'KeyQ') {
     if (activeOrder.value) {
       close()
       e.preventDefault()
@@ -135,14 +154,59 @@ function isCommandDisabled(command: UnitCommandTypes): boolean {
   return false
 }
 
+async function onCommandRequest(req: UnitCommandRequest) {
+  // Allow live updates for active Move (drag preview)
+  if (activeOrder.value) {
+    if (activeOrder.value !== UnitCommandTypes.Move) return
+    if (req.command !== UnitCommandTypes.Move) return
+
+    if (req.move.moveMode) {
+      moveRef.value?.setMoveMode?.(req.move.moveMode)
+    }
+    moveRef.value?.applyContextTarget?.(req.move.pos, req.move.append)
+    const shouldAutoConfirm = !!req.move.autoConfirm
+    // Always ask ENV modifier for each picked point.
+    moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
+    if (shouldAutoConfirm) return
+    return
+  }
+
+  if (isCommandDisabled(req.command)) return
+
+  open(req.command)
+  await nextTick()
+
+  if (req.command === UnitCommandTypes.Move) {
+    if (req.move.moveMode) {
+      moveRef.value?.setMoveMode?.(req.move.moveMode)
+    }
+    moveRef.value?.applyContextTarget?.(req.move.pos, req.move.append)
+    const shouldAutoConfirm = !!req.move.autoConfirm
+    // Always ask ENV modifier for each picked point.
+    moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
+    if (shouldAutoConfirm) return
+    return
+  }
+
+  const hit = window.ROOM_WORLD.units.get(req.selectUnitId)
+  if (!hit) return
+
+  window.ROOM_WORLD.units.select(hit)
+  window.ROOM_WORLD.events.emit('changed', { reason: 'select' })
+}
+
 // LIFE CYCLE
+let unsubCommandRequests: null | (() => void) = null
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
+  unsubCommandRequests = onUnitCommandRequest(onCommandRequest)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  unsubCommandRequests?.()
+  unsubCommandRequests = null
 })
 
 </script>
@@ -218,6 +282,7 @@ onUnmounted(() => {
       <button
         class="order-btn"
         @click="clearCommands"
+        :title="`${t('hotkey')}: C`"
       >
         <span class="icon icon-formation">❌</span>
         <span class="label">{{ t('tools.command.clear_commands') }}</span>

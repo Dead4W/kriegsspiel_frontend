@@ -14,6 +14,9 @@ export function bindPointer(canvas: HTMLCanvasElement, w: world) {
   canvas.addEventListener('pointerdown', (e) => {
     if (e.button !== 2) return
     if (window.INPUT.IGNORE_DRAG) return
+    // Если есть выделение — ПКМ используется для контекстных приказов,
+    // а не для перетаскивания камеры.
+    if (w.units.getSelected().length > 0) return
 
     dragging = true
     last = { x: e.clientX, y: e.clientY }
@@ -61,10 +64,21 @@ export function bindPointer(canvas: HTMLCanvasElement, w: world) {
 
       const dir = Math.sign(e.deltaY)
       const oldZoom = cam.zoom
-      const newZoom = Math.max(
-        0.25,
-        Math.min(4, oldZoom * (dir > 0 ? 0.9 : 1.1))
-      )
+      // Минимальный (самый "отдалённый") зум ограничиваем размерами карты:
+      // видимая область (viewport / zoom) не должна превышать worldSize.
+      const eps = 0.0001
+      const fitX =
+        cam.worldSize.x > 0 ? cam.viewport.x / cam.worldSize.x : eps
+      const fitY =
+        cam.worldSize.y > 0 ? cam.viewport.y / cam.worldSize.y : eps
+      const minZoomFromMap = Math.max(eps, fitX, fitY)
+
+      // Максимальный (самый "приближённый") зум оставляем как прежде,
+      // но гарантируем, что он не меньше minZoomFromMap.
+      const maxZoom = Math.max(4, minZoomFromMap)
+
+      const targetZoom = oldZoom * (dir > 0 ? 0.9 : 1.1)
+      const newZoom = Math.min(maxZoom, Math.max(minZoomFromMap, targetZoom))
 
       if (newZoom === oldZoom) return
 

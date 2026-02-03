@@ -198,10 +198,11 @@ defineExpose({
         class="btn confirm"
         :disabled="!targets.length"
         @click="confirm"
+        :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.delivery_confirm') }}
       </button>
-      <button class="btn cancel" @click="emit('close')">
+      <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
       </button>
     </div>

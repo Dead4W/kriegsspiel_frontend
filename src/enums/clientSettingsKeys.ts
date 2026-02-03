@@ -6,6 +6,9 @@ export const CLIENT_SETTING_KEYS = {
   // Инверсия canvas (Тёмная тема)
   DARK_THEME: 'darkTheme',
 
+  // HARD MODE (для админа: drag юнитов = приказ, а не перенос)
+  HARD_MODE: 'hardMode',
+
   // Громкость звука
   SOUND_VOLUME: 'soundVolume',
 
@@ -96,6 +99,7 @@ function loadClientSettings(): Partial<Record<ClientSettingKey, any>> {
 function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
   return {
     [CLIENT_SETTING_KEYS.DARK_THEME]: false,
+    [CLIENT_SETTING_KEYS.HARD_MODE]: false,
     [CLIENT_SETTING_KEYS.SOUND_VOLUME]: 0.3,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS]: true,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_LABEL_TYPE]: false,

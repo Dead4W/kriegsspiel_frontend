@@ -15,6 +15,7 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {WaitCommand} from "@/engine/units/commands/waitCommand.ts";
+import RadialMenu, { type RadialMenuItem } from '@/components/ui/RadialMenu.vue'
 
 const { t } = useI18n()
 
@@ -29,14 +30,10 @@ function envIcon(state: UnitEnvironmentState) {
   return UnitEnvironmentStateIcon[state]
 }
 
-function toggleRouteModifier(mod: UnitEnvironmentState) {
+function setRouteModifier(mod: UnitEnvironmentState | null) {
   if (!targets.value.length) return
-
-  const activeTarget = targets.value[targets.value.length - 1]!;
-
-  activeTarget.modifier = activeTarget.modifier !== mod
-    ? mod
-    : null;
+  targets.value[targets.value.length - 1]!.modifier = mod
+  rebuildMoveOverlay()
 }
 
 function pointOnSegmentFromEnd(
@@ -86,6 +83,113 @@ export type RoutePoint = {
 const movingUnits = ref<BaseUnit[]>([])
 const targets = ref<RoutePoint[]>([])
 
+/* ================= ENV MENU (radial) ================= */
+
+type EnvMenuId = UnitEnvironmentState | 'none'
+
+const envMenuOpen = ref(false)
+const envMenuCenter = ref<vec2>({ x: 0, y: 0 })
+const envMenuAnchorWorld = ref<vec2 | null>(null)
+const envMenuAutoConfirm = ref(false)
+
+let envMenuRaf: number | null = null
+let lastCamKey = ''
+
+function updateEnvMenuCenter() {
+  const anchor = envMenuAnchorWorld.value
+  if (!anchor) return
+
+  const cam = window.ROOM_WORLD.camera
+  const key = `${cam.pos.x.toFixed(2)}:${cam.pos.y.toFixed(2)}:${cam.zoom.toFixed(4)}:${anchor.x.toFixed(2)}:${anchor.y.toFixed(2)}`
+  if (key === lastCamKey) return
+  lastCamKey = key
+
+  envMenuCenter.value = cam.worldToScreen(anchor)
+}
+
+function startEnvMenuTracking() {
+  if (envMenuRaf != null) return
+  const loop = () => {
+    if (!envMenuOpen.value) {
+      envMenuRaf = null
+      return
+    }
+    updateEnvMenuCenter()
+    envMenuRaf = requestAnimationFrame(loop)
+  }
+  envMenuRaf = requestAnimationFrame(loop)
+}
+
+function stopEnvMenuTracking() {
+  if (envMenuRaf != null) {
+    cancelAnimationFrame(envMenuRaf)
+    envMenuRaf = null
+  }
+}
+
+function openEnvMenu(anchorWorld?: vec2, autoConfirmAfterPick = false) {
+  const anchor =
+    anchorWorld ??
+    targets.value[targets.value.length - 1]?.pos ??
+    null
+
+  if (!anchor) return
+
+  envMenuAutoConfirm.value = autoConfirmAfterPick
+  envMenuAnchorWorld.value = { x: anchor.x, y: anchor.y }
+  lastCamKey = ''
+  updateEnvMenuCenter()
+
+  envMenuOpen.value = true
+  startEnvMenuTracking()
+}
+
+function closeEnvMenu() {
+  envMenuOpen.value = false
+  envMenuAutoConfirm.value = false
+  stopEnvMenuTracking()
+}
+
+const envMenuCenterItem = computed<RadialMenuItem<EnvMenuId> | null>(() => {
+  if (!targets.value.length) return null
+  const active = targets.value[targets.value.length - 1]!.modifier == null
+  return {
+    id: 'none',
+    icon: '✖',
+    label: t('clear'),
+    active,
+    ariaLabel: t('clear'),
+  }
+})
+
+const envMenuItems = computed<RadialMenuItem<EnvMenuId>[]>(() => {
+  const current = targets.value.length
+    ? targets.value[targets.value.length - 1]!.modifier ?? null
+    : null
+
+  return ROUTE_MODIFIERS.map((mod) => ({
+    id: mod,
+    icon: envIcon(mod),
+    label: t(`env.${mod}`),
+    active: current === mod,
+    ariaLabel: t(`env.${mod}`),
+  }))
+})
+
+function onEnvMenuSelect(item: RadialMenuItem<EnvMenuId>) {
+  if (item.id === 'none') {
+    setRouteModifier(null)
+    if (envMenuAutoConfirm.value) {
+      confirm()
+    }
+    return
+  }
+  setRouteModifier(item.id as UnitEnvironmentState)
+  if (envMenuAutoConfirm.value) {
+    confirm()
+  }
+}
+
 /* ================= ABILITIES ================= */
 
 const selectedAbilities = ref<UnitAbilityType[]>([])
@@ -114,6 +218,11 @@ const availableAbilities = computed<UnitAbilityType[]>(() => {
 
 type MoveMode = 'column' | 'formation'
 const moveMode = ref<MoveMode>('column')
+
+function setMoveMode(mode: MoveMode) {
+  moveMode.value = mode
+  rebuildMoveOverlay()
+}
 
 /* ================= FORMATION ================= */
 
@@ -333,32 +442,6 @@ function getColumnPosition(
 }
 
 
-
-function getSegmentForUnit(
-  leaderSeg: number,
-  offset: number,
-  targets: RoutePoint[]
-): { seg: number; offset: number } {
-  let remaining = offset
-  let seg = leaderSeg
-
-  while (seg > 0) {
-    const a = targets[seg]!.pos
-    const b = targets[seg - 1]!.pos
-    const len = Math.hypot(a.x - b.x, a.y - b.y)
-
-    if (remaining <= len) {
-      return { seg, offset: remaining }
-    }
-
-    remaining -= len
-    seg--
-  }
-
-  return { seg: 0, offset: 0 }
-}
-
-
 /* ================= GROUPING ================= */
 
 function group(units: UnwrapRef<BaseUnit[]>) {
@@ -380,6 +463,27 @@ const unitsGrouped = computed(() => group(movingUnits.value))
 
 /* ================= TARGET PICK ================= */
 
+function applyContextTarget(pos: vec2, append: boolean) {
+  let modifier = null;
+  if (targets.value.length) {
+    modifier = targets.value[targets.value.length - 1]!.modifier ?? null;
+  }
+
+  if (append) {
+    // добавить точку
+    targets.value.push({pos, modifier: modifier})
+  } else {
+    // редактировать последнюю
+    if (!targets.value.length) {
+      targets.value.push({pos, modifier: modifier})
+    } else {
+      targets.value[targets.value.length - 1] = {pos, modifier: targets.value[targets.value.length - 1]!.modifier ?? null}
+    }
+  }
+
+  rebuildMoveOverlay()
+}
+
 function onPointerDown(e: PointerEvent) {
   if (e.button !== 2) return
   if ((e.target as HTMLElement)?.closest('.order-move')) return
@@ -394,26 +498,9 @@ function onPointerDown(e: PointerEvent) {
     y: e.clientY,
   })
 
-  let modifier = null;
-  if (targets.value.length) {
-    modifier = targets.value[targets.value.length - 1]!.modifier ?? null;
-  }
-
-  if (e.shiftKey) {
-    // Shift + ПКМ — добавить точку
-    targets.value.push({pos, modifier: modifier})
-  } else {
-    // ПКМ — редактировать последнюю
-    if (!targets.value.length) {
-      targets.value.push({pos, modifier: modifier})
-    } else {
-      targets.value[targets.value.length - 1] = {pos, modifier: targets.value[targets.value.length - 1]!.modifier ?? null}
-    }
-  }
-
-
-
-  rebuildMoveOverlay()
+  // Shift + ПКМ — добавить точку, ПКМ — редактировать последнюю
+  applyContextTarget(pos, e.shiftKey)
+  openEnvMenu(pos, false)
 }
 
 
@@ -443,7 +530,7 @@ function rebuildMoveOverlay() {
         type: 'line',
         from,
         to: moveCmd.getState().state.target,
-        color: moveMode.value === 'column' ? '#22c55e' : '#38bdf8',
+        color: '#22c55e',
         width: 6,
         dash: [6, 6],
         dashOffset: -1,
@@ -472,7 +559,7 @@ function rebuildMoveOverlay() {
             type: 'line',
             from,
             to,
-            color: moveMode.value === 'column' ? '#22c55e' : '#38bdf8',
+            color: '#22c55e',
             width: 6,
             dash: [6, 6],
             dashOffset: -1,
@@ -602,12 +689,14 @@ function confirm() {
     u.setDirty()
   }
 
+  closeEnvMenu()
   cleanup()
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
 }
 
 
 function cleanup() {
+  closeEnvMenu()
   movingUnits.value = []
   targets.value = []
   window.ROOM_WORLD.clearOverlay()
@@ -641,10 +730,14 @@ onUnmounted(() => {
   window.removeEventListener('pointerdown', onPointerDown)
   window.ROOM_WORLD.clearOverlay()
   window.INPUT.IGNORE_DRAG = false;
+  stopEnvMenuTracking()
 })
 
 defineExpose({
   confirm,
+  applyContextTarget,
+  setMoveMode,
+  openEnvMenu,
 })
 
 </script>
@@ -687,23 +780,6 @@ defineExpose({
       </div>
     </div>
 
-    <!-- ===== MOVE MODE ===== -->
-    <div class="column" v-if="movingUnits.length > 1">
-      <div class="title">{{ t('tools.command.moveMode') }}</div>
-
-      <label class="radio">
-        <input type="radio" value="column" v-model="moveMode" />
-        <span class="radio-ui formation"></span>
-        {{ t('tools.command.moveModeColumn') }}
-      </label>
-
-      <label class="radio">
-        <input type="radio" value="formation" v-model="moveMode" />
-        <span class="radio-ui formation"></span>
-        {{ t('tools.command.moveModeFormation') }}
-      </label>
-    </div>
-
     <!-- ===== ABILITIES ===== -->
     <div
       v-if="availableAbilities.length"
@@ -727,27 +803,17 @@ defineExpose({
     </div>
 
     <!-- ===== ENV MODIFIER ===== -->
-    <div v-if="targets.length" class="env-panel">
-      <div class="env-title">
-        🧭 {{ t('tools.command.routeModifiers') }}
-      </div>
-
-      <!-- === 2 строки === -->
-      <div class="env-buttons two-lines">
-        <button
-          v-for="mod in ROUTE_MODIFIERS"
-          :key="mod"
-          class="env-btn"
-          :class="{ active: targets[targets.length-1]!.modifier === mod }"
-          @click="toggleRouteModifier(mod)"
-        >
-        <span class="env-btn-icon">{{ envIcon(mod) }}</span>
-        <span class="env-btn-label">
-          {{ t(`env.${mod}`) }}
-        </span>
-        </button>
-      </div>
-    </div>
+    <RadialMenu
+      :open="envMenuOpen"
+      :center="envMenuCenter"
+      :items="envMenuItems"
+      :center-item="envMenuCenterItem"
+      :show-labels="false"
+      :close-on-backdrop="false"
+      :close-on-esc="false"
+      @select="(item) => onEnvMenuSelect(item)"
+      @close="closeEnvMenu"
+    />
 
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
@@ -755,10 +821,11 @@ defineExpose({
         class="btn confirm"
         :disabled="!targets.length"
         @click="confirm"
+        :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.move') }}
       </button>
-      <button class="btn cancel" @click="emit('close')">
+      <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
       </button>
     </div>

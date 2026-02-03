@@ -4,6 +4,7 @@ import {useI18n} from 'vue-i18n'
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
+import { unitType } from "@/engine";
 
 const { t } = useI18n()
 
@@ -67,6 +68,9 @@ function refreshNotifications() {
         })
       return cmds.length === 0
     })
+  const messengersWithoutOrder = unitsWithoutOrder
+    .filter(u => u.type === unitType.MESSENGER)
+
 
   const result = []
 
@@ -92,6 +96,16 @@ function refreshNotifications() {
     })
   }
 
+  if (messengersWithoutOrder.length > 0) {
+    result.push({
+      id: 'messengers-without-order',
+      text: t('notifications.messengers_without_order'),
+      count: messengersWithoutOrder.length,
+      onClick: () => {
+        focusUnits(messengersWithoutOrder)
+      }
+    })
+  }
   notifications.value = result
 }
 

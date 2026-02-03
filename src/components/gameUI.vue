@@ -19,6 +19,7 @@ import HelpPanel from "@/components/tools/HelpPanel.vue";
 import WeatherControl from "@/components/WeatherControl.vue";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import PaintTool from "@/components/tools/PaintTool.vue";
+import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
 
 const { t } = useI18n()
 
@@ -36,6 +37,14 @@ const activeTool = ref<Tools | null>(null)
 
 const world = ref(window.ROOM_WORLD)
 const isEnd = ref(false)
+const isWar = ref(false)
+
+const shiftHeld = ref(false)
+
+function toggleHardMove(e: MouseEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+}
 
 function toggle(e: MouseEvent, tool: Tools) {
   e.preventDefault()
@@ -53,11 +62,16 @@ function isEnabledWeatherModifiers() {
 
 function onKeydown(e: KeyboardEvent) {
   nextTick();
+  shiftHeld.value = e.shiftKey
   if (e.key === 'Escape') {
     activeTool.value = null
   } else if (e.code === 'KeyV') {
     activeTool.value = activeTool.value === Tools.RULER ? null : Tools.RULER
   }
+}
+
+function onKeyup(e: KeyboardEvent) {
+  shiftHeld.value = e.shiftKey
 }
 
 function close() {
@@ -67,16 +81,19 @@ function close() {
 function sync() {
   world.value = window.ROOM_WORLD
   isEnd.value = world.value.stage === RoomGameStage.END
+  isWar.value = world.value.stage === RoomGameStage.WAR
 }
 
 onMounted(() => {
   window.ROOM_WORLD.events.on('changed', sync)
   window.addEventListener('keydown', onKeydown)
+  window.addEventListener('keyup', onKeyup)
   sync()
 })
 onUnmounted(() => {
   window.ROOM_WORLD.events.off('changed', sync)
   window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('keyup', onKeyup)
 })
 </script>
 
@@ -91,6 +108,16 @@ onUnmounted(() => {
 
     <!-- Панель инструментов -->
     <div class="toolbar no-select">
+      <button
+        v-if="isAdmin() && isWar"
+        :class="{ active: shiftHeld }"
+        @pointerdown.stop.prevent
+        @click="toggleHardMove"
+        :title="`${t('tools.hard_move_description')}\n(${t('hotkey')}: Shift)`"
+      >
+        🕹️ {{ t('tools.hard_move') }}
+      </button>
+
       <button
         v-if="isAdmin() && !isEnd"
         :class="{ active: activeTool === Tools.LOGS}"

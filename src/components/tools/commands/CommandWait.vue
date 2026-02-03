@@ -113,10 +113,11 @@ defineExpose({
       <button
         class="btn confirm"
         @click="confirm"
+        :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.wait') }}
       </button>
-      <button class="btn cancel" @click="emit('close')">
+      <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
       </button>
     </div>

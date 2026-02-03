@@ -90,6 +90,8 @@
 
   "tools": {
     "add_unit": "Юнит",
+    "hard_move": "HARD MOVE",
+    "hard_move_description": "Форсированное движение юнитов. Без этого режима, вы назначаете приказ движения юнитов, а не перемещаете их.",
     "ruler": "Линейка",
     "paint": {
       "title": "Рисование",
@@ -124,13 +126,12 @@
       "route": "Маршрут",
       "pickRouteHint": "ПКМ — изменить последнюю точку,\nShift + ПКМ — добавить",
       "routeModifiers": "Модификаторы маршрута",
-      "moveMode": "Режим движения",
       "moveModeFormation": "Сохраняя формацию",
       "moveModeColumn": "Колонной",
       "apply": "Выполнить",
       "cancel": "Отмена",
 
-      "attackHint": "Выделите цели",
+      "attackHint": "Выделите цели (ПКМ по врагу — добавить/убрать)",
 
       "attackers": "Атакующие",
       "targets": "Цели",
@@ -348,7 +349,8 @@
 
   "notifications": {
     "units_with_new_order": "Юнитов с новым приказом",
-    "units_without_order": "Юнитов без приказа"
+    "units_without_order": "Юнитов без приказа",
+    "messengers_without_order": "Посыльных без приказа"
   },
 
   "ability": {

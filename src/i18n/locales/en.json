@@ -87,6 +87,8 @@
 
   "tools": {
     "add_unit": "Unit",
+    "hard_move": "HARD MOVE",
+    "hard_move_description": "Force move units position. Without this mode, you set move orders to units, not move them.",
     "ruler": "Ruler",
     "paint": {
       "title": "Paint",
@@ -123,13 +125,12 @@
       "route": "Route",
       "pickRouteHint": "RMB — edit last point,\nShift + RMB — add",
       "routeModifiers": "Route modifiers",
-      "moveMode": "Movement mode",
       "moveModeFormation": "Keep formation",
       "moveModeColumn": "Column",
       "apply": "Apply",
       "cancel": "Cancel",
 
-      "attackHint": "Select targets",
+      "attackHint": "Select targets (RMB on enemy — toggle)",
 
       "attackers": "Attackers",
       "targets": "Targets",
@@ -347,7 +348,8 @@
 
   "notifications": {
     "units_with_new_order": "Units with new command",
-    "units_without_order": "Units without command"
+    "units_without_order": "Units without command",
+    "messengers_without_order": "Messengers without order"
   },
 
   "ability": {

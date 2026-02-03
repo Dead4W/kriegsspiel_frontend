@@ -4,7 +4,7 @@ import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys'
 import {translate} from '@/i18n'
 import {drawUnitVision} from "@/engine/render/unitlayer/visionlayer.ts";
 import {getUnitTexture} from "@/engine/assets/textures.ts";
-import {drawAttackWaveIcons, drawMoveArrowChainIcons} from "@/engine/render/canvasUtil.ts";
+import {drawAttackWaveIcons} from "@/engine/render/canvasUtil.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
@@ -118,6 +118,7 @@ export class unitlayer {
         : 0.3
 
       const p = cam.worldToScreen(unit.pos)
+      const futureP = unit.futurePos ? cam.worldToScreen(unit.futurePos) : null
 
       const { r, g, b } = getTeamColor(unit.team)
       ctx.fillStyle = `rgba(${r},${g},${b},${unitOpacity})`
@@ -135,28 +136,34 @@ export class unitlayer {
 
       debugPerformance('drawUnitBody', () => {
         ctx.save()
-        this.drawUnitBody(ctx, cam, unit, p, wUnit, hUnit)
+        this.drawUnitBody(ctx, cam, unit, p, wUnit, hUnit, unitOpacity)
         ctx.restore()
         ctx.closePath()
       })
-      debugPerformance('drawTexture', () => {
-        ctx.save()
-        this.drawTexture(ctx, unit, p, wUnit, hUnit, unitOpacity)
-        ctx.restore()
-        ctx.closePath()
-      })
-      debugPerformance('drawOutline', () => {
-        ctx.save()
-        this.drawOutline(ctx, cam, unit, p, wUnit, hUnit)
-        ctx.restore()
-        ctx.closePath()
-      })
-      debugPerformance('drawSelection', () => {
-        ctx.save()
-        this.drawSelection(ctx, cam, unit, p, wUnit, hUnit)
-        ctx.restore()
-        ctx.closePath()
-      })
+      if (unit.isSelected() && !unit.isFutureSelected()) {
+        debugPerformance('drawSelection', () => {
+          ctx.save()
+          this.drawSelection(ctx, cam, unit, p, wUnit, hUnit)
+          ctx.restore()
+          ctx.closePath()
+        })
+      }
+      if (futureP) {
+        debugPerformance('drawFutureUnitBody', () => {
+          ctx.save()
+          this.drawUnitBody(ctx, cam, unit, futureP, wUnit, hUnit, unitOpacity * 0.5)
+          ctx.restore()
+          ctx.closePath()
+        })
+        if (unit.isSelected() && unit.isFutureSelected()) {
+          debugPerformance('drawSelection', () => {
+            ctx.save()
+            this.drawSelection(ctx, cam, unit, futureP, wUnit, hUnit)
+            ctx.restore()
+            ctx.closePath()
+          })
+        }
+      }
       debugPerformance('drawHpAmmo', () => {
         ctx.save()
         this.drawHpAmmo(ctx, cam, unit, p, wUnit, hUnit, settings)
@@ -188,31 +195,34 @@ export class unitlayer {
     unit: BaseUnit,
     p: vec2,
     w: number,
-    h: number
+    h: number,
+    opacity: number
   ) {
+    ctx.globalAlpha = opacity
+
     if (unit.type === unitType.MESSENGER) {
       const radius = Math.min(w, h) / 1.5
       ctx.beginPath()
       ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
       ctx.fill()
+      ctx.stroke()
     } else {
       ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h)
+
+      const texture = unit.type ? getUnitTexture(unit.type) : null
+      if (!texture || !texture.complete || texture.naturalWidth === 0) return
+      ctx.drawImage(texture, p.x - w / 2, p.y - h / 2, w, h)
+      ctx.strokeStyle = 'black'
+      ctx.lineWidth = 1 * cam.zoom
+
+      ctx.strokeRect(
+        p.x - w / 2,
+        p.y - h / 2,
+        w,
+        h
+      )
     }
-  }
 
-  private drawTexture(
-    ctx: CanvasRenderingContext2D,
-    unit: BaseUnit,
-    p: { x: number; y: number },
-    w: number,
-    h: number,
-    opacity: number
-  ) {
-    const texture = unit.type ? getUnitTexture(unit.type) : null
-    if (!texture || !texture.complete || texture.naturalWidth === 0) return
-
-    ctx.globalAlpha = opacity
-    ctx.drawImage(texture, p.x - w / 2, p.y - h / 2, w, h)
     ctx.globalAlpha = 1
   }
 
@@ -238,23 +248,25 @@ export class unitlayer {
       switch (cmd.type) {
         case UnitCommandTypes.Move: {
           const state = cmd.getState().state as MoveCommandState
-          const range = this.move_orders[state.uniqueId]
+          const a = cam.worldToScreen(from)
+          const b = cam.worldToScreen(state.target)
 
-          if (
-            range &&
-            (range.min === state.orderIndex ||
-              range.max === state.orderIndex)
-          ) {
-            debugPerformance('drawMoveArrowChainIcons', () => {
-              drawMoveArrowChainIcons(
-                ctx,
-                from,
-                state.target,
-                '#4587cc',
-                cam.zoom
-              )
-            })
-          }
+          debugPerformance('drawMoveLine', () => {
+            ctx.save()
+            ctx.lineCap = 'round'
+            ctx.lineJoin = 'round'
+            ctx.strokeStyle = color
+            ctx.lineWidth = 6 * cam.zoom
+            ctx.setLineDash([6 * cam.zoom, 6 * cam.zoom])
+            ctx.lineDashOffset = -(performance.now() * cam.zoom * 0.01)
+
+            ctx.beginPath()
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
+            ctx.stroke()
+            ctx.restore()
+          })
+
           from = state.target
           break
         }
@@ -462,7 +474,7 @@ export class unitlayer {
     const bgH = 18 * cam.zoom * this.unitScale
     const y = p.y - h / 2 - bgH - 6 * cam.zoom * this.unitScale
 
-    ctx.fillStyle = unit.isSelected()
+    ctx.fillStyle = unit.isSelected() && !unit.isFutureSelected()
       ? 'rgba(74,222,128,0.55)'
       : 'rgba(0,0,0,0.55)'
 
@@ -479,33 +491,6 @@ export class unitlayer {
     debugPerformance('fillText', () => {
       ctx.fillText(text, p.x, y + bgH / 2)
     })
-  }
-
-  private drawOutline(
-    ctx: CanvasRenderingContext2D,
-    cam: world['camera'],
-    unit: BaseUnit,
-    p: { x: number; y: number },
-    w: number,
-    h: number
-  ) {
-    ctx.strokeStyle = 'black'
-    ctx.lineWidth = 1 * cam.zoom
-
-    if (unit.type === unitType.MESSENGER) {
-      const radius = Math.min(w, h) / 1.5
-
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
-      ctx.stroke()
-    } else {
-      ctx.strokeRect(
-        p.x - w / 2,
-        p.y - h / 2,
-        w,
-        h
-      )
-    }
   }
 
   private drawSelection(

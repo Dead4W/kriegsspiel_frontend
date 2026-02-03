@@ -104,6 +104,7 @@ export class unitregistry {
   clearSelection() {
     for (const u of this.map.values()) {
       u.selected = false
+      u.futureSelected = false
     }
   }
 
@@ -111,15 +112,22 @@ export class unitregistry {
     return [...this.map.values()].filter(u => u.selected)
   }
 
-  pickAt(pos: vec2, radius = 15): BaseUnit | null {
+  pickAt(pos: vec2, radius = 15, isFuture: boolean = false): BaseUnit | null {
     const units = Array.from(this.map.values())
       .sort((a, b) => b.lastSelected - a.lastSelected)
 
     for (let i = 0; i < units.length; i++) {
       const u = units[i] as BaseUnit
 
-      const dx = u.pos.x - pos.x
-      const dy = u.pos.y - pos.y
+      let dx: number, dy: number = 0;
+      if (isFuture) {
+        if (!u.futurePos) continue;
+        dx = u.futurePos.x - pos.x;
+        dy = u.futurePos.y - pos.y;
+      } else {
+        dx = u.pos.x - pos.x;
+        dy = u.pos.y - pos.y;
+      }
       if (dx * dx + dy * dy <= radius * radius) {
         u.lastSelected = performance.now();
         return u
@@ -145,11 +153,20 @@ export class unitregistry {
         u.pos.x <= maxX &&
         u.pos.y >= minY &&
         u.pos.y <= maxY;
+      let isFutureSelected = false;
+      if (u.futurePos) {
+        isFutureSelected = u.futurePos.x >= minX &&
+          u.futurePos.x <= maxX &&
+          u.futurePos.y >= minY &&
+          u.futurePos.y <= maxY;
+      }
       u.lastSelected = performance.now()
       if (isPreview) {
         u.previewSelected = isSelected;
+        u.previewFutureSelected = isFutureSelected;
       } else {
-        u.selected = isSelected;
+        u.selected = isSelected || isFutureSelected;
+        u.futureSelected = isFutureSelected;
       }
     }
   }

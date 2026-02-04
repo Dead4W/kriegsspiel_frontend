@@ -291,7 +291,7 @@ async function createRoom() {
 
 .card {
   width: 600px;
-  background: linear-gradient(180deg, #020617, #020617cc);
+  background: var(--panel);
   border: 1px solid #1e293b;
   padding: 2.5rem 3rem;
   border-radius: 16px;

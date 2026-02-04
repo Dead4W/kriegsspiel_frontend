@@ -83,7 +83,7 @@ useHead(() => ({
 .card {
   max-width: 700px;
   padding: 3rem;
-  background: linear-gradient(180deg, #020617, #020617cc);
+  background: var(--panel);
   border: 1px solid #1e293b;
   border-radius: 16px;
   text-align: center;

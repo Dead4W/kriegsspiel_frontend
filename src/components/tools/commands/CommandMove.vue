@@ -83,6 +83,36 @@ export type RoutePoint = {
 const movingUnits = ref<BaseUnit[]>([])
 const targets = ref<RoutePoint[]>([])
 
+/* ================= DISTANCE (meters) ================= */
+
+function distPx(a: vec2, b: vec2) {
+  return Math.hypot(b.x - a.x, b.y - a.y)
+}
+
+const routeStartPos = computed<vec2 | null>(() => {
+  const u = movingUnits.value[0]
+  if (!u) return null
+  return u.futurePos ?? u.pos
+})
+
+const routeDistancesMeters = computed<number[]>(() => {
+  const start = routeStartPos.value
+  if (!start || !targets.value.length) return []
+
+  const mpp = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
+
+  let prev = start
+  return targets.value.map((t) => {
+    const total = distPx(prev, t.pos) * mpp
+    prev = t.pos
+    return total
+  })
+})
+
+function fmtMeters(meters: number) {
+  return `${Math.round(meters)} m`
+}
+
 /* ================= ENV MENU (radial) ================= */
 
 type EnvMenuId = UnitEnvironmentState | 'none'
@@ -774,7 +804,7 @@ defineExpose({
         class="target-pos"
       >
         <div v-for="(t, i) in targets" :key="i">
-          {{ i + 1 }}: x {{ t.pos.x.toFixed(0) }}, y {{ t.pos.y.toFixed(0) }}
+          {{ i + 1 }}: {{ fmtMeters(routeDistancesMeters[i] ?? 0) }}
           <span v-if="t.modifier">{{ envIcon(t.modifier) }}</span>
         </div>
       </div>
@@ -880,7 +910,7 @@ defineExpose({
   padding: 4px 6px;
   border-radius: 6px;
   border: 1px solid #334155;
-  background: #020617;
+  background: var(--panel);
   white-space: nowrap;
 }
 

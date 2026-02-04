@@ -477,7 +477,7 @@ defineExpose({
   padding: 4px 6px;
   border-radius: 6px;
   border: 1px solid #334155;
-  background: #020617;
+  background: var(--panel);
   white-space: nowrap;
 }
 

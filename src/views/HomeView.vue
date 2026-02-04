@@ -266,7 +266,7 @@ onMounted(checkAuth)
 
 .card {
   position: relative;
-  background: linear-gradient(180deg, #020617, #020617cc);
+  background: #020617;
   border: 1px solid #1e293b;
   padding: 3rem 4rem;
   border-radius: 16px;

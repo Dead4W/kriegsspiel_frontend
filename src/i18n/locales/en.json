@@ -75,7 +75,7 @@
     "inaccuracy_radius": "Artillery radius"
   },
   "command_desc": {
-    "move": "Move to position ({x}, {y})",
+    "move": "Move: {dist}",
     "attack": "Attack targets: {count}, damage modifier {dmg}",
     "changeFormation": "Change formation to \"{formation}\"",
     "retreat": "{action}"

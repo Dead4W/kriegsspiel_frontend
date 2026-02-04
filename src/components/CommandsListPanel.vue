@@ -10,6 +10,10 @@ import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 import type {vec2} from "@/engine";
 import type {RetreatCommandState} from "@/engine/units/commands/retreatCommand.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
+import {
+  UnitEnvironmentState,
+  UnitEnvironmentStateIcon,
+} from "@/engine/units/enums/UnitStates.ts";
 
 const { unit } = defineProps<{ unit: BaseUnit }>()
 const { t } = useI18n()
@@ -55,14 +59,50 @@ function remove(cmd: BaseCommand<any, any>) {
   unit.setCommands(next)
 }
 
-function description(cmd: BaseCommand<any, any>) {
+function distPx(a: vec2, b: vec2) {
+  return Math.hypot(b.x - a.x, b.y - a.y)
+}
+
+function fmtMeters(meters: number) {
+  return `${Math.round(meters)} m`
+}
+
+function moveStartPosForIndex(cmdIndex: number): vec2 {
+  // "start" for this move = unit current pos + previous move targets in queue
+  let p: vec2 = unit.pos
+  for (let i = 0; i < cmdIndex; i++) {
+    const c = commands.value[i]
+    if (c instanceof MoveCommand) {
+      p = c.getState().state.target
+    }
+  }
+  return p
+}
+
+function moveDistanceMetersFor(cmd: BaseCommand<any, any>, cmdIndex: number): number | null {
+  if (!(cmd instanceof MoveCommand)) return null
+  const start = moveStartPosForIndex(cmdIndex)
+  const end = cmd.getState().state.target
+  const mpp = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
+  return distPx(start, end) * mpp
+}
+
+function moveModifier(cmd: BaseCommand<any, any>): UnitEnvironmentState | null {
+  if (!(cmd instanceof MoveCommand)) return null
+  return cmd.getState().state.modifier ?? null
+}
+
+function envIcon(state: UnitEnvironmentState) {
+  return UnitEnvironmentStateIcon[state]
+}
+
+function description(cmd: BaseCommand<any, any>, cmdIndex: number) {
   const { type, state } = cmd.getState()
 
   switch (type) {
     case UnitCommandTypes.Move:
       return t('command_desc.move', {
-        x: Math.round(state.target.x),
-        y: Math.round(state.target.y),
+        dist: fmtMeters(moveDistanceMetersFor(cmd, cmdIndex) ?? 0),
       })
 
     case UnitCommandTypes.Attack:
@@ -187,7 +227,14 @@ onUnmounted(() => {
         </div>
 
         <div class="desc">
-          {{ description(cmd) }}
+          <span>{{ description(cmd, i) }}</span>
+          <span
+            v-if="moveModifier(cmd)"
+            class="modifier-icon"
+            :title="t(`env.${moveModifier(cmd)}`)"
+          >
+            {{ envIcon(moveModifier(cmd)!) }}
+          </span>
         </div>
 
         <div class="ability" v-if="getUnitCommandAbility(cmd, unit)">
@@ -279,6 +326,15 @@ onUnmounted(() => {
   font-size: 10px;
   color: #cbd5f5;
   margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modifier-icon {
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 .ability {

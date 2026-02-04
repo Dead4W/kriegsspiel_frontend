@@ -1,6 +1,6 @@
 :root {
   --bg: #0f172a;
-  --panel: #111827;
+  --panel: #020617;
   --text: #e5e7eb;
   --accent: #22c55e;
   --accent-hover: #16a34a;
@@ -15,7 +15,7 @@
 body {
   margin: 0;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  background: radial-gradient(circle at top, #1e293b, #020617);
+  background: radial-gradient(circle at top, var(--bg), var(--panel));
   color: var(--text);
 }
 

@@ -78,7 +78,7 @@
     "inaccuracy_radius": "Радиус артиллерии"
   },
   "command_desc": {
-    "move": "Движение к точке ({x}, {y})",
+    "move": "Движение: {dist}",
     "attack": "Атака целей: {count}, модификатор урона {dmg}",
     "changeFormation": "Смена построения на «{formation}»",
     "retreat": "{action}"

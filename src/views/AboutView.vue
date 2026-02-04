@@ -78,20 +78,24 @@ useHead(() => ({
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 2rem 1rem;
 }
 
 .card {
   max-width: 700px;
   padding: 3rem;
   background: var(--panel);
-  border: 1px solid #1e293b;
-  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
   text-align: center;
+  box-shadow:
+    var(--shadow-lg),
+    var(--shadow-inset);
 }
 
 .text {
   margin-top: 1.5rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   line-height: 1.6;
 }
 
@@ -103,12 +107,7 @@ useHead(() => ({
 .block h2 {
   margin-bottom: 0.5rem;
   font-size: 1.2rem;
-  color: #e5e7eb;
-}
-
-.text {
-  color: #94a3b8;
-  line-height: 1.6;
+  color: var(--text);
 }
 
 .text a {

@@ -740,6 +740,10 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
+.chat-open-btn:hover {
+  background: #020617cc;
+}
+
 /* panel */
 .krig-chat {
   position: absolute;

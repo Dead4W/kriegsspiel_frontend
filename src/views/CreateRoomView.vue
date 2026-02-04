@@ -112,8 +112,8 @@ async function createRoom() {
 
 <template>
   <section class="create">
-    <form @submit.prevent="createRoom">
-      <div class="card">
+    <div class="card">
+      <form @submit.prevent="createRoom">
         <h1>{{ t('createRoom.title') }}</h1>
 
         <!-- Название комнаты -->
@@ -264,18 +264,22 @@ async function createRoom() {
             {{ t('createRoom.actions.cancel') }}
           </button>
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .create {
   flex: 1;
-  min-height: 100%;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+
+  /* view-tuned form controls (still using global input styles) */
+  --control-bg: var(--panel);
+  --control-border: var(--panel-border);
 
   background:
     linear-gradient(
@@ -290,12 +294,16 @@ async function createRoom() {
 }
 
 .card {
-  width: 600px;
+  width: min(600px, 100%);
+  max-height: 100vh;
+  overflow-y: auto;
   background: var(--panel);
-  border: 1px solid #1e293b;
+  border: 1px solid var(--panel-border);
   padding: 2.5rem 3rem;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-lg),
+    var(--shadow-inset);
 }
 
 h1 {
@@ -312,31 +320,22 @@ h1 {
 label {
   font-size: 0.85rem;
   margin-bottom: 0.3rem;
-  color: #cbd5f5;
-}
-
-input {
-  padding: 0.6rem 0.8rem;
-  border-radius: 8px;
-  border: 1px solid #1e293b;
-  background: #020617;
-  color: #e5e7eb;
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--accent);
+  color: var(--text-soft);
 }
 
 .advanced-toggle {
   margin: 1.5rem 0 1rem;
   background: none;
   border: none;
-  color: #94a3b8;
-  cursor: pointer;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.advanced-toggle:hover {
+  border: none;
+  background: none;
 }
 
 .advanced-toggle span {
@@ -348,9 +347,9 @@ input:focus {
 }
 
 .advanced {
-  border: 1px dashed #1e293b;
+  border: 1px dashed var(--panel-border);
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 1.5rem;
 }
 
@@ -363,16 +362,16 @@ input:focus {
 
 .checkbox small {
   display: block;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-top: 0.2rem;
 }
 
 .checkbox.beta {
-  color: #fbbf24;
+  color: var(--warning);
 }
 
 .checkbox.unstable {
-  color: #f87171;
+  color: var(--danger);
 }
 
 .badge {
@@ -390,21 +389,31 @@ input:focus {
   justify-content: space-between;
 }
 
-.primary {
+.actions button {
   flex: 1;
-  background: var(--accent);
-  color: #022c22;
   padding: 0.7rem;
-  border-radius: 10px;
-  border: none;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  filter: none;
 }
 
 .secondary {
-  flex: 1;
   background: transparent;
   color: var(--text);
   border: 1px solid var(--secondary);
-  border-radius: 10px;
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--secondary-hover-bg);
+  border-color: var(--accent);
+  border: 1px solid var(--secondary);
 }
 
 .map-selector {
@@ -415,7 +424,7 @@ input:focus {
 .map-selector h3 {
   font-size: 0.9rem;
   margin-bottom: 0.6rem;
-  color: #cbd5f5;
+  color: var(--text-soft);
   margin-top: 0px;
 }
 
@@ -426,9 +435,9 @@ input:focus {
 }
 
 .map-card {
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  background: #020617;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
   cursor: pointer;
   padding: 0;
   overflow: hidden;
@@ -450,7 +459,7 @@ input:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.75rem;
 }
 

@@ -249,31 +249,24 @@ onMounted(checkAuth)
 }
 
 .lang button {
-  background: transparent;
-  border: 1px solid #334155;
-  color: #cbd5f5;
-  padding: 0.3rem 0.6rem;
-  border-radius: 6px;
-  cursor: pointer;
-  opacity: 0.7;
+  min-width: 200px;
 }
 
 .lang button.active {
-  opacity: 1;
   border-color: var(--accent);
   color: var(--accent);
 }
 
 .card {
   position: relative;
-  background: #020617;
-  border: 1px solid #1e293b;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
   padding: 3rem 4rem;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   text-align: center;
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    var(--shadow-lg),
+    var(--shadow-inset);
 }
 
 h1 {
@@ -284,7 +277,7 @@ h1 {
 
 .subtitle {
   margin: 1rem 0 2.5rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .actions {
@@ -293,29 +286,21 @@ h1 {
   justify-content: center;
 }
 
-button {
+.actions button {
   min-width: 200px;
   padding: 0.9rem 1.5rem;
-  border-radius: 10px;
-  font-size: 1rem;
-  cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .primary {
   background: var(--accent);
-  color: #022c22;
+  color: var(--accent-contrast);
 }
 
 .primary:hover:not(:disabled) {
   background: var(--accent-hover);
   transform: translateY(-1px);
+  filter: none;
 }
 
 .about-link {
@@ -327,7 +312,7 @@ button:disabled {
 }
 
 .about-link a {
-  color: #94a3b8;
+  color: var(--text-muted);
   text-decoration: underline;
   font-size: 0.95rem;
 }
@@ -340,7 +325,7 @@ button:disabled {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(2, 6, 23, 0.85);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -348,8 +333,8 @@ button:disabled {
 }
 
 .modal-card {
-  background: #020617;
-  border: 1px solid #1e293b;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
   border-radius: 14px;
   padding: 2rem;
   width: 320px;
@@ -362,16 +347,11 @@ button:disabled {
 
 .modal-card input {
   width: 100%;
-  padding: 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #334155;
-  background: transparent;
-  color: #fff;
   margin-bottom: 1rem;
 }
 
 .error {
-  color: #f87171;
+  color: var(--danger);
   margin-bottom: 0.5rem;
 }
 </style>

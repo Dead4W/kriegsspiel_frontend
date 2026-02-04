@@ -285,9 +285,4 @@ const categories = computed(() => [
 .value.neg { color: #ef4444; }
 .value.neutral { color: #94a3b8; }
 
-@media (max-width: 720px) {
-  .modifier-block {
-    width: 100%;
-  }
-}
 </style>

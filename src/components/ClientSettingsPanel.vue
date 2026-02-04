@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   CLIENT_SETTING_KEYS,
@@ -7,7 +7,6 @@ import {
 } from '@/enums/clientSettingsKeys'
 
 const { t, locale } = useI18n()
-import { reactive } from 'vue'
 import {Team} from "@/enums/teamKeys.ts";
 import {useRoute, useRouter} from "vue-router";
 
@@ -18,6 +17,147 @@ const route = useRoute()
 const settings = reactive(window.CLIENT_SETTINGS)
 
 const isOpen = ref(false)
+
+const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
+
+type ClientSettingsUiItem =
+  | { kind: 'hr' }
+  | {
+      kind: 'checkbox'
+      key: ClientSettingKey
+      labelI18nKey: string
+      indent?: boolean
+      adminOnly?: boolean
+      disabled?: () => boolean
+    }
+  | {
+      kind: 'range'
+      key: ClientSettingKey
+      labelI18nKey: string
+      min: number
+      max: number
+      step: number
+      valueFormat?: 'fixed2'
+      testSound?: boolean
+    }
+
+const uiDef: ClientSettingsUiItem[] = [
+  { kind: 'hr' },
+
+  // Dark theme
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.DARK_THEME,
+    labelI18nKey: 'client_settings.dark_theme',
+  },
+
+  { kind: 'hr' },
+
+  // Sound
+  {
+    kind: 'range',
+    key: CLIENT_SETTING_KEYS.SOUND_VOLUME,
+    labelI18nKey: 'client_settings.sound_volume',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    valueFormat: 'fixed2',
+    testSound: true,
+  },
+
+  { kind: 'hr' },
+
+  // Labels
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS,
+    labelI18nKey: 'client_settings.show_unit_labels',
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_UNIT_LABEL_TYPE,
+    labelI18nKey: 'client_settings.show_unit_label_type',
+    indent: true,
+    disabled: () => !settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS],
+  },
+
+  { kind: 'hr' },
+
+  // Sliders
+  {
+    kind: 'range',
+    key: CLIENT_SETTING_KEYS.OPACITY_UNIT,
+    labelI18nKey: 'client_settings.opacity_unit',
+    min: 0.1,
+    max: 1,
+    step: 0.05,
+  },
+  {
+    kind: 'range',
+    key: CLIENT_SETTING_KEYS.SIZE_UNIT,
+    labelI18nKey: 'client_settings.size_unit',
+    min: 0.5,
+    max: 2,
+    step: 0.05,
+    valueFormat: 'fixed2',
+  },
+
+  { kind: 'hr' },
+
+  // Other toggles
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_HP_UNIT_ON_MAP,
+    labelI18nKey: 'client_settings.show_hp_unit_on_map',
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS,
+    labelI18nKey: 'client_settings.show_unit_modificators',
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_UNIT_VISION,
+    labelI18nKey: 'client_settings.show_unit_vision',
+    disabled: () => !!settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP],
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED,
+    labelI18nKey: 'client_settings.show_unit_vision_only_selected',
+    indent: true,
+    disabled: () => !settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION],
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST,
+    labelI18nKey: 'client_settings.show_unit_vision_forest_raycast',
+    indent: true,
+    disabled: () => !settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION],
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_FOREST_MAP,
+    labelI18nKey: 'client_settings.forest_map',
+    adminOnly: true,
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP,
+    labelI18nKey: 'client_settings.height_map',
+    adminOnly: true,
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS,
+    labelI18nKey: 'client_settings.show_weather_shaders',
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG,
+    labelI18nKey: 'client_settings.performance_debug',
+  },
+]
 
 function setLang(lang: 'ru' | 'en') {
   if (route.params.locale === lang) return
@@ -38,17 +178,19 @@ function setLang(lang: 'ru' | 'en') {
  */
 function toggleBool(key: ClientSettingKey) {
   settings[key] = !settings[key]
-  if (key === CLIENT_SETTING_KEYS.DARK_THEME) {
-    document.querySelector('canvas.map-canvas')?.classList.toggle('dark', settings[key]);
-  }
 }
-document.querySelector('canvas.map-canvas')?.classList.toggle('dark', settings[CLIENT_SETTING_KEYS.DARK_THEME]);
+
+function setCanvasThemeClass(isDark: unknown) {
+  document
+    .querySelector('canvas.map-canvas')
+    ?.classList.toggle('dark', !!isDark)
+}
 
 /**
  * number
  */
-function setNumber(key: ClientSettingKey, value: number) {
-  settings[key] = value
+function setNumberFromEvent(key: ClientSettingKey, e: Event) {
+  settings[key] = Number((e.target as HTMLInputElement).value)
 }
 
 function togglePanel(e: MouseEvent) {
@@ -66,10 +208,6 @@ function playTestSound() {
   messageSound.play();
 }
 
-function isAdmin() {
-  return window.PLAYER.team === Team.ADMIN
-}
-
 onMounted(() => {
   window.addEventListener('click', close)
 })
@@ -77,6 +215,12 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('click', close)
 })
+
+watch(
+  () => settings[CLIENT_SETTING_KEYS.DARK_THEME],
+  (isDark) => setCanvasThemeClass(isDark),
+  { immediate: true }
+)
 </script>
 
 
@@ -121,205 +265,54 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <hr />
+    <template v-for="(item, idx) in uiDef" :key="`${item.kind}-${'key' in item ? item.key : idx}`">
+      <hr v-if="item.kind === 'hr'" />
 
-    <!-- DARK THEME -->
-    <label class="setting">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.DARK_THEME]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.DARK_THEME)"
-      />
-      {{ t('client_settings.dark_theme') }}
-    </label>
-
-    <hr />
-
-    <!-- SOUND VOLUME -->
-    <div class="setting column">
-      <span>
-        {{ t('client_settings.sound_volume') }}:
-        <b>{{ settings[CLIENT_SETTING_KEYS.SOUND_VOLUME]?.toFixed(2) }}</b>
-      </span>
-
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        :value="settings[CLIENT_SETTING_KEYS.SOUND_VOLUME] ?? 1"
-        @input="setNumber(
-      CLIENT_SETTING_KEYS.SOUND_VOLUME,
-      Number(($event.target as HTMLInputElement).value)
-    )"
-      />
-
-      <!-- TEST BUTTON -->
-      <button
-        class="sound-test-button"
-        @click="playTestSound"
-        :disabled="settings[CLIENT_SETTING_KEYS.SOUND_VOLUME] === 0"
+      <label
+        v-else-if="item.kind === 'checkbox' && (!item.adminOnly || isAdmin)"
+        class="setting"
+        :class="{ indent: item.indent }"
       >
-        🔊 {{ t('client_settings.test_sound') }}
-      </button>
-    </div>
+        <input
+          type="checkbox"
+          :checked="!!settings[item.key]"
+          :disabled="item.disabled?.() ?? false"
+          @change="toggleBool(item.key)"
+        />
+        {{ t(item.labelI18nKey) }}
+      </label>
 
-    <hr />
+      <div v-else-if="item.kind === 'range'" class="setting column">
+        <span>
+          {{ t(item.labelI18nKey) }}:
+          <b>
+            {{
+              item.valueFormat === 'fixed2'
+                ? Number(settings[item.key] ?? 1).toFixed(2)
+                : settings[item.key]
+            }}
+          </b>
+        </span>
 
-    <!-- LABELS -->
-    <label class="setting">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS)"
-      />
-      {{ t('client_settings.show_unit_labels') }}
-    </label>
+        <input
+          type="range"
+          :min="item.min"
+          :max="item.max"
+          :step="item.step"
+          :value="settings[item.key] ?? 1"
+          @input="setNumberFromEvent(item.key, $event)"
+        />
 
-    <label class="setting indent">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABEL_TYPE]"
-        :disabled="!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_LABEL_TYPE)"
-      />
-      {{ t('client_settings.show_unit_label_type') }}
-    </label>
-
-    <hr />
-
-    <!-- OPACITY -->
-    <div class="setting column">
-      <span>
-        {{ t('client_settings.opacity_unit') }}:
-        <b>{{ settings[CLIENT_SETTING_KEYS.OPACITY_UNIT] }}</b>
-      </span>
-
-      <input
-        type="range"
-        min="0.1"
-        max="1"
-        step="0.05"
-        :value="settings[CLIENT_SETTING_KEYS.OPACITY_UNIT] ?? 1"
-        @input="setNumber(
-          CLIENT_SETTING_KEYS.OPACITY_UNIT,
-          Number(($event.target as HTMLInputElement).value)
-        )"
-      />
-    </div>
-
-    <!-- SIZE -->
-    <div class="setting column">
-      <span>
-        {{ t('client_settings.size_unit') }}:
-        <b>{{ settings[CLIENT_SETTING_KEYS.SIZE_UNIT]?.toFixed(2) }}</b>
-      </span>
-
-      <input
-        type="range"
-        min="0.5"
-        max="2"
-        step="0.05"
-        :value="settings[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1"
-        @input="setNumber(
-          CLIENT_SETTING_KEYS.SIZE_UNIT,
-          Number(($event.target as HTMLInputElement).value)
-        )"
-      />
-    </div>
-
-    <hr />
-
-    <!-- HP -->
-    <label class="setting">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_HP_UNIT_ON_MAP]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_HP_UNIT_ON_MAP)"
-      />
-      {{ t('client_settings.show_hp_unit_on_map') }}
-    </label>
-
-    <!-- HP -->
-    <label class="setting">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS)"
-      />
-      {{ t('client_settings.show_unit_modificators') }}
-    </label>
-
-    <!-- VISION -->
-    <label class="setting">
-      <input
-        type="checkbox"
-        :disabled="!!settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_VISION)"
-      />
-      {{ t('client_settings.show_unit_vision') }}
-    </label>
-
-    <label class="setting indent">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED]"
-        :disabled="!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED)"
-      />
-      {{ t('client_settings.show_unit_vision_only_selected') }}
-    </label>
-
-    <label class="setting indent">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]"
-        :disabled="!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST)"
-      />
-      {{ t('client_settings.show_unit_vision_forest_raycast') }}
-    </label>
-
-    <!-- FOREST MAP -->
-    <label class="setting" v-if="isAdmin()">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_FOREST_MAP]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_FOREST_MAP)"
-      />
-      {{ t('client_settings.forest_map') }}
-    </label>
-
-    <!-- HEIGHT MAP -->
-    <label class="setting" v-if="isAdmin()">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP)"
-      />
-      {{ t('client_settings.height_map') }}
-    </label>
-
-    <!-- FOREST MAP -->
-    <label class="setting">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS)"
-      />
-      {{ t('client_settings.show_weather_shaders') }}
-    </label>
-
-    <!-- Performance debug -->
-    <label class="setting">
-      <input
-        type="checkbox"
-        :checked="!!settings[CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]"
-        @change="toggleBool(CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG)"
-      />
-      {{ t('client_settings.performance_debug') }}
-    </label>
+        <button
+          v-if="item.testSound"
+          class="sound-test-button"
+          @click="playTestSound"
+          :disabled="settings[CLIENT_SETTING_KEYS.SOUND_VOLUME] === 0"
+        >
+          🔊 {{ t('client_settings.test_sound') }}
+        </button>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -341,6 +334,10 @@ onUnmounted(() => {
   font-size: 16px;
 }
 
+.settings-button:hover {
+  background: #020617cc;
+}
+
 .client-settings {
   position: absolute;
   top: 56px;
@@ -354,7 +351,9 @@ onUnmounted(() => {
   pointer-events: auto;
 
   color: white;
-  min-width: 260px;
+  width: min(320px, calc(100vw - 32px));
+  max-height: calc(100vh - 90px);
+  overflow: auto;
   z-index: 20;
 }
 

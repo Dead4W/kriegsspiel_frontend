@@ -112,6 +112,10 @@
     "command": {
       "command": "Command",
       "attack": "Attack",
+      "autoAttack": "Auto attack",
+      "autoAttack_state_on": "on",
+      "autoAttack_state_off": "off",
+      "autoAttack_state_mixed": "—",
       "move": "Move",
       "changeFormation": "Change formation",
       "wait": "Wait",

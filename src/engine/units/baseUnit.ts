@@ -66,6 +66,7 @@ export abstract class BaseUnit {
 
   team: unitTeam
   pos: vec2
+  autoAttack: boolean = false
   futurePos: vec2 | null = null
   label = ''
   isTimeout: boolean
@@ -109,6 +110,7 @@ export abstract class BaseUnit {
     this.id = s.id
     this.team = s.team
     this.pos = s.pos;
+    this.autoAttack = s.autoAttack ?? false
 
     this.label = s.label ?? translate(`unit.${s.type}`)
     this.hp = 0;
@@ -348,6 +350,7 @@ export abstract class BaseUnit {
       type: this.type,
       team: this.team,
       pos: this.pos,
+      autoAttack: this.autoAttack,
 
       isTimeout: this.isTimeout,
 
@@ -766,5 +769,10 @@ export abstract class BaseUnit {
       return
     }
     this.futurePos = null
+  }
+
+  setAutoAttack(autoAttack: boolean) {
+    this.autoAttack = autoAttack;
+    this.setDirty();
   }
 }

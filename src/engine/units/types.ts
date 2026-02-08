@@ -41,6 +41,7 @@ export interface unitstate {
   type: unitType
   team: unitTeam
   pos: vec2
+  autoAttack?: boolean
 
   isTimeout?: boolean,
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 
@@ -24,12 +24,10 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const hotkeys: Record<string, UnitCommandTypes> = {
-  '1': UnitCommandTypes.Attack,
-  '2': UnitCommandTypes.Move,
+  '2': UnitCommandTypes.Attack,
   '3': UnitCommandTypes.ChangeFormation,
   '4': UnitCommandTypes.Wait,
-  '5': UnitCommandTypes.Delivery,
-  '6': UnitCommandTypes.Retreat,
+  '5': UnitCommandTypes.Retreat,
 }
 
 const activeOrder = ref<UnitCommandTypes | null>(null)
@@ -40,6 +38,41 @@ const formationRef = ref<any>(null)
 const waitRef = ref<any>(null)
 const deliveryRef = ref<any>(null)
 const retreatRef = ref<any>(null)
+
+const autoAttackInfo = computed(() => {
+  if (!props.units.length) {
+    return {
+      mixed: false,
+      value: false,
+      nextValue: false,
+    }
+  }
+
+  const first = !!props.units[0]!.autoAttack
+  const mixed = props.units.some(u => !!u.autoAttack !== first)
+  const value = mixed ? false : first
+  const nextValue = mixed ? true : !value
+
+  return { mixed, value, nextValue }
+})
+
+const autoAttackTitle = computed(() => {
+  const status = autoAttackInfo.value.mixed
+    ? t('tools.command.autoAttack_state_mixed')
+    : autoAttackInfo.value.value
+      ? t('tools.command.autoAttack_state_on')
+      : t('tools.command.autoAttack_state_off')
+  return `${t('tools.command.autoAttack')}: ${status} (${t('hotkey')}: 1)`
+})
+
+function toggleAutoAttack() {
+  if (!props.units.length) return
+  const nextValue = autoAttackInfo.value.nextValue
+  for (const u of props.units) {
+    u.setAutoAttack(nextValue)
+  }
+  window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
+}
 
 function open(order: UnitCommandTypes) {
   if (isCommandDisabled(order)) return
@@ -130,6 +163,14 @@ function onKeydown(e: KeyboardEvent) {
 
   // если уже открыта команда — не перехватываем
   if (activeOrder.value) return
+
+  // 1 — autoattack toggle
+  if (e.key === '1' && props.units.length && !e.repeat) {
+    toggleAutoAttack()
+    e.preventDefault()
+    e.stopPropagation()
+    return
+  }
 
   // Morale +/- hotkeys
   // "+" can be NumpadAdd or Shift+Equal on many layouts.
@@ -238,25 +279,49 @@ onUnmounted(() => {
 
     <!-- ===== BUTTONS ===== -->
     <div v-if="!activeOrder" class="orders-buttons">
-      <button
-        class="order-btn attack"
-        @click="open(UnitCommandTypes.Attack)"
-        :disabled="isCommandDisabled(UnitCommandTypes.Attack)"
-        :title="hotkeyTitle(UnitCommandTypes.Attack)"
-      >
-        <span class="icon">⚔</span>
-        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.attack') }}</span>
-      </button>
+      <div class="order-stack">
+        <button
+          class="order-btn autoattack"
+          type="button"
+          @click="toggleAutoAttack"
+          :disabled="!units.length"
+          :title="autoAttackTitle"
+          :class="{
+            'is-on': !autoAttackInfo.mixed && autoAttackInfo.value,
+            'is-off': !autoAttackInfo.mixed && !autoAttackInfo.value,
+            'is-mixed': autoAttackInfo.mixed,
+          }"
+        >
+          <span class="icon">⚔</span>
+          <span class="label">
+            {{ t('tools.command.autoAttack') }}<br>
+            <template v-if="autoAttackInfo.mixed">{{ t('tools.command.autoAttack_state_mixed') }}</template>
+            <template v-else>
+              {{ autoAttackInfo.value ? t('tools.command.autoAttack_state_on') : t('tools.command.autoAttack_state_off') }}
+            </template>
+          </span>
+        </button>
 
-      <button
-        class="order-btn"
-        @click="open(UnitCommandTypes.Move)"
-        :disabled="isCommandDisabled(UnitCommandTypes.Move)"
-        :title="hotkeyTitle(UnitCommandTypes.Move)"
-      >
-        <span class="icon">🚶</span>
-        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.move') }}</span>
-      </button>
+        <button
+          class="order-btn attack"
+          @click="open(UnitCommandTypes.Attack)"
+          :disabled="isCommandDisabled(UnitCommandTypes.Attack)"
+          :title="hotkeyTitle(UnitCommandTypes.Attack)"
+        >
+          <span class="icon">⚔</span>
+          <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.attack') }}</span>
+        </button>
+      </div>
+
+<!--      <button-->
+<!--        class="order-btn"-->
+<!--        @click="open(UnitCommandTypes.Move)"-->
+<!--        :disabled="isCommandDisabled(UnitCommandTypes.Move)"-->
+<!--        :title="hotkeyTitle(UnitCommandTypes.Move)"-->
+<!--      >-->
+<!--        <span class="icon">🚶</span>-->
+<!--        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.move') }}</span>-->
+<!--      </button>-->
 
       <button
         class="order-btn"
@@ -281,15 +346,15 @@ onUnmounted(() => {
         </span>
       </button>
 
-      <button
-        class="order-btn"
-        @click="open(UnitCommandTypes.Delivery)"
-        :disabled="isCommandDisabled(UnitCommandTypes.Delivery)"
-        :title="hotkeyTitle(UnitCommandTypes.Delivery)"
-      >
-        <span class="icon">✉️</span>
-        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.delivery') }}</span>
-      </button>
+<!--      <button-->
+<!--        class="order-btn"-->
+<!--        @click="open(UnitCommandTypes.Delivery)"-->
+<!--        :disabled="isCommandDisabled(UnitCommandTypes.Delivery)"-->
+<!--        :title="hotkeyTitle(UnitCommandTypes.Delivery)"-->
+<!--      >-->
+<!--        <span class="icon">✉️</span>-->
+<!--        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.delivery') }}</span>-->
+<!--      </button>-->
 
       <button
         class="order-btn retreat"
@@ -481,6 +546,33 @@ onUnmounted(() => {
 }
 
 .order-btn.retreat:hover {
+  border-color: #f59e0b;
+}
+
+.order-btn.autoattack {
+  color: #94a3b8;
+  border-color: #334155;
+}
+
+.order-btn.autoattack.is-off:hover {
+  border-color: #64748b;
+}
+
+.order-btn.autoattack.is-on {
+  color: #4ade80;
+  border-color: #14532d;
+}
+
+.order-btn.autoattack.is-on:hover {
+  border-color: #22c55e;
+}
+
+.order-btn.autoattack.is-mixed {
+  color: #fbbf24;
+  border-color: #78350f;
+}
+
+.order-btn.autoattack.is-mixed:hover {
   border-color: #f59e0b;
 }
 

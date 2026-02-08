@@ -114,6 +114,10 @@
     "command": {
       "command": "Приказ",
       "attack": "Атака",
+      "autoAttack": "Автоатака",
+      "autoAttack_state_on": "вкл",
+      "autoAttack_state_off": "выкл",
+      "autoAttack_state_mixed": "—",
       "move": "Движение",
       "changeFormation": "Смена формации",
       "wait": "Ждать",

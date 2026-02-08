@@ -5,9 +5,11 @@ import {RoomGameStage} from "@/enums/roomStage.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import type {unitTeam} from "@/engine";
-import { ROOM_SETTING_KEYS } from "@/enums/roomSettingsKeys";
+import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys";
 import type {TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
-import { useI18n } from 'vue-i18n'
+import {useI18n} from 'vue-i18n'
+import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
+
 const { t } = useI18n()
 
 const displayWorldTime = ref<string>(window.ROOM_WORLD.time)
@@ -71,7 +73,20 @@ function processUnitCommands(dt: number) {
     if (!unit.alive) continue
     unit.isTimeout = false;
 
-    const commands = unit.getCommands()
+    let commands = unit.getCommands()
+    if (unit.autoAttack) {
+      const directEnemyVision = window.ROOM_WORLD.units.getDirectView(unit)
+        .filter(u => u.team !== unit.team)
+
+      commands = commands.filter(c => c.type !== UnitCommandTypes.Attack)
+      const attackCommand = new AttackCommand({
+        targets: directEnemyVision.map(u => u.id),
+        damageModifier: 1,
+        abilities: [],
+        inaccuracyPoint: null
+      })
+      commands.push(attackCommand)
+    }
     if (commands.length === 0) continue;
 
     let left_dt = dt;

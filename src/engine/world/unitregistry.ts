@@ -182,12 +182,10 @@ export class unitregistry {
       generalUnit.directView = true;
 
       const visionUnits = this.getDirectView(generalUnit)
-      directViewByTeam
+      const directViewUnitTeam = directViewByTeam
         .get(generalUnit.team)!
-        .push(...visionUnits.map(v => v.id));
-      directViewByTeam
-        .get(generalUnit.team)!
-        .push(generalUnit.id)
+      directViewUnitTeam.push(...visionUnits.map(v => v.id));
+      directViewUnitTeam.push(generalUnit.id)
     }
 
     return directViewByTeam;

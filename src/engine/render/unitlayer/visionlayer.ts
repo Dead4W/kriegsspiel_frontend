@@ -5,8 +5,11 @@ import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 
 // Meters
-const FOREST_THREASHHOLD = 200;
+const FOREST_THRESHOLD_METERS = 200;
 const NOT_IN_FOREST_MODIFIER = 0.25;
+// Чем дальше участок леса от юнита, тем сильнее он "гасит" луч.
+// 0 = как раньше (лес одинаково "плотный" на любой дистанции).
+const FOREST_DISTANCE_PENALTY = 10;
 
 function isForestPixel(
   w: world,
@@ -26,9 +29,10 @@ function castRay(
   w: world,
   origin: { x: number; y: number },
   angle: number,
-  maxDist: number,
-  fromForest: boolean,
+  maxDist: number
 ) {
+  if (maxDist <= 0) return { x: origin.x, y: origin.y }
+
   const step = 5
   const dx = Math.cos(angle) * step
   const dy = Math.sin(angle) * step
@@ -38,20 +42,19 @@ function castRay(
   let dist = 0
 
   let forestThresholdTimer = 0;
-  const forestThreshold = (fromForest ? FOREST_THREASHHOLD : FOREST_THREASHHOLD * NOT_IN_FOREST_MODIFIER)
-    / window.ROOM_WORLD.map.metersPerPixel
 
   while (dist < maxDist) {
+    let iStep = step;
+
     if (isForestPixel(w, x, y)) {
-      forestThresholdTimer += step
-      if (forestThresholdTimer >= forestThreshold) {
-        return { x, y }
-      }
+      const t = dist / maxDist // 0..1
+      const distanceMultiplier = 1 + t * FOREST_DISTANCE_PENALTY
+      iStep *= distanceMultiplier
     }
 
     x += dx
     y += dy
-    dist += step
+    dist += iStep
   }
 
   return { x, y }
@@ -66,7 +69,7 @@ export function buildVisionPolygon(u: BaseUnit, w: world) {
 
   for (let i = 0; i < rays; i++) {
     const angle = (i / rays) * Math.PI * 2
-    points.push(castRay(w, origin, angle, maxRange, u.envState.includes(UnitEnvironmentState.InForest)))
+    points.push(castRay(w, origin, angle, maxRange))
   }
 
   return points

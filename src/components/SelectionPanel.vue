@@ -22,7 +22,7 @@ defineProps<{ isEnd: boolean }>()
 
 const selectedUnits = ref<BaseUnit[]>([])
 const focusedUnit = ref<BaseUnit | null>(null)
-const isUnitDetailOpen = ref(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL] ?? false)
+const isUnitDetailOpen = ref(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL] ?? true)
 
 /* ================= world sync ================= */
 

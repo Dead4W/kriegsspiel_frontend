@@ -119,7 +119,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.CHAT_HEIGHT]: null,
     [CLIENT_SETTING_KEYS.CHAT_WIDTH]: null,
     [CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]: false,
-    [CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL]: false,
+    [CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL]: true,
   };
 }
 

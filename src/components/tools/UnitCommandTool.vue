@@ -46,6 +46,16 @@ function open(order: UnitCommandTypes) {
   activeOrder.value = order
 }
 
+function adjustMorale(delta: number) {
+  if (!props.units.length) return
+
+  for (const u of props.units) {
+    u.morale = (u.morale ?? 0) + delta
+    u.setDirty()
+  }
+  window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
+}
+
 function close() {
   activeOrder.value = null
   emit('edit')
@@ -120,6 +130,18 @@ function onKeydown(e: KeyboardEvent) {
 
   // если уже открыта команда — не перехватываем
   if (activeOrder.value) return
+
+  // Morale +/- hotkeys
+  // "+" can be NumpadAdd or Shift+Equal on many layouts.
+  const isMoralePlus  = e.code === 'NumpadAdd' || e.code === 'Equal'
+  const isMoraleMinus = e.code === 'NumpadSubtract' || e.code === 'Minus'
+
+  if ((isMoralePlus || isMoraleMinus) && props.units.length) {
+    adjustMorale(isMoralePlus ? 1 : -1)
+    e.preventDefault()
+    e.stopPropagation()
+    return
+  }
 
   const command = hotkeys[e.key]
   if (!command) return
@@ -279,6 +301,34 @@ onUnmounted(() => {
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.retreat') }}</span>
       </button>
 
+      <div class="order-stack">
+        <button
+          class="order-btn morale-plus"
+          type="button"
+          @click="adjustMorale(1)"
+          :disabled="!units.length"
+          :title="`${t('stat.morale')}: +1 (${t('hotkey')}: +)`"
+        >
+          <span class="icon">+1</span>
+          <span class="label">
+            {{ t('stat.morale') }}<br>
+          </span>
+        </button>
+
+        <button
+          class="order-btn morale-minus"
+          type="button"
+          @click="adjustMorale(-1)"
+          :disabled="!units.length"
+          :title="`${t('stat.morale')}: -1 (${t('hotkey')}: -)`"
+        >
+          <span class="icon">-1</span>
+          <span class="label">
+            {{ t('stat.morale') }}<br>
+          </span>
+        </button>
+      </div>
+
       <button
         class="order-btn"
         @click="clearCommands"
@@ -346,6 +396,15 @@ onUnmounted(() => {
   display: flex;
   gap: 6px;
   height: 100%;
+}
+
+.order-stack {
+  flex: 1;
+  min-width: 60px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .order-btn {
@@ -423,6 +482,24 @@ onUnmounted(() => {
 
 .order-btn.retreat:hover {
   border-color: #f59e0b;
+}
+
+.order-btn.morale-plus {
+  color: #4ade80;
+  border-color: #14532d;
+}
+
+.order-btn.morale-plus:hover {
+  border-color: #22c55e;
+}
+
+.order-btn.morale-minus {
+  color: #f87171;
+  border-color: #7f1d1d;
+}
+
+.order-btn.morale-minus:hover {
+  border-color: #ef4444;
 }
 
 </style>

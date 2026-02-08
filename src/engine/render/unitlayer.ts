@@ -411,6 +411,12 @@ export class unitlayer {
 
     let icons: string[] = [];
 
+    if (unit.morale != 0) {
+      let moraleStr = `${unit.morale}`;
+      const moraleSign = unit.morale > 0 ? '+' : '';
+      icons.push(` ${moraleSign}${unit.morale} `)
+    }
+
     if (unit.directView) {
       icons.push('👁️')
     }

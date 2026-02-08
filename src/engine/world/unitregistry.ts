@@ -204,7 +204,7 @@ export class unitregistry {
 
       if (d > unit.visionRange / window.ROOM_WORLD.map.metersPerPixel) continue;
 
-      if (pointInPolygon(unit.pos, visionPoly)) {
+      if (pointInPolygon(u.pos, visionPoly)) {
         result.push(u)
       }
     }

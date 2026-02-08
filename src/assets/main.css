@@ -102,6 +102,12 @@ select {
   outline: none;
 }
 
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+textarea,
+select {
+  padding: 0.1rem;
+}
+
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):focus-visible,
 textarea:focus-visible,
 select:focus-visible {

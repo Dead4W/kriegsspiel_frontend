@@ -165,6 +165,7 @@ export abstract class BaseUnit {
   }
 
   public isFutureSelected(): boolean {
+    if (window.ROOM_WORLD.stage !== RoomGameStage.WAR) return false;
     return this.futureSelected || this.previewFutureSelected;
   }
 

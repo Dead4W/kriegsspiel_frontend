@@ -137,7 +137,7 @@ function barStyle(value: number, max: number) {
           aria-label="Toggle unit detail panel"
           @click="isUnitDetailOpen = !isUnitDetailOpen"
         >
-          {{ isUnitDetailOpen ? '/\\' : '\\/' }}
+          {{ isUnitDetailOpen ? '\\/' : '/\\' }}
         </button>
       </div>
 

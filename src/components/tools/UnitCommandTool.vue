@@ -330,7 +330,7 @@ onUnmounted(() => {
         :title="hotkeyTitle(UnitCommandTypes.ChangeFormation)"
       >
         <span class="icon icon-formation">■■■</span>
-        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.formation') }}</span>
+        <span class="label">{{ t('tools.command.formation') }}</span>
       </button>
 
       <button

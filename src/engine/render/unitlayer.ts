@@ -9,7 +9,7 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
-import {unitType, type vec2} from "@/engine";
+import {FormationType, unitType, type vec2} from "@/engine";
 import {
   type UnitEnvironmentState,
   UnitEnvironmentStateIcon
@@ -426,6 +426,28 @@ export class unitlayer {
 
     if (unit.isTimeout) {
       icons.push('🏳️')
+    }
+
+    let formationIcon = '';
+    switch (unit.getFormation()) {
+      case FormationType.Column:
+        formationIcon = 'C'
+        break
+      case FormationType.Springing:
+        formationIcon = 'S'
+        break
+      case FormationType.KneelingVolley:
+        formationIcon = 'K'
+        break
+      case FormationType.ForceWalking:
+        formationIcon = 'F'
+        break
+      case FormationType.OnHorse:
+        formationIcon = 'H'
+        break
+    }
+    if (formationIcon) {
+      icons.push(formationIcon)
     }
 
     const envIcons = states

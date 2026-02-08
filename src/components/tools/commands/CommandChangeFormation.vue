@@ -34,13 +34,7 @@ function confirm() {
   if (!selectedFormation.value) return
 
   for (const unit of props.units) {
-    const cmd = new ChangeFormationCommand({
-      newFormation: selectedFormation.value,
-      elapsed: 0,
-    })
-
-    unit.addCommand(cmd.getState())
-    unit.setDirty()
+    unit.setFormation(selectedFormation.value)
   }
 
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })

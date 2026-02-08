@@ -13,6 +13,12 @@
   "hotkey": "Hotkey",
   "about": "About project",
 
+  "notFound": {
+    "title": "Page not found",
+    "text": "The page you’re looking for doesn’t exist (or it was moved).",
+    "action": "Go home"
+  },
+
   "seo": {
     "title": "KRIEGSSPIEL — Tactical War Strategy",
     "description": "Play KRIEGSSPIEL online! KRIEGSSPIEL is a tactical war strategy game online inspired by the classic Kriegsspiel.",

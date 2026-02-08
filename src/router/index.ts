@@ -7,6 +7,7 @@ const HomeView = () => import('@/views/HomeView.vue')
 const CreateRoomView = () => import('@/views/CreateRoomView.vue')
 const RoomView = () => import('@/views/RoomView.vue')
 const AboutView  = () => import('@/views/AboutView.vue')
+const NotFoundView = () => import('@/views/NotFoundView.vue')
 
 const supportedLocales = ['ru', 'en']
 const defaultLocale = 'en'
@@ -62,7 +63,12 @@ const router = createRouter({
           name: 'room-key',
           component: RoomView,
           meta: { requiresAuth: true },
-        }
+        },
+        {
+          path: ':pathMatch(.*)*',
+          name: 'not-found',
+          component: NotFoundView,
+        },
       ]
     },
 

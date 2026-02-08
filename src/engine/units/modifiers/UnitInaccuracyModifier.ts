@@ -13,7 +13,10 @@ export function computeInaccuracyRadius(
   const dx = unit.pos.x - target.x
   const dy = unit.pos.y - target.y
 
-  const horizontalDist = Math.hypot(dx, dy) * DISTANCE_FACTOR;
+  const horizontalDist =
+    Math.hypot(dx, dy)
+    * window.ROOM_WORLD.map.metersPerPixel
+    * DISTANCE_FACTOR;
 
   const unitHeight = window.ROOM_WORLD.getHeightAt(unit.pos)
 

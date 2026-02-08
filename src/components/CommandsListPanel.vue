@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import type {BaseUnit} from '@/engine/units/baseUnit'
 import {BaseCommand, CommandStatus} from '@/engine/units/commands/baseCommand'
@@ -8,12 +8,12 @@ import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifier
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 import type {vec2} from "@/engine";
-import type {RetreatCommandState} from "@/engine/units/commands/retreatCommand.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {
   UnitEnvironmentState,
   UnitEnvironmentStateIcon,
 } from "@/engine/units/enums/UnitStates.ts";
+import SortableList from "@/components/ui/SortableList.vue";
 
 const { unit } = defineProps<{ unit: BaseUnit }>()
 const { t } = useI18n()
@@ -22,6 +22,88 @@ const commands = computed(() => {
   refreshKey.value;
   return unit.getCommands() ?? []
 })
+
+type DisplayItem =
+  | {
+      kind: 'single'
+      key: string
+      cmd: BaseCommand<any, any>
+      index: number
+    }
+  | {
+      kind: 'move_group'
+      key: string
+      cmds: MoveCommand[]
+      indices: number[]
+      status: CommandStatus
+    }
+
+const displayItems = computed<DisplayItem[]>(() => {
+  refreshKey.value;
+  const list = commands.value
+  const items: DisplayItem[] = []
+
+  let i = 0
+  while (i < list.length) {
+    const cmd = list[i]!
+
+    if (cmd instanceof MoveCommand) {
+      const firstMoveState = cmd.getState().state
+      const groupUniqueId = firstMoveState.uniqueId
+      const start = i
+      const cmds: MoveCommand[] = [cmd]
+      i++
+      while (i < list.length && list[i] instanceof MoveCommand) {
+        const nextMove = list[i] as MoveCommand
+        const nextState = nextMove.getState().state
+        if (nextState.uniqueId !== groupUniqueId) break
+        cmds.push(nextMove)
+        i++
+      }
+
+      const indices = Array.from({ length: cmds.length }, (_, k) => start + k)
+      const status = cmds.some(c => c.status === CommandStatus.Running)
+        ? CommandStatus.Running
+        : CommandStatus.Pending
+
+      items.push({
+        kind: 'move_group',
+        // stable key (do not depend on indices)
+        key: `move_${String(groupUniqueId)}_${cmds.length}_${cmdKey(cmds[0]!)}_${cmdKey(cmds[cmds.length - 1]!)}`,
+        cmds,
+        indices,
+        status,
+      })
+      continue
+    }
+
+    items.push({
+      kind: 'single',
+      // stable key (do not depend on indices)
+      key: `cmd_${cmdKey(cmd)}`,
+      cmd,
+      index: i,
+    })
+    i++
+  }
+
+  return items
+})
+
+function itemCmds(item: DisplayItem): BaseCommand<any, any>[] {
+  return item.kind === 'move_group' ? item.cmds : [item.cmd]
+}
+
+function onReorder(payload: { orderedKeys: string[] }) {
+  const byKey = new Map(displayItems.value.map(i => [i.key, i] as const))
+  const orderedItems = payload.orderedKeys
+    .map(k => byKey.get(k))
+    .filter((v): v is DisplayItem => Boolean(v))
+
+  const nextCommands = orderedItems.flatMap(itemCmds)
+  unit.setCommands(nextCommands)
+  refreshKey.value++
+}
 
 const commandsEstimates = computed(() => {
   let lastPos: vec2 = unit.pos
@@ -56,6 +138,13 @@ function remove(cmd: BaseCommand<any, any>) {
   const key = cmdKey(cmd)
   const list = unit.getCommands() ?? []
   const next = list.filter(c => cmdKey(c) !== key)
+  unit.setCommands(next)
+}
+
+function removeMany(cmds: BaseCommand<any, any>[]) {
+  const keys = new Set(cmds.map(cmdKey))
+  const list = unit.getCommands() ?? []
+  const next = list.filter(c => !keys.has(cmdKey(c)))
   unit.setCommands(next)
 }
 
@@ -94,6 +183,54 @@ function moveModifier(cmd: BaseCommand<any, any>): UnitEnvironmentState | null {
 
 function envIcon(state: UnitEnvironmentState) {
   return UnitEnvironmentStateIcon[state]
+}
+
+function moveGroupText(cmds: MoveCommand[], indices: number[]) {
+  const parts: string[] = []
+  for (let j = 0; j < cmds.length; j++) {
+    const cmd = cmds[j]!
+    const idx = indices[j]!
+    const dist = fmtMeters(moveDistanceMetersFor(cmd, idx) ?? 0)
+    const mod = moveModifier(cmd)
+    parts.push(mod ? `${dist} ${envIcon(mod)}` : dist)
+  }
+  return parts.join(' → ')
+}
+
+function moveGroupDistanceMeters(cmds: MoveCommand[], indices: number[]) {
+  let total = 0
+  for (let j = 0; j < cmds.length; j++) {
+    const cmd = cmds[j]!
+    const idx = indices[j]!
+    total += moveDistanceMetersFor(cmd, idx) ?? 0
+  }
+  return total
+}
+
+function moveGroupAbilities(cmds: MoveCommand[]) {
+  const set = new Set<UnitAbilityType>()
+  for (const cmd of cmds) {
+    const abilities = cmd.getState().state.abilities ?? []
+    for (const ability of abilities) {
+      if (unit.abilities.includes(ability)) {
+        set.add(ability)
+      }
+    }
+  }
+  return [...set]
+}
+
+function groupEstimate(indices: number[]) {
+  let sum = 0
+  for (const idx of indices) {
+    sum += commandsEstimates.value[idx] ?? 0
+  }
+  return sum
+}
+
+function itemEstimate(item: DisplayItem): number {
+  if (item.kind === 'move_group') return groupEstimate(item.indices)
+  return commandsEstimates.value[item.index] ?? 0
 }
 
 function description(cmd: BaseCommand<any, any>, cmdIndex: number) {
@@ -205,54 +342,86 @@ onUnmounted(() => {
       {{ t('tools.commands') }} {{ estimate(totalEstimate) }}
     </div>
 
-    <div class="list">
-      <div
-        v-for="(cmd, i) in commands"
-        :key="i"
-        class="command"
-        :class="statusClass(cmd.status)"
-      >
+    <SortableList
+      :items="displayItems"
+      :getKey="(i) => (i as any).key"
+      @reorder="onReorder"
+      v-slot="{ renderItems, listBind, itemBind }"
+    >
+      <div class="list" v-bind="listBind()">
+        <div
+          v-for="item in (renderItems as any[])"
+          :key="(item as any).key"
+          class="command"
+          v-bind="itemBind(item)"
+          :class="statusClass((item as any).kind === 'move_group' ? (item as any).status : (item as any).cmd.status)"
+        >
         <div class="top">
           <span class="type">
-            {{ t(`command.${cmd.type}`) }}
+            <template v-if="item.kind === 'move_group'">
+              {{ t(`command.${UnitCommandTypes.Move}`) }} ×{{ item.cmds.length }}
+            </template>
+            <template v-else>
+              {{ t(`command.${item.cmd.type}`) }}
+            </template>
           </span>
 
           <button
             class="remove"
             :title="t('tools.command_remove')"
-            @click.stop="remove(cmd)"
+            @click.stop="item.kind === 'move_group' ? removeMany(item.cmds) : remove(item.cmd)"
+            draggable="false"
           >
             ✕
           </button>
         </div>
 
-        <div class="desc">
-          <span>{{ description(cmd, i) }}</span>
-          <span
-            v-if="moveModifier(cmd)"
-            class="modifier-icon"
-            :title="t(`env.${moveModifier(cmd)}`)"
-          >
-            {{ envIcon(moveModifier(cmd)!) }}
-          </span>
+        <div
+          class="desc"
+          :class="{ 'move-group': item.kind === 'move_group' }"
+          :title="item.kind === 'move_group' ? moveGroupText(item.cmds, item.indices) : undefined"
+        >
+          <template v-if="item.kind === 'move_group'">
+            <span class="move-group-text">
+              {{ t('command_desc.move', { dist: fmtMeters(moveGroupDistanceMeters(item.cmds, item.indices)) }) }}
+            </span>
+          </template>
+          <template v-else>
+            <span>{{ description(item.cmd, item.index) }}</span>
+            <span
+              v-if="moveModifier(item.cmd)"
+              class="modifier-icon"
+              :title="t(`env.${moveModifier(item.cmd)}`)"
+            >
+              {{ envIcon(moveModifier(item.cmd)!) }}
+            </span>
+          </template>
         </div>
 
-        <div class="ability" v-if="getUnitCommandAbility(cmd, unit)">
-          {{ t('command.ability') }}: {{ t(`ability.${getUnitCommandAbility(cmd, unit)}`) }}
-        </div>
+        <template v-if="item.kind === 'move_group'">
+          <div class="ability" v-if="moveGroupAbilities(item.cmds).length">
+            {{ t('command.abilities') }}: {{ moveGroupAbilities(item.cmds).map(a => t(`ability.${a}`)).join(', ') }}
+          </div>
+        </template>
+        <template v-else>
+          <div class="ability" v-if="getUnitCommandAbility(item.cmd, unit)">
+            {{ t('command.ability') }}: {{ t(`ability.${getUnitCommandAbility(item.cmd, unit)}`) }}
+          </div>
+        </template>
 
         <div
           class="estimate"
-          v-if="commandsEstimates[i]"
+          v-if="itemEstimate(item)"
         >
-          {{ estimate(commandsEstimates[i]) }}
+          {{ estimate(itemEstimate(item)) }}
         </div>
 
         <div class="status">
-          {{ t(`command_status.${cmd.status}`) }}
+          {{ t(`command_status.${item.kind === 'move_group' ? item.status : item.cmd.status}`) }}
         </div>
       </div>
-    </div>
+      </div>
+    </SortableList>
   </div>
 </template>
 
@@ -290,6 +459,12 @@ onUnmounted(() => {
   border: 1px solid #334155;
   border-radius: 8px;
   padding: 6px;
+  cursor: grab;
+}
+
+.command.dragging {
+  opacity: 0.55;
+  cursor: grabbing;
 }
 
 .command.running {
@@ -329,6 +504,17 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.desc.move-group {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.move-group-text {
+  display: inline;
 }
 
 .modifier-icon {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
+import {computed, onMounted, onUnmounted, ref, watch, type UnwrapRef} from 'vue'
 import {useI18n} from 'vue-i18n'
 import UnitDetailPanel from '@/components/UnitDetailPanel.vue'
 import UnitActionPanel from "@/components/UnitActionPanel.vue";
@@ -8,6 +8,7 @@ import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import CommandsListPanel from "@/components/CommandsListPanel.vue";
 import {Team} from "@/enums/teamKeys.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
+import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 
 /* ================= i18n ================= */
 
@@ -21,6 +22,7 @@ defineProps<{ isEnd: boolean }>()
 
 const selectedUnits = ref<BaseUnit[]>([])
 const focusedUnit = ref<BaseUnit | null>(null)
+const isUnitDetailOpen = ref(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL] ?? false)
 
 /* ================= world sync ================= */
 
@@ -127,12 +129,21 @@ function barStyle(value: number, max: number) {
 
     <!-- ===== DETAIL & COMMANDS ===== -->
     <div v-if="focusedUnit" class="detail-anchor">
-      <div class="detail-stack">
-        <CommandsListPanel :unit="focusedUnit as BaseUnit" v-if="isAdmin()" />
-        <UnitDetailPanel
-          :unit="focusedUnit"
-          @edit="notifyEdit"
-        />
+      <div class="detail-toggle-row">
+        <button
+          type="button"
+          class="detail-toggle"
+          :aria-expanded="isUnitDetailOpen"
+          aria-label="Toggle unit detail panel"
+          @click="isUnitDetailOpen = !isUnitDetailOpen"
+        >
+          {{ isUnitDetailOpen ? '/\\' : '\\/' }}
+        </button>
+      </div>
+
+      <div v-if="isUnitDetailOpen" class="detail-stack">
+        <CommandsListPanel v-if="isAdmin()" :unit="focusedUnit as BaseUnit" />
+        <UnitDetailPanel :unit="focusedUnit" @edit="notifyEdit" />
       </div>
     </div>
 
@@ -361,6 +372,31 @@ function barStyle(value: number, max: number) {
   gap: 0;
   pointer-events: auto;
   max-height: 300px;
+}
+
+.detail-toggle-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+  pointer-events: auto;
+}
+
+.detail-toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid #334155;
+  background: #020617ee;
+  color: #cbd5f5;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.detail-toggle:hover {
+  color: white;
+  border-color: var(--accent);
 }
 
 @keyframes slide-up {

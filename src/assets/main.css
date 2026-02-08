@@ -83,6 +83,12 @@ button:hover:not(:disabled) {
   background: var(--accent-hover-bg);
 }
 
+.room button:hover:not(:disabled) {
+  filter: brightness(1.15);
+  border: 1px solid var(--accent-hover);
+  background: var(--bg);
+}
+
 /* form controls */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
 textarea,

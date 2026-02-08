@@ -53,7 +53,10 @@ export const CLIENT_SETTING_KEYS = {
   SHOW_WEATHER_SHADERS: 'showWeatherShaders',
 
   // Performance debug
-  ENABLE_PERFORMANCE_DEBUG: 'enablePerformanceDebug'
+  ENABLE_PERFORMANCE_DEBUG: 'enablePerformanceDebug',
+
+  // Show unit detail
+  SHOW_UNIT_DETAIL: 'showUnitDetail',
 } as const
 
 export type ClientSettingKey =
@@ -116,6 +119,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.CHAT_HEIGHT]: null,
     [CLIENT_SETTING_KEYS.CHAT_WIDTH]: null,
     [CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]: false,
+    [CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL]: false,
   };
 }
 

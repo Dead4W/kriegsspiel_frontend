@@ -4,12 +4,9 @@ import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 
-// Meters
-const FOREST_THRESHOLD_METERS = 200;
-const NOT_IN_FOREST_MODIFIER = 0.25;
 // Чем дальше участок леса от юнита, тем сильнее он "гасит" луч.
 // 0 = как раньше (лес одинаково "плотный" на любой дистанции).
-const FOREST_DISTANCE_PENALTY = 10;
+const FOREST_DISTANCE_PENALTY = 3;
 
 function isForestPixel(
   w: world,
@@ -33,28 +30,30 @@ function castRay(
 ) {
   if (maxDist <= 0) return { x: origin.x, y: origin.y }
 
-  const step = 5
+  const step = 6
   const dx = Math.cos(angle) * step
   const dy = Math.sin(angle) * step
 
   let x = origin.x
   let y = origin.y
   let dist = 0
-
-  let forestThresholdTimer = 0;
+  let realDist = 0
 
   while (dist < maxDist) {
     let iStep = step;
 
     if (isForestPixel(w, x, y)) {
-      const t = dist / maxDist // 0..1
-      const distanceMultiplier = 1 + t * FOREST_DISTANCE_PENALTY
+      if (dist * 2 >= maxDist) break;
+      const t = realDist / maxDist // 0..1
+      const t2 = Math.pow(t, 0.3)
+      const distanceMultiplier = 1 + t2 * FOREST_DISTANCE_PENALTY
       iStep *= distanceMultiplier
     }
 
     x += dx
     y += dy
     dist += iStep
+    realDist += step
   }
 
   return { x, y }

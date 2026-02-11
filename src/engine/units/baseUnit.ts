@@ -550,7 +550,9 @@ export abstract class BaseUnit {
     window.ROOM_WORLD.events.emit('changed', { reason: 'remoteMoveFrame' });
   }
 
-  addCommand(command: commandstate, replace = false) {
+  addCommand(c: commandstate, replace = false) {
+    const command = JSON.parse(JSON.stringify(c)); // Safe copy object
+
     if (replace) {
       this.clearCommands()
     }
@@ -572,7 +574,7 @@ export abstract class BaseUnit {
   }
 
   setCommands(commands: BaseCommand<any, any>[]) {
-    this.commands = commands.map(c => c.getState());
+    this.commands = commands.map(c => JSON.parse(JSON.stringify(c.getState())));
     this.refreshFuturePos();
     this.setDirty();
     window.ROOM_WORLD.units.withNewCommands.delete(this.id)

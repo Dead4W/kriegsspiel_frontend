@@ -148,7 +148,7 @@ onBeforeUnmount(() => {
 .radial-root {
   position: fixed;
   inset: 0;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .radial-menu {
@@ -156,6 +156,7 @@ onBeforeUnmount(() => {
   width: 0;
   height: 0;
   transform: translate(-50%, -50%);
+  pointer-events: auto;
 }
 
 .item {

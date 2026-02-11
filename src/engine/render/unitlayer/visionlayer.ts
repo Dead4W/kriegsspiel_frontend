@@ -173,7 +173,7 @@ export function drawUnitVision(
 
     // ===== КЕШ =====
     const unitInForest = u.envState.includes(UnitEnvironmentState.InForest)
-    const cacheKey = `${u.id}_${unitInForest}`
+    const cacheKey = `${u.id}_${unitInForest}_${u.visionRange}`
     const cache = visionCache.get(cacheKey)
 
     let poly: vec2[]

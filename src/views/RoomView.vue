@@ -88,7 +88,6 @@ async function loadRoom() {
           name: 'room',
           params: {locale: route.params.locale, uuid: uuid}
         })
-        return
       }
       stage.value = RoomStage.LOADING_MAP
       autoTeam.value = roomData.value!.team

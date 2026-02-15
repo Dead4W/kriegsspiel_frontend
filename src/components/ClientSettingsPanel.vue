@@ -205,7 +205,7 @@ function close() {
 function playTestSound() {
   const messageSound = new Audio('/assets/sounds/message.wav')
   messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-  messageSound.play();
+  messageSound.play().catch(() => {})
 }
 
 onMounted(() => {

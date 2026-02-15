@@ -190,7 +190,7 @@ export class world {
     if (this.stage !== RoomGameStage.END) {
       const messageSound = new Audio('/assets/sounds/message.wav')
       messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME] ?? 0.3
-      messageSound.play();
+      messageSound.play().catch(() => {})
     }
   }
 

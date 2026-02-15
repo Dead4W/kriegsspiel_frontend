@@ -513,7 +513,7 @@ function onChangedWorld(event: { reason: string }) {
   if (new_messages.length) {
     const messageSound = new Audio('/assets/sounds/message.wav')
     messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-    messageSound.play();
+    messageSound.play().catch(() => {})
   }
 
   let lastWasAtBottom = wasAtBottom.value;

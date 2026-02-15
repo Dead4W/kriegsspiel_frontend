@@ -8,8 +8,10 @@ import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {type unitstate, unitType, type uuid} from "@/engine";
 import {RoomGameStage} from "@/enums/roomStage.ts";
-import { marked } from 'marked'
+import {marked} from 'marked'
 import DOMPurify from 'dompurify'
+import {Messenger} from "@/engine/units/messenger.ts";
+import {DeliveryCommand} from "@/engine/units/commands/deliveryCommand.ts";
 
 const { t } = useI18n()
 
@@ -323,6 +325,25 @@ function send() {
   for (const u of selected) {
     u.linkMessage(m.id);
     u.setDirty()
+  }
+
+  // Instant create messenger for delivery
+  const isGeneralSelected = selected.filter(u => u.type === unitType.GENERAL).length > 0;
+  if (isGeneralSelected) {
+    const messengerState: unitstate = {
+      id: crypto.randomUUID(),
+      type: unitType.MESSENGER,
+      team: selected[0]!.team,
+      pos: {x: -1000, y: -1000},
+      label: 'GENERATED GENERAL MESSENGER',
+      messagesLinked: [{id: m.id, time: window.ROOM_WORLD.time}],
+    }
+    const messenger = new Messenger(messengerState);
+    const cmd = new DeliveryCommand({
+      targets: selected.map(u => u.id),
+    })
+    messenger.addCommand(cmd.getState())
+    window.ROOM_WORLD.addUnits([messenger.toState()]);
   }
 
   input.value = ''

@@ -27,7 +27,6 @@ import {TIME_MULTIPLIERS, TimeOfDay} from "@/engine/units/modifiers/UnitTimeModi
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {WEATHER_MULTIPLIERS, WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
-import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
 import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
 import type { MoveCommandState } from './commands/moveCommand';
 
@@ -69,7 +68,7 @@ export abstract class BaseUnit {
   autoAttack: boolean = false
   futurePos: vec2 | null = null
   label = ''
-  isTimeout: boolean
+  isRetreat: boolean
 
   selected = false
   previewSelected = false // временное (рамка)
@@ -80,6 +79,7 @@ export abstract class BaseUnit {
 
   hp: number
   ammo: number
+  fatigue: number
 
   morale: number
 
@@ -110,6 +110,7 @@ export abstract class BaseUnit {
     this.id = s.id
     this.team = s.team
     this.pos = s.pos;
+    this.fatigue = s.fatigue ?? 0
     this.autoAttack = s.autoAttack ?? false
 
     this.label = s.label ?? translate(`unit.${s.type}`)
@@ -117,7 +118,7 @@ export abstract class BaseUnit {
     this.ammo = 0;
     this.morale = s.morale ?? 0;
     this.setCommands(s.commands?.map(c => createUnitCommand(c)) ?? []);
-    this.isTimeout = s.isTimeout ?? false;
+    this.isRetreat = s.isRetreat ?? false;
 
     this.formation = s.formation ?? FormationType.Default;
     this.activeAbilityType = s.activeAbilityType ?? null;
@@ -193,13 +194,12 @@ export abstract class BaseUnit {
    * - Roll 2d6 + modifiers, compare vs "morale" as target number.
    * - If failed: Retreat 1–2 turns; big fail: Flee; critical: unit disbands.
    */
-  public autoSetRetreatCommandFromAttack(attacker: BaseUnit, damage: number) {
+  public autoSetRetreatCommandFromAttack() {
     // Only when damage is actually taken
-    if (!damage || damage <= 0) return
     if (!this.alive) return
 
     // Don't spam while already retreating
-    if (this.hasCommand(UnitCommandTypes.Retreat) || this.isTimeout) return
+    if (this.hasCommand(UnitCommandTypes.Retreat) || this.isRetreat) return
 
     // Morale not configured => skip (prevents constant checks for default 0)
     const moraleTarget = this.morale ?? 0
@@ -291,7 +291,6 @@ export abstract class BaseUnit {
       tokens: [
         { t: 'unit', u: this.id },
         { t: 'i18n', v: `tools.logs.morale_check_from` },
-        { t: 'unit', u: attacker.id },
         { t: 'text', v: ' → ' },
         { t: 'i18n', v: `tools.logs.morale_${outcome}` },
         { t: 'text', v: ' (' },
@@ -317,7 +316,7 @@ export abstract class BaseUnit {
       this.setCommands([cmd]);
     }
 
-    this.isTimeout = true
+    this.isRetreat = true
     this.setDirty()
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
   }
@@ -335,7 +334,7 @@ export abstract class BaseUnit {
     const r2 = rPx * rPx
     for (const u of window.ROOM_WORLD.units.list()) {
       if (!u.alive) continue
-      if (u.isTimeout) continue
+      if (u.isRetreat) continue
       if (u.team !== this.team) continue
       if (u.type !== unitType.GENERAL) continue
       const dx = u.pos.x - this.pos.x
@@ -351,9 +350,10 @@ export abstract class BaseUnit {
       type: this.type,
       team: this.team,
       pos: this.pos,
+      fatigue: this.fatigue,
       autoAttack: this.autoAttack,
 
-      isTimeout: this.isTimeout,
+      isRetreat: this.isRetreat,
 
       label: this.label,
 
@@ -581,7 +581,7 @@ export abstract class BaseUnit {
   }
 
   clearCommands() {
-    this.isTimeout = false;
+    this.isRetreat = false;
     this.commands = []
     this.refreshFuturePos();
     this.setDirty();

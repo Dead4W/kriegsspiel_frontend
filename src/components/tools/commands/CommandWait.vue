@@ -31,13 +31,12 @@ const waitTime = computed(() => {
 /* ===== ACTION ===== */
 
 function confirm() {
-  const cmd = new WaitCommand({
-    wait: waitTime.value > 0 ? waitTime.value : Infinity,
-    elapsed: 0,
-    comment: comment.value || undefined,
-  })
-
   for (const u of unitsSnapshot.value) {
+    const cmd = new WaitCommand({
+      wait: waitTime.value > 0 ? waitTime.value : Infinity,
+      elapsed: 0,
+      comment: comment.value || undefined,
+    })
     u.addCommand(cmd.getState())
     u.setDirty()
   }

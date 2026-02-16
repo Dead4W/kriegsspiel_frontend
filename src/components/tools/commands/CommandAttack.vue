@@ -118,7 +118,6 @@ function syncTargets() {
 function confirm() {
   if (!targets.value.length && !inaccuracyPoint.value) return
 
-
   for (const u of attackers.value) {
     const cmd = new AttackCommand({
       targets: targets.value.map(u => u.id),
@@ -127,7 +126,6 @@ function confirm() {
       abilities: selectedAbilities.value,
       inaccuracyPoint: inaccuracyPoint.value ? inaccuracyPoint.value.pos : null,
     })
-
     u.addCommand(cmd.getState())
     u.setDirty()
   }
@@ -209,7 +207,7 @@ function unitPickRadiusPx() {
 
 function isTargetInRangeOfAnyAttacker(target: BaseUnit) {
   for (const a of attackers.value) {
-    if (!a.alive || a.isTimeout) continue
+    if (!a.alive || a.isRetreat) continue
     const dx = target.pos.x - a.pos.x
     const dy = target.pos.y - a.pos.y
     if (dx * dx + dy * dy <= a.attackRange * a.attackRange) return true
@@ -257,7 +255,7 @@ function onPointerDown(e: PointerEvent) {
 
   const hit = world.units.pickAt(pos, unitPickRadiusPx())
   if (!hit) return
-  if (!hit.alive || hit.isTimeout) return
+  if (!hit.alive || hit.isRetreat) return
   if (hit.team === attackerTeam) return
 
   // All checks: at least one attacker can reach the target by range.

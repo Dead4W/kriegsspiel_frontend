@@ -34,15 +34,14 @@ const retreatTimeMinutes = computed(() => {
 /* ===== ACTION ===== */
 
 function apply() {
-  const cmd = new RetreatCommand({
-    elapsed: 0,
-    duration: retreatTimeSeconds.value > 0 ? retreatTimeSeconds.value : Infinity,
-  })
-
   for (const u of unitsSnapshot.value) {
+    const cmd = new RetreatCommand({
+      elapsed: 0,
+      duration: retreatTimeSeconds.value > 0 ? retreatTimeSeconds.value : Infinity,
+    })
     u.clearCommands()
     u.setCommands([cmd])
-    u.isTimeout = true
+    u.isRetreat = true
     u.setDirty()
   }
 

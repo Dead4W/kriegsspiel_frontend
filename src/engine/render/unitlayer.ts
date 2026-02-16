@@ -424,7 +424,7 @@ export class unitlayer {
       icons.push('👁️')
     }
 
-    if (unit.isTimeout) {
+    if (unit.isRetreat) {
       icons.push('🏳️')
     }
 

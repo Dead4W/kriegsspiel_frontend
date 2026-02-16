@@ -45,13 +45,13 @@ function areSelectedUnitsAllMessengers(w: world) {
 function canAnySelectedUnitAttackTarget(w: world, target: BaseUnit) {
   const selected = w.units.getSelected()
   if (!selected.length) return false
-  if (!target.alive || target.isTimeout) return false
+  if (!target.alive || target.isRetreat) return false
 
   // In UI attack is disabled only when ALL selected are messengers.
   if (selected.every((u) => u.type === unitType.MESSENGER)) return false
 
   for (const a of selected) {
-    if (!a.alive || a.isTimeout) continue
+    if (!a.alive || a.isRetreat) continue
     if (a.team === target.team) continue
     const dx = target.pos.x - a.pos.x
     const dy = target.pos.y - a.pos.y

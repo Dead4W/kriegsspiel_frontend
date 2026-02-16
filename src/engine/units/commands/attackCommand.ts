@@ -159,7 +159,7 @@ export class AttackCommand extends BaseCommand<
 
       const unitDmgAfterDefense = target.takeDamage(unitDmg)
       // auto morale/retreat check (with logging)
-      target.autoSetRetreatCommandFromAttack(unit, unitDmgAfterDefense)
+      target.autoSetRetreatCommandFromAttack()
 
       const defenseModifier =
         unitDmg > 0
@@ -192,7 +192,7 @@ export class AttackCommand extends BaseCommand<
   }
 
   isFinished(unit: BaseUnit): boolean {
-    if (unit.isTimeout) return true;
+    if (unit.isRetreat) return true;
     if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]) {
       if (unit.ammo <= 0) {
         return true;
@@ -212,7 +212,7 @@ export class AttackCommand extends BaseCommand<
     return this.state.targets
       .map(id => window.ROOM_WORLD.units.get(id))
       .filter((u): u is BaseUnit => !!u && u.alive)
-      .filter(u => !u.isTimeout)
+      .filter(u => !u.isRetreat)
       .filter(u => {
         const dx = u.pos.x - unit.pos.x
         const dy = u.pos.y - unit.pos.y

@@ -102,9 +102,9 @@ select {
   outline: none;
 }
 
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
-textarea,
-select {
+.room input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+.room textarea,
+.room select {
   padding: 0.1rem;
 }
 

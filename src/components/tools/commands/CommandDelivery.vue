@@ -81,11 +81,10 @@ function syncTargets() {
 function confirm() {
   if (!targets.value.length) return
 
-  const cmd = new DeliveryCommand({
-    targets: targets.value.map(u => u.id),
-  })
-
   for (const m of messengers.value) {
+    const cmd = new DeliveryCommand({
+      targets: targets.value.map(u => u.id),
+    })
     m.addCommand(cmd.getState())
     m.setDirty()
   }

@@ -71,7 +71,7 @@ function processUnitCommands(dt: number) {
 
   for (const unit of units) {
     if (!unit.alive) continue
-    unit.isTimeout = false;
+    unit.isRetreat = false;
 
     let commands = unit.getCommands()
     if (unit.autoAttack) {
@@ -180,7 +180,7 @@ async function startTurn() {
             team: u.team,
             pos: u.pos,
 
-            isTimeout: u.isTimeout,
+            isRetreat: u.isRetreat,
 
             hp: u.hp,
             ammo: u.ammo,

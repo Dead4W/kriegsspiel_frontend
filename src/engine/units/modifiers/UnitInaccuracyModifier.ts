@@ -2,7 +2,7 @@ import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {vec2} from "@/engine";
 
 const HEIGHT_FACTOR = 5.0;
-const DISTANCE_FACTOR = 0.5;
+const DISTANCE_FACTOR = 0.1;
 
 export function computeInaccuracyRadius(
   unit: BaseUnit,

@@ -227,14 +227,14 @@ export function bindUnitInteraction(
         } else if (!hit.isFutureSelected()) {
           hit.selected = false;
         }
-      // } else if (e.shiftKey || isAdminCommandActive()) {
-      //   if (isFutureHit) {
-      //     hit.futureSelected = true;
-      //     hit.selected = true;
-      //   } else if (!hit.isFutureSelected()) {
-      //     hit.selected = true
-      //   }
-      //   // SHIFT → add
+      } else if (e.shiftKey || isAdminCommandActive()) {
+        if (isFutureHit) {
+          hit.futureSelected = true;
+          hit.selected = true;
+        } else if (!hit.isFutureSelected()) {
+          hit.selected = true
+        }
+        // SHIFT → add
       } else {
         // обычный клик
         if (!wasSelected) {

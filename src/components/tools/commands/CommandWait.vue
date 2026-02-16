@@ -33,7 +33,7 @@ const waitTime = computed(() => {
 function confirm() {
   for (const u of unitsSnapshot.value) {
     const cmd = new WaitCommand({
-      wait: waitTime.value > 0 ? waitTime.value : Infinity,
+      wait: waitTime.value > 0 ? waitTime.value : 0,
       elapsed: 0,
       comment: comment.value || undefined,
     })

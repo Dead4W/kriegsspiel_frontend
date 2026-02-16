@@ -28,10 +28,12 @@ export class RetreatCommand extends BaseCommand<
   }
 
   isFinished(): boolean {
+    if (this.state.duration === 0) return false;
     return Math.max(0, this.state.duration - this.state.elapsed) <= 0
   }
 
   estimate(unit: BaseUnit): number {
+    if (this.state.duration === 0) return Infinity;
     return Math.max(0, this.state.duration - this.state.elapsed)
   }
 

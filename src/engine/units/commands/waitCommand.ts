@@ -24,10 +24,12 @@ export class WaitCommand extends BaseCommand<
   }
 
   isFinished(): boolean {
+    if (this.state.wait === 0) return false;
     return this.state.elapsed >= this.state.wait;
   }
 
   estimate(unit: BaseUnit): number {
+    if (this.state.wait === 0) return Infinity;
     return this.state.wait - this.state.elapsed
   }
 

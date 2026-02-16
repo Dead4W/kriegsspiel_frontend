@@ -37,7 +37,7 @@ function apply() {
   for (const u of unitsSnapshot.value) {
     const cmd = new RetreatCommand({
       elapsed: 0,
-      duration: retreatTimeSeconds.value > 0 ? retreatTimeSeconds.value : Infinity,
+      duration: retreatTimeSeconds.value > 0 ? retreatTimeSeconds.value : 0,
     })
     u.clearCommands()
     u.setCommands([cmd])

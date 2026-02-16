@@ -41,10 +41,10 @@ export interface unitstate {
   type: unitType
   team: unitTeam
   pos: vec2
-  fatigue: number
-  autoAttack: boolean
+  fatigue?: number
+  autoAttack?: boolean
 
-  isRetreat: boolean,
+  isRetreat?: boolean,
 
   label?: string
 

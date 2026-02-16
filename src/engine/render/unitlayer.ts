@@ -292,7 +292,7 @@ export class unitlayer {
               ctx.strokeStyle = 'black'
               ctx.lineWidth = 1 * cam.zoom
 
-              const radiusMeters = computeInaccuracyRadius(unit, cmdState.inaccuracyPoint);
+              const radiusMeters = computeInaccuracyRadius(unit, cmdState.inaccuracyPoint) * (cmdState.radiusModifier ?? 1);
               const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel;
 
               const {x,y} = cam.worldToScreen(cmdState.inaccuracyPoint)

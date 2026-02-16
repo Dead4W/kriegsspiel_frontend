@@ -87,6 +87,7 @@ const targetsGrouped = computed(() => group(targets.value))
 /* ================= DAMAGE ================= */
 
 const damageModifier = ref(1.0)
+const radiusModifier = ref(1.0)
 
 watch(selectedAbilities, (list) => {
   if (!list.includes(UnitAbilityType.INACCURACY_FIRE)) {
@@ -117,14 +118,16 @@ function syncTargets() {
 function confirm() {
   if (!targets.value.length && !inaccuracyPoint.value) return
 
-  const cmd = new AttackCommand({
-    targets: targets.value.map(u => u.id),
-    damageModifier: damageModifier.value,
-    abilities: selectedAbilities.value,
-    inaccuracyPoint: inaccuracyPoint.value ? inaccuracyPoint.value.pos : null,
-  })
 
   for (const u of attackers.value) {
+    const cmd = new AttackCommand({
+      targets: targets.value.map(u => u.id),
+      damageModifier: damageModifier.value,
+      radiusModifier: radiusModifier.value,
+      abilities: selectedAbilities.value,
+      inaccuracyPoint: inaccuracyPoint.value ? inaccuracyPoint.value.pos : null,
+    })
+
     u.addCommand(cmd.getState())
     u.setDirty()
   }
@@ -159,7 +162,7 @@ function rebuildAttackOverlay() {
         {
           type: 'circle',
           center: inaccuracyPoint.value.pos,
-          radius: inaccuracyRadius.value / window.ROOM_WORLD.map.metersPerPixel,
+          radius: inaccuracyRadius.value / window.ROOM_WORLD.map.metersPerPixel * radiusModifier.value,
           color: 'rgba(168,85,247,0.45)',
           fill: true,
         } satisfies OverlayCircle
@@ -195,6 +198,10 @@ function rebuildAttackOverlay() {
 
   window.ROOM_WORLD.setOverlay(items)
 }
+watch(
+  () => radiusModifier.value,
+  rebuildAttackOverlay
+)
 
 function unitPickRadiusPx() {
   return 15 * (window.CLIENT_SETTINGS?.[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1)
@@ -377,16 +384,32 @@ defineExpose({
     <!-- ===== SETTINGS ===== -->
     <div class="column settings">
       <!-- damage modifier -->
-      <div class="title">
-        {{ t('command.damage_modifier') }} × {{ damageModifier.toFixed(2) }}
+      <div class="setting-row">
+        <div class="title">
+          {{ t('command.damage_modifier') }} × {{ damageModifier.toFixed(2) }}
+        </div>
+        <input
+          type="range"
+          min="0.00"
+          max="2"
+          step="0.05"
+          v-model.number="damageModifier"
+        />
       </div>
-      <input
-        type="range"
-        min="0.00"
-        max="2"
-        step="0.05"
-        v-model.number="damageModifier"
-      />
+
+      <!-- inaccuracy radius modifier -->
+      <div class="setting-row" v-if="selectedAbilities.includes(UnitAbilityType.INACCURACY_FIRE)">
+        <div class="title">
+          {{ t('command.inaccuracy_radius') }} × {{ radiusModifier.toFixed(2) }}
+        </div>
+        <input
+          type="range"
+          min="0.00"
+          max="2"
+          step="0.05"
+          v-model.number="radiusModifier"
+        />
+      </div>
     </div>
 
 
@@ -430,7 +453,7 @@ defineExpose({
 }
 
 .column.abilities {
-  min-width: 140px;
+  min-width: 200px;
 }
 
 .card.ability {
@@ -447,6 +470,14 @@ defineExpose({
 
 .column.settings {
   min-width: 160px;
+}
+
+.setting-row {
+  width: 100%;
+}
+
+.setting-row input {
+  width: 100%;
 }
 
 .column.actions {

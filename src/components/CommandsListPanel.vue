@@ -247,7 +247,7 @@ function description(cmd: BaseCommand<any, any>, cmdIndex: number) {
       const attackCmd = cmd as AttackCommand
       let targets = attackState.targets.length;
       if (attackState.inaccuracyPoint) {
-        const inaccuracyRadius = computeInaccuracyRadius(unit, attackState.inaccuracyPoint)
+        const inaccuracyRadius = computeInaccuracyRadius(unit, attackState.inaccuracyPoint) * (attackState.radiusModifier ?? 1);
         targets = attackCmd.getUnitsInInaccuracyRadius(inaccuracyRadius, unit).length;
       }
       return t('command_desc.attack', {

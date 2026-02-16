@@ -17,6 +17,7 @@ import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 export interface AttackCommandState {
   targets: uuid[]
   damageModifier: number
+  radiusModifier?: number
   abilities: UnitAbilityType[]
   inaccuracyPoint: vec2 | null
 }
@@ -69,7 +70,7 @@ export class AttackCommand extends BaseCommand<
 
     if (isInaccuracyFire) {
       unit.activateAbility(UnitAbilityType.INACCURACY_FIRE)
-      const inaccuracyRadius = computeInaccuracyRadius(unit, this.state.inaccuracyPoint!)
+      const inaccuracyRadius = computeInaccuracyRadius(unit, this.state.inaccuracyPoint!) * (this.state.radiusModifier ?? 1)
       targets = this.getUnitsInInaccuracyRadius(inaccuracyRadius, unit)
       const targetRadius = BaseUnit.COLLISION_RANGE * window.ROOM_WORLD.map.metersPerPixel;
       hitFactor = (targetRadius * targetRadius) / (inaccuracyRadius * inaccuracyRadius);

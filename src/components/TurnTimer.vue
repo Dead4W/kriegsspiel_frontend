@@ -9,6 +9,7 @@ import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys";
 import type {TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
 import {useI18n} from 'vue-i18n'
 import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
+import {MoveCommand, type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 
 const { t } = useI18n()
 
@@ -92,10 +93,20 @@ function processUnitCommands(dt: number) {
     let left_dt = dt;
 
     const goodCommands = [];
+    const postGoodCommands = [];
     for (let i = 0; i < commands.length; i++) {
       const cmd = commands[i]!
 
+      let isRepeat = false;
+      if (cmd.type === UnitCommandTypes.Move) {
+        const cmdMoveState = cmd.getState().state as MoveCommandState
+        isRepeat = cmdMoveState.isPatrol ?? false;
+      }
+
       if (cmd.isFinished(unit)) {
+        if (isRepeat) {
+          postGoodCommands.push(cmd);
+        }
         continue;
       }
 
@@ -121,7 +132,13 @@ function processUnitCommands(dt: number) {
 
       if (!cmd.isFinished(unit)) {
         goodCommands.push(cmd);
+      } else if (isRepeat) {
+        postGoodCommands.push(cmd);
       }
+    }
+
+    for (let cmd of postGoodCommands) {
+      goodCommands.push(cmd)
     }
 
     // если список изменился — синхронизируем

@@ -82,6 +82,7 @@ export type RoutePoint = {
 
 const movingUnits = ref<BaseUnit[]>([])
 const targets = ref<RoutePoint[]>([])
+const isPatrol = ref(false)
 
 /* ================= DISTANCE (meters) ================= */
 
@@ -703,6 +704,7 @@ function confirm() {
           uniqueId: uniqueId,
           abilities: selectedAbilities.value,
           segIndex: segIndex,
+          isPatrol: isPatrol.value,
         })
         new_commands.get(u.id)!.push(cmd)
         from = to;
@@ -729,6 +731,7 @@ function cleanup() {
   closeEnvMenu()
   movingUnits.value = []
   targets.value = []
+  isPatrol.value = false
   window.ROOM_WORLD.clearOverlay()
   emit('close')
 }
@@ -848,6 +851,14 @@ defineExpose({
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
       <button
+        class="btn patrol"
+        :class="{ active: isPatrol }"
+        :disabled="!targets.length"
+        @click="isPatrol = !isPatrol"
+      >
+        {{ t('tools.command.patrol') }}
+      </button>
+      <button
         class="btn confirm"
         :disabled="!targets.length"
         @click="confirm"
@@ -932,6 +943,15 @@ defineExpose({
 
 .btn.confirm {
   color: #22c55e;
+}
+
+.btn.patrol {
+  color: #38bdf8;
+}
+
+.btn.patrol.active {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
 }
 
 .btn.cancel {

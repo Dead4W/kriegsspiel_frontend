@@ -13,6 +13,7 @@ export interface MoveCommandState {
   orderIndex: number
   uniqueId: uuid
   segIndex?: number
+  isPatrol: boolean
 }
 
 export class MoveCommand extends BaseCommand<

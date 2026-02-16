@@ -121,6 +121,12 @@ function barStyle(value: number, max: number) {
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
   }
 }
+
+function selectUnit(u: BaseUnit) {
+  window.ROOM_WORLD.units.clearSelection();
+  u.selected = true;
+  window.ROOM_WORLD.events.emit('changed', {reason: 'unit'})
+}
 </script>
 
 
@@ -175,6 +181,7 @@ function barStyle(value: number, max: number) {
         class="mini-card"
         :class="{ active: u === focusedUnit }"
         @click="toggleFocus(u as BaseUnit)"
+        @dblclick="selectUnit(u as BaseUnit)"
       >
         <div class="mini-type">
           <span class="team-dot" :class="u.team" />

@@ -1,5 +1,5 @@
-import type {world} from '../world/world'
-import {drawRoundRect, getTeamColor} from '@/engine/render/util.ts'
+import type {world} from '@/engine'
+import {getTeamColor} from '@/engine/render/util.ts'
 import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys'
 import {translate} from '@/i18n'
 import {drawUnitVision} from "@/engine/render/unitlayer/visionlayer.ts";

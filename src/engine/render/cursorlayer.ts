@@ -3,12 +3,35 @@ import type { vec2 } from '@/engine'
 import { getCursorTexture } from '@/engine/assets/textures'
 import { drawRoundRect } from '@/engine/render/util'
 import {Team} from "@/enums/teamKeys.ts";
+import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
+import {translate} from '@/i18n'
 
 const FADE_DELAY = 20_000
 const FADE_DURATION = 10_000
 
 export class cursorlayer {
   private cursorTexture = getCursorTexture()
+  private teamTitles: Record<Team, string>
+
+  constructor() {
+    const teams = [
+      Team.ADMIN,
+      Team.RED,
+      Team.BLUE,
+      Team.SPECTATOR,
+    ]
+    this.teamTitles = {} as Record<Team, string>;
+
+    for (let team of teams) {
+      if (team === Team.RED) {
+        this.teamTitles[team] = window.ROOM_SETTINGS[ROOM_SETTING_KEYS.RED_TEAM_NAME] ?? translate('team.red');
+      } else if (team === Team.BLUE) {
+        this.teamTitles[team] = window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? translate('team.blue');
+      } else {
+        this.teamTitles[team] = translate('team.' + team);
+      }
+    }
+  }
 
   draw(ctx: CanvasRenderingContext2D, w: world) {
     const cam = w.camera
@@ -29,7 +52,7 @@ export class cursorlayer {
       }
 
       if (window.PLAYER.team === Team.ADMIN) {
-        this.drawCursor(ctx, cam, cursor.pos, `${cursor.team} - ${cursor.name}`, alpha)
+        this.drawCursor(ctx, cam, cursor.pos, `${this.teamTitles[cursor.team]} - ${cursor.name}`, alpha)
       } else {
         this.drawCursor(ctx, cam, cursor.pos, cursor.name, alpha)
       }

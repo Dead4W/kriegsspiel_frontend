@@ -110,10 +110,10 @@ function rebuildOverlay() {
   }
 
   window.ROOM_WORLD.setOverlay(items)
-  window.ROOM_WORLD.events.emit('api', {
-    type: 'ruler',
-    data: { points: points.value },
-  })
+  // window.ROOM_WORLD.events.emit('api', {
+  //   type: 'ruler',
+  //   data: { points: points.value },
+  // })
 }
 
 /* ===== input ===== */

@@ -19,8 +19,8 @@ const emit = defineEmits<{
 
 const teams = [
   Team.ADMIN,
-  Team.BLUE,
   Team.RED,
+  Team.BLUE,
 ]
 
 function getOrCreateClientId(roomId: string) {

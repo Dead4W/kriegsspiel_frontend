@@ -63,8 +63,8 @@ export const ROOM_SETTINGS: readonly RoomSetting[] = [
     type: 'boolean',
     i18nLabel: 'settings.autoStatsUpdate.label',
     i18nDescription: 'settings.autoStatsUpdate.description',
-    level: 'beta',
-    default: false,
+    level: 'stable',
+    default: true,
   },
   {
     key: ROOM_SETTING_KEYS.WEATHER_MODIFIERS,

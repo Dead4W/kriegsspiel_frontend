@@ -2,6 +2,7 @@ import type { world } from '@/engine'
 import type { vec2 } from '@/engine'
 import { getCursorTexture } from '@/engine/assets/textures'
 import { drawRoundRect } from '@/engine/render/util'
+import {Team} from "@/enums/teamKeys.ts";
 
 const FADE_DELAY = 20_000
 const FADE_DURATION = 10_000
@@ -27,7 +28,11 @@ export class cursorlayer {
         alpha = 1 - (age - FADE_DELAY) / FADE_DURATION
       }
 
-      this.drawCursor(ctx, cam, cursor.pos, cursor.name, alpha)
+      if (window.PLAYER.team === Team.ADMIN) {
+        this.drawCursor(ctx, cam, cursor.pos, `${cursor.team} - ${cursor.name}`, alpha)
+      } else {
+        this.drawCursor(ctx, cam, cursor.pos, cursor.name, alpha)
+      }
     }
 
     ctx.restore()

@@ -1,8 +1,10 @@
 import type {MoveFrame, unitstate, uuid, vec2} from "@/engine";
 import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engine/util.ts";
+import type {Team} from "@/enums/teamKeys.ts";
 
 export type CursorObject = {
   name: string,
+  team: Team,
   frames: MoveFrame[],
   lastSeen: number,
 
@@ -54,6 +56,7 @@ export class cursorregistry {
 
     const obj: CursorObject = {
       name: window.PLAYER.name,
+      team: window.PLAYER.team,
       frames: this.moveFrames,
       lastSeen: Date.now(),
       pos: this.moveFrames[0]!.pos,

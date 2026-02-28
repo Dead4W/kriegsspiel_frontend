@@ -700,7 +700,7 @@ function confirm() {
             y: to.y,
           },
           modifier: t.modifier ?? null,
-          orderIndex: orderIndex,
+          orderIndex: moveMode === 'column' ? orderIndex : 0,
           uniqueId: uniqueId,
           abilities: selectedAbilities.value,
           segIndex: segIndex,

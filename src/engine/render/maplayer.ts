@@ -58,6 +58,120 @@ export class maplayer {
     ctx.restore()
   }
 
+  private cacheVisualHeightCanvas?: OffscreenCanvas | HTMLCanvasElement;
+  private getHeightDebugCanvas(
+    srcCanvas: OffscreenCanvas | HTMLCanvasElement
+  ): OffscreenCanvas | HTMLCanvasElement {
+    if (this.cacheVisualHeightCanvas) {
+      return this.cacheVisualHeightCanvas;
+    }
+
+    const w = srcCanvas.width
+    const h = srcCanvas.height
+
+    const srcCtx = srcCanvas.getContext("2d")!
+    const srcImg = srcCtx.getImageData(0, 0, w, h)
+
+    const data = srcImg.data
+
+    // -------------------------
+    // 1. найти min max
+    // -------------------------
+
+    let minH = Infinity
+    let maxH = -Infinity
+
+    for (let i = 0; i < data.length; i += 4) {
+
+      const a = data[i + 3]!
+      if (a < 10) continue
+
+      const height =
+        data[i]! +
+        data[i + 1]! +
+        data[i + 2]!
+
+      if (height < minH) minH = height
+      if (height > maxH) maxH = height
+    }
+
+    const range = Math.max(1, maxH - minH)
+
+    console.log("Height range:", minH, maxH)
+
+    // -------------------------
+    // 2. создаём debug canvas
+    // -------------------------
+
+    const outCanvas = document.createElement("canvas")
+
+    outCanvas.width = w
+    outCanvas.height = h
+
+    const outCtx = outCanvas.getContext("2d")!
+
+    const outImg = outCtx.createImageData(w, h)
+    const out = outImg.data
+
+    // -------------------------
+    // 3. покрасить
+    // -------------------------
+
+    for (let i = 0; i < data.length; i += 4) {
+
+      const a = data[i + 3]!
+
+      if (a < 10) {
+        out[i + 3] = 0
+        continue
+      }
+
+      const height =
+        data[i]! +
+        data[i + 1]! +
+        data[i + 2]!
+
+      // normalize 0..1
+      const t = (height - minH) / range
+
+      let r = 0
+      let g = 0
+      let b = 0
+
+      // -------- gradient --------
+
+      if (t < 0.5) {
+
+        // blue -> green
+
+        const k = t * 2
+
+        r = 0
+        g = 255 * k
+        b = 255 * (1 - k)
+
+      } else {
+
+        // green -> red
+
+        const k = (t - 0.5) * 2
+
+        r = 255 * k
+        g = 255 * (1 - k)
+        b = 0
+      }
+
+      out[i] = r
+      out[i + 1] = g
+      out[i + 2] = b
+      out[i + 3] = 255
+    }
+
+    outCtx.putImageData(outImg, 0, 0)
+
+    return this.cacheVisualHeightCanvas = outCanvas
+  }
+
   private drawHeightMap(ctx: CanvasRenderingContext2D, w: world) {
     if (!w.heightMapCanvas) return
 
@@ -72,8 +186,11 @@ export class maplayer {
     // прозрачность 50%
     ctx.globalAlpha = 0.5
 
+    // contrast blending
+    ctx.globalCompositeOperation = "hard-light"
+
     // рисуем карту
-    ctx.drawImage(w.heightMapCanvas, 0, 0)
+    ctx.drawImage(this.getHeightDebugCanvas(w.heightMapCanvas), 0, 0)
 
     ctx.restore()
   }

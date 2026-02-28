@@ -20,18 +20,18 @@ useHead(() => ({
   htmlAttrs: {
     lang: locale.value
   },
-  link: [
-    {
-      rel: 'alternate',
-      hreflang: 'ru',
-      href: `${location.origin}/ru${route.path.replace(/^\/(ru|en)/, '')}`
-    },
-    {
-      rel: 'alternate',
-      hreflang: 'en',
-      href: `${location.origin}/en${route.path.replace(/^\/(ru|en)/, '')}`
-    }
-  ],
+  // link: [
+  //   {
+  //     rel: 'alternate',
+  //     hreflang: 'ru',
+  //     href: `${location.origin}/ru${route.path.replace(/^\/(ru|en)/, '')}`
+  //   },
+  //   {
+  //     rel: 'alternate',
+  //     hreflang: 'en',
+  //     href: `${location.origin}/en${route.path.replace(/^\/(ru|en)/, '')}`
+  //   }
+  // ],
   meta: [
     {
       name: 'description',

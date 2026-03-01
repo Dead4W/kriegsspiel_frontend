@@ -173,7 +173,7 @@ export class GameSocket {
       busMessages.push(message);
     })
 
-    this.syncTimer = createRafInterval(500, () => {
+    this.syncTimer = createRafInterval(2000, () => {
       if (window.ROOM_WORLD.socketLock) return
 
       const dirtyUnitObjects = this.world.units.getDirty()

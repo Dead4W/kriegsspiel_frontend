@@ -255,7 +255,7 @@ export abstract class BaseUnit {
       .reduce((acc, m) => acc + m.value, 0)
 
     const total = diceSum + modifierSum
-    const margin = total - moraleTarget
+    const margin = total + moraleTarget
 
     type MoraleOutcome = 'pass' | 'retreat' | 'flee' | 'disband'
     let outcome: MoraleOutcome = 'pass'

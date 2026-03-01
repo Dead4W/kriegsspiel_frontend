@@ -94,28 +94,32 @@ const chartData = computed(() => {
     labels,
     datasets: [
       {
-        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.RED_TEAM_NAME] ?? t('team.red') + ' HP',
+        label: (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.RED_TEAM_NAME] ?? t('team.red')) + ' HP',
         data: redHpData,
         borderColor: '#ff4d4f',
         tension: 0.3,
+        yAxisID: 'yHp',
       },
       {
-        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue') + ' HP',
+        label: (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue')) + ' HP',
         data: blueHpData,
         borderColor: '#1890ff',
         tension: 0.3,
+        yAxisID: 'yHp',
       },
       {
-        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue') + ' UNITS',
+        label: (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.RED_TEAM_NAME] ?? t('team.red')) + ' UNITS',
         data: redCntData,
-        borderColor: '#1890ff',
+        borderColor: '#ff7875',
         tension: 0.3,
+        yAxisID: 'yUnits',
       },
       {
-        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue') + ' UNITS',
+        label: (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue')) + ' UNITS',
         data: blueCntData,
-        borderColor: '#1890ff',
+        borderColor: '#69b1ff',
         tension: 0.3,
+        yAxisID: 'yUnits',
       },
     ],
   }
@@ -144,11 +148,25 @@ const chartOptions: ChartOptions<'line'> = {
         text: 'Ingame time',
       },
     },
-    y: {
+    yHp: {
+      type: 'linear',
+      position: 'left',
       beginAtZero: true,
       title: {
         display: true,
-        text: 'Commands HP',
+        text: 'HP',
+      },
+    },
+    yUnits: {
+      type: 'linear',
+      position: 'right',
+      beginAtZero: true,
+      grid: {
+        drawOnChartArea: false,
+      },
+      title: {
+        display: true,
+        text: 'Units',
       },
     },
   },

@@ -79,6 +79,15 @@ export class unitlayer {
       .sort((a, b) => (a.lastSelected ?? 0) - (b.lastSelected ?? 0))
 
     for (const unit of units) {
+      debugPerformance('drawCommands', () => {
+        ctx.save()
+        this.drawCommands(ctx, cam, unit)
+        ctx.restore()
+        ctx.closePath()
+      })
+    }
+
+    for (const unit of units) {
       this.drawUnit(ctx, cam, unit, settings)
     }
   }
@@ -122,14 +131,6 @@ export class unitlayer {
 
       const { r, g, b } = getTeamColor(unit.team)
       ctx.fillStyle = `rgba(${r},${g},${b},${unitOpacity})`
-
-      debugPerformance('drawCommands', () => {
-        ctx.save()
-        this.drawCommands(ctx, cam, unit)
-        ctx.restore()
-        ctx.closePath()
-      })
-
 
       const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * this.unitScale
       const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * this.unitScale

@@ -224,7 +224,6 @@ async function startTurn() {
   window.ROOM_WORLD.skipTime(0)
   window.ROOM_WORLD.socketLock = false
 
-  running.value = false
   displayWorldTime.value = window.ROOM_WORLD.time
   timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
 }
@@ -244,6 +243,10 @@ function sync(data: {reason: string}) {
     refreshKey.value++
     displayWorldTime.value = window.ROOM_WORLD.time
     timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
+
+    if (data.reason === 'skip_time_success') {
+      running.value = false
+    }
   })
 }
 

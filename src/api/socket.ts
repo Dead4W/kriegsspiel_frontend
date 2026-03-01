@@ -23,6 +23,7 @@ export type OutMessage =
   | { type: 'chat_read'; data: uuid[] }
   | { type: 'cursor'; data: CursorObject }
   | { type: 'skip_time'; data: string }
+  | { type: 'skip_time_success'; data: true }
   | { type: 'set_stage'; data: RoomGameStage }
   | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
   | { type: 'direct_view'; team: Team; data: unitstate[] }
@@ -333,6 +334,8 @@ export class GameSocket {
           } else {
             this.world.clearOverlay()
           }
+        } else if (m.type === 'skip_time_success') {
+          this.world.events.emit('changed', {reason: 'skip_time_success'})
         }
       }
 

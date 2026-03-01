@@ -200,9 +200,6 @@ export abstract class BaseUnit {
     // Don't spam while already retreating
     if (this.hasCommand(UnitCommandTypes.Retreat) || this.isRetreat) return
 
-    // Morale not configured => skip (prevents constant checks for default 0)
-    const moraleTarget = this.morale ?? 0
-
     const dice1 = this.rollDie(6)
     const dice2 = this.rollDie(6)
     const diceSum = dice1 + dice2
@@ -255,17 +252,16 @@ export abstract class BaseUnit {
       .reduce((acc, m) => acc + m.value, 0)
 
     const total = diceSum + modifierSum
-    const margin = total + moraleTarget
 
     type MoraleOutcome = 'pass' | 'retreat' | 'flee' | 'disband'
     let outcome: MoraleOutcome = 'pass'
 
     // Thresholds by margin of failure
-    if (margin >= 0) {
+    if (total >= 0) {
       outcome = 'pass'
-    } else if (margin >= -2) {
+    } else if (total >= -2) {
       outcome = 'retreat'
-    } else if (margin >= -5) {
+    } else if (total >= -5) {
       outcome = 'flee'
     } else {
       outcome = 'disband'
@@ -281,8 +277,6 @@ export abstract class BaseUnit {
       }
     }
     formula.push(`= total(${total})`)
-    formula.push(`vs morale(${moraleTarget})`)
-    formula.push(`margin(${margin})`)
 
     window.ROOM_WORLD.logs.value.push({
       id: crypto.randomUUID(),

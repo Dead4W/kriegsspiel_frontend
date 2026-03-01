@@ -161,7 +161,7 @@
     "logs": {
       "title": "Logs",
       "attack": "attack",
-      "morale_check_from": "morale check (attack from)",
+      "morale_check_from": "morale check",
       "morale_pass": "holds",
       "morale_retreat": "retreat",
       "morale_flee": "rout",

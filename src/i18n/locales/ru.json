@@ -162,7 +162,7 @@
     "logs": {
       "title": "Логи",
       "attack": "атакует",
-      "morale_check_from": "проверка устойчивости (атака от)",
+      "morale_check_from": "проверка устойчивости",
       "morale_pass": "устоял",
       "morale_retreat": "отступление",
       "morale_flee": "бегство",

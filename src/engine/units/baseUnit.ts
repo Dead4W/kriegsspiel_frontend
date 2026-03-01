@@ -206,14 +206,6 @@ export abstract class BaseUnit {
 
     const mods: Array<{ key: string; value: number; applied: boolean }> = []
 
-    // In formation (+1)
-    const inFormation = [
-      FormationType.Default,
-      FormationType.KneelingVolley,
-      FormationType.Column,
-    ].includes(this.formation)
-    mods.push({ key: `formation(${this.formation})`, value: 1, applied: inFormation })
-
     // In fortification (+2)
     const inFortification =
       this.envState.includes(UnitEnvironmentState.InCoverHouse) ||
@@ -300,11 +292,17 @@ export abstract class BaseUnit {
       // unit disbands
       this.hp = 0
     } else {
+      let retreatDuration = 60 * 60 * 12;
+      if (outcome === 'flee') {
+        retreatDuration *= 2;
+        this.hp /= 2;
+      }
+
       this.clearCommands()
       const cmd = new RetreatCommand({
         elapsed: 0,
-        duration: 60 * 60 * 24,
-        comment: "AUTO"
+        duration: retreatDuration,
+        comment: "AUTO " + translate(`tools.logs.morale_${outcome}`)
       })
       this.setCommands([cmd]);
     }

@@ -96,7 +96,7 @@ const uiDef: ClientSettingsUiItem[] = [
     kind: 'range',
     key: CLIENT_SETTING_KEYS.SIZE_UNIT,
     labelI18nKey: 'client_settings.size_unit',
-    min: 0.5,
+    min: 0.1,
     max: 2,
     step: 0.05,
     valueFormat: 'fixed2',

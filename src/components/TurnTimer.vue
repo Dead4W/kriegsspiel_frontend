@@ -223,6 +223,7 @@ async function startTurn() {
   // ВСЕГДА В КОНЦЕ
   window.ROOM_WORLD.skipTime(0)
   window.ROOM_WORLD.socketLock = false
+  window.ROOM_WORLD.events.emit('force_api', {}).then();
 
   displayWorldTime.value = window.ROOM_WORLD.time
   timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()

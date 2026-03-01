@@ -168,56 +168,61 @@ export class GameSocket {
     }
   }
 
+  private busMessages: OutMessage[] = []
   private startSync() {
-    let busMessages: OutMessage[] = []
     window.ROOM_WORLD.events.on('api', (message) => {
-      busMessages.push(message);
+      this.busMessages.push(message);
+    })
+    window.ROOM_WORLD.events.on('force_api', (message) => {
+      this.sync();
     })
 
-    this.syncTimer = createRafInterval(2000, () => {
-      if (window.ROOM_WORLD.socketLock) return
-
-      const dirtyUnitObjects = this.world.units.getDirty()
-      const dirtyUnitRemove = this.world.units.getDirtyRemove()
-      const dirtyChatMessages = this.world.messages.getDirty()
-      const cursor = this.world.cursor.getMoveFrames();
-
-      let messages: OutMessage[] = [
-        ...dirtyUnitObjects.map<OutMessage>(u => ({
-          type: 'unit',
-          data: u.unit,
-          frames: u.frames,
-        })),
-        ...dirtyChatMessages.map<OutMessage>(m => ({
-          type: 'chat',
-          data: m,
-        })),
-      ];
-
-      if (cursor) {
-        messages.push({
-          type: 'cursor',
-          data: cursor,
-        });
-      }
-      if (dirtyUnitRemove.length) {
-        messages.push({
-          type: 'unit-remove',
-          data: dirtyUnitRemove,
-        });
-      }
-
-      messages = [
-        ...messages,
-        ...busMessages,
-      ];
-      busMessages = [];
-
-      if (messages.length) {
-        this.sendBatched(messages)
-      }
-    });
+    this.syncTimer = createRafInterval(1000, () => this.sync());
     this.syncTimer.start();
+  }
+
+  private sync() {
+    if (window.ROOM_WORLD.socketLock) return
+
+    const dirtyUnitObjects = this.world.units.getDirty()
+    const dirtyUnitRemove = this.world.units.getDirtyRemove()
+    const dirtyChatMessages = this.world.messages.getDirty()
+    const cursor = this.world.cursor.getMoveFrames();
+
+    let messages: OutMessage[] = [
+      ...dirtyUnitObjects.map<OutMessage>(u => ({
+        type: 'unit',
+        data: u.unit,
+        frames: u.frames,
+      })),
+      ...dirtyChatMessages.map<OutMessage>(m => ({
+        type: 'chat',
+        data: m,
+      })),
+    ];
+
+    if (cursor) {
+      messages.push({
+        type: 'cursor',
+        data: cursor,
+      });
+    }
+    if (dirtyUnitRemove.length) {
+      messages.push({
+        type: 'unit-remove',
+        data: dirtyUnitRemove,
+      });
+    }
+
+    messages = [
+      ...messages,
+      ...this.busMessages,
+    ];
+    this.busMessages = [];
+
+    if (messages.length) {
+      this.sendBatched(messages)
+    }
   }
 
   private stopSync() {

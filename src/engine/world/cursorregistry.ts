@@ -46,8 +46,6 @@ export class cursorregistry {
   }
 
   getMoveFrames(): CursorObject | null {
-    return null; // temp disable cursor
-
     if (window.location.hostname === 'localhost') {
       return null
     }

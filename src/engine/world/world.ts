@@ -198,6 +198,7 @@ export class world {
   setStage(stage: RoomGameStage) {
     this.stage = stage;
     this.events.emit('api', { type: 'set_stage', data: stage});
+    this.events.emit('changed', { reason: 'stage' });
   }
 
   clear() {

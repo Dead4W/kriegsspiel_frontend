@@ -40,7 +40,6 @@ async function loadSnapshot() {
   const uuid = route.params.uuid as string
   const time = snapshots.value[index.value]!
 
-  w.updateTime('')
   const res = await api.get(`/room/${uuid}/snapshots/${time}`, {
     params: {
       key: window.ROOM_KEYS.admin_key ?? '',
@@ -63,7 +62,8 @@ function applySnapshot(time: string, data: { units: Record<uuid, unitstate>; pai
     const unit = data.units[unitId] as unitstate;
     w.units.upsert(unit, 'remote');
   }
-  w.updateTime(time.replace('T', ' ').replace(".000000Z", ""))
+
+  w.time = time.replace('T', ' ').replace(".000000Z", "");
   w.events.emit('changed', { reason: 'unit' })
 }
 

@@ -103,7 +103,7 @@ onUnmounted(() => {
 
     <div class="top-bar no-select">
       <TurnTimer />
-      <WeatherControl class="weather-under" v-if="isAdmin() && isEnabledWeatherModifiers()" />
+      <WeatherControl class="weather-under" v-if="isAdmin() && isEnabledWeatherModifiers() && !isEnd" />
     </div>
 
     <!-- Панель инструментов -->

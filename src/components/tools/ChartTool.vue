@@ -38,8 +38,10 @@ const emit = defineEmits<{
 
 interface Snapshot {
   ingame_time: string
-  red: number
-  blue: number
+  red_hp: number
+  blue_hp: number
+  red_cnt: number
+  blue_cnt: number
 }
 
 /* ---------------- state ---------------- */
@@ -74,45 +76,44 @@ onMounted(loadSnapshots)
 
 const chartData = computed(() => {
   const labels: Date[] = []
-  const redData: number[] = []
-  const blueData: number[] = []
-
-  // snapshots.value.forEach(snapshot => {
-  //   labels.push(new Date(snapshot.ingame_time.replace(' ', 'T')))
-  //
-  //   let redCommands = 0
-  //   let blueCommands = 0
-  //
-  //   Object.values(snapshot.units).forEach(unit => {
-  //     const hp = unit.hp ?? 0
-  //
-  //     if (unit.team === 'red') redCommands += hp
-  //     if (unit.team === 'blue') blueCommands += hp
-  //   })
-  //
-  //   redData.push(redCommands)
-  //   blueData.push(blueCommands)
-  // })
+  const redHpData: number[] = []
+  const blueHpData: number[] = []
+  const redCntData: number[] = []
+  const blueCntData: number[] = []
 
   snapshots.value.forEach(snapshot => {
     labels.push(new Date(snapshot.ingame_time.replace(' ', 'T')))
 
-    redData.push(snapshot.red)
-    blueData.push(snapshot.blue)
+    redHpData.push(snapshot.red_hp)
+    blueHpData.push(snapshot.blue_hp)
+    redCntData.push(snapshot.red_cnt)
+    blueCntData.push(snapshot.blue_cnt)
   })
 
   return {
     labels,
     datasets: [
       {
-        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.RED_TEAM_NAME] ?? t('team.red'),
-        data: redData,
+        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.RED_TEAM_NAME] ?? t('team.red') + ' HP',
+        data: redHpData,
         borderColor: '#ff4d4f',
         tension: 0.3,
       },
       {
-        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue'),
-        data: blueData,
+        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue') + ' HP',
+        data: blueHpData,
+        borderColor: '#1890ff',
+        tension: 0.3,
+      },
+      {
+        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue') + ' UNITS',
+        data: redCntData,
+        borderColor: '#1890ff',
+        tension: 0.3,
+      },
+      {
+        label: window.ROOM_SETTINGS[ROOM_SETTING_KEYS.BLUE_TEAM_NAME] ?? t('team.blue') + ' UNITS',
+        data: blueCntData,
         borderColor: '#1890ff',
         tension: 0.3,
       },

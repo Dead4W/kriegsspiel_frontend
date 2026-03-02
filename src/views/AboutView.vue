@@ -22,6 +22,9 @@ useHead(() => ({
   <section class="about">
     <div class="card">
       <h1>{{ t('about') }}</h1>
+      <div class="tags" aria-label="Project technologies">
+        <span class="tag">GitHub Pages</span>
+      </div>
 
       <section class="block">
         <h2>{{ t('aboutSections.whatIs.title') }}</h2>
@@ -99,6 +102,26 @@ useHead(() => ({
   box-shadow:
     var(--shadow-lg),
     var(--shadow-inset);
+}
+
+.tags {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: color-mix(in oklab, var(--panel) 70%, var(--accent) 30%);
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1;
 }
 
 .text {

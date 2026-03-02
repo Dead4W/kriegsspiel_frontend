@@ -28,6 +28,11 @@ export type ResourcePackAbilityType = {
   params?: Record<string, unknown>
 }
 
+export type ResourcePackFormationType = {
+  id: string
+  multipliers?: Record<string, unknown>
+}
+
 export type ResourcePackUnitType = {
   id: unitType | string
   stats: UnitStats
@@ -92,6 +97,9 @@ export type ResourcePack = {
   abilities?: {
     types: ResourcePackAbilityType[]
   }
+  formations?: {
+    types: ResourcePackFormationType[]
+  }
   units?: {
     types: ResourcePackUnitType[]
   }
@@ -124,6 +132,7 @@ function normalizePack(raw: unknown): ResourcePack {
   const segments = r?.timeOfDay?.segments
   const conditions = r?.weather?.conditions
   const abilityTypes = r?.abilities?.types
+  const formationTypes = r?.formations?.types
   const unitTypes = r?.units?.types
   const envStates = r?.environment?.states
   const angleModifiers = r?.angleModifiers
@@ -142,6 +151,11 @@ function normalizePack(raw: unknown): ResourcePack {
     abilities: {
       types: Array.isArray(abilityTypes)
         ? (abilityTypes.filter(isObject) as unknown as ResourcePackAbilityType[])
+        : [],
+    },
+    formations: {
+      types: Array.isArray(formationTypes)
+        ? (formationTypes.filter(isObject) as unknown as ResourcePackFormationType[])
         : [],
     },
     units: {

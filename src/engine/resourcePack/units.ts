@@ -6,7 +6,8 @@ import {
 } from '@/engine/assets/resourcepack'
 
 import type { UnitStats } from '@/engine/units/baseUnit'
-import { FormationType, unitType } from '@/engine/units/types'
+import type { FormationType } from '@/engine/units/types'
+import { unitType } from '@/engine/units/types'
 import type { UnitAbilityType } from '@/engine/units/modifiers/UnitAbilityModifiers'
 
 export type UnitTypeId = string
@@ -47,9 +48,7 @@ function normalizeAbilities(raw: unknown): UnitAbilityType[] {
 
 function normalizeDefaultFormation(raw: unknown): FormationType | undefined {
   const v = String(raw ?? '')
-  if (!v) return undefined
-  const allowed = new Set<string>(Object.values(FormationType))
-  return allowed.has(v) ? (v as FormationType) : undefined
+  return v ? (v as FormationType) : undefined
 }
 
 function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {

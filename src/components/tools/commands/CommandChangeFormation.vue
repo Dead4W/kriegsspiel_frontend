@@ -2,8 +2,9 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
-import { FormationType } from '@/engine'
+import type { FormationType } from '@/engine'
 import { ChangeFormationCommand } from '@/engine/units/commands/changeFormationCommand'
+import { getFormationTypes } from "@/engine/resourcePack/formations.ts";
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -19,14 +20,7 @@ const { t } = useI18n()
 
 const selectedFormation = ref<FormationType | null>(null)
 
-const FORMATIONS: FormationType[] = [
-  FormationType.Default,
-  FormationType.Column,
-  FormationType.Springing,
-  FormationType.KneelingVolley,
-  FormationType.ForceWalking,
-  FormationType.OnHorse,
-]
+const FORMATIONS = computed<FormationType[]>(() => getFormationTypes())
 
 /* ================= ACTIONS ================= */
 

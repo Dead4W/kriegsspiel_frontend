@@ -1,6 +1,6 @@
 import {
   type commandstate,
-  FormationType,
+  type FormationType,
   type unitstate,
   type unitTeam,
   unitType,
@@ -10,7 +10,7 @@ import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {getEnvMultipliers} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
 import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engine/util.ts";
-import {FORMATION_STAT_MULTIPLIERS} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
+import {getFormationMultipliers} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
 import {createUnitCommand} from "@/engine/units/commands";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {clamp} from "@/engine/math.ts";
@@ -125,7 +125,7 @@ export abstract class BaseUnit {
     this.setCommands(s.commands?.map(c => createUnitCommand(c)) ?? []);
     this.isRetreat = s.isRetreat ?? false;
 
-    this.formation = s.formation ?? FormationType.Default;
+    this.formation = s.formation ?? 'default';
     this.activeAbilityType = s.activeAbilityType ?? null;
 
     this.envState = s.envState ?? [];
@@ -410,7 +410,7 @@ export abstract class BaseUnit {
   protected getFormationMultiplier<K extends keyof UnitStats | 'damage'>(
     key: K
   ): number {
-    return FORMATION_STAT_MULTIPLIERS[this.formation]?.[key] ?? 1
+    return (getFormationMultipliers() as any)[this.formation]?.[key] ?? 1
   }
 
   get alive(): boolean {

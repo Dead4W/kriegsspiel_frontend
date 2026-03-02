@@ -20,14 +20,8 @@ export enum unitType {
   MESSENGER = 'messenger',
 }
 
-export enum FormationType {
-  Default = 'default',
-  Springing = 'springing',
-  KneelingVolley = 'kneelingVolley',
-  ForceWalking = 'forceWalking',
-  Column = 'column',
-  OnHorse = 'onHorse',
-}
+// Formation ids are defined by the loaded resourcepack.
+export type FormationType = string
 
 
 export interface unitstate {

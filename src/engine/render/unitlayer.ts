@@ -9,7 +9,7 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
-import {FormationType, unitType, type vec2} from "@/engine";
+import {unitType, type vec2} from "@/engine";
 import {
   type UnitEnvironmentState,
 } from "@/engine/units/enums/UnitStates.ts";
@@ -18,6 +18,7 @@ import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyMo
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
+import { getFormationIcon } from "@/engine/resourcePack/formations.ts";
 
 type MoveOrderRange = {
   min: number
@@ -434,24 +435,7 @@ export class unitlayer {
       icons.push('🏳️')
     }
 
-    let formationIcon = '';
-    switch (unit.getFormation()) {
-      case FormationType.Column:
-        formationIcon = 'C'
-        break
-      case FormationType.Springing:
-        formationIcon = 'S'
-        break
-      case FormationType.KneelingVolley:
-        formationIcon = 'K'
-        break
-      case FormationType.ForceWalking:
-        formationIcon = 'F'
-        break
-      case FormationType.OnHorse:
-        formationIcon = 'H'
-        break
-    }
+    const formationIcon = getFormationIcon(unit.getFormation())
     if (formationIcon) {
       icons.push(formationIcon)
     }

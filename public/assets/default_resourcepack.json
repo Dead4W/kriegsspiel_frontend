@@ -85,6 +85,16 @@
       { "id": "in_water", "icon": "🌊", "multipliers": { "takeDamageMod": 0.4 }, "byTypes": { "artillery": { "speed": 0.1 } } }
     ]
   },
+  "formations": {
+    "types": [
+      { "id": "default", "multipliers": {} },
+      { "id": "column", "icon": "C", "multipliers": { "takeDamageMod": 16.0 } },
+      { "id": "springing", "icon": "S", "multipliers": { "takeDamageMod": 1.2, "speed": 0.5 } },
+      { "id": "kneelingVolley", "icon": "K", "multipliers": { "takeDamageMod": 2.0, "damage": 0.9 } },
+      { "id": "forceWalking", "icon": "F", "multipliers": { "takeDamageMod": 4.0, "damage": 0.8 } },
+      { "id": "onHorse", "icon": "H", "multipliers": { "takeDamageMod": 8.0, "damage": 0.12, "speed": 1.25 } }
+    ]
+  },
   "abilities": {
     "types": [
       { "id": "charge", "multipliers": { "speed": 5, "fatigue": 4 } },

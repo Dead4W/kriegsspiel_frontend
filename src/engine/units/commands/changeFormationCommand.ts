@@ -1,7 +1,7 @@
 // units/commands/changeFormationCommand.ts
 import { BaseCommand } from "./baseCommand.ts";
 import type { BaseUnit } from "@/engine/units/baseUnit.ts";
-import { FormationType } from "@/engine";
+import type { FormationType } from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 
 const FORMATION_DURATION_MS = 60 * 1 // 1 игровых минут

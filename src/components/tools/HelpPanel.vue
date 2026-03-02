@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 
 import { getEnvMultipliers } from '@/engine/units/modifiers/UnitEnvModifiers'
 import { getTimeMultipliers } from '@/engine/units/modifiers/UnitTimeModifiers'
-import { FORMATION_STAT_MULTIPLIERS } from '@/engine/units/modifiers/UnitFormationModifiers'
+import { getFormationMultipliers } from '@/engine/units/modifiers/UnitFormationModifiers'
 import { getAbilityMultipliers } from '@/engine/units/modifiers/UnitAbilityModifiers'
 
 import type { StatKey } from '@/engine/units/baseUnit'
@@ -79,7 +79,7 @@ const weatherBlocks = computed(() =>
 )
 
 const formationBlocks = computed(() =>
-  Object.entries(FORMATION_STAT_MULTIPLIERS)
+  Object.entries(getFormationMultipliers())
     .filter(([, stats]) => Object.keys(stats).length > 0)
     .map(([key, stats]) => ({
       id: `formation:${key}`,

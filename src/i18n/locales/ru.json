@@ -382,7 +382,7 @@
       "title": "Ресурс-пак",
       "url": "URL ресурс-пака",
       "placeholder": "https://example.com/resourcepack.json",
-      "description": "JSON-файл с балансом / мультипликаторами (время, погода, юниты и т.д.)"
+      "description": "JSON-файл с балансом / модификаторами (время, погода, юниты и т.д.)"
     },
     "customMap": {
       "title": "Карта",

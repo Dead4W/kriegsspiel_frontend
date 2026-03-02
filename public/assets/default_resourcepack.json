@@ -118,7 +118,7 @@
         "title": "Infantry",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["double_time_move"],
-        "params": { "priorityTargets": 3, "renderIcon": "I" }
+        "params": { "priorityTargets": 3, "renderIcon": "I", "textureUrl": "/assets/units/infantry.png" }
       },
       {
         "id": "cavalry",
@@ -126,7 +126,7 @@
         "stats": { "maxHp": 64, "damage": 0.6, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["charge", "gallop", "throttle"],
         "defaultFormation": "onHorse",
-        "params": { "priorityTargets": 3, "renderIcon": "C" }
+        "params": { "priorityTargets": 3, "renderIcon": "C", "textureUrl": "/assets/units/cavalry.png" }
       },
       {
         "id": "artillery",
@@ -135,6 +135,7 @@
         "abilities": ["inaccuracy_fire", "throttle"],
         "params": {
           "renderIcon": "A",
+          "textureUrl": "/assets/units/artillery.png",
           "renderWidthMult": 1.15,
           "attackIgnoreHeightModifier": true,
           "attackIgnoreTargetEnvs": [
@@ -152,28 +153,28 @@
         "title": "Marines",
         "stats": { "maxHp": 64, "damage": 2, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 20 },
         "abilities": ["double_time_move"],
-        "params": { "moraleCheckMod": 2, "priorityTargets": 3, "renderIcon": "M" }
+        "params": { "moraleCheckMod": 2, "priorityTargets": 3, "renderIcon": "M", "textureUrl": "/assets/units/marine.png" }
       },
       {
         "id": "militia",
         "title": "Militia",
         "stats": { "maxHp": 64, "damage": 0.5, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 5 },
         "abilities": ["double_time_move"],
-        "params": { "moraleCheckMod": -2, "priorityTargets": 3, "renderIcon": "m" }
+        "params": { "moraleCheckMod": -2, "priorityTargets": 3, "renderIcon": "m", "textureUrl": "/assets/units/militia.png" }
       },
       {
         "id": "gatling",
         "title": "Gatling",
         "stats": { "maxHp": 64, "damage": 16, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": [],
-        "params": { "renderIcon": "G", "renderWidthMult": 1.05 }
+        "params": { "renderIcon": "G", "renderWidthMult": 1.05, "textureUrl": "/assets/units/gatling.png" }
       },
       {
         "id": "general",
         "title": "General",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
         "abilities": [],
-        "params": { "renderIcon": "★", "renderWidthMult": 1.1 }
+        "params": { "renderIcon": "★", "renderWidthMult": 1.1, "textureUrl": "/assets/units/general.png" }
       },
       {
         "id": "messenger",

@@ -68,8 +68,6 @@ async function initWorld(room: RoomData) {
   cleanup()
   emit('progress', 0)
 
-  preloadTextures()
-
   let defaultMapUrl =
     'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg'
   let defaultHeightMapUrl =
@@ -96,6 +94,7 @@ async function initWorld(room: RoomData) {
     (room.options?.[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] as string | undefined) ||
     defaultResourcePackUrl
   await loadResourcePack(selectedResourcePackUrl)
+  preloadTextures()
 
   const map: mapmeta = {
     imageUrl: room.options.mapUrl,

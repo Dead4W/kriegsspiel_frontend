@@ -7,6 +7,8 @@ const HomeView = () => import('@/views/HomeView.vue')
 const CreateRoomView = () => import('@/views/CreateRoomView.vue')
 const RoomView = () => import('@/views/RoomView.vue')
 const AboutView  = () => import('@/views/AboutView.vue')
+const CookiesView  = () => import('@/views/CookiesView.vue')
+const PrivacyView  = () => import('@/views/PrivacyView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 
 const supportedLocales = ['ru', 'en']
@@ -45,6 +47,16 @@ const router = createRouter({
           path: 'about',
           name: 'about',
           component: AboutView,
+        },
+        {
+          path: 'cookies',
+          name: 'cookies',
+          component: CookiesView,
+        },
+        {
+          path: 'privacy',
+          name: 'privacy',
+          component: PrivacyView,
         },
         {
           path: 'create',

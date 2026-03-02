@@ -15,6 +15,9 @@ const nickname = ref('')
 const loading = ref(false)
 const error = ref('')
 
+const COOKIE_CONSENT_KEY = 'cookie_consent_v1'
+const showCookieBanner = ref(false)
+
 useHead(() => ({
   title: t('seo.title'),
   htmlAttrs: {
@@ -138,6 +141,25 @@ async function register() {
 }
 
 onMounted(checkAuth)
+
+onMounted(() => {
+  try {
+    const v = localStorage.getItem(COOKIE_CONSENT_KEY)
+    showCookieBanner.value = !v
+  } catch {
+    showCookieBanner.value = true
+  }
+})
+
+function acceptCookies() {
+  localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted')
+  showCookieBanner.value = false
+}
+
+function dismissCookies() {
+  localStorage.setItem(COOKIE_CONSENT_KEY, 'dismissed')
+  showCookieBanner.value = false
+}
 </script>
 
 <template>
@@ -215,6 +237,38 @@ onMounted(checkAuth)
         >
           {{ loading ? '...' : t('continue') }}
         </button>
+      </div>
+    </div>
+
+    <div v-if="showCookieBanner && !showAuth" class="cookie-banner" role="dialog" aria-live="polite">
+      <div class="cookie-banner__inner">
+        <div class="cookie-banner__text">
+          {{ t('cookieBanner.text') }}
+          <span class="cookie-banner__links">
+            <router-link
+              class="cookie-banner__link"
+              :to="{ name: 'cookies', params: { locale: route.params.locale } }"
+            >
+              {{ t('cookieBanner.cookiesLink') }}
+            </router-link>
+            <span class="cookie-banner__sep">•</span>
+            <router-link
+              class="cookie-banner__link"
+              :to="{ name: 'privacy', params: { locale: route.params.locale } }"
+            >
+              {{ t('cookieBanner.privacyLink') }}
+            </router-link>
+          </span>
+        </div>
+
+        <div class="cookie-banner__actions">
+          <button class="cookie-banner__btn" @click="dismissCookies">
+            {{ t('cookieBanner.dismiss') }}
+          </button>
+          <button class="primary cookie-banner__btn cookie-banner__btn--primary" @click="acceptCookies">
+            {{ t('cookieBanner.accept') }}
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -353,5 +407,93 @@ h1 {
 .error {
   color: var(--danger);
   margin-bottom: 0.5rem;
+}
+
+.cookie-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  padding: 1rem;
+  background: rgba(2, 6, 23, 0.82);
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.cookie-banner__inner {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cookie-banner__text {
+  color: var(--text-muted);
+  line-height: 1.4;
+  font-size: 0.95rem;
+}
+
+.cookie-banner__links {
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
+.cookie-banner__link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.cookie-banner__link:hover {
+  color: var(--accent-hover);
+}
+
+.cookie-banner__sep {
+  margin: 0 0.5rem;
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.cookie-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.cookie-banner__btn {
+  padding: 0.75rem 1rem;
+  min-width: 140px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.25);
+  color: var(--text);
+}
+
+.cookie-banner__btn:hover {
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+.cookie-banner__btn--primary {
+  border: none;
+}
+
+@media (max-width: 720px) {
+  .cookie-banner__inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cookie-banner__actions {
+    justify-content: stretch;
+  }
+
+  .cookie-banner__btn {
+    width: 100%;
+  }
+
+  .cookie-banner__links {
+    white-space: normal;
+  }
 }
 </style>

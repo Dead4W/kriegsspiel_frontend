@@ -13,6 +13,54 @@
   "hotkey": "Hotkey",
   "about": "About project",
 
+  "cookieBanner": {
+    "text": "We use cookies to keep the site working and remember your preferences.",
+    "cookiesLink": "Cookies Policy",
+    "privacyLink": "Privacy Policy",
+    "accept": "OK",
+    "dismiss": "Not now"
+  },
+
+  "cookiesPolicy": {
+    "title": "Cookies Policy",
+    "description": "How we use cookies",
+    "intro": "This page explains what cookies are used for on KRIEGSSPIEL.",
+    "sections": {
+      "essential": {
+        "title": "Essential cookies",
+        "text": "These are required for core features (for example, authentication and basic navigation)."
+      },
+      "preferences": {
+        "title": "Preference cookies",
+        "text": "These help us remember settings such as language and interface preferences."
+      },
+      "control": {
+        "title": "How to control cookies",
+        "text": "You can clear or block cookies in your browser settings. Some features may stop working if you do."
+      }
+    }
+  },
+
+  "privacyPolicy": {
+    "title": "Privacy Policy",
+    "description": "How we handle data",
+    "intro": "This page describes what data we collect and how it is used.",
+    "sections": {
+      "dataWeCollect": {
+        "title": "Data we collect",
+        "text": "We may store a nickname, technical identifiers needed for the game session, and gameplay-related data."
+      },
+      "howWeUse": {
+        "title": "How we use data",
+        "text": "We use this data to provide gameplay, save preferences, and keep the service secure."
+      },
+      "storage": {
+        "title": "Storage",
+        "text": "Data may be stored in your browser (localStorage/cookies) and on our servers for the duration needed to operate the service."
+      }
+    }
+  },
+
   "notFound": {
     "title": "Page not found",
     "text": "The page you’re looking for doesn’t exist (or it was moved).",

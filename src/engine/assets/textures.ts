@@ -1,11 +1,12 @@
 import {unitType} from "@/engine";
 import { getUnitStringParam } from "@/engine/resourcePack/units.ts";
+import { resolveResourcePackUrl } from "@/engine/assets/resourcepack.ts";
 
 const textureCache = new Map<string, HTMLImageElement>()
 
 export function getUnitTexture(type: string): HTMLImageElement {
-  const urlFromPack = getUnitStringParam(type, 'textureUrl')
-  return getTexture(urlFromPack || `/assets/units/${type}.png`)
+  const urlFromPack = getUnitStringParam(type, 'textureUrl').trim()
+  return getTexture(urlFromPack ? resolveResourcePackUrl(urlFromPack) : ``)
 }
 
 export function getCursorTexture(): HTMLImageElement {

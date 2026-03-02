@@ -121,6 +121,7 @@ export type ResourcePack = {
 
 let cached: ResourcePack | null = null
 let inFlight: Promise<ResourcePack | null> | null = null
+let loadedFromUrlAbs: string | null = null
 const titlesApplied = new WeakSet<object>()
 
 function applyTitlesOnce(pack: ResourcePack | null) {
@@ -196,11 +197,39 @@ export function getResourcePack(): ResourcePack | null {
   return pack
 }
 
+export function getLoadedResourcePackUrl(): string | null {
+  return loadedFromUrlAbs
+}
+
+function isProbablyAbsoluteUrl(url: string): boolean {
+  return /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url)
+}
+
+/**
+ * Resolves a URL/relative-path against the last loaded resourcepack URL.
+ * - Keeps absolute URLs (https:, data:, blob:, etc.) untouched
+ * - Keeps absolute site paths ("/...") untouched
+ * - Resolves relative paths ("units/infantry.png") relative to the resourcepack JSON URL
+ */
+export function resolveResourcePackUrl(urlOrPath: string): string {
+  const v = String(urlOrPath ?? '').trim()
+  if (!v) return ''
+  if (isProbablyAbsoluteUrl(v)) return v
+  if (v.startsWith('/')) return v
+  if (!loadedFromUrlAbs) return v
+  try {
+    return new URL(v, loadedFromUrlAbs).toString()
+  } catch {
+    return v
+  }
+}
+
 export async function loadResourcePack(url: string): Promise<ResourcePack | null> {
   if (inFlight) return inFlight
 
   inFlight = (async () => {
     try {
+      loadedFromUrlAbs = new URL(url, window.location.href).toString()
       const res = await fetch(url)
       if (!res.ok) throw new Error(`resourcepack_load_failed:${res.status}`)
       const json = await res.json()
@@ -210,6 +239,7 @@ export async function loadResourcePack(url: string): Promise<ResourcePack | null
       return cached
     } catch {
       cached = null
+      loadedFromUrlAbs = null
       return null
     } finally {
       inFlight = null

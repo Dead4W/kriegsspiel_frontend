@@ -1,5 +1,5 @@
 import type {world} from '@/engine/world/world'
-import {WeatherEnum} from '@/engine/units/modifiers/UnitWeatherModifiers'
+import { getWeatherEffect } from '@/engine/resourcePack/weather'
 
 import {drawFog} from './weathers/fog'
 import {drawClouds} from './weathers/clouds'
@@ -17,21 +17,11 @@ export class WeatherLayer {
 
     ctx.save()
 
-    switch (w.weather.value) {
-      case WeatherEnum.HeavyFog:
-        drawFog(ctx, cam, time, 1.2)
-        break
-      case WeatherEnum.Fog:
-        drawFog(ctx, cam, time, 1)
-        break
-
-      case WeatherEnum.Cloudy:
-        drawClouds(
-          ctx,
-          cam,
-          time
-        )
-        break
+    const effect = getWeatherEffect(w.weather.value)
+    if (effect?.type === 'fog') {
+      drawFog(ctx, cam, time, effect.mult ?? 1)
+    } else if (effect?.type === 'clouds') {
+      drawClouds(ctx, cam, time)
     }
 
     ctx.restore()

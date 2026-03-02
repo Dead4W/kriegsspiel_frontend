@@ -22,12 +22,16 @@ import {
 } from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {translate} from '@/i18n'
-import {TIME_MULTIPLIERS, TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
+import {getTimeMultipliers} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
-import {WEATHER_MULTIPLIERS, WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
 import type { MoveCommandState } from './commands/moveCommand';
+import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
+import {type Weather} from "@/engine/resourcePack/weather.ts";
+import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
+
+
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
 
@@ -36,7 +40,7 @@ export interface StatModifierInfo {
   percent: number
   sources: {
     type: 'env' | 'formation' | 'ability' | 'time' | 'weather',
-    state: UnitEnvironmentState | FormationType | UnitAbilityType | TimeOfDay | WeatherEnum,
+    state: UnitEnvironmentState | FormationType | UnitAbilityType | TimeOfDay | Weather,
     multiplier: number
   }[]
 }
@@ -479,9 +483,10 @@ export abstract class BaseUnit {
     }
 
     // time
-    if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.TIME_MODIFIERS]) {
+    if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.TIME_MODIFIERS] && getTimeMultipliers()) {
       const timeOfDay = window.ROOM_WORLD.getTimeOfDay()
-      const m = TIME_MULTIPLIERS[timeOfDay]?.[key]
+      const timeMultipliers = getTimeMultipliers()
+      const m = timeMultipliers[timeOfDay]?.[key] ?? 1
       if (m && m !== 1) {
         total *= m
         sources.push({ type: 'time', state: timeOfDay, multiplier: m })
@@ -491,7 +496,7 @@ export abstract class BaseUnit {
     // weather
     if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]) {
       const weather = window.ROOM_WORLD.weather.value
-      const weatherMul = WEATHER_MULTIPLIERS[weather]?.[key]
+      const weatherMul = getWeatherMultipliers()[weather]?.[key]
       if (weatherMul && weatherMul !== 1) {
         total *= weatherMul
         sources.push({ type: 'weather', state: weather, multiplier: weatherMul })

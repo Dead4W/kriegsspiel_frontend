@@ -1,0 +1,72 @@
+{
+  "timeOfDay": {
+    "segments": [
+      { "id": "morning", "start": 9, "end": 12, "multipliers": {} },
+      { "id": "day", "start": 12, "end": 18, "multipliers": {} },
+      {
+        "id": "evening",
+        "start": 18,
+        "end": 22,
+        "multipliers": {
+          "visionRange": 0.85,
+          "attackRange": 0.9
+        }
+      },
+      {
+        "id": "night",
+        "start": 22,
+        "end": 9,
+        "multipliers": {
+          "visionRange": 0.6,
+          "attackRange": 0.75,
+          "speed": 0.9
+        }
+      }
+    ]
+  },
+  "weather": {
+    "conditions": [
+      { "id": "clear", "multipliers": {} },
+      { "id": "cloudy", "multipliers": {}, "effect": { "type": "clouds" } },
+      {
+        "id": "rain",
+        "multipliers": {
+          "visionRange": 0.85,
+          "attackRange": 0.9,
+          "speed": 0.95
+        }
+      },
+      {
+        "id": "heavy_rain",
+        "multipliers": {
+          "visionRange": 0.7,
+          "attackRange": 0.8,
+          "speed": 0.85
+        }
+      },
+      {
+        "id": "fog",
+        "multipliers": {
+          "visionRange": 0.5,
+          "attackRange": 0.6
+        },
+        "effect": { "type": "fog", "mult": 1 }
+      },
+      {
+        "id": "heavy_fog",
+        "multipliers": {
+          "visionRange": 0.15,
+          "attackRange": 0.25
+        },
+        "effect": { "type": "fog", "mult": 1.2 }
+      },
+      {
+        "id": "snow",
+        "multipliers": {
+          "visionRange": 0.8,
+          "speed": 0.85
+        }
+      }
+    ]
+  }
+}

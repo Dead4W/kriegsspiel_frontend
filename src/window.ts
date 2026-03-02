@@ -19,5 +19,6 @@ declare global {
       red_key: string,
       blue_key: string,
     }
+    RESOURCEPACK: any
   }
 }

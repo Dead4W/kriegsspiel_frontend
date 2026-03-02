@@ -16,8 +16,9 @@ import type {OutMessage} from "@/api/socket.ts";
 import {type Ref, ref, watch} from "vue";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
-import {TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
-import {WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
+import {type TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
+import { getTimeOfDayIdByHour } from "@/engine/resourcePack/timeOfDay.ts";
+import type {Weather} from "@/engine/resourcePack/weather.ts";
 
 type worldevents = {
   changed: { reason: string }
@@ -38,8 +39,8 @@ export class world {
 
   events = new emitter<worldevents>()
 
-  weather: Ref<WeatherEnum> = ref(WeatherEnum.Clear);
-  newWeather: Ref<WeatherEnum> = ref(WeatherEnum.Clear);
+  weather: Ref<Weather> = ref('clear');
+  newWeather: Ref<Weather> = ref('clear');
 
   map: mapmeta
 
@@ -212,11 +213,7 @@ export class world {
   getTimeOfDay(): TimeOfDay {
     const date = new Date(this.time.replace(' ', 'T'))
     const h = date.getHours()
-
-    if (h >= 9 && h < 12) return TimeOfDay.Morning
-    if (h >= 12 && h < 18) return TimeOfDay.Day
-    if (h >= 18 && h < 22) return TimeOfDay.Evening
-    return TimeOfDay.Night
+    return getTimeOfDayIdByHour(h)
   }
 
   getHeightAt(pos: vec2) {

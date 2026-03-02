@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import {computed, watch} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {WeatherEnum} from '@/engine/units/modifiers/UnitWeatherModifiers.ts'
 import {Team} from '@/enums/teamKeys.ts'
 import {RoomGameStage} from "@/enums/roomStage.ts";
+import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 
 const { t } = useI18n()
 
@@ -17,7 +17,7 @@ watch(window.ROOM_WORLD.newWeather, () => {
   window.ROOM_WORLD.weather.value = window.ROOM_WORLD.newWeather.value;
 })
 
-const options = Object.values(WeatherEnum)
+const options = Object.keys(getWeatherMultipliers() ?? [])
 </script>
 
 <template>

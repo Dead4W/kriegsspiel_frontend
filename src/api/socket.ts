@@ -6,14 +6,14 @@ import type {CursorObject} from "@/engine/world/cursorregistry.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import type {unsub} from "@/engine/events.ts";
-import type {WeatherEnum} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
 import type {PaintStroke} from "@/engine/types/paintTypes.ts";
 import type {vec2} from "@/engine/types.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
+import type {Weather} from "@/engine/resourcePack/weather.ts";
 
 export type OutMessage =
-  | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: WeatherEnum} }
+  | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: Weather} }
   | { type: 'unit'; data: unitstate; frames?: MoveFrame[] }
   | { type: 'unit-remove'; data: uuid[] }
   | { type: 'paint_add'; data: PaintStroke }
@@ -27,7 +27,7 @@ export type OutMessage =
   | { type: 'set_stage'; data: RoomGameStage }
   | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
   | { type: 'direct_view'; team: Team; data: unitstate[] }
-  | { type: 'weather'; data: WeatherEnum }
+  | { type: 'weather'; data: Weather }
   | { type: 'log'; data: BattleLogEntry }
 
 export type InMessage =

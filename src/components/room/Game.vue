@@ -20,6 +20,7 @@ import {
 
 import { buildForestMap } from '@/engine/assets/mapforest.ts'
 import { preloadTextures } from '@/engine/assets/textures.ts'
+import { loadResourcePack } from '@/engine/assets/resourcepack.ts'
 
 const props = defineProps<{
   room: RoomData
@@ -73,11 +74,14 @@ async function initWorld(room: RoomData) {
   let defaultHeightMapUrl =
     'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png'
   let defaultMetersPerPixel = 5.38
+  let defaultResourcePackUrl =
+    'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json'
 
   if (window.location.hostname === 'localhost') {
     room.options.mapUrl = ''
     defaultMapUrl = '/assets/default_map.jpeg'
     defaultHeightMapUrl = '/assets/default_height_map.png'
+    defaultResourcePackUrl = '/assets/default_resourcepack.json'
   }
 
   if (!room.options.mapUrl) {
@@ -85,6 +89,8 @@ async function initWorld(room: RoomData) {
     room.options.heightMapUrl = defaultHeightMapUrl
     room.options.metersPerPixel = defaultMetersPerPixel
   }
+
+  await loadResourcePack(defaultResourcePackUrl)
 
   const map: mapmeta = {
     imageUrl: room.options.mapUrl,

@@ -27,14 +27,22 @@ useHead(() => ({
         <h2>{{ t('aboutSections.whatIs.title') }}</h2>
         <p class="text">
           {{ t('aboutSections.whatIs.text') }}
-<!--          <br />-->
-<!--          <a-->
-<!--            href="https://example.org"-->
-<!--            target="_blank"-->
-<!--            rel="noopener noreferrer"-->
-<!--          >-->
-<!--            {{ t('aboutSections.whatIs.bookLink') }}-->
-<!--          </a>-->
+          <br />
+          <a
+            href="https://example.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {{ t('aboutSections.whatIs.bookLink') }}
+          </a>
+          <br />
+          <a
+            href="https://www.youtube.com/watch?v=HkH2t-Nyt04"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {{ t('aboutSections.whatIs.tutorialLink') }}
+          </a>
         </p>
       </section>
 

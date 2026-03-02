@@ -3,12 +3,12 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { ENV_MULTIPLIERS } from '@/engine/units/modifiers/UnitEnvModifiers'
-import { TIME_MULTIPLIERS } from '@/engine/units/modifiers/UnitTimeModifiers'
-import { WEATHER_MULTIPLIERS } from '@/engine/units/modifiers/UnitWeatherModifiers'
+import { getTimeMultipliers } from '@/engine/units/modifiers/UnitTimeModifiers'
 import { FORMATION_STAT_MULTIPLIERS } from '@/engine/units/modifiers/UnitFormationModifiers'
 import { ABILITY_MULTIPLIERS } from '@/engine/units/modifiers/UnitAbilityModifiers'
 
-import type { StatKey, UnitStats } from '@/engine/units/baseUnit'
+import type { StatKey } from '@/engine/units/baseUnit'
+import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 
 const { t } = useI18n()
 
@@ -71,11 +71,11 @@ const environmentBlocks = computed(() =>
 )
 
 const timeBlocks = computed(() =>
-  generateFromRecord(TIME_MULTIPLIERS, 'time')
+  generateFromRecord(getTimeMultipliers(), 'time')
 )
 
 const weatherBlocks = computed(() =>
-  generateFromRecord(WEATHER_MULTIPLIERS, 'weather')
+  generateFromRecord(getWeatherMultipliers(), 'weather')
 )
 
 const formationBlocks = computed(() =>

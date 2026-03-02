@@ -26,11 +26,17 @@
     "ogDescription": "A tactical war strategy game inspired by the classic Kriegsspiel."
   },
 
+  "aboutSeo": {
+    "title": "About — KRIEGSSPIEL",
+    "description": "Learn what Kriegsspiel is, read the source code, and find helpful links."
+  },
+
   "aboutSections": {
     "whatIs": {
       "title": "What is Kriegsspiel",
       "text": "Kriegsspiel is a long-form war game where players make decisions with limited and incomplete information. The focus is on thinking, analysis, and uncertainty rather than mechanics.",
-      "bookLink": "Read more in the book about Kriegsspiel"
+      "bookLink": "Read more in the book about Kriegsspiel",
+      "tutorialLink": "Simple tutorial (YouTube)"
     },
     "story": {
       "title": "Project story",

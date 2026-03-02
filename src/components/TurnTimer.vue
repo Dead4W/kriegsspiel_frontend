@@ -6,7 +6,7 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import type {unitTeam} from "@/engine";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys";
-import type {TimeOfDay} from "@/engine/units/modifiers/UnitTimeModifiers.ts";
+import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {useI18n} from 'vue-i18n'
 import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
 import {MoveCommand, type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";

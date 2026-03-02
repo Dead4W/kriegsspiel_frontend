@@ -384,7 +384,7 @@
   },
 
   "weather": {
-    "title": "Погода",
+    "title": "Weather",
     "clear": "Clear",
     "cloudy": "Cloudy",
     "rain": "Rain",

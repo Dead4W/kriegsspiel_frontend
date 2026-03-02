@@ -19,6 +19,8 @@ export type AbilityParams = {
 
 export type ResourcePackAbility = {
   id: Ability | string
+  /** Optional display title (merged into i18n at resourcepack load). */
+  title?: string
   multipliers?: AbilityStatMultiplier
   params?: AbilityParams
 }
@@ -27,6 +29,7 @@ function normalizeAbility(raw: unknown): ResourcePackAbility | null {
   if (!isObject(raw)) return null
   const id = String(raw.id ?? '')
   if (!id) return null
+  const title = typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined
 
   let multipliers: ResourcePackAbility['multipliers'] | undefined
   if (isObject(raw.multipliers)) {
@@ -49,6 +52,7 @@ function normalizeAbility(raw: unknown): ResourcePackAbility | null {
 
   return {
     id: id as Ability,
+    title,
     multipliers,
     params,
   }

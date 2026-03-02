@@ -14,6 +14,8 @@ export type UnitTypeId = string
 
 export type ResourcePackUnitType = {
   id: UnitTypeId
+  /** Optional display title (merged into i18n at resourcepack load). */
+  title?: string
   stats: UnitStats
   abilities: UnitAbilityType[]
   defaultFormation?: FormationType
@@ -56,6 +58,7 @@ function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {
   const id = String((raw as any).id ?? '')
   if (!id) return null
 
+  const title = typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined
   const stats = normalizeStats((raw as any).stats)
   if (!stats) return null
 
@@ -65,6 +68,7 @@ function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {
 
   return {
     id,
+    title,
     stats,
     abilities,
     defaultFormation,

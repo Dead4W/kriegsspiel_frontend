@@ -16,6 +16,8 @@ export type EnvironmentStateId = string
 
 export type ResourcePackEnvironmentState = {
   id: EnvironmentStateId
+  /** Optional display title (merged into i18n at resourcepack load). */
+  title?: string
   icon?: string
   isRoute?: boolean
   params?: Record<string, unknown>
@@ -63,6 +65,7 @@ function normalizeEnvironmentState(raw: unknown): ResourcePackEnvironmentState |
   if (!id) return null
   return {
     id,
+    title: typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined,
     icon: typeof (raw as any).icon === 'string' ? (raw as any).icon : undefined,
     isRoute: (raw as any).isRoute === true,
     params: isObject((raw as any).params) ? ((raw as any).params as Record<string, unknown>) : undefined,

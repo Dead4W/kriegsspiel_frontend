@@ -12,6 +12,8 @@ export type FormationStatMultiplier = Partial<Record<StatKey, number>>
 
 export type ResourcePackFormationType = {
   id: FormationType | string
+  /** Optional display title (merged into i18n at resourcepack load). */
+  title?: string
   icon?: string
   multipliers?: Record<string, unknown>
 }
@@ -41,6 +43,7 @@ function normalizeFormationType(raw: unknown): ResourcePackFormationType | null 
   if (!id) return null
   return {
     id,
+    title: typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined,
     icon: typeof (raw as any).icon === 'string' ? (raw as any).icon : undefined,
     multipliers: isObject((raw as any).multipliers) ? (raw as any).multipliers : undefined,
   }

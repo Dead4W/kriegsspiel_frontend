@@ -1,10 +1,11 @@
 {
   "timeOfDay": {
     "segments": [
-      { "id": "morning", "start": 9, "end": 11, "multipliers": {} },
-      { "id": "day", "start": 12, "end": 18, "multipliers": {} },
+      { "id": "morning", "title": "Morning", "start": 9, "end": 11, "multipliers": {} },
+      { "id": "day", "title": "Day", "start": 12, "end": 18, "multipliers": {} },
       {
         "id": "evening",
+        "title": "Evening",
         "start": 19,
         "end": 22,
         "multipliers": {
@@ -14,6 +15,7 @@
       },
       {
         "id": "night",
+        "title": "Night",
         "start": 23,
         "end": 8,
         "multipliers": {
@@ -26,10 +28,11 @@
   },
   "weather": {
     "conditions": [
-      { "id": "clear", "multipliers": {} },
-      { "id": "cloudy", "multipliers": {}, "effect": { "type": "clouds" } },
+      { "id": "clear", "title": "Clear", "multipliers": {} },
+      { "id": "cloudy", "title": "Cloudy", "multipliers": {}, "effect": { "type": "clouds" } },
       {
         "id": "rain",
+        "title": "Rain",
         "multipliers": {
           "visionRange": 0.85,
           "attackRange": 0.9,
@@ -38,6 +41,7 @@
       },
       {
         "id": "heavy_rain",
+        "title": "Heavy rain",
         "multipliers": {
           "visionRange": 0.7,
           "attackRange": 0.8,
@@ -46,6 +50,7 @@
       },
       {
         "id": "fog",
+        "title": "Fog",
         "multipliers": {
           "visionRange": 0.5,
           "attackRange": 0.6
@@ -54,6 +59,7 @@
       },
       {
         "id": "heavy_fog",
+        "title": "Heavy fog",
         "multipliers": {
           "visionRange": 0.15,
           "attackRange": 0.25
@@ -62,6 +68,7 @@
       },
       {
         "id": "snow",
+        "title": "Snowfall",
         "multipliers": {
           "visionRange": 0.8,
           "speed": 0.85
@@ -71,49 +78,51 @@
   },
   "environment": {
     "states": [
-      { "id": "on_road", "icon": "👣", "isRoute": true, "multipliers": { "speed": 1 } },
-      { "id": "on_good_road", "icon": "🛣️", "isRoute": true, "multipliers": { "speed": 1.1 } },
-      { "id": "in_forest", "icon": "🌲", "isRoute": true, "multipliers": { "takeDamageMod": 0.5, "speed": 0.5 }, "byTypes": { "artillery": { "speed": 0.25 } } },
-      { "id": "in_field", "icon": "🌾", "isRoute": true, "multipliers": { "speed": 1 } },
-      { "id": "in_plain_field", "icon": "🚜", "isRoute": true, "multipliers": { "speed": 0.75 }, "byTypes": { "artillery": { "speed": 0.5 } } },
-      { "id": "in_soft_field", "icon": "🟤", "isRoute": true, "multipliers": { "speed": 0.5 }, "byTypes": { "artillery": { "speed": 0.25 } } },
-      { "id": "in_swamp_or_dirty", "icon": "💩", "isRoute": true, "multipliers": { "takeDamageMod": 0.25, "speed": 0.25 }, "byTypes": { "artillery": { "speed": 0.1 } } },
-      { "id": "in_house", "icon": "🏢", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.25 } },
-      { "id": "in_cover_house", "icon": "🧱", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.06 } },
-      { "id": "in_brench", "icon": "🚧", "multipliers": { "takeDamageMod": 0.9 } },
-      { "id": "in_cover_trenches", "icon": "🪜", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.12 } },
-      { "id": "in_water", "icon": "🌊", "multipliers": { "takeDamageMod": 0.4 }, "byTypes": { "artillery": { "speed": 0.1 } } }
+      { "id": "on_road", "title": "Road", "icon": "👣", "isRoute": true, "multipliers": { "speed": 1 } },
+      { "id": "on_good_road", "title": "Good road", "icon": "🛣️", "isRoute": true, "multipliers": { "speed": 1.1 } },
+      { "id": "in_forest", "title": "Forest", "icon": "🌲", "isRoute": true, "multipliers": { "takeDamageMod": 0.5, "speed": 0.5 }, "byTypes": { "artillery": { "speed": 0.25 } } },
+      { "id": "in_field", "title": "Field", "icon": "🌾", "isRoute": true, "multipliers": { "speed": 1 } },
+      { "id": "in_plain_field", "title": "Plowed field", "icon": "🚜", "isRoute": true, "multipliers": { "speed": 0.75 }, "byTypes": { "artillery": { "speed": 0.5 } } },
+      { "id": "in_soft_field", "title": "Soft ground", "icon": "🟤", "isRoute": true, "multipliers": { "speed": 0.5 }, "byTypes": { "artillery": { "speed": 0.25 } } },
+      { "id": "in_swamp_or_dirty", "title": "Swamp / mud", "icon": "💩", "isRoute": true, "multipliers": { "takeDamageMod": 0.25, "speed": 0.25 }, "byTypes": { "artillery": { "speed": 0.1 } } },
+      { "id": "in_house", "title": "House", "icon": "🏢", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.25 } },
+      { "id": "in_cover_house", "title": "Covered house", "icon": "🧱", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.06 } },
+      { "id": "in_brench", "title": "Behind fence", "icon": "🚧", "multipliers": { "takeDamageMod": 0.9 } },
+      { "id": "in_cover_trenches", "title": "Trenches", "icon": "🪜", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.12 } },
+      { "id": "in_water", "title": "Water", "icon": "🌊", "multipliers": { "takeDamageMod": 0.4 }, "byTypes": { "artillery": { "speed": 0.1 } } }
     ]
   },
   "formations": {
     "types": [
-      { "id": "default", "multipliers": {} },
-      { "id": "column", "icon": "C", "multipliers": { "takeDamageMod": 16.0 } },
-      { "id": "springing", "icon": "S", "multipliers": { "takeDamageMod": 1.2, "speed": 0.5 } },
-      { "id": "kneelingVolley", "icon": "K", "multipliers": { "takeDamageMod": 2.0, "damage": 0.9 } },
-      { "id": "forceWalking", "icon": "F", "multipliers": { "takeDamageMod": 4.0, "damage": 0.8 } },
-      { "id": "onHorse", "icon": "H", "multipliers": { "takeDamageMod": 8.0, "damage": 0.12, "speed": 1.25 } }
+      { "id": "default", "title": "Default", "multipliers": {} },
+      { "id": "column", "title": "Column", "icon": "C", "multipliers": { "takeDamageMod": 16.0 } },
+      { "id": "springing", "title": "Skirmish advance", "icon": "S", "multipliers": { "takeDamageMod": 1.2, "speed": 0.5 } },
+      { "id": "kneelingVolley", "title": "Kneeling volley", "icon": "K", "multipliers": { "takeDamageMod": 2.0, "damage": 0.9 } },
+      { "id": "forceWalking", "title": "Forced march", "icon": "F", "multipliers": { "takeDamageMod": 4.0, "damage": 0.8 } },
+      { "id": "onHorse", "title": "On horseback", "icon": "H", "multipliers": { "takeDamageMod": 8.0, "damage": 0.12, "speed": 1.25 } }
     ]
   },
   "abilities": {
     "types": [
-      { "id": "charge", "multipliers": { "speed": 5, "fatigue": 4 } },
-      { "id": "double_time_move", "multipliers": { "speed": 2, "fatigue": 2 } },
-      { "id": "gallop", "multipliers": { "speed": 4, "fatigue": 3 } },
-      { "id": "inaccuracy_fire", "multipliers": {}, "params": { "radius": 1 } },
-      { "id": "throttle", "multipliers": { "speed": 2, "fatigue": 2.5 } }
+      { "id": "charge", "title": "Charge", "multipliers": { "speed": 5, "fatigue": 4 } },
+      { "id": "double_time_move", "title": "Double time", "multipliers": { "speed": 2, "fatigue": 2 } },
+      { "id": "gallop", "title": "Gallop", "multipliers": { "speed": 4, "fatigue": 3 } },
+      { "id": "inaccuracy_fire", "title": "Area fire", "multipliers": {}, "params": { "radius": 1 } },
+      { "id": "throttle", "title": "Sprint", "multipliers": { "speed": 2, "fatigue": 2.5 } }
     ]
   },
   "units": {
     "types": [
       {
         "id": "infantry",
+        "title": "Infantry",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["double_time_move"],
         "params": { "priorityTargets": 3, "renderIcon": "I" }
       },
       {
         "id": "cavalry",
+        "title": "Cavalry",
         "stats": { "maxHp": 64, "damage": 0.6, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["charge", "gallop", "throttle"],
         "defaultFormation": "onHorse",
@@ -121,6 +130,7 @@
       },
       {
         "id": "artillery",
+        "title": "Artillery",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 4500, "visionRange": 1000, "ammoMax": 32 },
         "abilities": ["inaccuracy_fire", "throttle"],
         "params": {
@@ -139,30 +149,35 @@
       },
       {
         "id": "marine",
+        "title": "Marines",
         "stats": { "maxHp": 64, "damage": 2, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 20 },
         "abilities": ["double_time_move"],
         "params": { "moraleCheckMod": 2, "priorityTargets": 3, "renderIcon": "M" }
       },
       {
         "id": "militia",
+        "title": "Militia",
         "stats": { "maxHp": 64, "damage": 0.5, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 5 },
         "abilities": ["double_time_move"],
         "params": { "moraleCheckMod": -2, "priorityTargets": 3, "renderIcon": "m" }
       },
       {
         "id": "gatling",
+        "title": "Gatling",
         "stats": { "maxHp": 64, "damage": 16, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": [],
         "params": { "renderIcon": "G", "renderWidthMult": 1.05 }
       },
       {
         "id": "general",
+        "title": "General",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
         "abilities": [],
         "params": { "renderIcon": "★", "renderWidthMult": 1.1 }
       },
       {
         "id": "messenger",
+        "title": "Messenger",
         "stats": { "maxHp": 1, "damage": 0.01, "speed": 400, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
         "abilities": [],
         "params": { "renderIcon": "✉" }

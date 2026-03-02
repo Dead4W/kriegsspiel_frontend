@@ -20,6 +20,8 @@ export type ResourcePackWeatherEffect =
 
 export type ResourcePackWeatherCondition = {
   id: Weather
+  /** Optional display title (merged into i18n at resourcepack load). */
+  title?: string
   multipliers?: WeatherStatMultiplier
   effect?: ResourcePackWeatherEffect
 }
@@ -46,6 +48,7 @@ function normalizeCondition(raw: unknown): ResourcePackWeatherCondition | null {
 
   const id = String(raw.id ?? '')
   if (!id) return null
+  const title = typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined
 
   let multipliers: ResourcePackWeatherCondition['multipliers'] | undefined
   if (isObject(raw.multipliers)) {
@@ -60,7 +63,7 @@ function normalizeCondition(raw: unknown): ResourcePackWeatherCondition | null {
 
   const effect = normalizeEffect(raw.effect) ?? undefined
 
-  return { id, multipliers, effect }
+  return { id, title, multipliers, effect }
 }
 
 export function getWeatherConditions(

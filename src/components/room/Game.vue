@@ -83,6 +83,7 @@ async function initWorld(room: RoomData) {
     defaultMapUrl = '/assets/default_map.jpeg'
     defaultHeightMapUrl = '/assets/default_height_map.png'
     defaultResourcePackUrl = '/assets/default_resourcepack.json'
+    room.options[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] = defaultResourcePackUrl
   }
 
   if (!room.options.mapUrl) {

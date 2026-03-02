@@ -10,6 +10,8 @@ export type TimeOfDay = string;
 
 export type ResourcePackTimeOfDaySegment = SegmentStartEnd & {
   id: TimeOfDay
+  /** Optional display title (merged into i18n at resourcepack load). */
+  title?: string
   multipliers?: modifiersByKeys
 }
 
@@ -18,6 +20,7 @@ function normalizeSegment(raw: unknown): ResourcePackTimeOfDaySegment | null {
 
   const id = String(raw.id ?? '')
   if (!id) return null
+  const title = typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined
 
   const start = toFiniteNumber(raw.start)
   const end = toFiniteNumber(raw.end)
@@ -39,7 +42,7 @@ function normalizeSegment(raw: unknown): ResourcePackTimeOfDaySegment | null {
     multipliers = groups
   }
 
-  return { id, start, end, multipliers }
+  return { id, title, start, end, multipliers }
 }
 
 export function getTimeOfDaySegments(pack: ResourcePack | null = getResourcePack()): ResourcePackTimeOfDaySegment[] {

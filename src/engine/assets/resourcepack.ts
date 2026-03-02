@@ -8,6 +8,7 @@ import {
   normalizeDistanceModifiers,
   type ResourcePackDistanceModifiers,
 } from "@/engine/resourcePack/distanceModifiers.ts";
+import { applyResourcePackTitles } from "@/engine/resourcePack/title.ts";
 
 
 export type SegmentStartEnd = {
@@ -24,17 +25,23 @@ export type ResourcePackAngleModifier = {
 
 export type ResourcePackAbilityType = {
   id: UnitAbilityType | string
+  /** Optional display title (merged into i18n at load). */
+  title?: string
   multipliers?: AbilityStatMultiplier
   params?: Record<string, unknown>
 }
 
 export type ResourcePackFormationType = {
   id: string
+  /** Optional display title (merged into i18n at load). */
+  title?: string
   multipliers?: Record<string, unknown>
 }
 
 export type ResourcePackUnitType = {
   id: unitType | string
+  /** Optional display title (merged into i18n at load). */
+  title?: string
   stats: UnitStats
   abilities?: UnitAbilityType[]
   defaultFormation?: FormationType
@@ -43,6 +50,8 @@ export type ResourcePackUnitType = {
 
 export type ResourcePackEnvironmentState = {
   id: string
+  /** Optional display title (merged into i18n at load). */
+  title?: string
   icon?: string
   isRoute?: boolean
   params?: Record<string, unknown>
@@ -112,6 +121,14 @@ export type ResourcePack = {
 
 let cached: ResourcePack | null = null
 let inFlight: Promise<ResourcePack | null> | null = null
+const titlesApplied = new WeakSet<object>()
+
+function applyTitlesOnce(pack: ResourcePack | null) {
+  if (!pack || typeof pack !== 'object') return
+  if (titlesApplied.has(pack as unknown as object)) return
+  applyResourcePackTitles(pack)
+  titlesApplied.add(pack as unknown as object)
+}
 
 function normalizeAngleModifiers(raw: unknown): ResourcePackAngleModifier[] {
   if (!Array.isArray(raw)) return []
@@ -174,7 +191,9 @@ function normalizePack(raw: unknown): ResourcePack {
 }
 
 export function getResourcePack(): ResourcePack | null {
-  return window.RESOURCEPACK ?? cached
+  const pack = window.RESOURCEPACK ?? cached
+  applyTitlesOnce(pack)
+  return pack
 }
 
 export async function loadResourcePack(url: string): Promise<ResourcePack | null> {
@@ -187,6 +206,7 @@ export async function loadResourcePack(url: string): Promise<ResourcePack | null
       const json = await res.json()
       cached = normalizePack(json)
       window.RESOURCEPACK = cached
+      applyTitlesOnce(cached)
       return cached
     } catch {
       cached = null

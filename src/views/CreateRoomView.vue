@@ -182,6 +182,14 @@ async function createRoom() {
 
               <div class="field">
                 <label>{{ t('settings.customMap.heightMapUrl') }}</label>
+                <a
+                  class="help-link"
+                  href="https://github.com/Dead4W/kriegsspiel_backend/blob/main/helpers/generate_height_map.py"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  generate_height_map.py <span class="help-link__icon" aria-hidden="true">↗</span>
+                </a>
                 <input v-model="customHeightMapUrl" placeholder="https://example.com/height_map.jpeg" @input="applyMapSettings" />
               </div>
 
@@ -321,6 +329,40 @@ label {
   font-size: 0.85rem;
   margin-bottom: 0.3rem;
   color: var(--text-soft);
+}
+
+.help-link {
+  align-self: flex-start;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.1;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.help-link:hover {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.help-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.help-link__icon {
+  opacity: 0.85;
+  font-size: 0.95em;
 }
 
 .advanced-toggle {

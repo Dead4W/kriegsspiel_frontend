@@ -2,10 +2,10 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { ENV_MULTIPLIERS } from '@/engine/units/modifiers/UnitEnvModifiers'
+import { getEnvMultipliers } from '@/engine/units/modifiers/UnitEnvModifiers'
 import { getTimeMultipliers } from '@/engine/units/modifiers/UnitTimeModifiers'
 import { FORMATION_STAT_MULTIPLIERS } from '@/engine/units/modifiers/UnitFormationModifiers'
-import { ABILITY_MULTIPLIERS } from '@/engine/units/modifiers/UnitAbilityModifiers'
+import { getAbilityMultipliers } from '@/engine/units/modifiers/UnitAbilityModifiers'
 
 import type { StatKey } from '@/engine/units/baseUnit'
 import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
@@ -54,7 +54,7 @@ function generateFromRecord(
 /* ===== blocks ===== */
 
 const environmentBlocks = computed(() =>
-  Object.entries(ENV_MULTIPLIERS)
+  Object.entries(getEnvMultipliers())
     .filter(([, data]) =>
       Object.keys(data).some(k => k !== 'byTypes')
     )
@@ -92,7 +92,7 @@ const formationBlocks = computed(() =>
 )
 
 const abilityBlocks = computed(() =>
-  generateFromRecord(ABILITY_MULTIPLIERS, 'ability')
+  generateFromRecord(getAbilityMultipliers(), 'ability')
 )
 
 /* ===== categories ===== */

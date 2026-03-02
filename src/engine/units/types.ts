@@ -16,12 +16,6 @@ export type uuid = string
 export type unitTeam = 'red' | 'blue' | 'neutral'
 
 export enum unitType {
-  INFANTRY = 'infantry',
-  CAVALRY = 'cavalry',
-  ARTILLERY = 'artillery',
-  MARINE = 'marine',
-  MILITIA = 'militia',
-  GATLING = 'gatling',
   GENERAL = 'general',
   MESSENGER = 'messenger',
 }

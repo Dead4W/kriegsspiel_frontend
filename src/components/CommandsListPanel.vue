@@ -11,9 +11,9 @@ import type {vec2} from "@/engine";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {
   UnitEnvironmentState,
-  UnitEnvironmentStateIcon,
 } from "@/engine/units/enums/UnitStates.ts";
 import SortableList from "@/components/ui/SortableList.vue";
+import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 
 const { unit } = defineProps<{ unit: BaseUnit }>()
 const { t } = useI18n()
@@ -182,7 +182,7 @@ function moveModifier(cmd: BaseCommand<any, any>): UnitEnvironmentState | null {
 }
 
 function envIcon(state: UnitEnvironmentState) {
-  return UnitEnvironmentStateIcon[state]
+  return getEnvironmentIcon(state)
 }
 
 function moveGroupText(cmds: MoveCommand[], indices: number[]) {

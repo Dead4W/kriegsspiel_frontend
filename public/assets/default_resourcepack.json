@@ -68,5 +68,142 @@
         }
       }
     ]
+  },
+  "environment": {
+    "states": [
+      { "id": "on_road", "icon": "👣", "isRoute": true, "multipliers": { "speed": 1 } },
+      { "id": "on_good_road", "icon": "🛣️", "isRoute": true, "multipliers": { "speed": 1.1 } },
+      { "id": "in_forest", "icon": "🌲", "isRoute": true, "multipliers": { "takeDamageMod": 0.5, "speed": 0.5 }, "byTypes": { "artillery": { "speed": 0.25 } } },
+      { "id": "in_field", "icon": "🌾", "isRoute": true, "multipliers": { "speed": 1 } },
+      { "id": "in_plain_field", "icon": "🚜", "isRoute": true, "multipliers": { "speed": 0.75 }, "byTypes": { "artillery": { "speed": 0.5 } } },
+      { "id": "in_soft_field", "icon": "🟤", "isRoute": true, "multipliers": { "speed": 0.5 }, "byTypes": { "artillery": { "speed": 0.25 } } },
+      { "id": "in_swamp_or_dirty", "icon": "💩", "isRoute": true, "multipliers": { "takeDamageMod": 0.25, "speed": 0.25 }, "byTypes": { "artillery": { "speed": 0.1 } } },
+      { "id": "in_house", "icon": "🏢", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.25 } },
+      { "id": "in_cover_house", "icon": "🧱", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.06 } },
+      { "id": "in_brench", "icon": "🚧", "multipliers": { "takeDamageMod": 0.9 } },
+      { "id": "in_cover_trenches", "icon": "🪜", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.12 } },
+      { "id": "in_water", "icon": "🌊", "multipliers": { "takeDamageMod": 0.4 }, "byTypes": { "artillery": { "speed": 0.1 } } }
+    ]
+  },
+  "abilities": {
+    "types": [
+      { "id": "charge", "multipliers": { "speed": 5, "fatigue": 4 } },
+      { "id": "double_time_move", "multipliers": { "speed": 2, "fatigue": 2 } },
+      { "id": "gallop", "multipliers": { "speed": 4, "fatigue": 3 } },
+      { "id": "inaccuracy_fire", "multipliers": {}, "params": { "radius": 1 } },
+      { "id": "throttle", "multipliers": { "speed": 2, "fatigue": 2.5 } }
+    ]
+  },
+  "units": {
+    "types": [
+      {
+        "id": "infantry",
+        "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
+        "abilities": ["double_time_move"],
+        "params": { "priorityTargets": 3 }
+      },
+      {
+        "id": "cavalry",
+        "stats": { "maxHp": 64, "damage": 0.6, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
+        "abilities": ["charge", "gallop", "throttle"],
+        "defaultFormation": "onHorse",
+        "params": { "priorityTargets": 3 }
+      },
+      {
+        "id": "artillery",
+        "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 4500, "visionRange": 1000, "ammoMax": 32 },
+        "abilities": ["inaccuracy_fire", "throttle"],
+        "params": {
+          "attackIgnoreHeightModifier": true,
+          "attackIgnoreTargetEnvs": [
+            "in_forest",
+            "in_house",
+            "in_cover_house",
+            "in_cover_trenches",
+            "in_water"
+          ],
+          "attackIgnoreTargetEnvMult": 2
+        }
+      },
+      {
+        "id": "marine",
+        "stats": { "maxHp": 64, "damage": 2, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 20 },
+        "abilities": ["double_time_move"],
+        "params": { "moraleCheckMod": 2, "priorityTargets": 3 }
+      },
+      {
+        "id": "militia",
+        "stats": { "maxHp": 64, "damage": 0.5, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 5 },
+        "abilities": ["double_time_move"],
+        "params": { "moraleCheckMod": -2, "priorityTargets": 3 }
+      },
+      {
+        "id": "gatling",
+        "stats": { "maxHp": 64, "damage": 16, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
+        "abilities": []
+      },
+      {
+        "id": "general",
+        "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
+        "abilities": []
+      },
+      {
+        "id": "messenger",
+        "stats": { "maxHp": 1, "damage": 0.01, "speed": 400, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
+        "abilities": []
+      }
+    ]
+  },
+  "angleModifiers": [
+    { "angle": -6, "modifier": 0.5 },
+    { "angle": -5, "modifier": 0.7 },
+    { "angle": -3, "modifier": 0.85 },
+    { "angle": 0, "modifier": 1.0 }
+  ],
+  "distanceModifiers": {
+    "default": [
+      { "distance": 50, "modifier": 1.6 },
+      { "distance": 100, "modifier": 1.5 },
+      { "distance": 200, "modifier": 1.0 },
+      { "distance": 300, "modifier": 0.75 },
+      { "distance": 400, "modifier": 0.55 },
+      { "distance": 500, "modifier": 0.45 },
+      { "distance": 600, "modifier": 0.35 },
+      { "distance": 700, "modifier": 0.27 },
+      { "distance": 800, "modifier": 0.2 },
+      { "distance": 900, "modifier": 0.14 },
+      { "distance": 1000, "modifier": 0.11 }
+    ],
+    "artillery": [
+      { "distance": 200, "modifier": 1.5 },
+      { "distance": 400, "modifier": 1.2 },
+      { "distance": 600, "modifier": 1.1 },
+      { "distance": 800, "modifier": 1.0 },
+      { "distance": 1000, "modifier": 0.9 },
+      { "distance": 1200, "modifier": 0.8 },
+      { "distance": 1400, "modifier": 0.7 },
+      { "distance": 1600, "modifier": 0.6 },
+      { "distance": 1800, "modifier": 0.5 },
+      { "distance": 1900, "modifier": 0.45 },
+      { "distance": 2000, "modifier": 0.4 },
+      { "distance": 2100, "modifier": 0.35 },
+      { "distance": 2200, "modifier": 0.3 },
+      { "distance": 2300, "modifier": 0.27 },
+      { "distance": 2400, "modifier": 0.24 },
+      { "distance": 2600, "modifier": 0.22 },
+      { "distance": 2800, "modifier": 0.2 },
+      { "distance": 2900, "modifier": 0.18 },
+      { "distance": 3100, "modifier": 0.16 },
+      { "distance": 3300, "modifier": 0.14 },
+      { "distance": 3500, "modifier": 0.12 },
+      { "distance": 3600, "modifier": 0.11 },
+      { "distance": 3700, "modifier": 0.1 },
+      { "distance": 3800, "modifier": 0.09 },
+      { "distance": 3900, "modifier": 0.08 },
+      { "distance": 4000, "modifier": 0.07 },
+      { "distance": 4200, "modifier": 0.06 },
+      { "distance": 4300, "modifier": 0.05 },
+      { "distance": 4500, "modifier": 0.03 }
+    ]
   }
 }

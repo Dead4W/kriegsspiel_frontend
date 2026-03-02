@@ -10,12 +10,14 @@ import {type commandstate, type unitTeam, unitType, type uuid} from '@/engine'
 import type {unsub} from '@/engine/events'
 import {unitlayer} from "@/engine/render/unitlayer.ts";
 import {normalize, sub} from "@/engine/math.ts";
-import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enums/UnitStates.ts";
+import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import { hasAbilityInaccuracyRadius } from "@/engine/resourcePack/abilities.ts";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {WaitCommand} from "@/engine/units/commands/waitCommand.ts";
 import RadialMenu, { type RadialMenuItem } from '@/components/ui/RadialMenu.vue'
+import { getEnvironmentIcon, getRouteEnvironmentStates } from "@/engine/resourcePack/environment.ts";
 
 const { t } = useI18n()
 
@@ -27,7 +29,7 @@ function teamColor(team: unitTeam) {
 /* ================= Helpers ======================== */
 
 function envIcon(state: UnitEnvironmentState) {
-  return UnitEnvironmentStateIcon[state]
+  return getEnvironmentIcon(state)
 }
 
 function setRouteModifier(mod: UnitEnvironmentState | null) {
@@ -65,15 +67,7 @@ const emit = defineEmits<{
 
 /* ================= SNAPSHOT ================= */
 
-const ROUTE_MODIFIERS = [
-  UnitEnvironmentState.OnRoad,
-  UnitEnvironmentState.OnGoodRoad,
-  UnitEnvironmentState.InForest,
-  UnitEnvironmentState.InField,
-  UnitEnvironmentState.InPlainField,
-  UnitEnvironmentState.InSoftField,
-  UnitEnvironmentState.InSwampOrDirty,
-]
+const ROUTE_MODIFIERS = computed(() => getRouteEnvironmentStates())
 
 export type RoutePoint = {
   pos: vec2
@@ -198,7 +192,7 @@ const envMenuItems = computed<RadialMenuItem<EnvMenuId>[]>(() => {
     ? targets.value[targets.value.length - 1]!.modifier ?? null
     : null
 
-  return ROUTE_MODIFIERS.map((mod) => ({
+  return ROUTE_MODIFIERS.value.map((mod) => ({
     id: mod,
     icon: envIcon(mod),
     label: t(`env.${mod}`),
@@ -237,7 +231,7 @@ const availableAbilities = computed<UnitAbilityType[]>(() => {
 
   for (const u of movingUnits.value) {
     for (const a of u.abilities) {
-      if (a === UnitAbilityType.INACCURACY_FIRE) continue
+      if (hasAbilityInaccuracyRadius(a)) continue
       set.add(a)
     }
   }

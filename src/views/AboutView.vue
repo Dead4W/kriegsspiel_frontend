@@ -29,7 +29,7 @@ useHead(() => ({
           {{ t('aboutSections.whatIs.text') }}
           <br />
           <a
-            href="https://example.com"
+            href="https://archive.org/details/americankriegssp00live/page/14/mode/1up"
             target="_blank"
             rel="noopener noreferrer"
           >

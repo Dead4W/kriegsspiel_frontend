@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import { Team } from '@/enums/teamKeys'
-import {UnitEnvironmentState, UnitEnvironmentStateIcon} from '@/engine/units/enums/UnitStates'
+import {UnitEnvironmentState} from '@/engine/units/enums/UnitStates'
+import { getEnvironmentIcon } from "@/engine/resourcePack/environment";
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -26,7 +27,7 @@ function hasState(state: UnitEnvironmentState): boolean {
 }
 
 function envIcon(state: UnitEnvironmentState) {
-  return UnitEnvironmentStateIcon[state]
+  return getEnvironmentIcon(state)
 }
 
 /* ================= actions ================= */

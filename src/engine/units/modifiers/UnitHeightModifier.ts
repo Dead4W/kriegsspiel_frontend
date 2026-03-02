@@ -2,21 +2,31 @@
 // Типы
 // --------------------
 
+import { getResourcePack } from "@/engine/assets/resourcepack.ts";
+
 type AngleModifier = {
   angle: number;      // градусы
   modifier: number;   // модификатор урона
 };
 
 // --------------------
-// Тестовая таблица
+// Таблица модификаторов
 // --------------------
 
-const angleTable: AngleModifier[] = [
-  { angle: -6, modifier: 0.5 },
-  { angle: -5, modifier: 0.7 },
-  { angle: -3, modifier: 0.85 },
-  { angle: 0, modifier: 1.0 },
-];
+function getAngleTable(): AngleModifier[] {
+  const table = getResourcePack()?.angleModifiers;
+  if (!Array.isArray(table) || table.length === 0) return [];
+
+  const cleaned = table
+    .map((x) => ({
+      angle: Number((x as any)?.angle),
+      modifier: Number((x as any)?.modifier),
+    }))
+    .filter((x) => Number.isFinite(x.angle) && Number.isFinite(x.modifier))
+    .sort((a, b) => a.angle - b.angle);
+
+  return cleaned.length ? cleaned : [];
+}
 
 // --------------------
 // Утилиты
@@ -58,6 +68,10 @@ export function getAngle(
  * @param angle угол в градусах
  */
 export function getDamageModifier(angle: number): number {
+  const angleTable = getAngleTable();
+
+  if (!angleTable.length) return 1.0;
+
   // Ниже минимума
   if (angle <= angleTable[0]!.angle) {
     return angleTable[0]!.modifier;

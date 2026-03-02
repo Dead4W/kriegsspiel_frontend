@@ -7,9 +7,10 @@ import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
 import {getTeamColor} from "@/engine/render/util.ts";
 import {type unitTeam, unitType} from "@/engine";
 import type {unsub} from "@/engine/events";
-import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
 
 const {t} = useI18n()
 
@@ -89,8 +90,11 @@ const targetsGrouped = computed(() => group(targets.value))
 const damageModifier = ref(1.0)
 const radiusModifier = ref(1.0)
 
+const inaccuracyAbility = computed(() => getInaccuracyAbility(selectedAbilities.value))
+const hasInaccuracyFire = computed(() => !!inaccuracyAbility.value)
+
 watch(selectedAbilities, (list) => {
-  if (!list.includes(UnitAbilityType.INACCURACY_FIRE)) {
+  if (!getInaccuracyAbility(list)) {
     inaccuracyPoint.value = null
   }
 })
@@ -107,8 +111,11 @@ function syncTargets() {
   attackers.value = window.ROOM_WORLD.units
     .list()
     .filter(u => u.selected && u.team === attackers.value[0]?.team)
-  if (selectedAbilities.value.includes(UnitAbilityType.INACCURACY_FIRE)) {
-    attackers.value = attackers.value.filter(u => u.type === unitType.ARTILLERY);
+  if (hasInaccuracyFire.value) {
+    const requiredAbility = inaccuracyAbility.value?.ability
+    if (requiredAbility) {
+      attackers.value = attackers.value.filter(u => u.abilities.includes(requiredAbility))
+    }
     targets.value = [];
   }
 }
@@ -153,14 +160,19 @@ function rebuildAttackOverlay() {
 
   /* точка + радиус неточного огня */
   if (
-    selectedAbilities.value.includes(UnitAbilityType.INACCURACY_FIRE)
+    hasInaccuracyFire.value
   ) {
     if (inaccuracyPoint.value) {
+      const radiusMult = inaccuracyAbility.value?.radiusMult ?? 1
       items.push(
         {
           type: 'circle',
           center: inaccuracyPoint.value.pos,
-          radius: inaccuracyRadius.value / window.ROOM_WORLD.map.metersPerPixel * radiusModifier.value,
+          radius:
+            inaccuracyRadius.value
+            / window.ROOM_WORLD.map.metersPerPixel
+            * radiusModifier.value
+            * radiusMult,
           color: 'rgba(168,85,247,0.45)',
           fill: true,
         } satisfies OverlayCircle
@@ -232,7 +244,7 @@ function onPointerDown(e: PointerEvent) {
   })
 
   // ===== Inaccuracy fire: RMB sets point =====
-  if (selectedAbilities.value.includes(UnitAbilityType.INACCURACY_FIRE)) {
+  if (hasInaccuracyFire.value) {
     // ПКМ — задать / переместить точку атаки
     inaccuracyPoint.value = { pos }
 
@@ -396,7 +408,7 @@ defineExpose({
       </div>
 
       <!-- inaccuracy radius modifier -->
-      <div class="setting-row" v-if="selectedAbilities.includes(UnitAbilityType.INACCURACY_FIRE)">
+      <div class="setting-row" v-if="hasInaccuracyFire">
         <div class="title">
           {{ t('command.inaccuracy_radius') }} × {{ radiusModifier.toFixed(2) }}
         </div>

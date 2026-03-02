@@ -12,12 +12,12 @@ import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/at
 import {FormationType, unitType, type vec2} from "@/engine";
 import {
   type UnitEnvironmentState,
-  UnitEnvironmentStateIcon
 } from "@/engine/units/enums/UnitStates.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
-import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
+import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
+import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 
 type MoveOrderRange = {
   min: number
@@ -275,8 +275,10 @@ export class unitlayer {
         case UnitCommandTypes.Attack: {
           const command = cmd as AttackCommand
           const cmdState: AttackCommandState = cmd.getState().state as AttackCommandState;
+          const inaccuracyAbility =
+            cmdState.inaccuracyPoint ? getInaccuracyAbility(cmdState.abilities) : null
           if (
-            cmdState.abilities.includes(UnitAbilityType.INACCURACY_FIRE)
+            inaccuracyAbility
             && cmdState.inaccuracyPoint
           ) {
             drawAttackWaveIcons(
@@ -293,7 +295,10 @@ export class unitlayer {
               ctx.strokeStyle = 'black'
               ctx.lineWidth = 1 * cam.zoom
 
-              const radiusMeters = computeInaccuracyRadius(unit, cmdState.inaccuracyPoint) * (cmdState.radiusModifier ?? 1);
+              const radiusMeters =
+                computeInaccuracyRadius(unit, cmdState.inaccuracyPoint)
+                * (cmdState.radiusModifier ?? 1)
+                * inaccuracyAbility.radiusMult;
               const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel;
 
               const {x,y} = cam.worldToScreen(cmdState.inaccuracyPoint)
@@ -452,7 +457,7 @@ export class unitlayer {
     }
 
     const envIcons = states
-      .map(s => UnitEnvironmentStateIcon[s])
+      .map(s => getEnvironmentIcon(s))
       .filter(Boolean)
 
     icons = [...icons, ...envIcons];

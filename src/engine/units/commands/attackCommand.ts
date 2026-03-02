@@ -1,18 +1,20 @@
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {BaseCommand} from "./baseCommand.ts";
-import {unitType, type uuid, type vec2} from "@/engine";
+import { type uuid, type vec2} from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {
-  ARTILLERY_DISTANCE_MODIFIERS, DISTANCE_MODIFIERS,
+  getDistanceModifiersTable,
   getUnitDistanceModifier
 } from "@/engine/units/modifiers/UnitDistanceModifier.ts";
-import {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {
   getDamageModifierByHeights
 } from "@/engine/units/modifiers/UnitHeightModifier.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
+import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
+import { getUnitBoolParam, getUnitNumberParam, getUnitStringArrayParam } from "@/engine/resourcePack/units.ts";
 
 export interface AttackCommandState {
   targets: uuid[]
@@ -28,21 +30,11 @@ export class AttackCommand extends BaseCommand<
 > {
   readonly type: UnitCommandTypes.Attack = UnitCommandTypes.Attack
 
-  readonly PRIORITY_TARGETS = 3
-
   constructor(private state: AttackCommandState) {
     super()
   }
 
   update(unit: BaseUnit, dt: number) {
-    const ARTILLERY_IGNORE_ENVS = [
-      UnitEnvironmentState.InForest,
-      UnitEnvironmentState.InHouse,
-      UnitEnvironmentState.InCoverHouse,
-      UnitEnvironmentState.InCoverTrenches,
-      UnitEnvironmentState.InWater,
-    ];
-
     if (this.isFinished(unit)) return
 
     let targets: BaseUnit[];
@@ -64,13 +56,18 @@ export class AttackCommand extends BaseCommand<
         * (dt / 60)
       )
 
-    let isInaccuracyFire = unit.type === unitType.ARTILLERY &&
-      this.state.abilities.includes(UnitAbilityType.INACCURACY_FIRE) &&
-      this.state.inaccuracyPoint;
+    const inaccuracyAbility =
+      this.state.inaccuracyPoint
+        ? getInaccuracyAbility(this.state.abilities.filter((a) => unit.abilities.includes(a)))
+        : null
+    const isInaccuracyFire = !!inaccuracyAbility && !!this.state.inaccuracyPoint;
 
     if (isInaccuracyFire) {
-      unit.activateAbility(UnitAbilityType.INACCURACY_FIRE)
-      const inaccuracyRadius = computeInaccuracyRadius(unit, this.state.inaccuracyPoint!) * (this.state.radiusModifier ?? 1)
+      unit.activateAbility(inaccuracyAbility!.ability)
+      const inaccuracyRadius =
+        computeInaccuracyRadius(unit, this.state.inaccuracyPoint!)
+        * (this.state.radiusModifier ?? 1)
+        * inaccuracyAbility!.radiusMult
       targets = this.getUnitsInInaccuracyRadius(inaccuracyRadius, unit)
       const targetRadius = BaseUnit.COLLISION_RANGE / 2 * window.ROOM_WORLD.map.metersPerPixel;
       hitFactor = (targetRadius * targetRadius) / (inaccuracyRadius * inaccuracyRadius);
@@ -112,11 +109,20 @@ export class AttackCommand extends BaseCommand<
 
       /* ===== Артиллерия / окружение ===== */
 
-      if (unit.type === unitType.ARTILLERY) {
-        for (const env of ARTILLERY_IGNORE_ENVS) {
+      const ignoreTargetEnvsRaw = getUnitStringArrayParam(unit.type, 'attackIgnoreTargetEnvs')
+      const ignoreTargetEnvs =
+        ignoreTargetEnvsRaw.length
+          ? ignoreTargetEnvsRaw.filter((x): x is UnitEnvironmentState =>
+              (Object.values(UnitEnvironmentState) as string[]).includes(x)
+            )
+          : []
+      const ignoreTargetEnvMult = getUnitNumberParam(unit.type, 'attackIgnoreTargetEnvMult') ?? 2
+
+      if (ignoreTargetEnvs.length && ignoreTargetEnvMult !== 1) {
+        for (const env of ignoreTargetEnvs) {
           if (target.envState.includes(env)) {
-            unitDmg *= 2
-            formula.push(`ignoreEnvArtillery(${env})×2`)
+            unitDmg *= ignoreTargetEnvMult
+            formula.push(`ignoreTargetEnv(${env})×${ignoreTargetEnvMult}`)
           }
         }
       }
@@ -130,9 +136,7 @@ export class AttackCommand extends BaseCommand<
         * window.ROOM_WORLD.map.metersPerPixel
 
       const distanceModifier = getUnitDistanceModifier(
-        unit.type === unitType.ARTILLERY
-          ? ARTILLERY_DISTANCE_MODIFIERS
-          : DISTANCE_MODIFIERS,
+        unit.type,
         distance,
       )
 
@@ -140,7 +144,8 @@ export class AttackCommand extends BaseCommand<
       formula.push(`dist(${distance.toFixed(1)}m)×${distanceModifier.toFixed(2)}`)
 
       /* ===== Высота ===== */
-      if (unit.type !== unitType.ARTILLERY) {
+      const ignoreHeightModifier = getUnitBoolParam(unit.type, 'attackIgnoreHeightModifier')
+      if (!ignoreHeightModifier) {
         const heightModifier = getDamageModifierByHeights(
           unit.height ?? 0,
           target.height ?? 0,
@@ -230,8 +235,10 @@ export class AttackCommand extends BaseCommand<
 
         return (dxA * dxA + dyA * dyA) - (dxB * dxB + dyB * dyB)
       })
-    if (unit.type !== unitType.GATLING && unit.type !== unitType.ARTILLERY) {
-      activeTargets = activeTargets.slice(0, this.PRIORITY_TARGETS)
+
+    const priorityTargets = getUnitNumberParam(unit.type, 'priorityTargets')
+    if (priorityTargets != null && priorityTargets > 0) {
+      activeTargets = activeTargets.slice(0, Math.floor(priorityTargets))
     }
     return activeTargets
   }

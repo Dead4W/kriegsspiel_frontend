@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import {ref, computed, onMounted, onBeforeUnmount, type UnwrapRef} from 'vue'
+import {ref, computed, onMounted, onBeforeUnmount, watch, type UnwrapRef} from 'vue'
 import {type unitTeam, world} from '@/engine'
 import { unitType as UnitType } from '@/engine'
 import { useI18n } from 'vue-i18n'
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {Team} from "@/enums/teamKeys.ts";
+import { getSpawnUnitTypes } from "@/engine/resourcePack/units.ts";
 
 const { t } = useI18n()
 
 /* ================= state ================= */
 
-const selectedType = ref<UnitType>(UnitType.INFANTRY)
+const selectedType = ref<UnitType>(UnitType.GENERAL)
 const selectedTeam = ref<unitTeam>('red')
 if ([Team.RED, Team.BLUE].includes(window.PLAYER.team)) {
   selectedTeam.value = window.PLAYER.team as unitTeam
@@ -19,15 +20,25 @@ const spawnCount = ref(1)
 
 /* ================= computed i18n data ================= */
 
-const UNIT_TYPES = computed(() => [
-  { type: UnitType.INFANTRY, label: t('unit.infantry') },
-  { type: UnitType.CAVALRY, label: t('unit.cavalry') },
-  { type: UnitType.ARTILLERY, label: t('unit.artillery') },
-  { type: UnitType.MARINE, label: t('unit.marine') },
-  { type: UnitType.MILITIA, label: t('unit.militia') },
-  { type: UnitType.GATLING, label: t('unit.gatling') },
-  { type: UnitType.GENERAL, label: t('unit.general') },
-])
+const SPAWNABLE_TYPES = computed(() => getSpawnUnitTypes())
+
+watch(
+  SPAWNABLE_TYPES,
+  (types) => {
+    if (!types.length) return
+    if (!types.includes(selectedType.value)) {
+      selectedType.value = types[0]!
+    }
+  },
+  { immediate: true }
+)
+
+const UNIT_TYPES = computed(() =>
+  SPAWNABLE_TYPES.value.map((type) => ({
+    type,
+    label: t(`unit.${type}`),
+  }))
+)
 const TEAMS = computed(() => {
   if (window.PLAYER.team === Team.ADMIN) {
     return [

@@ -8,7 +8,7 @@ import {
 } from './types'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
-import {ENV_MULTIPLIERS} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
+import {getEnvMultipliers} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
 import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engine/util.ts";
 import {FORMATION_STAT_MULTIPLIERS} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
 import {createUnitCommand} from "@/engine/units/commands";
@@ -17,7 +17,7 @@ import {clamp} from "@/engine/math.ts";
 import {type ChatMessage} from "@/engine/types/chatMessage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import {
-  ABILITY_MULTIPLIERS,
+  getAbilityMultipliers,
   type UnitAbilityType
 } from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
@@ -30,6 +30,8 @@ import type { MoveCommandState } from './commands/moveCommand';
 import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {type Weather} from "@/engine/resourcePack/weather.ts";
 import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
+import { getUnitNumberParam } from "@/engine/resourcePack/units.ts";
+import { getEnvironmentMoraleCheckMod } from "@/engine/resourcePack/environment.ts";
 
 
 
@@ -210,12 +212,9 @@ export abstract class BaseUnit {
 
     const mods: Array<{ key: string; value: number; applied: boolean }> = []
 
-    // In fortification (+2)
-    const inFortification =
-      this.envState.includes(UnitEnvironmentState.InCoverHouse) ||
-      this.envState.includes(UnitEnvironmentState.InCoverTrenches) ||
-      this.envState.includes(UnitEnvironmentState.InHouse)
-    mods.push({ key: `fortification`, value: 2, applied: inFortification })
+    // Environment morale modifier (from resourcepack).
+    const envMoraleCheckMod = getEnvironmentMoraleCheckMod(this.envState)
+    mods.push({ key: `fortification`, value: envMoraleCheckMod, applied: envMoraleCheckMod !== 0 })
 
     mods.push({ key: `morale`, value: this.morale, applied: true })
 
@@ -235,13 +234,9 @@ export abstract class BaseUnit {
     const lossesMoreThan50 = this.hp / this.stats.maxHp < (1 - 0.50)
     mods.push({ key: `losses>50%`, value: -2, applied: lossesMoreThan50 })
 
-    // Elite (+2): treat marines as elite (until a dedicated tag exists)
-    const isElite = this.type === unitType.MARINE
-    mods.push({ key: `elite`, value: 2, applied: isElite })
-
-    // Militia (−2)
-    const isMilitia = this.type === unitType.MILITIA
-    mods.push({ key: `militia`, value: -2, applied: isMilitia })
+    // Unit type morale modifier (from resourcepack).
+    const moraleCheckMod = getUnitNumberParam(this.type, 'moraleCheckMod') ?? 0
+    mods.push({ key: `unit:${this.type}`, value: moraleCheckMod, applied: moraleCheckMod !== 0 })
 
     const modifierSum = mods
       .filter(m => m.applied)
@@ -449,16 +444,17 @@ export abstract class BaseUnit {
   public getStatModifierInfo(key: StatKey): StatModifierInfo {
     let total = 1
     const sources: StatModifierInfo['sources'] = []
+    const envMultipliers = getEnvMultipliers()
 
     for (const state of this.envState) {
-      let m = ENV_MULTIPLIERS[state]?.[key];
+      let m = envMultipliers[state]?.[key];
       if (
-        ENV_MULTIPLIERS[state]
-        && ENV_MULTIPLIERS[state].byTypes
-        && ENV_MULTIPLIERS[state].byTypes[this.type]
-        && ENV_MULTIPLIERS[state].byTypes[this.type]![key]
+        envMultipliers[state]
+        && envMultipliers[state].byTypes
+        && envMultipliers[state].byTypes![this.type]
+        && envMultipliers[state].byTypes![this.type]![key]
       ) {
-        m = ENV_MULTIPLIERS[state]?.byTypes[this.type]![key]
+        m = envMultipliers[state]?.byTypes![this.type]![key]
       }
       if (m !== undefined) {
         total *= m
@@ -475,7 +471,7 @@ export abstract class BaseUnit {
 
     // ability
     if (this.activeAbilityType) {
-      const m = ABILITY_MULTIPLIERS[this.activeAbilityType]?.[key]
+      const m = getAbilityMultipliers()[this.activeAbilityType]?.[key]
       if (m && m !== 1) {
         total *= m
         sources.push({ type: 'ability', state: this.activeAbilityType!, multiplier: m })

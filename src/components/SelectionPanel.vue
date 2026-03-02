@@ -3,12 +3,13 @@ import {computed, onMounted, onUnmounted, ref, watch, type UnwrapRef} from 'vue'
 import {useI18n} from 'vue-i18n'
 import UnitDetailPanel from '@/components/UnitDetailPanel.vue'
 import UnitActionPanel from "@/components/UnitActionPanel.vue";
-import {UnitEnvironmentState, UnitEnvironmentStateIcon} from "@/engine/units/enums/UnitStates.ts";
+import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import CommandsListPanel from "@/components/CommandsListPanel.vue";
 import {Team} from "@/enums/teamKeys.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 
 /* ================= i18n ================= */
 
@@ -85,7 +86,7 @@ function envIcons(u: BaseUnit) {
   return u.envState
     .map((state) => ({
       state,
-      icon: UnitEnvironmentStateIcon[state as UnitEnvironmentState],
+      icon: getEnvironmentIcon(state as UnitEnvironmentState),
     }))
     .filter(e => !!e.icon)
 }

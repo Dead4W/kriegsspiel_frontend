@@ -2,8 +2,11 @@
 import { computed } from 'vue'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import { Team } from '@/enums/teamKeys'
-import {UnitEnvironmentState} from '@/engine/units/enums/UnitStates'
-import { getEnvironmentIcon } from "@/engine/resourcePack/environment";
+import {
+  getEnvironmentIcon,
+  getEnvironmentStates,
+  type EnvironmentStateId,
+} from "@/engine/resourcePack/environment";
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -20,19 +23,22 @@ const emit = defineEmits<{
 
 /* ================= helpers ================= */
 
-const ENV_STATES = Object.values(UnitEnvironmentState)
+const ENV_STATES = computed<EnvironmentStateId[]>(() => {
+  const ids = getEnvironmentStates().map(s => String(s.id))
+  return Array.from(new Set(ids))
+})
 
-function hasState(state: UnitEnvironmentState): boolean {
+function hasState(state: EnvironmentStateId): boolean {
   return props.units.every(u => u.envState.includes(state))
 }
 
-function envIcon(state: UnitEnvironmentState) {
+function envIcon(state: EnvironmentStateId) {
   return getEnvironmentIcon(state)
 }
 
 /* ================= actions ================= */
 
-function toggleState(state: UnitEnvironmentState) {
+function toggleState(state: EnvironmentStateId) {
   const setState = !hasState(state);
   for (const u of props.units) {
     if (u.envState.includes(state) !== setState) {

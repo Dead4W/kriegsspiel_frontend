@@ -10,6 +10,9 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 
+const DEFAULT_RESOURCE_PACK_URL =
+  'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json'
+
 const roomName = ref('')
 const showAdvanced = ref(false)
 const selectedMapId = ref<string>('essex')
@@ -18,6 +21,7 @@ const customMapUrl = ref('')
 const customHeightMapUrl = ref('')
 const customMetersPerPixel = ref('')
 const gameDate = ref('1882-06-12 09:00:00')
+const resourcePackUrl = ref(DEFAULT_RESOURCE_PACK_URL)
 
 type RoomSettingsState = Record<string, boolean | string | number>
 /** состояние настроек комнаты */
@@ -26,6 +30,8 @@ const settings = ref<RoomSettingsState>(
     ROOM_SETTINGS.map(s => [s.key, s.default])
   )
 )
+
+settings.value[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] = resourcePackUrl.value
 
 /* MAPS */
 type GameMap = {
@@ -83,6 +89,10 @@ function applyMapSettings() {
   }
 }
 applyMapSettings()
+
+function applyResourcePackSettings() {
+  settings.value[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] = resourcePackUrl.value || ''
+}
 
 async function createRoom() {
   if (!roomName.value.trim()) return
@@ -144,6 +154,20 @@ async function createRoom() {
             <small>
               {{ t('settings.gameDateFormat') }}: YYYY-MM-DD HH:mm:ss
             </small>
+          </div>
+
+          <div class="map-selector">
+            <h3>{{ t('settings.resourcePack.title') }}</h3>
+
+            <div class="field">
+              <label>{{ t('settings.resourcePack.url') }}</label>
+              <input
+                v-model="resourcePackUrl"
+                :placeholder="t('settings.resourcePack.placeholder')"
+                @input="applyResourcePackSettings"
+              />
+              <small>{{ t('settings.resourcePack.description') }}</small>
+            </div>
           </div>
 
           <div class="map-selector">

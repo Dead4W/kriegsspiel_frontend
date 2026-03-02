@@ -329,6 +329,12 @@
       "label": "Weather modifiers",
       "description": "Unit stats change depending on the weather."
     },
+    "resourcePack": {
+      "title": "Resource pack",
+      "url": "ResourcePack URL",
+      "placeholder": "https://example.com/resourcepack.json",
+      "description": "JSON file with balance / multipliers (time, weather, units, etc.)"
+    },
     "customMap": {
       "title": "Map",
       "mapUrl": "Map URL",

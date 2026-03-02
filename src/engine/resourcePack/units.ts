@@ -123,8 +123,13 @@ export function getUnitStringArrayParam(
   return v.map((x) => String(x)).filter(Boolean)
 }
 
-function isKnownUnitType(id: string): id is unitType {
-  return (Object.values(unitType) as string[]).includes(id)
+export function getUnitStringParam(
+  id: UnitTypeId,
+  key: string,
+  pack: ResourcePack | null = getResourcePack()
+): string {
+  const v = getUnitParams(id, pack)[key]
+  return typeof v === 'string' ? v : ''
 }
 
 /**
@@ -137,7 +142,6 @@ export function getSpawnUnitTypes(
 ): unitType[] {
   const fromPack = getUnitTypes(pack)
     .map((t) => t.id)
-    .filter(isKnownUnitType)
 
   const set = new Set<unitType>(fromPack)
   set.add(unitType.GENERAL)

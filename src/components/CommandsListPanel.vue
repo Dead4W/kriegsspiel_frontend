@@ -9,9 +9,6 @@ import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/at
 import {MoveCommand} from "@/engine/units/commands/moveCommand.ts";
 import type {vec2} from "@/engine";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
-import {
-  UnitEnvironmentState,
-} from "@/engine/units/enums/UnitStates.ts";
 import SortableList from "@/components/ui/SortableList.vue";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 
@@ -176,12 +173,12 @@ function moveDistanceMetersFor(cmd: BaseCommand<any, any>, cmdIndex: number): nu
   return distPx(start, end) * mpp
 }
 
-function moveModifier(cmd: BaseCommand<any, any>): UnitEnvironmentState | null {
+function moveModifier(cmd: BaseCommand<any, any>): string | null {
   if (!(cmd instanceof MoveCommand)) return null
   return cmd.getState().state.modifier ?? null
 }
 
-function envIcon(state: UnitEnvironmentState) {
+function envIcon(state: string) {
   return getEnvironmentIcon(state)
 }
 

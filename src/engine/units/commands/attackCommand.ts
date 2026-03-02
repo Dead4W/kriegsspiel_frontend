@@ -2,7 +2,6 @@ import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {BaseCommand} from "./baseCommand.ts";
 import { type uuid, type vec2} from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {
   getDistanceModifiersTable,
   getUnitDistanceModifier
@@ -110,12 +109,7 @@ export class AttackCommand extends BaseCommand<
       /* ===== Артиллерия / окружение ===== */
 
       const ignoreTargetEnvsRaw = getUnitStringArrayParam(unit.type, 'attackIgnoreTargetEnvs')
-      const ignoreTargetEnvs =
-        ignoreTargetEnvsRaw.length
-          ? ignoreTargetEnvsRaw.filter((x): x is UnitEnvironmentState =>
-              (Object.values(UnitEnvironmentState) as string[]).includes(x)
-            )
-          : []
+      const ignoreTargetEnvs: string[] = ignoreTargetEnvsRaw.length ? ignoreTargetEnvsRaw : []
       const ignoreTargetEnvMult = getUnitNumberParam(unit.type, 'attackIgnoreTargetEnvMult') ?? 2
 
       if (ignoreTargetEnvs.length && ignoreTargetEnvMult !== 1) {

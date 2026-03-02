@@ -1,5 +1,4 @@
 import type {vec2} from "@/engine/types.ts";
-import {type UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import type {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import type {ChangeFormationCommandState} from "@/engine/units/commands/changeFormationCommand.ts";
@@ -15,10 +14,12 @@ export type uuid = string
 
 export type unitTeam = 'red' | 'blue' | 'neutral'
 
-export enum unitType {
-  GENERAL = 'general',
-  MESSENGER = 'messenger',
-}
+export const unitType = {
+  GENERAL: 'general',
+  MESSENGER: 'messenger',
+} as const
+
+export type unitType = string
 
 // Formation ids are defined by the loaded resourcepack.
 export type FormationType = string
@@ -43,7 +44,7 @@ export interface unitstate {
 
   commands?: commandstate[]
 
-  envState?: UnitEnvironmentState[]
+  envState?: string[]
 
   formation?: FormationType;
   activeAbilityType?: UnitAbilityType | null;

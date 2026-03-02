@@ -5,7 +5,6 @@ import {
   toFiniteNumber,
 } from '@/engine/assets/resourcepack'
 
-import { UnitEnvironmentState } from '@/engine/units/enums/UnitStates'
 import { unitType } from '@/engine/units/types'
 import type { StatKey } from '@/engine/units/baseUnit'
 
@@ -13,8 +12,10 @@ export type EnvStatMultiplier = Partial<Record<StatKey, number>> & {
   byTypes?: Partial<Record<unitType, Partial<Record<StatKey, number>>>>
 }
 
+export type EnvironmentStateId = string
+
 export type ResourcePackEnvironmentState = {
-  id: UnitEnvironmentState | string
+  id: EnvironmentStateId
   icon?: string
   isRoute?: boolean
   params?: Record<string, unknown>
@@ -80,11 +81,11 @@ export function getEnvironmentStates(
 
 export function getEnvMultipliers(
   pack: ResourcePack | null = getResourcePack()
-): Record<UnitEnvironmentState, EnvStatMultiplier> {
+): Record<EnvironmentStateId, EnvStatMultiplier> {
   const states = getEnvironmentStates(pack)
-  const result = {} as Record<UnitEnvironmentState, EnvStatMultiplier>
+  const result = {} as Record<EnvironmentStateId, EnvStatMultiplier>
   for (const s of states) {
-    const id = String(s.id) as UnitEnvironmentState
+    const id = String(s.id)
     result[id] = {
       ...normalizeMultipliers(s.multipliers),
       byTypes: normalizeByTypes(s.byTypes),
@@ -95,18 +96,18 @@ export function getEnvMultipliers(
 
 export function getEnvironmentIcons(
   pack: ResourcePack | null = getResourcePack()
-): Record<UnitEnvironmentState, string> {
+): Record<EnvironmentStateId, string> {
   const states = getEnvironmentStates(pack)
-  const result = {} as Record<UnitEnvironmentState, string>
+  const result = {} as Record<EnvironmentStateId, string>
   for (const s of states) {
-    const id = String(s.id) as UnitEnvironmentState
+    const id = String(s.id)
     if (typeof s.icon === 'string' && s.icon) result[id] = s.icon
   }
   return result
 }
 
 export function getEnvironmentIcon(
-  state: UnitEnvironmentState,
+  state: EnvironmentStateId,
   pack: ResourcePack | null = getResourcePack()
 ): string {
   return getEnvironmentIcons(pack)?.[state] ?? ''
@@ -114,16 +115,14 @@ export function getEnvironmentIcon(
 
 export function getRouteEnvironmentStates(
   pack: ResourcePack | null = getResourcePack()
-): UnitEnvironmentState[] {
-  const allowed = new Set<string>(Object.values(UnitEnvironmentState))
+): EnvironmentStateId[] {
   return getEnvironmentStates(pack)
     .filter((s) => s.isRoute)
     .map((s) => String(s.id))
-    .filter((id): id is UnitEnvironmentState => allowed.has(id)) as UnitEnvironmentState[]
 }
 
 export function getEnvironmentNumberParam(
-  state: UnitEnvironmentState,
+  state: EnvironmentStateId,
   key: string,
   pack: ResourcePack | null = getResourcePack()
 ): number | null {
@@ -133,7 +132,7 @@ export function getEnvironmentNumberParam(
 }
 
 export function getEnvironmentMoraleCheckMod(
-  states: UnitEnvironmentState[],
+  states: EnvironmentStateId[],
   pack: ResourcePack | null = getResourcePack()
 ): number {
   let best = 0

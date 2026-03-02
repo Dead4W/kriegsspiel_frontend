@@ -2,13 +2,12 @@ import type {vec2} from "@/engine/types.ts";
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {BaseCommand, CommandStatus} from "./baseCommand.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {unitType, type uuid} from "@/engine";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 
 export interface MoveCommandState {
   target: vec2
-  modifier: UnitEnvironmentState | null
+  modifier: string | null
   abilities: UnitAbilityType[]
   orderIndex: number
   uniqueId: uuid

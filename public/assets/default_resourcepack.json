@@ -110,20 +110,22 @@
         "id": "infantry",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["double_time_move"],
-        "params": { "priorityTargets": 3 }
+        "params": { "priorityTargets": 3, "renderIcon": "I" }
       },
       {
         "id": "cavalry",
         "stats": { "maxHp": 64, "damage": 0.6, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["charge", "gallop", "throttle"],
         "defaultFormation": "onHorse",
-        "params": { "priorityTargets": 3 }
+        "params": { "priorityTargets": 3, "renderIcon": "C" }
       },
       {
         "id": "artillery",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 4500, "visionRange": 1000, "ammoMax": 32 },
         "abilities": ["inaccuracy_fire", "throttle"],
         "params": {
+          "renderIcon": "A",
+          "renderWidthMult": 1.15,
           "attackIgnoreHeightModifier": true,
           "attackIgnoreTargetEnvs": [
             "in_forest",
@@ -139,28 +141,31 @@
         "id": "marine",
         "stats": { "maxHp": 64, "damage": 2, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 20 },
         "abilities": ["double_time_move"],
-        "params": { "moraleCheckMod": 2, "priorityTargets": 3 }
+        "params": { "moraleCheckMod": 2, "priorityTargets": 3, "renderIcon": "M" }
       },
       {
         "id": "militia",
         "stats": { "maxHp": 64, "damage": 0.5, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 5 },
         "abilities": ["double_time_move"],
-        "params": { "moraleCheckMod": -2, "priorityTargets": 3 }
+        "params": { "moraleCheckMod": -2, "priorityTargets": 3, "renderIcon": "m" }
       },
       {
         "id": "gatling",
         "stats": { "maxHp": 64, "damage": 16, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
-        "abilities": []
+        "abilities": [],
+        "params": { "renderIcon": "G", "renderWidthMult": 1.05 }
       },
       {
         "id": "general",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
-        "abilities": []
+        "abilities": [],
+        "params": { "renderIcon": "★", "renderWidthMult": 1.1 }
       },
       {
         "id": "messenger",
         "stats": { "maxHp": 1, "damage": 0.01, "speed": 400, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
-        "abilities": []
+        "abilities": [],
+        "params": { "renderIcon": "✉" }
       }
     ]
   },

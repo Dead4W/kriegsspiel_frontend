@@ -1,4 +1,3 @@
-import { UnitEnvironmentState } from '../enums/UnitStates.ts'
 import { unitType } from "@/engine";
 import type { StatKey } from "@/engine/units/baseUnit.ts";
 import { getEnvMultipliers as getEnvMultipliersFromPack } from "@/engine/resourcePack/environment.ts";
@@ -22,6 +21,6 @@ export interface EnvStatMultiplierByUnit {
 
 export type EnvStatKey = StatKey
 
-export function getEnvMultipliers(): Record<UnitEnvironmentState, EnvStatMultiplier> {
-  return getEnvMultipliersFromPack() as any
+export function getEnvMultipliers(): Record<string, EnvStatMultiplier> {
+  return getEnvMultipliersFromPack()
 }

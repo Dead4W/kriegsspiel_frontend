@@ -10,14 +10,17 @@ import {type commandstate, type unitTeam, unitType, type uuid} from '@/engine'
 import type {unsub} from '@/engine/events'
 import {unitlayer} from "@/engine/render/unitlayer.ts";
 import {normalize, sub} from "@/engine/math.ts";
-import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import { hasAbilityInaccuracyRadius } from "@/engine/resourcePack/abilities.ts";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {WaitCommand} from "@/engine/units/commands/waitCommand.ts";
 import RadialMenu, { type RadialMenuItem } from '@/components/ui/RadialMenu.vue'
-import { getEnvironmentIcon, getRouteEnvironmentStates } from "@/engine/resourcePack/environment.ts";
+import {
+  getEnvironmentIcon,
+  getRouteEnvironmentStates,
+  type EnvironmentStateId,
+} from "@/engine/resourcePack/environment.ts";
 
 const { t } = useI18n()
 
@@ -28,11 +31,11 @@ function teamColor(team: unitTeam) {
 
 /* ================= Helpers ======================== */
 
-function envIcon(state: UnitEnvironmentState) {
+function envIcon(state: EnvironmentStateId) {
   return getEnvironmentIcon(state)
 }
 
-function setRouteModifier(mod: UnitEnvironmentState | null) {
+function setRouteModifier(mod: EnvironmentStateId | null) {
   if (!targets.value.length) return
   targets.value[targets.value.length - 1]!.modifier = mod
   rebuildMoveOverlay()
@@ -71,7 +74,7 @@ const ROUTE_MODIFIERS = computed(() => getRouteEnvironmentStates())
 
 export type RoutePoint = {
   pos: vec2
-  modifier?: UnitEnvironmentState | null
+  modifier?: EnvironmentStateId | null
 }
 
 const movingUnits = ref<BaseUnit[]>([])
@@ -110,7 +113,7 @@ function fmtMeters(meters: number) {
 
 /* ================= ENV MENU (radial) ================= */
 
-type EnvMenuId = UnitEnvironmentState | 'none'
+type EnvMenuId = EnvironmentStateId | 'none'
 
 const envMenuOpen = ref(false)
 const envMenuCenter = ref<vec2>({ x: 0, y: 0 })
@@ -209,7 +212,7 @@ function onEnvMenuSelect(item: RadialMenuItem<EnvMenuId>) {
     }
     return
   }
-  setRouteModifier(item.id as UnitEnvironmentState)
+  setRouteModifier(item.id)
   if (envMenuAutoConfirm.value) {
     confirm()
   }

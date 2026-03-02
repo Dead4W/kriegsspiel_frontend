@@ -7,7 +7,6 @@ import {
   type uuid
 } from './types'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
-import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {getEnvMultipliers} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
 import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engine/util.ts";
 import {getFormationMultipliers} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
@@ -31,7 +30,7 @@ import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {type Weather} from "@/engine/resourcePack/weather.ts";
 import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 import { getUnitNumberParam } from "@/engine/resourcePack/units.ts";
-import { getEnvironmentMoraleCheckMod } from "@/engine/resourcePack/environment.ts";
+import { getEnvironmentMoraleCheckMod, type EnvironmentStateId } from "@/engine/resourcePack/environment.ts";
 
 
 
@@ -42,7 +41,7 @@ export interface StatModifierInfo {
   percent: number
   sources: {
     type: 'env' | 'formation' | 'ability' | 'time' | 'weather',
-    state: UnitEnvironmentState | FormationType | UnitAbilityType | TimeOfDay | Weather,
+    state: EnvironmentStateId | FormationType | UnitAbilityType | TimeOfDay | Weather,
     multiplier: number
   }[]
 }
@@ -92,7 +91,7 @@ export abstract class BaseUnit {
   abstract abilities: UnitAbilityType[]
   public activeAbilityType: UnitAbilityType | null = null
 
-  envState: UnitEnvironmentState[] = []
+  envState: EnvironmentStateId[] = []
 
   protected dirtyMoveStartAt = 0;
   protected lastDirtyMoveAt = 0

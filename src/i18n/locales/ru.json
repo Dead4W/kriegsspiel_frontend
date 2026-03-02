@@ -330,6 +330,12 @@
       "label": "Модификаторы погоды",
       "description": "Характеристики юнита изменяются в зависимости от погоды."
     },
+    "resourcePack": {
+      "title": "Ресурс-пак",
+      "url": "URL ресурс-пака",
+      "placeholder": "https://example.com/resourcepack.json",
+      "description": "JSON-файл с балансом / мультипликаторами (время, погода, юниты и т.д.)"
+    },
     "customMap": {
       "title": "Карта",
       "mapUrl": "URL Карты",

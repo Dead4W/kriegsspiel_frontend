@@ -10,15 +10,13 @@ import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {unitType, type vec2} from "@/engine";
-import {
-  type UnitEnvironmentState,
-} from "@/engine/units/enums/UnitStates.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 import { getFormationIcon } from "@/engine/resourcePack/formations.ts";
+import { getUnitNumberParam, getUnitStringParam } from "@/engine/resourcePack/units.ts";
 
 type MoveOrderRange = {
   min: number
@@ -133,8 +131,10 @@ export class unitlayer {
       const { r, g, b } = getTeamColor(unit.team)
       ctx.fillStyle = `rgba(${r},${g},${b},${unitOpacity})`
 
-      const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * this.unitScale
-      const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * this.unitScale
+      const wMult = getUnitNumberParam(unit.type, 'renderWidthMult') ?? 1
+      const hMult = getUnitNumberParam(unit.type, 'renderHeightMult') ?? 1
+      const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * this.unitScale * wMult
+      const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * this.unitScale * hMult
 
       debugPerformance('drawUnitBody', () => {
         ctx.save()
@@ -212,8 +212,21 @@ export class unitlayer {
       ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h)
 
       const texture = unit.type ? getUnitTexture(unit.type) : null
-      if (!texture || !texture.complete || texture.naturalWidth === 0) return
-      ctx.drawImage(texture, p.x - w / 2, p.y - h / 2, w, h)
+      if (texture && texture.complete && texture.naturalWidth !== 0) {
+        ctx.drawImage(texture, p.x - w / 2, p.y - h / 2, w, h)
+      } else {
+        const icon = getUnitStringParam(unit.type, 'renderIcon')
+        if (icon) {
+          ctx.save()
+          ctx.fillStyle = 'rgba(255,255,255,0.92)'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          const fontSize = Math.max(8, Math.min(w, h) * 0.75)
+          ctx.font = `600 ${fontSize}px system-ui`
+          ctx.fillText(icon, p.x, p.y + fontSize * 0.03)
+          ctx.restore()
+        }
+      }
       ctx.strokeStyle = 'black'
       ctx.lineWidth = 1 * cam.zoom
 
@@ -414,7 +427,7 @@ export class unitlayer {
   ) {
     if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]) return
 
-    const states: UnitEnvironmentState[] = unit.envState
+    const states: string[] = unit.envState
 
     let icons: string[] = [];
 

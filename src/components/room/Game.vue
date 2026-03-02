@@ -5,6 +5,7 @@ import GameUi from '@/components/gameUI.vue'
 import { Team } from '@/enums/teamKeys'
 import { GameSocket } from '@/api/socket.ts'
 import type { RoomData } from '@/structures/room'
+import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
 
 import {
   bindKeyboard,
@@ -90,7 +91,10 @@ async function initWorld(room: RoomData) {
     room.options.metersPerPixel = defaultMetersPerPixel
   }
 
-  await loadResourcePack(defaultResourcePackUrl)
+  const selectedResourcePackUrl =
+    (room.options?.[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] as string | undefined) ||
+    defaultResourcePackUrl
+  await loadResourcePack(selectedResourcePackUrl)
 
   const map: mapmeta = {
     imageUrl: room.options.mapUrl,

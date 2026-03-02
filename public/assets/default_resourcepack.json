@@ -1,11 +1,11 @@
 {
   "timeOfDay": {
     "segments": [
-      { "id": "morning", "start": 9, "end": 12, "multipliers": {} },
+      { "id": "morning", "start": 9, "end": 11, "multipliers": {} },
       { "id": "day", "start": 12, "end": 18, "multipliers": {} },
       {
         "id": "evening",
-        "start": 18,
+        "start": 19,
         "end": 22,
         "multipliers": {
           "visionRange": 0.85,
@@ -14,8 +14,8 @@
       },
       {
         "id": "night",
-        "start": 22,
-        "end": 9,
+        "start": 23,
+        "end": 8,
         "multipliers": {
           "visionRange": 0.6,
           "attackRange": 0.75,

@@ -7,8 +7,8 @@ export interface DistanceModifierPoint {
   modifier: number
 }
 
-function cleanDistanceTable(raw: unknown): DistanceModifierPoint[] {
-  if (!Array.isArray(raw) || raw.length === 0) return []
+function cleanDistanceTable(raw: unknown): DistanceModifierPoint[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null
   const cleaned = raw
     .map((x) => ({
       distance: Number((x as any)?.distance),
@@ -17,15 +17,16 @@ function cleanDistanceTable(raw: unknown): DistanceModifierPoint[] {
     .filter((x) => Number.isFinite(x.distance) && x.distance >= 0 && Number.isFinite(x.modifier) && x.modifier > 0)
     .sort((a, b) => a.distance - b.distance)
 
-  return cleaned.length ? cleaned : []
+  return cleaned.length ? cleaned : null
 }
 
 /**
  * Fetch distance modifier table by key from resourcepack.
  * Allows multiple type-specific tables: e.g. "default", "artillery", "cavalry", etc.
  */
-export function getDistanceModifiersTable(key: string): DistanceModifierPoint[] {
+export function getDistanceModifiersTable(key: string): DistanceModifierPoint[] | null {
   const table = getResourcePack()?.distanceModifiers?.[key]
+  if (!table) return null
   return cleanDistanceTable(table)
 }
 
@@ -33,7 +34,7 @@ export function getUnitDistanceModifier(
   distanceModifiersKey: string,
   distance: number
 ): number {
-  const distanceModifiers = getDistanceModifiersTable(distanceModifiersKey) || getDistanceModifiersTable('default') || []
+  const distanceModifiers = getDistanceModifiersTable(distanceModifiersKey) ?? getDistanceModifiersTable('default') ?? []
   if (!distanceModifiers.length) return 1
   const first = distanceModifiers[0]!
   const last = distanceModifiers[distanceModifiers.length - 1]!

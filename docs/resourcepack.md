@@ -76,6 +76,7 @@ When documenting or editing packs, assume: **only numeric values are applied**.
 - **Time of day**: [`docs/resourcepack/time-of-day.md`](resourcepack/time-of-day.md)
 - **Weather**: [`docs/resourcepack/weather.md`](resourcepack/weather.md)
 - **Inaccuracy (radius factors)**: [`docs/resourcepack/inaccuracy.md`](resourcepack/inaccuracy.md)
+- **Morale check (retreat/flee/disband)**: [`docs/resourcepack/morale-check.md`](resourcepack/morale-check.md)
 - **Environment**: [`docs/resourcepack/environment.md`](resourcepack/environment.md)
 - **Formations**: [`docs/resourcepack/formations.md`](resourcepack/formations.md)
 - **Abilities**: [`docs/resourcepack/abilities.md`](resourcepack/abilities.md)

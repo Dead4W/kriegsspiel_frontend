@@ -31,6 +31,7 @@ import {type Weather} from "@/engine/resourcePack/weather.ts";
 import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 import { getUnitNumberParam } from "@/engine/resourcePack/units.ts";
 import { getEnvironmentMoraleCheckMod, type EnvironmentStateId } from "@/engine/resourcePack/environment.ts";
+import { getMoraleCheckConfig, type MoraleOutcomeId } from "@/engine/resourcePack/moraleCheck.ts";
 
 
 
@@ -205,9 +206,10 @@ export abstract class BaseUnit {
     // Don't spam while already retreating
     if (this.hasCommand(UnitCommandTypes.Retreat) || this.isRetreat) return
 
-    const dice1 = this.rollDie(6)
-    const dice2 = this.rollDie(6)
-    const diceSum = dice1 + dice2
+    const cfg = getMoraleCheckConfig()
+    const diceRolls: number[] = []
+    for (let i = 0; i < cfg.dice.count; i++) diceRolls.push(this.rollDie(cfg.dice.sides))
+    const diceSum = diceRolls.reduce((acc, v) => acc + v, 0)
 
     const mods: Array<{ key: string; value: number; applied: boolean }> = []
 
@@ -218,20 +220,26 @@ export abstract class BaseUnit {
     mods.push({ key: `morale`, value: this.morale, applied: true })
 
     // No commander (−2): friendly General within radius
-    const hasCommander = this.type === unitType.GENERAL || this.hasNearbyFriendlyGeneral(300)
-    mods.push({ key: `commander`, value: -2, applied: !hasCommander })
+    const commanderRuleEnabled = cfg.commander.radiusMeters > 0
+    const hasCommander = !commanderRuleEnabled
+      || this.type === unitType.GENERAL
+      || this.hasNearbyFriendlyGeneral(cfg.commander.radiusMeters)
+    mods.push({
+      key: `commander`,
+      value: cfg.commander.penalty,
+      applied: !hasCommander && cfg.commander.penalty !== 0,
+    })
 
-    // Losses > 25% (−2)
-    const lossesMoreThan25 = this.hp / this.stats.maxHp < (1 - 0.25)
-    mods.push({ key: `losses>25%`, value: -2, applied: lossesMoreThan25 })
+    const maxHp = Number(this.stats.maxHp)
+    const hp = Number(this.hp)
+    const lossFraction = (Number.isFinite(maxHp) && maxHp > 0 && Number.isFinite(hp))
+      ? Math.max(0, Math.min(1, 1 - hp / maxHp))
+      : 0
 
-    // Losses > 35% (−1)
-    const lossesMoreThan35 = this.hp / this.stats.maxHp < (1 - 0.35)
-    mods.push({ key: `losses>35%`, value: -1, applied: lossesMoreThan35 })
-
-    // Losses > 50% (−2)
-    const lossesMoreThan50 = this.hp / this.stats.maxHp < (1 - 0.50)
-    mods.push({ key: `losses>50%`, value: -2, applied: lossesMoreThan50 })
+    for (const p of cfg.lossPenalties) {
+      const applied = lossFraction > p.lossesMoreThan
+      mods.push({ key: p.key, value: p.penalty, applied: applied && p.penalty !== 0 })
+    }
 
     // Unit type morale modifier (from resourcepack).
     const moraleCheckMod = getUnitNumberParam(this.type, 'moraleCheckMod') ?? 0
@@ -243,23 +251,18 @@ export abstract class BaseUnit {
 
     const total = diceSum + modifierSum
 
-    type MoraleOutcome = 'pass' | 'retreat' | 'flee' | 'disband'
-    let outcome: MoraleOutcome = 'pass'
-
-    // Thresholds by margin of failure
-    if (total >= 0) {
-      outcome = 'pass'
-    } else if (total >= -2) {
-      outcome = 'retreat'
-    } else if (total >= -5) {
-      outcome = 'flee'
-    } else {
-      outcome = 'disband'
+    let outcome: MoraleOutcomeId = 'pass'
+    const thresholds = [...cfg.outcomes].sort((a, b) => b.minTotal - a.minTotal)
+    for (const t of thresholds) {
+      if (total >= t.minTotal) {
+        outcome = t.id
+        break
+      }
     }
 
     // ===== LOG (similar style to AttackCommand) =====
     const formula: string[] = []
-    formula.push(`2d6(${dice1}+${dice2})=${diceSum}`)
+    formula.push(`${cfg.dice.count}d${cfg.dice.sides}(${diceRolls.join('+')})=${diceSum}`)
     for (const m of mods) {
       if (m.applied && m.value !== 0) {
         const sign = m.value > 0 ? '+' : ''
@@ -290,10 +293,10 @@ export abstract class BaseUnit {
       // unit disbands
       this.hp = 0
     } else {
-      let retreatDuration = 60 * 60 * 12;
+      let retreatDuration = cfg.effects.retreatDurationSeconds;
       if (outcome === 'flee') {
-        retreatDuration *= 2;
-        this.hp /= 2;
+        retreatDuration *= cfg.effects.fleeDurationMultiplier;
+        this.hp *= cfg.effects.fleeHpMultiplier;
       }
 
       this.clearCommands()

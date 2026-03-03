@@ -80,6 +80,26 @@
     "heightFactor": 5.0,
     "distanceFactor": 0.1
   },
+  "moraleCheck": {
+    "dice": { "count": 2, "sides": 6 },
+    "commander": { "radiusMeters": 300, "penalty": -2 },
+    "lossPenalties": [
+      { "lossesMoreThan": 0.25, "penalty": -2, "key": "losses>25%" },
+      { "lossesMoreThan": 0.35, "penalty": -1, "key": "losses>35%" },
+      { "lossesMoreThan": 0.5, "penalty": -2, "key": "losses>50%" }
+    ],
+    "outcomes": [
+      { "minTotal": 0, "id": "pass" },
+      { "minTotal": -2, "id": "retreat" },
+      { "minTotal": -5, "id": "flee" },
+      { "minTotal": -9999, "id": "disband" }
+    ],
+    "effects": {
+      "retreatDurationSeconds": 43200,
+      "fleeDurationMultiplier": 2,
+      "fleeHpMultiplier": 0.5
+    }
+  },
   "environment": {
     "states": [
       { "id": "on_road", "title": "Road", "icon": "👣", "isRoute": true, "multipliers": { "speed": 1 } },

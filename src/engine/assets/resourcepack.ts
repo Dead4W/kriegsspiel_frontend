@@ -107,6 +107,30 @@ export type ResourcePack = {
     heightFactor?: number
     distanceFactor?: number
   }
+  moraleCheck?: {
+    dice?: {
+      count?: number
+      sides?: number
+    }
+    commander?: {
+      radiusMeters?: number
+      penalty?: number
+    }
+    lossPenalties?: Array<{
+      lossesMoreThan?: number
+      penalty?: number
+      key?: string
+    }>
+    outcomes?: Array<{
+      minTotal?: number
+      id?: string
+    }>
+    effects?: {
+      retreatDurationSeconds?: number
+      fleeDurationMultiplier?: number
+      fleeHpMultiplier?: number
+    }
+  }
   abilities?: {
     types: ResourcePackAbilityType[]
   }
@@ -154,6 +178,7 @@ function normalizePack(raw: unknown): ResourcePack {
   const segments = r?.timeOfDay?.segments
   const conditions = r?.weather?.conditions
   const inaccuracy = r?.inaccuracy
+  const moraleCheck = r?.moraleCheck
   const abilityTypes = r?.abilities?.types
   const formationTypes = r?.formations?.types
   const unitTypes = r?.units?.types
@@ -178,6 +203,7 @@ function normalizePack(raw: unknown): ResourcePack {
       conditions: Array.isArray(conditions) ? (conditions as ResourcePackWeatherCondition[]) : [],
     },
     inaccuracy: normalizedInaccuracy,
+    moraleCheck: isObject(moraleCheck) ? (moraleCheck as any) : undefined,
     abilities: {
       types: Array.isArray(abilityTypes)
         ? (abilityTypes.filter(isObject) as unknown as ResourcePackAbilityType[])

@@ -60,7 +60,7 @@ export function getMoraleCheckConfig(pack: ResourcePack | null = getResourcePack
       key: typeof x.key === 'string' ? String(x.key) : '',
     }))
     .filter((x: any) => Number.isFinite(x.lossesMoreThan) && Number.isFinite(x.penalty))
-    .map((x: number) => ({
+    .map((x: any) => ({
       lossesMoreThan: x.lossesMoreThan,
       penalty: x.penalty,
       key: x.key || `losses>${Math.round(x.lossesMoreThan * 100)}%`,
@@ -72,8 +72,8 @@ export function getMoraleCheckConfig(pack: ResourcePack | null = getResourcePack
       minTotal: Number(x.minTotal),
       id: asOutcomeId(x.id),
     }))
-    .filter((x) => Number.isFinite(x.minTotal) && x.id)
-    .map((x) => ({ minTotal: x.minTotal, id: x.id as MoraleOutcomeId }))
+    .filter((x: any) => Number.isFinite(x.minTotal) && x.id)
+    .map((x: any) => ({ minTotal: x.minTotal, id: x.id as MoraleOutcomeId }))
 
   return {
     dice: {

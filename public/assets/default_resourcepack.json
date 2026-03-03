@@ -76,6 +76,10 @@
       }
     ]
   },
+  "inaccuracy": {
+    "heightFactor": 5.0,
+    "distanceFactor": 0.1
+  },
   "environment": {
     "states": [
       { "id": "on_road", "title": "Road", "icon": "👣", "isRoute": true, "multipliers": { "speed": 1 } },

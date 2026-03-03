@@ -103,6 +103,10 @@ export type ResourcePack = {
   weather?: {
     conditions: ResourcePackWeatherCondition[]
   }
+  inaccuracy?: {
+    heightFactor?: number
+    distanceFactor?: number
+  }
   abilities?: {
     types: ResourcePackAbilityType[]
   }
@@ -149,6 +153,7 @@ function normalizePack(raw: unknown): ResourcePack {
   const r = raw as any
   const segments = r?.timeOfDay?.segments
   const conditions = r?.weather?.conditions
+  const inaccuracy = r?.inaccuracy
   const abilityTypes = r?.abilities?.types
   const formationTypes = r?.formations?.types
   const unitTypes = r?.units?.types
@@ -158,6 +163,12 @@ function normalizePack(raw: unknown): ResourcePack {
 
   const normalizedDistanceModifiers = normalizeDistanceModifiers(distanceModifiers)
   const normalizedAngleModifiers = normalizeAngleModifiers(angleModifiers)
+  const normalizedInaccuracy = isObject(inaccuracy)
+    ? {
+      heightFactor: toFiniteNumber((inaccuracy as any).heightFactor) ?? 5.0,
+      distanceFactor: toFiniteNumber((inaccuracy as any).distanceFactor) ?? 0.1,
+    }
+    : { heightFactor: 5.0, distanceFactor: 0.1 }
 
   return {
     timeOfDay: {
@@ -166,6 +177,7 @@ function normalizePack(raw: unknown): ResourcePack {
     weather: {
       conditions: Array.isArray(conditions) ? (conditions as ResourcePackWeatherCondition[]) : [],
     },
+    inaccuracy: normalizedInaccuracy,
     abilities: {
       types: Array.isArray(abilityTypes)
         ? (abilityTypes.filter(isObject) as unknown as ResourcePackAbilityType[])

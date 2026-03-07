@@ -1,5 +1,5 @@
 import {unitType} from "@/engine";
-import { getUnitStringParam } from "@/engine/resourcePack/units.ts";
+import {getSpawnUnitTypes, getUnitStringParam} from "@/engine/resourcePack/units.ts";
 import { resolveResourcePackUrl } from "@/engine/assets/resourcepack.ts";
 
 const textureCache = new Map<string, HTMLImageElement>()
@@ -25,7 +25,7 @@ function getTexture(url: string): HTMLImageElement {
 }
 
 export function preloadTextures(): void {
-  for (const type of Object.values(unitType)) {
+  for (const type of getSpawnUnitTypes()) {
     if (type === unitType.MESSENGER) continue;
     getUnitTexture(type)
   }

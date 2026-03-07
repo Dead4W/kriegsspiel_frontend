@@ -14,7 +14,7 @@ const DEFAULT_RESOURCE_PACK_URL =
   'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json'
 
 const roomName = ref('')
-const showAdvanced = ref(false)
+const showAdvanced = ref(true)
 const selectedMapId = ref<string>('essex')
 
 const customMapUrl = ref('')

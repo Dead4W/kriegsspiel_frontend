@@ -177,7 +177,7 @@ export class GameSocket {
       this.sync();
     })
 
-    this.syncTimer = createRafInterval(1000, () => this.sync());
+    this.syncTimer = createRafInterval(500, () => this.sync());
     this.syncTimer.start();
   }
 

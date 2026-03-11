@@ -1,3 +1,6 @@
+[2026-03-11]
+- Fix time modifiers end in default_resourcepack
+
 [2026-03-07]
 - Fix preload unit textures from ResourcePack
 

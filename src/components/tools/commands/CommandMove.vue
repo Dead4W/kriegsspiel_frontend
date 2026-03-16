@@ -491,23 +491,13 @@ const unitsGrouped = computed(() => group(movingUnits.value))
 
 /* ================= TARGET PICK ================= */
 
-function applyContextTarget(pos: vec2, append: boolean) {
+function applyContextTarget(pos: vec2) {
   let modifier = null;
   if (targets.value.length) {
     modifier = targets.value[targets.value.length - 1]!.modifier ?? null;
   }
 
-  if (append) {
-    // добавить точку
-    targets.value.push({pos, modifier: modifier})
-  } else {
-    // редактировать последнюю
-    if (!targets.value.length) {
-      targets.value.push({pos, modifier: modifier})
-    } else {
-      targets.value[targets.value.length - 1] = {pos, modifier: targets.value[targets.value.length - 1]!.modifier ?? null}
-    }
-  }
+  targets.value.push({pos, modifier: modifier})
 
   rebuildMoveOverlay()
 }
@@ -527,7 +517,7 @@ function onPointerDown(e: PointerEvent) {
   })
 
   // Shift + ПКМ — добавить точку, ПКМ — редактировать последнюю
-  applyContextTarget(pos, e.shiftKey)
+  applyContextTarget(pos)
   openEnvMenu(pos, false)
 }
 

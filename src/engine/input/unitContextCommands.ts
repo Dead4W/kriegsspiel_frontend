@@ -143,7 +143,7 @@ export function bindUnitContextCommands(w: world) {
       command: UnitCommandTypes.Move,
       move: {
         pos,
-        append: e.shiftKey,
+        append: true,
       },
     })
   }

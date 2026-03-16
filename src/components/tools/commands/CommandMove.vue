@@ -526,8 +526,7 @@ function onPointerDown(e: PointerEvent) {
     y: e.clientY,
   })
 
-  // Shift + ПКМ — добавить точку, ПКМ — редактировать последнюю
-  applyContextTarget(pos, e.shiftKey)
+  applyContextTarget(pos, true)
   openEnvMenu(pos, false)
 }
 

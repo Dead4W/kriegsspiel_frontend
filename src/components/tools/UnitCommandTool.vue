@@ -226,7 +226,7 @@ async function onCommandRequest(req: UnitCommandRequest) {
     if (req.move.moveMode) {
       moveRef.value?.setMoveMode?.(req.move.moveMode)
     }
-    moveRef.value?.applyContextTarget?.(req.move.pos)
+    moveRef.value?.applyContextTarget?.(req.move.pos, req.move.append)
     const shouldAutoConfirm = !!req.move.autoConfirm
     // Always ask ENV modifier for each picked point.
     moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
@@ -243,7 +243,7 @@ async function onCommandRequest(req: UnitCommandRequest) {
     if (req.move.moveMode) {
       moveRef.value?.setMoveMode?.(req.move.moveMode)
     }
-    moveRef.value?.applyContextTarget?.(req.move.pos)
+    moveRef.value?.applyContextTarget?.(req.move.pos, req.move.append)
     const shouldAutoConfirm = !!req.move.autoConfirm
     // Always ask ENV modifier for each picked point.
     moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)

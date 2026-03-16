@@ -431,7 +431,7 @@ defineExpose({
         @click="confirm"
         :title="`${t('hotkey')}: E`"
       >
-        {{ t('tools.command.attack') }}
+        {{ t('tools.command.apply') }}
       </button>
 
       <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">

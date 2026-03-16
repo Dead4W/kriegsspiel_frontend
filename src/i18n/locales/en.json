@@ -204,12 +204,10 @@
       "to": "To",
       "delivery_hint": "Select appropriate targets",
       "delivery_message": "Message",
-      "delivery_confirm": "Confirm",
 
       "clear_commands": "Clear commands",
 
       "retreat": "Retreat",
-      "retreat_confirm": "Retreat",
       "retreat_hint": "Unit is temporarily out"
     },
     "logs": {

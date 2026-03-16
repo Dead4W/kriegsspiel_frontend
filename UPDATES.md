@@ -1,5 +1,6 @@
 [2026-03-16]
 - Change move order append by default
+- Fix apply button title
 
 [2026-03-11]
 - Fix time modifiers end in default_resourcepack

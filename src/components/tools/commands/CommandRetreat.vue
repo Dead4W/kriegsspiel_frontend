@@ -109,7 +109,7 @@ defineExpose({
 
     <div class="column actions">
       <button class="btn confirm" @click="confirm" :title="`${t('hotkey')}: E`">
-        {{ t('tools.command.retreat_confirm') }}
+        {{ t('tools.command.apply') }}
       </button>
       <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}

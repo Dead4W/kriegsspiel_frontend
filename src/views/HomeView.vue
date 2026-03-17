@@ -17,6 +17,44 @@ const error = ref('')
 
 const COOKIE_CONSENT_KEY = 'cookie_consent_v1'
 const showCookieBanner = ref(false)
+const updates = ref<{ date: string; items: string[] }[]>([])
+const updatesLoading = ref(false)
+
+const UPDATES_URL = 'https://dead4w.github.io/kriegsspiel_frontend/UPDATES.md'
+
+function parseUpdatesMarkdown(text: string): { date: string; items: string[] }[] {
+  const result: { date: string; items: string[] }[] = []
+  const lines = text.split('\n')
+  let current: { date: string; items: string[] } | null = null
+
+  for (const line of lines) {
+    const dateMatch = line.match(/^\[(\d{4}-\d{2}-\d{2})\]/)
+    if (dateMatch?.[1]) {
+      if (current) result.push(current)
+      current = { date: dateMatch[1], items: [] }
+      continue
+    }
+    const itemMatch = line.match(/^-\s*(.+)$/)
+    if (itemMatch?.[1] && current) {
+      current.items.push(itemMatch[1].trim())
+    }
+  }
+  if (current) result.push(current)
+  return result
+}
+
+async function fetchUpdates() {
+  updatesLoading.value = true
+  try {
+    const res = await fetch(UPDATES_URL)
+    const text = await res.text()
+    updates.value = parseUpdatesMarkdown(text)
+  } catch {
+    updates.value = []
+  } finally {
+    updatesLoading.value = false
+  }
+}
 
 function signInWithGoogle() {
   const redirect = route.query.redirect_url
@@ -136,6 +174,7 @@ async function register() {
 }
 
 onMounted(checkAuth)
+onMounted(fetchUpdates)
 
 onMounted(() => {
   try {
@@ -198,6 +237,20 @@ function dismissCookies() {
           {{ t('createRoomBtn') }}
         </button>
 
+      </div>
+
+      <div class="updates-block">
+        <div class="updates-list">
+          <div v-if="updatesLoading" class="updates-loading">{{ t('loading') }}</div>
+          <template v-else>
+            <div v-for="group in updates" :key="group.date" class="updates-group">
+            <div class="updates-date">{{ group.date }}</div>
+            <ul class="updates-items">
+              <li v-for="(item, i) in group.items" :key="i">{{ item }}</li>
+            </ul>
+          </div>
+          </template>
+        </div>
       </div>
 
       <div class="about-link">
@@ -371,6 +424,83 @@ h1 {
   background: var(--accent-hover);
   transform: translateY(-1px);
   filter: none;
+}
+
+.updates-block {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.updates-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.updates-toggle:hover {
+  color: var(--accent);
+}
+
+.updates-toggle__chevron {
+  font-size: 0.7rem;
+  transition: transform 0.2s;
+}
+
+.updates-toggle__chevron.open {
+  transform: rotate(180deg);
+}
+
+.updates-loading {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.updates-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: var(--radius, 8px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.updates-group {
+  margin-bottom: 0.75rem;
+}
+
+.updates-group:last-child {
+  margin-bottom: 0;
+}
+
+.updates-date {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+
+.updates-items {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.updates-items li {
+  margin: 0.15rem 0;
 }
 
 .about-link {

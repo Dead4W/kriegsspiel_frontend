@@ -1,5 +1,5 @@
 [2026-03-18]
-- Fix max heigh for route move order
+- Fix max height for route move order
 - Change opacity for move overlay plan order
 - Rename "Help" to "Modifiers"
 - Disable clear localStorage auth token after error
@@ -7,6 +7,7 @@
 - Add profile view
 - Add rooms list for profile
 - Add profile change nickname
+- Add updates list
 
 [2026-03-16]
 - Change move order append by default

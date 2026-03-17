@@ -10,6 +10,7 @@ const AboutView  = () => import('@/views/AboutView.vue')
 const CookiesView  = () => import('@/views/CookiesView.vue')
 const PrivacyView  = () => import('@/views/PrivacyView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
+const ProfileView = () => import('@/views/ProfileView.vue')
 
 const supportedLocales = ['ru', 'en']
 const defaultLocale = 'en'
@@ -57,6 +58,12 @@ const router = createRouter({
           path: 'privacy',
           name: 'privacy',
           component: PrivacyView,
+        },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: ProfileView,
+          meta: { requiresAuth: true },
         },
         {
           path: 'create',

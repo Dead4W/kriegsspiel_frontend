@@ -3,6 +3,9 @@
 - Change opacity for move overlay plan order
 - Rename "Help" to "Modifiers"
 - Disable clear localStorage auth token after error
+- Add Google SignIn
+- Add profile view
+- Add rooms list for profile
 
 [2026-03-16]
 - Change move order append by default

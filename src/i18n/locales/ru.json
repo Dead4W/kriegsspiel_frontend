@@ -292,8 +292,25 @@
 
   "authModal": {
     "nickname": "Ник",
-    "enterName": "Введите ник"
+    "enterName": "Введите ник",
+    "signInWithGoogle": "Войти через Google",
+    "or": "или"
   },
+
+  "profile": "Профиль",
+  "profileSeo": {
+    "title": "Профиль — KRIEGSSPIEL",
+    "description": "Ваш профиль и настройки аккаунта KRIEGSSPIEL."
+  },
+  "profile.signOut": "Выйти",
+  "profile.myRooms": "Мои комнаты",
+  "profile.noRooms": "Пока нет комнат. Создайте комнату, чтобы начать.",
+  "profile.joinRoom": "Войти",
+  "profile.team.admin": "Админ",
+  "profile.team.red": "Красные",
+  "profile.team.blue": "Синие",
+  "profile.team.spectator": "Наблюдатель",
+  "profile.team.white": "Белые",
 
   "env": {
     "in_field": "В поле",

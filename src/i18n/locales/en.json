@@ -288,8 +288,25 @@
 
   "authModal": {
     "nickname": "Nickname",
-    "enterName": "Enter nickname"
+    "enterName": "Enter nickname",
+    "signInWithGoogle": "Sign in with Google",
+    "or": "or"
   },
+
+  "profile": "Profile",
+  "profileSeo": {
+    "title": "Profile — KRIEGSSPIEL",
+    "description": "Your KRIEGSSPIEL profile and account settings."
+  },
+  "profile.signOut": "Sign out",
+  "profile.myRooms": "My rooms",
+  "profile.noRooms": "No rooms yet. Create one to get started.",
+  "profile.joinRoom": "Join",
+  "profile.team.admin": "Admin",
+  "profile.team.red": "Red",
+  "profile.team.blue": "Blue",
+  "profile.team.spectator": "Spectator",
+  "profile.team.white": "White",
 
   "env": {
     "in_field": "In field",

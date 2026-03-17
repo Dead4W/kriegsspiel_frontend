@@ -5,13 +5,22 @@ import { useI18n } from 'vue-i18n'
 import { useHead } from '@vueuse/head'
 import api from '@/api/client'
 import type {Team} from "@/enums/teamKeys.ts";
+import {RoomGameStage} from "@/enums/roomStage.ts";
 
 interface UserRoom {
   uuid: string
   name: string
   team: Team
   key: string | null
+  stage?: RoomGameStage
+  ingame_time?: string
+  options?: Record<string, unknown>
+  admin_id?: number
+  map_url?: string | null
+  height_map_url?: string | null
+  weather?: string | null
   created_at: string
+  updated_at?: string
 }
 
 const route = useRoute()
@@ -83,6 +92,20 @@ function formatDate(iso: string) {
 
 function teamLabel(team: UserRoom['team']) {
   return t(`profile.team.${team}`)
+}
+
+function stageLabel(stage: string | undefined) {
+  if (!stage) return ''
+  const key = `profile.stage.${stage}`
+  const translated = t(key)
+  return translated !== key ? translated : stage
+}
+
+function weatherLabel(weather: string | null) {
+  if (!weather) return ''
+  const key = `weather.${weather}`
+  const translated = t(key)
+  return translated !== key ? translated : weather
 }
 
 function startEditNickname() {
@@ -191,7 +214,10 @@ onMounted(loadProfile)
               <div class="room-info">
                 <span class="room-name">{{ room.name }}</span>
                 <span class="room-meta">
-                  {{ teamLabel(room.team) }} · {{ formatDate(room.created_at) }}
+                  {{ teamLabel(room.team) }}
+                  <template v-if="room.stage"> · {{ stageLabel(room.stage) }}</template>
+                  <template v-if="room.weather"> · {{ weatherLabel(room.weather) }}</template>
+                  · {{ formatDate(room.created_at) }}
                 </span>
               </div>
               <span class="room-join">{{ t('profile.joinRoom') }}</span>

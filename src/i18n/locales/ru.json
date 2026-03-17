@@ -316,6 +316,9 @@
   "profile.team.blue": "Синие",
   "profile.team.spectator": "Наблюдатель",
   "profile.team.white": "Белые",
+  "profile.stage.planning": "Планирование",
+  "profile.stage.war": "Война",
+  "profile.stage.end": "Конец",
 
   "env": {
     "in_field": "В поле",

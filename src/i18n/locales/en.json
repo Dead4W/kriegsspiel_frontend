@@ -312,6 +312,9 @@
   "profile.team.blue": "Blue",
   "profile.team.spectator": "Spectator",
   "profile.team.white": "White",
+  "profile.stage.planning": "Planning",
+  "profile.stage.war": "War",
+  "profile.stage.end": "End",
 
   "env": {
     "in_field": "In field",

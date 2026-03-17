@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
 import {BaseUnit} from '@/engine/units/baseUnit'
 import type {OverlayItem} from '@/engine/types/overlayTypes'
 import type {vec2} from '@/engine/types'
@@ -80,6 +80,7 @@ export type RoutePoint = {
 const movingUnits = ref<BaseUnit[]>([])
 const targets = ref<RoutePoint[]>([])
 const isPatrol = ref(false)
+const routeListRef = ref<HTMLElement | null>(null)
 
 /* ================= DISTANCE (meters) ================= */
 
@@ -500,6 +501,9 @@ function applyContextTarget(pos: vec2, append: boolean) {
   if (append) {
     // добавить точку
     targets.value.push({pos, modifier: modifier})
+    nextTick(() => {
+      routeListRef.value?.scrollTo({ top: routeListRef.value.scrollHeight, behavior: 'smooth' })
+    })
   } else {
     // редактировать последнюю
     if (!targets.value.length) {
@@ -557,7 +561,7 @@ function rebuildMoveOverlay() {
         type: 'line',
         from,
         to: moveCmd.getState().state.target,
-        color: '#22c55e',
+        color: 'rgba(34,197,94,0.65)',
         width: 6,
         dash: [6, 6],
         dashOffset: -1,
@@ -586,7 +590,7 @@ function rebuildMoveOverlay() {
             type: 'line',
             from,
             to,
-            color: '#22c55e',
+            color: 'rgba(34,197,94,0.65)',
             width: 6,
             dash: [6, 6],
             dashOffset: -1,
@@ -800,7 +804,8 @@ defineExpose({
 
       <div
         v-else-if="movingUnits.length > 0"
-        class="target-pos"
+        ref="routeListRef"
+        class="target-pos route-list"
       >
         <div v-for="(t, i) in targets" :key="i">
           {{ i + 1 }}: {{ fmtMeters(routeDistancesMeters[i] ?? 0) }}
@@ -905,6 +910,11 @@ defineExpose({
 .target-pos {
   font-size: 10px;
   color: #38bdf8;
+}
+
+.target-pos.route-list {
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 .cards {

@@ -126,7 +126,6 @@ router.beforeEach(async (to, from, next) => {
     authChecked = true
     next()
   } catch {
-    localStorage.removeItem('token')
     next({
       path: `/${to.params.locale}`,
       query: { redirect_url: to.fullPath },

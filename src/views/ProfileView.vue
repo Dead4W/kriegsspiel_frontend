@@ -101,13 +101,6 @@ function stageLabel(stage: string | undefined) {
   return translated !== key ? translated : stage
 }
 
-function weatherLabel(weather: string | null) {
-  if (!weather) return ''
-  const key = `weather.${weather}`
-  const translated = t(key)
-  return translated !== key ? translated : weather
-}
-
 function startEditNickname() {
   nicknameInput.value = user.value?.name ?? ''
   nicknameError.value = ''
@@ -216,7 +209,6 @@ onMounted(loadProfile)
                 <span class="room-meta">
                   {{ teamLabel(room.team) }}
                   <template v-if="room.stage"> · {{ stageLabel(room.stage) }}</template>
-                  <template v-if="room.weather"> · {{ weatherLabel(room.weather) }}</template>
                   · {{ formatDate(room.created_at) }}
                 </span>
               </div>

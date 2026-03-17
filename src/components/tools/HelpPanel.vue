@@ -125,7 +125,7 @@ const categories = computed(() => [
   <div class="help-overlay no-select">
     <div class="help-panel">
       <div class="header">
-        <span>{{ t('tools.help.title') }}</span>
+        <span>{{ t('tools.modifiers.title') }}</span>
         <button @click="$emit('close')">✖</button>
       </div>
 
@@ -135,7 +135,7 @@ const categories = computed(() => [
           :key="category.id"
           class="category"
         >
-          <h2>{{ t(`tools.help.sections.${category.id}`) }}</h2>
+          <h2>{{ t(`tools.modifiers.sections.${category.id}`) }}</h2>
 
           <div class="blocks">
             <div

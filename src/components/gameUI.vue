@@ -176,7 +176,7 @@ onUnmounted(() => {
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.HELP)"
       >
-        ❓ {{ t('tools.help.button') }}
+        ❓ {{ t('tools.modifiers.button') }}
       </button>
     </div>
 

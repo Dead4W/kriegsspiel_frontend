@@ -219,8 +219,8 @@
       "morale_flee": "rout",
       "morale_disband": "disbands"
     },
-    "help": {
-      "button": "Help",
+    "modifiers": {
+      "button": "Modifiers",
       "title": "Unit Modifiers",
       "sections": {
         "environment": "Environments",

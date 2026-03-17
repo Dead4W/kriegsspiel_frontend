@@ -8,6 +8,7 @@
 - Add rooms list for profile
 - Add profile change nickname
 - Add updates list
+- Add profile avatar
 
 [2026-03-16]
 - Change move order append by default

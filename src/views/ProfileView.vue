@@ -23,6 +23,14 @@ const rooms = ref<UserRoom[]>([])
 const loading = ref(true)
 const roomsLoading = ref(true)
 
+const editingNickname = ref(false)
+const nicknameInput = ref('')
+const nicknameError = ref('')
+const nicknameLoading = ref(false)
+
+const NICKNAME_MIN = 3
+const NICKNAME_MAX = 32
+
 useHead(() => ({
   title: t('profileSeo.title'),
   meta: [
@@ -77,6 +85,41 @@ function teamLabel(team: UserRoom['team']) {
   return t(`profile.team.${team}`)
 }
 
+function startEditNickname() {
+  nicknameInput.value = user.value?.name ?? ''
+  nicknameError.value = ''
+  editingNickname.value = true
+}
+
+function cancelEditNickname() {
+  editingNickname.value = false
+  nicknameError.value = ''
+}
+
+async function saveNickname() {
+  const name = nicknameInput.value.trim()
+  if (name.length < NICKNAME_MIN || name.length > NICKNAME_MAX) {
+    nicknameError.value = t('profile.nicknameLengthError')
+    return
+  }
+  if (name === user.value?.name) {
+    cancelEditNickname()
+    return
+  }
+
+  nicknameLoading.value = true
+  nicknameError.value = ''
+  try {
+    const { data } = await api.patch('/user/nickname', { name })
+    user.value = { ...user.value!, ...data }
+    cancelEditNickname()
+  } catch {
+    nicknameError.value = t('profile.nicknameError')
+  } finally {
+    nicknameLoading.value = false
+  }
+}
+
 function signOut() {
   localStorage.removeItem('token')
   localStorage.removeItem('user_id')
@@ -97,7 +140,34 @@ onMounted(loadProfile)
 
       <template v-else-if="user">
         <div class="profile-info">
-          <p class="profile-name">{{ user.name }}</p>
+          <template v-if="editingNickname">
+            <div class="nickname-edit">
+              <input
+                v-model="nicknameInput"
+                type="text"
+                :placeholder="t('authModal.nickname')"
+                :disabled="nicknameLoading"
+                maxlength="32"
+                @keyup.enter="saveNickname"
+                @keyup.escape="cancelEditNickname"
+              />
+              <p v-if="nicknameError" class="error">{{ nicknameError }}</p>
+              <div class="nickname-actions">
+                <button class="outline small" @click="cancelEditNickname" :disabled="nicknameLoading">
+                  {{ t('profile.cancel') }}
+                </button>
+                <button class="primary small" @click="saveNickname" :disabled="nicknameLoading">
+                  {{ nicknameLoading ? '...' : t('profile.saveNickname') }}
+                </button>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <p class="profile-name">{{ user.name }}</p>
+            <button class="edit-nickname-btn" @click="startEditNickname">
+              {{ t('profile.changeNickname') }}
+            </button>
+          </template>
           <p v-if="user.email" class="profile-email">{{ user.email }}</p>
         </div>
 
@@ -276,5 +346,52 @@ onMounted(loadProfile)
   flex-shrink: 0;
   font-size: 0.9rem;
   color: var(--accent);
+}
+
+.edit-nickname-btn {
+  margin-top: 0.5rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.edit-nickname-btn:hover {
+  color: var(--accent-hover);
+}
+
+.nickname-edit {
+  text-align: left;
+}
+
+.nickname-edit input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: var(--radius, 8px);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.nickname-edit .error {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--danger);
+}
+
+.nickname-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nickname-actions .small {
+  padding: 0.5rem 1rem;
+  min-width: auto;
+  font-size: 0.9rem;
 }
 </style>

@@ -6,6 +6,7 @@
 - Add Google SignIn
 - Add profile view
 - Add rooms list for profile
+- Add profile change nickname
 
 [2026-03-16]
 - Change move order append by default

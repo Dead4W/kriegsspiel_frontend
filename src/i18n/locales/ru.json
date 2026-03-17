@@ -303,6 +303,11 @@
     "description": "Ваш профиль и настройки аккаунта KRIEGSSPIEL."
   },
   "profile.signOut": "Выйти",
+  "profile.changeNickname": "Изменить ник",
+  "profile.saveNickname": "Сохранить",
+  "profile.cancel": "Отмена",
+  "profile.nicknameLengthError": "Ник должен быть от 3 до 32 символов.",
+  "profile.nicknameError": "Не удалось обновить ник.",
   "profile.myRooms": "Мои комнаты",
   "profile.noRooms": "Пока нет комнат. Создайте комнату, чтобы начать.",
   "profile.joinRoom": "Войти",

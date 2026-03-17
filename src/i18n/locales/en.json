@@ -299,6 +299,11 @@
     "description": "Your KRIEGSSPIEL profile and account settings."
   },
   "profile.signOut": "Sign out",
+  "profile.changeNickname": "Change nickname",
+  "profile.saveNickname": "Save",
+  "profile.cancel": "Cancel",
+  "profile.nicknameLengthError": "Nickname must be 3–32 characters.",
+  "profile.nicknameError": "Failed to update nickname.",
   "profile.myRooms": "My rooms",
   "profile.noRooms": "No rooms yet. Create one to get started.",
   "profile.joinRoom": "Join",

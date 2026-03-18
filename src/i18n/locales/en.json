@@ -285,7 +285,8 @@
     "bad_token": "Auth token expired or not exist.",
     "room_not_found": "Room not found.",
     "wrong_key": "Wrong link key. Try with new link.",
-    "map_url_empty": "Empty map url."
+    "map_url_empty": "Empty map url.",
+    "map_load_failed": "Failed to load map images."
   },
 
   "continue": "Continue",

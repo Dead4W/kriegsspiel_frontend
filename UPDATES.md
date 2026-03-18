@@ -12,6 +12,7 @@
 - Add socket auth token
 - Umpire paint is sharing with players
 - Paint send before close
+- Add error message on error load map or height map
 
 [2026-03-16]
 - Change move order append by default

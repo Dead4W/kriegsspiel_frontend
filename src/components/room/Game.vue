@@ -110,7 +110,7 @@ async function initWorld(room: RoomData) {
   let bitmap: any
   let bitmapHeightMap: any
   if (map.heightMapUrl) {
-    ;[bitmap, bitmapHeightMap] = await Promise.all([
+    [bitmap, bitmapHeightMap] = await Promise.all([
       loadImageWithProgress(map.imageUrl, (p) => {
         loadMapProgress = p * 0.5
         emit('progress', loadMapProgress + loadHeightMapProgress)
@@ -119,11 +119,17 @@ async function initWorld(room: RoomData) {
         loadHeightMapProgress = p * 0.5
         emit('progress', loadMapProgress + loadHeightMapProgress)
       }),
-    ])
+    ]).catch((err) => {
+      emit('error', 'error.map_load_failed')
+      throw err
+    })
   } else {
     bitmap = await loadImageWithProgress(map.imageUrl, (p) => {
       loadMapProgress = p
       emit('progress', loadMapProgress)
+    }).catch((err) => {
+      emit('error', 'error.map_load_failed')
+      throw err
     })
   }
 

@@ -1,31 +1,12 @@
-# kriegspiel-frontend
+# Kriegspiel Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+**Fog of war without fog** — Vue 3 frontend for the Kriegspiel tactical wargame.
 
-## Documentation
+## Related
 
-- Resource pack format: `docs/resourcepack.md`
-
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
+- **Backend**: [kriegsspiel_backend](https://github.com/Dead4W/kriegsspiel_backend/) — Laravel API and game server
+- **Resource pack format**: [`docs/resourcepack.md`](docs/resourcepack.md)
+- **Default resource pack**: [default_resourcepack.json](https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json)
 
 ## Project Setup
 
@@ -33,21 +14,35 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### Development
 
 ```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+### Production build
 
 ```sh
 npm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+### Lint
 
 ```sh
 npm run lint
 ```
-# kriegsspiel_frontend
+
+## Resource pack
+
+A **resource pack** is a JSON file that defines unit stats, formations, abilities, weather, environment, and combat modifiers. Rooms can use a custom resource pack URL.
+
+- Format docs: [`docs/resourcepack.md`](docs/resourcepack.md)
+- Default pack: `https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json`
+
+## IDE
+
+[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (disable Vetur).
+
+## License
+
+See [LICENSE](LICENSE).

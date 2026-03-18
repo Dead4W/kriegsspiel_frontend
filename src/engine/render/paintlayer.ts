@@ -67,20 +67,20 @@ export class PaintLayer {
       bctx.lineJoin = 'round'
 
       for (const s of strokes) {
-        if (s.points.length < 2) continue
+        const n = s.points.length >> 1
+        if (n < 2) continue
 
         const mode = s.mode ?? 'draw'
         bctx.globalCompositeOperation = mode === 'erase' ? 'destination-out' : 'source-over'
-        // For erasing, the RGB doesn't matter; alpha controls erase strength.
         bctx.strokeStyle = s.color
         bctx.lineWidth = Math.max(1, s.width * cam.zoom)
 
         bctx.beginPath()
-        const first = cam.worldToScreen(s.points[0]!)
-        bctx.moveTo(first.x, first.y)
+        const p0 = cam.worldToScreen({ x: s.points[0]!, y: s.points[1]! })
+        bctx.moveTo(p0.x, p0.y)
 
-        for (let i = 1; i < s.points.length; i++) {
-          const p = cam.worldToScreen(s.points[i]!)
+        for (let i = 1; i < n; i++) {
+          const p = cam.worldToScreen({ x: s.points[i << 1]!, y: s.points[(i << 1) + 1]! })
           bctx.lineTo(p.x, p.y)
         }
 

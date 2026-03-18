@@ -286,8 +286,8 @@
     "room_not_found": "Room not found.",
     "wrong_key": "Wrong link key. Try with new link.",
     "map_url_empty": "Empty map url.",
-    "map_load_failed": "Failed to load map images.",
-    "resourcepack_load_failed": "Failed to load resource pack."
+    "map_load_failed": "Failed to load map images: {url}",
+    "resourcepack_load_failed": "Failed to load resource pack: {url}"
   },
 
   "continue": "Continue",

@@ -31,7 +31,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'progress', value: number): void
   (e: 'ready', w: world): void
-  (e: 'error', i18nKey: string): void
+  (e: 'error', i18nKey: string, url?: string): void
 }>()
 
 const canvasEl = ref<HTMLCanvasElement | null>(null)
@@ -96,7 +96,7 @@ async function initWorld(room: RoomData) {
   try {
     await loadResourcePack(selectedResourcePackUrl)
   } catch (err) {
-    emit('error', 'error.resourcepack_load_failed')
+    emit('error', 'error.resourcepack_load_failed', selectedResourcePackUrl)
     throw err
   }
   preloadTextures()
@@ -125,7 +125,10 @@ async function initWorld(room: RoomData) {
         emit('progress', loadMapProgress + loadHeightMapProgress)
       }),
     ]).catch((err) => {
-      emit('error', 'error.map_load_failed')
+      const urls = map.heightMapUrl
+        ? `${map.imageUrl}, ${map.heightMapUrl}`
+        : map.imageUrl
+      emit('error', 'error.map_load_failed', urls)
       throw err
     })
   } else {
@@ -133,7 +136,7 @@ async function initWorld(room: RoomData) {
       loadMapProgress = p
       emit('progress', loadMapProgress)
     }).catch((err) => {
-      emit('error', 'error.map_load_failed')
+      emit('error', 'error.map_load_failed', map.imageUrl)
       throw err
     })
   }

@@ -24,6 +24,7 @@ const { t } = useI18n()
 
 
 const error = ref('')
+const errorParams = ref<Record<string, string>>({})
 const mapProgress = ref(0)
 const roomData = ref<RoomData | null>(null)
 const selectedTeam = ref<Team | null>(null)
@@ -93,6 +94,7 @@ async function loadRoom() {
       autoTeam.value = roomData.value!.team
     }
   } catch (e: any) {
+    errorParams.value = {}
     if (e.response?.status === 403 || e.response?.status === 422) {
       error.value = 'error.wrong_key'
       stage.value = RoomStage.ERROR
@@ -115,8 +117,9 @@ function onGameProgress(p: number) {
   mapProgress.value = p
 }
 
-function onGameError(i18nKey: string) {
+function onGameError(i18nKey: string, url?: string) {
   error.value = i18nKey
+  errorParams.value = url != null ? { url } : {}
   stage.value = RoomStage.ERROR
 }
 
@@ -148,7 +151,7 @@ onMounted(loadRoom)
 
   <!-- error -->
   <section v-if="stage === RoomStage.ERROR" class="state error">
-    <h1>{{ t(error) }}</h1>
+    <h1>{{ t(error, errorParams) }}</h1>
     <button class="home-btn" @click="goHome">
       {{ t('to_home') }}
     </button>

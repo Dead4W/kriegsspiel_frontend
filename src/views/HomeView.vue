@@ -22,8 +22,6 @@ const showCookieBanner = computed(() => !hasAcceptedCookies.value)
 const updates = ref<{ date: string; items: string[] }[]>([])
 const updatesLoading = ref(false)
 
-const UPDATES_URL = 'https://dead4w.github.io/kriegsspiel_frontend/UPDATES.md'
-
 function parseUpdatesMarkdown(text: string): { date: string; items: string[] }[] {
   const result: { date: string; items: string[] }[] = []
   const lines = text.split('\n')
@@ -48,7 +46,7 @@ function parseUpdatesMarkdown(text: string): { date: string; items: string[] }[]
 async function fetchUpdates() {
   updatesLoading.value = true
   try {
-    const res = await fetch(UPDATES_URL)
+    const res = await fetch('/UPDATES.md')
     const text = await res.text()
     updates.value = parseUpdatesMarkdown(text)
   } catch {

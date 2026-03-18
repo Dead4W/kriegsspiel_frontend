@@ -47,6 +47,7 @@ A **resource pack** is a JSON file that defines unit stats, formations, abilitie
 | Add mods support (external js link) | 📋 planning | |
 | Improve orders controls | 📋 planning | |
 | Improve forestmap control for Umpire | 📋 planning | |
+| Rewrite weather shaders & optimize | 📋 planning | |
 
 Status: 📋 planning | 🚧 wip | ✅ done
 

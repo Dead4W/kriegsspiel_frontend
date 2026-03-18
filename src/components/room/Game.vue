@@ -93,7 +93,12 @@ async function initWorld(room: RoomData) {
   const selectedResourcePackUrl =
     (room.options?.[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] as string | undefined) ||
     defaultResourcePackUrl
-  await loadResourcePack(selectedResourcePackUrl)
+  try {
+    await loadResourcePack(selectedResourcePackUrl)
+  } catch (err) {
+    emit('error', 'error.resourcepack_load_failed')
+    throw err
+  }
   preloadTextures()
 
   const map: mapmeta = {

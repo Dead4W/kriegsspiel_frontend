@@ -13,6 +13,7 @@
 - Umpire paint is sharing with players
 - Paint send before close
 - Add error message on error load map or height map
+- Add error message on error load resourcePack
 
 [2026-03-16]
 - Change move order append by default

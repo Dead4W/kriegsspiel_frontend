@@ -39,6 +39,17 @@ A **resource pack** is a JSON file that defines unit stats, formations, abilitie
 - Format docs: [`docs/resourcepack.md`](docs/resourcepack.md)
 - Default pack: `https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json`
 
+## TODO
+
+| Task | Status | Comment |
+|------|--------|---------|
+| Rewrite column positions logic | 📋 planning | |
+| Add mods support (external js link) | 📋 planning | |
+| Improve orders controls | 📋 planning | |
+| Improve forestmap control for Umpire | 📋 planning | |
+
+Status: 📋 planning | 🚧 wip | ✅ done
+
 ## IDE
 
 [VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (disable Vetur).

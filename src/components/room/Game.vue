@@ -179,6 +179,7 @@ async function initWorld(room: RoomData) {
       localStorage.getItem(`room_admin_key_${room.uuid}`)
       ?? localStorage.getItem(`room_key_${room.uuid}`)
       ?? undefined,
+    token: localStorage.getItem('token') ?? undefined,
     world: w,
   })
 

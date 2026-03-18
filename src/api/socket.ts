@@ -45,6 +45,7 @@ export class GameSocket {
     roomId: string
     team: string
     key?: string
+    token?: string
     world: world
   }) {
     this.disconnect();
@@ -52,6 +53,7 @@ export class GameSocket {
       room_id: params.roomId,
       team: params.team,
       key: params.key ?? '',
+      token: params.token ?? '',
     })
 
     this.world = params.world

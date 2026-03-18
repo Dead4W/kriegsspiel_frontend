@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useHead } from '@vueuse/head'
@@ -16,7 +16,9 @@ const loading = ref(false)
 const error = ref('')
 
 const COOKIE_CONSENT_KEY = 'cookie_consent_v1'
-const showCookieBanner = ref(false)
+const hasAcceptedCookies = ref(false)
+
+const showCookieBanner = computed(() => !hasAcceptedCookies.value)
 const updates = ref<{ date: string; items: string[] }[]>([])
 const updatesLoading = ref(false)
 
@@ -178,21 +180,15 @@ onMounted(fetchUpdates)
 
 onMounted(() => {
   try {
-    const v = localStorage.getItem(COOKIE_CONSENT_KEY)
-    showCookieBanner.value = !v
+    hasAcceptedCookies.value = localStorage.getItem(COOKIE_CONSENT_KEY) === 'accepted'
   } catch {
-    showCookieBanner.value = true
+    hasAcceptedCookies.value = false
   }
 })
 
 function acceptCookies() {
   localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted')
-  showCookieBanner.value = false
-}
-
-function dismissCookies() {
-  localStorage.setItem(COOKIE_CONSENT_KEY, 'dismissed')
-  showCookieBanner.value = false
+  hasAcceptedCookies.value = true
 }
 </script>
 
@@ -266,8 +262,8 @@ function dismissCookies() {
       </div>
     </div>
 
-    <!-- модалка авторизации -->
-    <div v-if="showAuth" class="modal">
+    <!-- модалка авторизации (только после принятия cookies) -->
+    <div v-if="showAuth && hasAcceptedCookies" class="modal">
       <div class="modal-card">
         <h2>{{ t('authModal.enterName') }}</h2>
 
@@ -309,35 +305,35 @@ function dismissCookies() {
       </div>
     </div>
 
-    <div v-if="showCookieBanner && !showAuth" class="cookie-banner" role="dialog" aria-live="polite">
-      <div class="cookie-banner__inner">
-        <div class="cookie-banner__text">
+    <!-- required action: accept cookies to use site -->
+    <div v-if="showCookieBanner" class="modal cookie-required-modal" role="dialog" aria-live="polite">
+      <div class="modal-card cookie-required-card">
+        <h2>{{ t('cookieBanner.requiredTitle') }}</h2>
+        <p class="cookie-required__text">
           {{ t('cookieBanner.text') }}
-          <span class="cookie-banner__links">
+          <span class="cookie-required__links">
             <router-link
-              class="cookie-banner__link"
+              class="cookie-required__link"
               :to="{ name: 'cookies', params: { locale: route.params.locale } }"
             >
               {{ t('cookieBanner.cookiesLink') }}
             </router-link>
-            <span class="cookie-banner__sep">•</span>
+            <span class="cookie-required__sep">•</span>
             <router-link
-              class="cookie-banner__link"
+              class="cookie-required__link"
               :to="{ name: 'privacy', params: { locale: route.params.locale } }"
             >
               {{ t('cookieBanner.privacyLink') }}
             </router-link>
           </span>
-        </div>
+        </p>
 
-        <div class="cookie-banner__actions">
-          <button class="cookie-banner__btn" @click="dismissCookies">
-            {{ t('cookieBanner.dismiss') }}
-          </button>
-          <button class="primary cookie-banner__btn cookie-banner__btn--primary" @click="acceptCookies">
-            {{ t('cookieBanner.accept') }}
-          </button>
-        </div>
+        <button
+          class="primary cookie-required__btn"
+          @click="acceptCookies"
+        >
+          {{ t('cookieBanner.accept') }}
+        </button>
       </div>
     </div>
   </section>
@@ -608,91 +604,46 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
-.cookie-banner {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 90;
-  padding: 1rem;
-  background: rgba(2, 6, 23, 0.82);
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
-  backdrop-filter: blur(10px);
+.cookie-required-modal {
+  z-index: 110;
 }
 
-.cookie-banner__inner {
-  max-width: 980px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+.cookie-required-card {
+  width: 400px;
+  max-width: 90vw;
 }
 
-.cookie-banner__text {
+.cookie-required__text {
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.5;
   font-size: 0.95rem;
+  margin: 0 0 1.5rem;
 }
 
-.cookie-banner__links {
-  margin-left: 0.5rem;
-  white-space: nowrap;
+.cookie-required__links {
+  display: inline;
 }
 
-.cookie-banner__link {
+.cookie-required__link {
   color: var(--accent);
   text-decoration: underline;
 }
 
-.cookie-banner__link:hover {
+.cookie-required__link:hover {
   color: var(--accent-hover);
 }
 
-.cookie-banner__sep {
+.cookie-required__sep {
   margin: 0 0.5rem;
   color: rgba(148, 163, 184, 0.7);
 }
 
-.cookie-banner__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-}
-
-.cookie-banner__btn {
-  padding: 0.75rem 1rem;
-  min-width: 140px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(15, 23, 42, 0.25);
-  color: var(--text);
-}
-
-.cookie-banner__btn:hover {
-  border-color: rgba(148, 163, 184, 0.45);
-}
-
-.cookie-banner__btn--primary {
+.cookie-required__btn {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  font-size: 1rem;
   border: none;
-}
-
-@media (max-width: 720px) {
-  .cookie-banner__inner {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .cookie-banner__actions {
-    justify-content: stretch;
-  }
-
-  .cookie-banner__btn {
-    width: 100%;
-  }
-
-  .cookie-banner__links {
-    white-space: normal;
-  }
+  cursor: pointer;
+  border-radius: var(--radius, 8px);
 }
 </style>

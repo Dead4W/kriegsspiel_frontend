@@ -11,6 +11,7 @@
 - Add profile avatar
 - Add socket auth token
 - Umpire paint is sharing with players
+- Paint send before close
 
 [2026-03-16]
 - Change move order append by default

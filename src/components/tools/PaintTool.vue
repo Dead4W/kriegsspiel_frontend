@@ -86,22 +86,17 @@ function onPointerMove(e: PointerEvent) {
 
   lastClient = { x: e.clientX, y: e.clientY }
   currentStroke.points.push(worldPosFromEvent(e))
-  // Mark paint layer dirty (the stroke object is mutated in-place).
   window.ROOM_WORLD.touchPaint()
+  window.ROOM_WORLD.markPaintStrokeDirty(currentStroke.id)
 }
 
 function finishStroke() {
   if (!currentStroke) return
 
-  // Avoid storing accidental clicks.
   if (currentStroke.points.length < 2) {
     window.ROOM_WORLD.undoPaint(window.CLIENT_ID)
   } else {
-    // Broadcast only completed strokes (local drawing is already visible).
-    window.ROOM_WORLD.events.emit('api', {
-      type: 'paint_add',
-      data: currentStroke,
-    })
+    window.ROOM_WORLD.markPaintStrokeDirty(currentStroke.id)
   }
 
   painting = false

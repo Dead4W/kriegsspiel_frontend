@@ -121,6 +121,7 @@ export class GameSocket {
     const dirtyUnitObjects = this.world.units.getDirty()
     const dirtyUnitRemove = this.world.units.getDirtyRemove()
     const dirtyChatMessages = this.world.messages.getDirty()
+    const dirtyPaintStrokes = this.world.paint.getDirty()
     const cursor = this.world.cursor.getMoveFrames();
 
     let messages: OutMessage[] = [
@@ -132,6 +133,10 @@ export class GameSocket {
       ...dirtyChatMessages.map<OutMessage>(m => ({
         type: 'chat',
         data: m,
+      })),
+      ...dirtyPaintStrokes.map<OutMessage>(s => ({
+        type: 'paint_add',
+        data: s,
       })),
     ];
 
@@ -263,7 +268,7 @@ export class GameSocket {
         } else if (m.type === 'log') {
           window.ROOM_WORLD.logs.value.push(m.data)
         } else if (m.type === 'paint_add') {
-          this.world.addPaintStroke(m.data)
+          this.world.addPaintStroke(m.data, 'remote')
         } else if (m.type === 'paint_undo') {
           this.world.removePaintStrokeById(m.data.id)
         } else if (m.type === 'skip_time_success') {

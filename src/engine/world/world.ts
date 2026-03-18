@@ -113,9 +113,13 @@ export class world {
     this.events.emit('changed', { reason: 'overlay' })
   }
 
-  addPaintStroke(stroke: PaintStroke) {
-    this.paint.add(stroke)
+  addPaintStroke(stroke: PaintStroke, source: 'local' | 'remote' = 'local') {
+    this.paint.add(stroke, source)
     this.events.emit('changed', { reason: 'paint' })
+  }
+
+  markPaintStrokeDirty(id: string) {
+    this.paint.markDirty(id)
   }
 
   removePaintStrokeById(id: string) {

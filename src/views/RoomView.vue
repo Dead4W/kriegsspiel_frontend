@@ -194,6 +194,7 @@ onMounted(loadRoom)
 
 .error h1 {
   margin-bottom: 1.5rem;
+  white-space: pre-line;
 }
 
 .home-btn {

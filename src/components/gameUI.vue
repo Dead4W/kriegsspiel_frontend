@@ -117,7 +117,7 @@ onUnmounted(() => {
         :title="`${t('tools.hard_move_description')}\n(${t('hotkey')}: Shift)`"
       >
         🕹️ {{ t('tools.hard_move') }}
-        <HotkeyTag key-label="⇧" />
+        <HotkeyTag key-label="Shift" />
       </button>
 
       <button

@@ -11,6 +11,7 @@ import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifier
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
+import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 
 const {t} = useI18n()
 
@@ -432,10 +433,12 @@ defineExpose({
         :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.apply') }}
+        <HotkeyTag key-label="E" />
       </button>
 
       <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
+        <HotkeyTag key-label="Q" />
       </button>
     </div>
 
@@ -542,6 +545,7 @@ defineExpose({
 /* ===== buttons ===== */
 
 .btn {
+  position: relative;
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 6px;

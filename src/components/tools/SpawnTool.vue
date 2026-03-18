@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import { getSpawnUnitTypes } from "@/engine/resourcePack/units.ts";
+import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 
 const { t } = useI18n()
 
@@ -210,15 +211,18 @@ onBeforeUnmount(() => {
     <!-- команда -->
     <div class="block">
       <label>{{ t('spawn.team') }}</label>
-      <select v-model="selectedTeam">
-        <option
-          v-for="t in TEAMS"
-          :key="t.value"
-          :value="t.value"
-        >
-          {{ t.label }}
-        </option>
-      </select>
+      <div class="select-wrap">
+        <select v-model="selectedTeam">
+          <option
+            v-for="t in TEAMS"
+            :key="t.value"
+            :value="t.value"
+          >
+            {{ t.label }}
+          </option>
+        </select>
+        <HotkeyTag key-label="N" />
+      </div>
     </div>
 
     <!-- количество -->
@@ -237,12 +241,13 @@ onBeforeUnmount(() => {
       <label>{{ t('spawn.unit_type') }}</label>
       <div class="types">
         <button
-          v-for="u in UNIT_TYPES"
+          v-for="(u, idx) in UNIT_TYPES"
           :key="u.type"
           :class="{ active: selectedType === u.type }"
           @click="selectedType = u.type"
         >
           {{ u.label }}
+          <HotkeyTag v-if="idx < 9" :key-label="String(idx + 1)" />
         </button>
       </div>
     </div>
@@ -279,6 +284,10 @@ h3 {
   margin-bottom: 10px;
 }
 
+.select-wrap {
+  position: relative;
+}
+
 label {
   display: block;
   font-size: 12px;
@@ -302,6 +311,7 @@ select {
 }
 
 .types button {
+  position: relative;
   flex: 1 1 48%;
   padding: 4px;
   font-size: 12px;

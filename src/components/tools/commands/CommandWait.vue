@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import { WaitCommand } from '@/engine/units/commands/waitCommand.ts'
+import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 
 const { t } = useI18n()
 
@@ -115,9 +116,11 @@ defineExpose({
         :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.apply') }}
+        <HotkeyTag key-label="E" />
       </button>
       <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
+        <HotkeyTag key-label="Q" />
       </button>
     </div>
 
@@ -166,6 +169,7 @@ defineExpose({
 }
 
 .btn {
+  position: relative;
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 6px;

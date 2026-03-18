@@ -12,6 +12,7 @@ import CommandChangeFormation from "@/components/tools/commands/CommandChangeFor
 import CommandWait from "@/components/tools/commands/CommandWait.vue";
 import CommandRetreat from "@/components/tools/commands/CommandRetreat.vue";
 import { onUnitCommandRequest, type UnitCommandRequest } from '@/engine/input/unitCommandBus'
+import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -300,6 +301,7 @@ onUnmounted(() => {
               {{ autoAttackInfo.value ? t('tools.command.autoAttack_state_on') : t('tools.command.autoAttack_state_off') }}
             </template>
           </span>
+          <HotkeyTag key-label="1" />
         </button>
 
         <button
@@ -310,6 +312,7 @@ onUnmounted(() => {
         >
           <span class="icon">⚔</span>
           <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.attack') }}</span>
+          <HotkeyTag key-label="2" />
         </button>
       </div>
 
@@ -331,6 +334,7 @@ onUnmounted(() => {
       >
         <span class="icon icon-formation">■■■</span>
         <span class="label">{{ t('tools.command.formation') }}</span>
+        <HotkeyTag key-label="3" />
       </button>
 
       <button
@@ -344,6 +348,7 @@ onUnmounted(() => {
           {{ t('tools.command.command') }}<br>
           {{ t('tools.command.wait') }}
         </span>
+        <HotkeyTag key-label="4" />
       </button>
 
 <!--      <button-->
@@ -364,6 +369,7 @@ onUnmounted(() => {
       >
         <span class="icon">🏳️</span>
         <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.retreat') }}</span>
+        <HotkeyTag key-label="5" />
       </button>
 
       <div class="order-stack">
@@ -378,6 +384,7 @@ onUnmounted(() => {
           <span class="label">
             {{ t('stat.morale') }}<br>
           </span>
+          <HotkeyTag key-label="+" />
         </button>
 
         <button
@@ -391,6 +398,7 @@ onUnmounted(() => {
           <span class="label">
             {{ t('stat.morale') }}<br>
           </span>
+          <HotkeyTag key-label="-" />
         </button>
       </div>
 
@@ -401,6 +409,7 @@ onUnmounted(() => {
       >
         <span class="icon icon-formation">❌</span>
         <span class="label">{{ t('tools.command.clear_commands') }}</span>
+        <HotkeyTag key-label="C" />
       </button>
     </div>
 
@@ -473,6 +482,7 @@ onUnmounted(() => {
 }
 
 .order-btn {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;

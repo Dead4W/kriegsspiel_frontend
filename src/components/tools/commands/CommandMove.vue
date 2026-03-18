@@ -16,6 +16,7 @@ import { hasAbilityInaccuracyRadius } from "@/engine/resourcePack/abilities.ts";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
 import {WaitCommand} from "@/engine/units/commands/waitCommand.ts";
 import RadialMenu, { type RadialMenuItem } from '@/components/ui/RadialMenu.vue'
+import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {
   getEnvironmentIcon,
   getRouteEnvironmentStates,
@@ -866,9 +867,11 @@ defineExpose({
         :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.apply') }}
+        <HotkeyTag key-label="E" />
       </button>
       <button class="btn cancel" @click="emit('close')" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
+        <HotkeyTag key-label="Q" />
       </button>
     </div>
   </div>
@@ -939,6 +942,7 @@ defineExpose({
 }
 
 .btn {
+  position: relative;
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 6px;

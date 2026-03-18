@@ -20,6 +20,7 @@ import WeatherControl from "@/components/WeatherControl.vue";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import PaintTool from "@/components/tools/PaintTool.vue";
 import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
+import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 
 const { t } = useI18n()
 
@@ -116,6 +117,7 @@ onUnmounted(() => {
         :title="`${t('tools.hard_move_description')}\n(${t('hotkey')}: Shift)`"
       >
         🕹️ {{ t('tools.hard_move') }}
+        <HotkeyTag key-label="⇧" />
       </button>
 
       <button
@@ -161,6 +163,7 @@ onUnmounted(() => {
         :title="`${t('hotkey')}: V`"
       >
         📏 {{ t('tools.ruler') }}
+        <HotkeyTag key-label="V" />
       </button>
 
       <button
@@ -268,6 +271,7 @@ onUnmounted(() => {
 }
 
 .toolbar button {
+  position: relative;
   padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid #334155;

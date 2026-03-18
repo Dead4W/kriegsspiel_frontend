@@ -5,6 +5,7 @@ import type { BaseUnit } from '@/engine/units/baseUnit'
 import type { FormationType } from '@/engine'
 import { ChangeFormationCommand } from '@/engine/units/commands/changeFormationCommand'
 import { getFormationTypes } from "@/engine/resourcePack/formations.ts";
+import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -76,10 +77,12 @@ defineExpose({
         :title="`${t('hotkey')}: E`"
       >
         {{ t('tools.command.apply') }}
+        <HotkeyTag key-label="E" />
       </button>
 
       <button class="btn cancel" @click="cancel" :title="`${t('hotkey')}: Q`">
         {{ t('tools.command.cancel') }}
+        <HotkeyTag key-label="Q" />
       </button>
     </div>
   </div>
@@ -141,6 +144,7 @@ defineExpose({
 }
 
 .btn {
+  position: relative;
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 6px;

@@ -202,7 +202,7 @@ export abstract class BaseUnit {
     if (!this.alive) return
 
     // Don't spam while already retreating
-    if (this.hasCommand(UnitCommandTypes.Retreat) || this.isRetreat) return
+    if (this.isRetreat) return
 
     const cfg = getMoraleCheckConfig()
     const diceRolls: number[] = []
@@ -341,8 +341,6 @@ export abstract class BaseUnit {
       pos: this.pos,
       fatigue: this.fatigue,
       autoAttack: this.autoAttack,
-
-      isRetreat: this.isRetreat,
 
       label: this.label,
 

@@ -444,7 +444,7 @@ export class unitlayer {
       icons.push('👁️')
     }
 
-    if (unit.isRetreat || unit.getCommands().map((c) => c.type).includes(UnitCommandTypes.Retreat)) {
+    if (unit.isRetreat) {
       icons.push('🏳️')
     }
 

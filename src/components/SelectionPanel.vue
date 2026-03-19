@@ -154,6 +154,7 @@ function selectUnit(u: BaseUnit) {
         <span v-if="selectedUnits.length === 1" class="rotate-hint">
           {{ t('tools.rotate_angle') }}
           <HotkeyTag key-label="Shift+Q/E" inline />
+          OR
           <template v-if="isAdminAndWar()">
             <HotkeyTag key-label="Shift+Drag+Mwheel" inline />
           </template>

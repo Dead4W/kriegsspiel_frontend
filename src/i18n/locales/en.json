@@ -12,6 +12,233 @@
   "copied": "Copied",
   "hotkey": "Hotkey",
   "about": "About project",
+  "resourcePackCreator": {
+    "homeButton": "Resource Pack Creator",
+    "title": "Resource Pack Creator",
+    "subtitle": "Build and tune your custom pack. Work in progress.",
+    "actions": {
+      "backHome": "Back to home",
+      "reset": "Reset to default",
+      "download": "Download JSON",
+      "fileName": "File name",
+      "openEditor": "Open editor",
+      "closeEditor": "Close editor"
+    },
+    "errors": {
+      "loadDefault": "Failed to load default resource pack."
+    },
+    "timeOfDayEditor": {
+      "title": "Time of day",
+      "subtitle": "Edit time segments, their hour ranges, and stat multipliers.",
+      "addSegment": "Add segment",
+      "removeSegment": "Remove segment",
+      "addModifier": "Add",
+      "removeModifier": "Remove",
+      "emptyModifiers": "No modifiers added.",
+      "emptyTitle": "No time segments yet.",
+      "emptyText": "Add a segment to start building the time-of-day section.",
+      "multipliersTitle": "Stat multipliers",
+      "fields": {
+        "title": "Display title",
+        "start": "Start hour",
+        "end": "End hour"
+      }
+    },
+    "weatherEditor": {
+      "title": "Weather conditions",
+      "subtitle": "Edit weather entries, stat multipliers, and optional visual effects.",
+      "addCondition": "Add condition",
+      "removeCondition": "Remove condition",
+      "addModifier": "Add",
+      "removeModifier": "Remove",
+      "emptyModifiers": "No modifiers added.",
+      "emptyTitle": "No weather conditions yet.",
+      "emptyText": "Add a condition to start building the weather section.",
+      "effectTitle": "Visual effect",
+      "multipliersTitle": "Stat multipliers",
+      "multipliersSubtitle": "Only numeric values are applied by the engine.",
+      "fields": {
+        "id": "Condition ID",
+        "title": "Display title",
+        "effect": "Effect type",
+        "fogIntensity": "Fog intensity",
+        "modifier": "Modifier",
+        "value": "Value"
+      },
+      "effect": {
+        "none": "No effect",
+        "clouds": "Clouds",
+        "fog": "Fog"
+      }
+    },
+    "environmentEditor": {
+      "title": "Environment states",
+      "subtitle": "Edit terrain states, route flags, morale modifiers, and generic or per-unit stat multipliers.",
+      "addState": "Add state",
+      "removeState": "Remove state",
+      "addModifier": "Add",
+      "removeModifier": "Remove",
+      "multipliersTitle": "Stat multipliers",
+      "perTypeTitle": "Per-unit overrides",
+      "typeMultipliersTitle": "Override multipliers",
+      "addTypeOverride": "Add",
+      "removeTypeOverride": "Remove",
+      "emptyModifiers": "No modifiers added.",
+      "emptyTypeOverrides": "No per-unit overrides added.",
+      "emptyTitle": "No environment states yet.",
+      "emptyText": "Add a state to start building the environment section.",
+      "fields": {
+        "title": "Display title",
+        "icon": "Icon",
+        "isRoute": "Route state",
+        "moraleCheckMod": "Morale",
+        "unitType": "Unit type"
+      }
+    },
+    "formationsEditor": {
+      "title": "Formations",
+      "subtitle": "Edit formation entries, optional icons, and stat multipliers.",
+      "addFormation": "Add formation",
+      "removeFormation": "Remove formation",
+      "addModifier": "Add",
+      "removeModifier": "Remove",
+      "multipliersTitle": "Stat multipliers",
+      "emptyModifiers": "No modifiers added.",
+      "emptyTitle": "No formations yet.",
+      "emptyText": "Add a formation to start building the formations section.",
+      "fields": {
+        "title": "Display title",
+        "icon": "Icon"
+      }
+    },
+    "abilitiesEditor": {
+      "title": "Abilities",
+      "subtitle": "Edit ability entries, stat multipliers, and optional inaccuracy radius settings.",
+      "addAbility": "Add ability",
+      "removeAbility": "Remove ability",
+      "addModifier": "Add",
+      "removeModifier": "Remove",
+      "multipliersTitle": "Stat multipliers",
+      "multipliersSubtitle": "Leave radius empty unless the ability should affect area-fire spread.",
+      "emptyModifiers": "No modifiers added.",
+      "emptyTitle": "No abilities yet.",
+      "emptyText": "Add an ability to start building the abilities section.",
+      "fields": {
+        "title": "Display title",
+        "radius": "Radius mult"
+      }
+    },
+    "unitsEditor": {
+      "title": "Units",
+      "subtitle": "Edit unit entries, base stats, available abilities, default formation, and known engine params.",
+      "addUnit": "Add unit",
+      "removeUnit": "Remove unit",
+      "statsTitle": "Base stats",
+      "abilitiesTitle": "Abilities",
+      "abilitiesSubtitle": "Only known ability ids are shown here, but custom ids already in JSON are preserved.",
+      "addAbility": "Add",
+      "removeAbility": "Remove",
+      "emptyAbilities": "No abilities added.",
+      "paramsTitle": "Unit params",
+      "paramsSubtitle": "Leave optional fields empty to omit them from JSON.",
+      "attackIgnoreTargetEnvsTitle": "Ignore target environments",
+      "attackIgnoreTargetEnvsSubtitle": "When set, the unit uses the multiplier above against targets inside these environment states.",
+      "addEnvironment": "Add",
+      "removeEnvironment": "Remove",
+      "emptyEnvironments": "No target environments added.",
+      "emptyTitle": "No units yet.",
+      "emptyText": "Add a unit to start building the units section.",
+      "formations": {
+        "none": "No default formation"
+      },
+      "fields": {
+        "title": "Display title",
+        "defaultFormation": "Default formation",
+        "textureUrl": "Texture URL",
+        "renderIcon": "Render icon",
+        "renderWidthMult": "Width mult",
+        "renderHeightMult": "Height mult",
+        "priorityTargets": "Priority targets",
+        "moraleCheckMod": "Morale mod",
+        "attackIgnoreTargetEnvMult": "Ignore env mult",
+        "attackIgnoreHeightModifier": "Ignore height modifier"
+      }
+    },
+    "inaccuracyEditor": {
+      "title": "Artillery inaccuracy",
+      "subtitle": "Tune how terrain height and distance affect area-fire spread.",
+      "fields": {
+        "heightFactor": "Height factor",
+        "distanceFactor": "Distance factor"
+      }
+    },
+    "moraleCheckEditor": {
+      "title": "Morale check",
+      "subtitle": "Tune dice, commander penalties, loss thresholds, outcomes, and morale effects.",
+      "sections": {
+        "dice": "Dice",
+        "commander": "Commander",
+        "lossPenalties": "Loss penalties",
+        "outcomes": "Outcomes",
+        "effects": "Effects"
+      },
+      "addLossPenalty": "Add penalty",
+      "removeLossPenalty": "Remove",
+      "emptyLossPenalties": "No loss penalties added.",
+      "addOutcome": "Add outcome",
+      "removeOutcome": "Remove",
+      "emptyOutcomes": "No outcomes added.",
+      "fields": {
+        "diceCount": "Dice count",
+        "diceSides": "Dice sides",
+        "commanderRadius": "Commander radius (m)",
+        "commanderPenalty": "No-commander penalty",
+        "lossKey": "Label",
+        "lossesMoreThan": "Losses more than (0-1)",
+        "penalty": "Penalty",
+        "minTotal": "Min total",
+        "outcome": "Outcome",
+        "retreatDurationSeconds": "Retreat duration (s)",
+        "fleeDurationMultiplier": "Flee duration x",
+        "fleeHpMultiplier": "Flee HP x"
+      },
+      "outcomeIds": {
+        "pass": "Pass",
+        "retreat": "Retreat",
+        "flee": "Flee",
+        "disband": "Disband"
+      }
+    },
+    "angleModifiersEditor": {
+      "title": "Angle modifiers",
+      "subtitle": "Edit the height-angle damage table used for interpolated combat modifiers.",
+      "addPoint": "Add point",
+      "removePoint": "Remove point",
+      "emptyTitle": "No angle modifier points yet.",
+      "emptyText": "Add a point to start building the angle modifier table.",
+      "fields": {
+        "angle": "Angle",
+        "modifier": "Modifier"
+      }
+    },
+    "distanceModifiersEditor": {
+      "title": "Distance modifiers",
+      "subtitle": "Edit keyed distance tables such as default or unit-specific damage falloff curves.",
+      "pointsTitle": "Distance points",
+      "addTable": "Add table",
+      "removeTable": "Remove table",
+      "addPoint": "Add point",
+      "removePoint": "Remove",
+      "emptyTitle": "No distance modifier tables yet.",
+      "emptyText": "Add a table to start building the distance modifier section.",
+      "emptyPoints": "No points added to this table.",
+      "fields": {
+        "tableKey": "Table key",
+        "distance": "Distance",
+        "modifier": "Modifier"
+      }
+    }
+  },
 
   "updates": {
     "title": "Updates"
@@ -257,6 +484,7 @@
     "hp": "HP",
     "morale": "Morale",
     "ammo": "Ammo",
+    "fatigue": "Fatigue",
     "speed": "Speed",
     "takeDamageMod": "Take damage",
     "attackRange": "Attack range",

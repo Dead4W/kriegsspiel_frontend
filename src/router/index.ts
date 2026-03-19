@@ -11,6 +11,7 @@ const CookiesView  = () => import('@/views/CookiesView.vue')
 const PrivacyView  = () => import('@/views/PrivacyView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 const ProfileView = () => import('@/views/ProfileView.vue')
+const ResourcePackCreatorView = () => import('@/views/ResourcePackCreatorView.vue')
 
 const supportedLocales = ['ru', 'en']
 const defaultLocale = 'en'
@@ -70,6 +71,11 @@ const router = createRouter({
           name: 'create-room',
           component: CreateRoomView,
           meta: { requiresAuth: true },
+        },
+        {
+          path: 'resource-pack-creator',
+          name: 'resource-pack-creator',
+          component: ResourcePackCreatorView,
         },
         {
           path: 'room/:uuid',

@@ -40,8 +40,9 @@ function addOutcome() {
   const nextId = outcomeIds.find((id) => !props.moraleCheck.outcomes.some((entry) => entry.id === id))
   if (!nextId) return
 
+  const lastOutcome = props.moraleCheck.outcomes[props.moraleCheck.outcomes.length - 1]
   props.moraleCheck.outcomes.push({
-    minTotal: (props.moraleCheck.outcomes.at(-1)?.minTotal ?? 0) - 1,
+    minTotal: (lastOutcome?.minTotal ?? 0) - 1,
     id: nextId,
   })
 }
@@ -96,7 +97,8 @@ function getLossPenaltyLabel(entry: MoraleLossPenalty, index: number): string {
 }
 
 function createLossPenalty(): MoraleLossPenalty {
-  const lastThreshold = props.moraleCheck.lossPenalties.at(-1)?.lossesMoreThan ?? 0
+  const lastLossPenalty = props.moraleCheck.lossPenalties[props.moraleCheck.lossPenalties.length - 1]
+  const lastThreshold = lastLossPenalty?.lossesMoreThan ?? 0
   const nextThreshold = clamp(Number((lastThreshold + 0.1).toFixed(2)), 0, 1)
 
   return {

@@ -161,6 +161,7 @@
       "opacity": "Opacity",
       "size": "Size",
       "undo": "Undo",
+      "share_for_players": "Share for players",
       "hint": "LMB — draw, RMB — erase"
     },
     "attack": "Attack",

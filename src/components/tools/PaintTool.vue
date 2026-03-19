@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount, onMounted, ref} from "vue";
 import type {PaintStroke} from "@/engine/types/paintTypes.ts";
+import {Team} from "@/enums/teamKeys.ts";
+import HotkeyTag from "@/components/ui/HotkeyTag.vue";
 
 const color = ref("#ff3b30")
 const opacity = ref(0.85)
 const width = ref(4)
+const shareForPlayers = ref(false)
+
+function isAdmin() {
+  return window.PLAYER.team === Team.ADMIN
+}
 
 const strokeStyle = computed(() => hexToRgba(color.value, opacity.value))
 const eraserStyle = computed(() => `rgba(0,0,0,1)`)
@@ -64,6 +71,7 @@ function onPointerDown(e: PointerEvent) {
     color: currentMode === 'erase' ? eraserStyle.value : strokeStyle.value,
     width: width.value,
     mode: currentMode,
+    sharedForPlayers: isAdmin() ? shareForPlayers.value : undefined,
   }
 
   // Add immediately so drawing is visible while dragging.
@@ -201,7 +209,18 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="actions">
-      <button @click="undo">{{ $t('tools.paint.undo') }}</button>
+      <button class="undo-btn" @click="undo">
+        {{ $t('tools.paint.undo') }}
+        <HotkeyTag key-label="Ctrl+Z" />
+      </button>
+      <button
+        v-if="isAdmin()"
+        class="share-btn"
+        :class="{ active: shareForPlayers }"
+        @click="shareForPlayers = !shareForPlayers"
+      >
+        {{ $t('tools.paint.share_for_players') }}
+      </button>
     </div>
 
     <div class="hint">
@@ -248,14 +267,23 @@ input[type="range"] {
 }
 
 .actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-top: 8px;
 }
 
+.undo-btn {
+  position: relative;
+}
+
+.share-btn {
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
 button {
-  padding: 6px;
+  padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid #334155;
   background: #020617;
@@ -265,6 +293,12 @@ button {
 
 button:hover {
   background: rgba(21, 32, 83, 0.8);
+}
+
+button.share-btn.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
 }
 
 button.danger {

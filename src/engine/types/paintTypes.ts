@@ -11,5 +11,7 @@ export type PaintStroke = {
   width: number
   /** Drawing mode. 'erase' uses destination-out compositing. */
   mode?: 'draw' | 'erase'
+  /** When true, stroke is visible to players (umpire-only strokes are hidden from players). */
+  sharedForPlayers?: boolean
 }
 

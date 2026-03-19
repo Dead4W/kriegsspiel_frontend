@@ -195,6 +195,9 @@ onMounted(() => {
   window.INPUT.IGNORE_UNIT_INTERACTION = true
   window.addEventListener('pointerdown', onClick)
   window.addEventListener('keydown', onKeyDown)
+  if (UNIT_TYPES.value.length > 0) {
+    selectedType.value = UNIT_TYPES.value[0]!.type;
+  }
 })
 
 onBeforeUnmount(() => {

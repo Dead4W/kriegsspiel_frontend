@@ -152,6 +152,7 @@
 
   "tools": {
     "add_unit": "Unit",
+    "rotate_angle": "Rotate",
     "hard_move": "HARD MOVE",
     "hard_move_description": "Force move units position. Without this mode, you set move orders to units, not move them.",
     "ruler": "Ruler",

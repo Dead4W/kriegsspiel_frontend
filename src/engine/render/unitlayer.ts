@@ -202,18 +202,22 @@ export class unitlayer {
   ) {
     ctx.globalAlpha = opacity
 
+    ctx.translate(p.x, p.y)
+    ctx.rotate(unit.angle)
+    ctx.translate(-w / 2, -h / 2)
+
     if (unit.type === unitType.MESSENGER) {
       const radius = Math.min(w, h) / 1.5
       ctx.beginPath()
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+      ctx.arc(w / 2, h / 2, radius, 0, Math.PI * 2)
       ctx.fill()
       ctx.stroke()
     } else {
-      ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h)
+      ctx.fillRect(0, 0, w, h)
 
       const texture = unit.type ? getUnitTexture(unit.type) : null
       if (texture && texture.complete && texture.naturalWidth !== 0) {
-        ctx.drawImage(texture, p.x - w / 2, p.y - h / 2, w, h)
+        ctx.drawImage(texture, 0, 0, w, h)
       } else {
         const icon = getUnitStringParam(unit.type, 'renderIcon')
         if (icon) {
@@ -223,19 +227,14 @@ export class unitlayer {
           ctx.textBaseline = 'middle'
           const fontSize = Math.max(8, Math.min(w, h) * 0.75)
           ctx.font = `600 ${fontSize}px system-ui`
-          ctx.fillText(icon, p.x, p.y + fontSize * 0.03)
+          ctx.fillText(icon, w / 2, h / 2 + fontSize * 0.03)
           ctx.restore()
         }
       }
       ctx.strokeStyle = 'black'
       ctx.lineWidth = 1 * cam.zoom
 
-      ctx.strokeRect(
-        p.x - w / 2,
-        p.y - h / 2,
-        w,
-        h
-      )
+      ctx.strokeRect(0, 0, w, h)
     }
 
     ctx.globalAlpha = 1
@@ -542,19 +541,18 @@ export class unitlayer {
     ctx.strokeStyle = '#4ade80'
     ctx.lineWidth = 3 * cam.zoom
 
+    ctx.translate(p.x, p.y)
+    ctx.rotate(unit.angle)
+    ctx.translate(-w / 2, -h / 2)
+
     if (unit.type === unitType.MESSENGER) {
       const radius = Math.min(w, h) / 1.5 + pad
 
       ctx.beginPath()
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+      ctx.arc(w / 2, h / 2, radius, 0, Math.PI * 2)
       ctx.stroke()
     } else {
-      ctx.strokeRect(
-        p.x - w / 2 - pad,
-        p.y - h / 2 - pad,
-        w + pad * 2,
-        h + pad * 2
-      )
+      ctx.strokeRect(-pad, -pad, w + pad * 2, h + pad * 2)
     }
   }
 }

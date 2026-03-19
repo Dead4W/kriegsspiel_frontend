@@ -74,6 +74,8 @@ export abstract class BaseUnit {
   futurePos: vec2 | null = null
   label = ''
 
+  angle: number = 0
+
   selected = false
   previewSelected = false // временное (рамка)
   futureSelected = false
@@ -116,6 +118,8 @@ export abstract class BaseUnit {
     this.pos = s.pos;
     this.fatigue = s.fatigue ?? 0
     this.autoAttack = s.autoAttack ?? false
+
+    this.angle = s.angle ?? 0
 
     this.label = s.label ?? translate(`unit.${s.type}`)
     this.hp = 0;
@@ -341,6 +345,8 @@ export abstract class BaseUnit {
       pos: this.pos,
       fatigue: this.fatigue,
       autoAttack: this.autoAttack,
+
+      angle: this.angle,
 
       label: this.label,
 

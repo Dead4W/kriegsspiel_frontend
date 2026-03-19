@@ -61,10 +61,27 @@ function isEnabledWeatherModifiers() {
 }
 
 
+const ROTATE_STEP = Math.PI / 32
+
 function onKeydown(e: KeyboardEvent) {
   nextTick();
   shiftHeld.value = e.shiftKey
-  if (e.key === 'Escape') {
+
+  // Shift+Q / Shift+E — rotate selected unit angle (only when exactly one selected)
+  if (e.shiftKey && (e.code === 'KeyQ' || e.code === 'KeyE')) {
+    const selected = window.ROOM_WORLD?.units.getSelected() ?? []
+    if (selected.length === 1) {
+      const u = selected[0]!
+      const delta = e.code === 'KeyQ' ? -ROTATE_STEP : ROTATE_STEP
+      let a = u.angle + delta
+      const tau = Math.PI * 2
+      u.angle = ((a % tau) + tau) % tau
+      u.setDirty()
+      window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  } else if (e.key === 'Escape') {
     activeTool.value = null
   } else if (e.code === 'KeyV') {
     activeTool.value = activeTool.value === Tools.RULER ? null : Tools.RULER

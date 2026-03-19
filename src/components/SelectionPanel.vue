@@ -9,6 +9,7 @@ import {Team} from "@/enums/teamKeys.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
+import HotkeyTag from '@/components/ui/HotkeyTag.vue';
 
 /* ================= i18n ================= */
 
@@ -145,6 +146,10 @@ function selectUnit(u: BaseUnit) {
         >
           {{ isUnitDetailOpen ? '\\/' : '/\\' }}
         </button>
+        <span v-if="selectedUnits.length === 1" class="rotate-hint">
+          {{ t('tools.rotate_angle') }}
+          <HotkeyTag key-label="Shift+Q/E" inline />
+        </span>
       </div>
 
       <div v-if="isUnitDetailOpen" class="detail-stack">
@@ -384,8 +389,23 @@ function selectUnit(u: BaseUnit) {
 .detail-toggle-row {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 4px;
   pointer-events: auto;
+}
+
+.rotate-hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #94a3b8;
+  background: #020617ee;
+  border: 1px solid #334155;
+  border-radius: 6px;
 }
 
 .detail-toggle {

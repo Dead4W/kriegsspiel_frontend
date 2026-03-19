@@ -32,6 +32,7 @@ export interface unitstate {
   pos: vec2
   fatigue?: number
   autoAttack?: boolean
+  angle?: number
 
   label?: string
 

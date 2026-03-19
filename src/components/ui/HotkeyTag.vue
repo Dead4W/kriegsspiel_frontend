@@ -1,11 +1,12 @@
 <script setup lang="ts">
 defineProps<{
   keyLabel: string
+  inline?: boolean
 }>()
 </script>
 
 <template>
-  <span class="hotkey-tag">{{ keyLabel }}</span>
+  <span class="hotkey-tag" :class="{ inline }">{{ keyLabel }}</span>
 </template>
 
 <style scoped>
@@ -32,5 +33,11 @@ defineProps<{
   border-radius: 4px;
 
   pointer-events: none;
+}
+
+.hotkey-tag.inline {
+  position: relative;
+  left: 0;
+  top: 0;
 }
 </style>

@@ -116,6 +116,7 @@
 
     "actions": {
       "create": "Create",
+      "creating": "Creating…",
       "cancel": "Cancel"
     },
 

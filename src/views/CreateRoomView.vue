@@ -14,6 +14,7 @@ const DEFAULT_RESOURCE_PACK_URL =
   'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json'
 
 const roomName = ref('')
+const isCreating = ref(false)
 const showAdvanced = ref(true)
 const selectedMapId = ref<string>('essex')
 
@@ -95,8 +96,9 @@ function applyResourcePackSettings() {
 }
 
 async function createRoom() {
-  if (!roomName.value.trim()) return
+  if (!roomName.value.trim() || isCreating.value) return
 
+  isCreating.value = true
   const payload = {
     name: roomName.value.trim(),
     options: settings.value,
@@ -116,6 +118,8 @@ async function createRoom() {
     })
   } catch (e) {
     console.error('CREATE ROOM ERROR:', e)
+  } finally {
+    isCreating.value = false
   }
 }
 </script>
@@ -296,8 +300,8 @@ async function createRoom() {
 
         <!-- Действия -->
         <div class="actions">
-          <button class="primary" type="submit">
-            {{ t('createRoom.actions.create') }}
+          <button class="primary" type="submit" :disabled="isCreating">
+            {{ isCreating ? t('createRoom.actions.creating') : t('createRoom.actions.create') }}
           </button>
 
           <button class="secondary" @click="router.back()" type="button">

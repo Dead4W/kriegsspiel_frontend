@@ -51,21 +51,33 @@ export class paintstate {
 
   getDirty(): PaintStroke[] {
     const list: PaintStroke[] = []
+    const toReDirty = new Set<string>()
     for (const id of this.dirty) {
-      const s = this.strokes.find(st => st.id === id)
-      if (!s) continue
+      const idx = this.strokes.findIndex(st => st.id === id)
+      if (idx === -1) continue
+      const s = this.strokes[idx]!
       const fromIdx = (this.lastSentPointIndex.get(id) ?? 0) << 1
-      const points = s.points.slice(fromIdx)
-      if (this.pointCount(points) < 2) continue
+      const segmentPoints = s.points.slice(fromIdx)
+      if (this.pointCount(segmentPoints) < 2) continue
       const segment: PaintStroke = {
         ...s,
         id: crypto.randomUUID(),
-        points,
+        points: segmentPoints,
       }
       list.push(segment)
-      this.lastSentPointIndex.set(id, this.pointCount(s.points))
+      this.strokes.push(segment)
+      const remaining = s.points.slice(0, fromIdx)
+      s.points = remaining
+      this.lastSentPointIndex.set(id, 0)
+      if (this.pointCount(remaining) >= 2) {
+        toReDirty.add(id)
+      } else {
+        this.lastSentPointIndex.delete(id)
+      }
+      this.touch()
     }
     this.dirty.clear()
+    for (const id of toReDirty) this.dirty.add(id)
     return list
   }
 

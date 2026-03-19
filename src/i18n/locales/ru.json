@@ -419,7 +419,7 @@
     "customMap": {
       "title": "Карта",
       "mapUrl": "URL Карты",
-      "heightMapUrl": "URL Карты высот",
+      "heightMapUrl": "URL Карты высот (опционально)",
       "metersPerPixel": "Метров на пиксель"
     },
     "gameDate": "Игровая дата",

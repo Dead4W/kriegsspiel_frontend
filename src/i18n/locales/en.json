@@ -415,7 +415,7 @@
     "customMap": {
       "title": "Map",
       "mapUrl": "Map URL",
-      "heightMapUrl": "Height map URL",
+      "heightMapUrl": "Height map URL (optional)",
       "metersPerPixel": "Meters per pixel"
     },
     "gameDate": "Game Date",

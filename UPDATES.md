@@ -6,6 +6,7 @@
 - Fix isRetreat in demo
 - UnitSpawn set first by default instead of general
 - Disable autoStatsUpdate by default
+- Fix isRetreat
 
 [2026-03-18]
 - Fix max height for route move order

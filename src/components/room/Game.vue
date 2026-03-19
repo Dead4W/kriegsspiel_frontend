@@ -76,13 +76,13 @@ async function initWorld(room: RoomData) {
   let defaultResourcePackUrl =
     'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json'
 
-  // if (window.location.hostname === 'localhost') {
-  //   room.options.mapUrl = ''
-  //   defaultMapUrl = '/assets/default_map.jpeg'
-  //   defaultHeightMapUrl = '/assets/default_height_map.png'
-  //   defaultResourcePackUrl = '/assets/default_resourcepack.json'
-  //   room.options[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] = defaultResourcePackUrl
-  // }
+  if (window.location.hostname === 'localhost') {
+    room.options.mapUrl = ''
+    defaultMapUrl = '/assets/default_map.jpeg'
+    defaultHeightMapUrl = '/assets/default_height_map.png'
+    defaultResourcePackUrl = '/assets/default_resourcepack.json'
+    room.options[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] = defaultResourcePackUrl
+  }
 
   if (!room.options.mapUrl) {
     room.options.mapUrl = defaultMapUrl

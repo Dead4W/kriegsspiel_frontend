@@ -72,7 +72,6 @@ function processUnitCommands(dt: number) {
 
   for (const unit of units) {
     if (!unit.alive) continue
-    unit.isRetreat = false;
 
     let commands = unit.getCommands()
     if (unit.autoAttack) {

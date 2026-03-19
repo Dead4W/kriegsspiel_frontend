@@ -19,11 +19,7 @@ export class RetreatCommand extends BaseCommand<
   }
 
   update(unit: BaseUnit, dt: number) {
-    unit.isRetreat = true
     this.state.elapsed += dt
-    if (this.isFinished()) {
-      unit.isRetreat = false
-    }
     unit.setDirty()
   }
 

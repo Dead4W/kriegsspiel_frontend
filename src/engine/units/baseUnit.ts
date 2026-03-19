@@ -73,7 +73,6 @@ export abstract class BaseUnit {
   autoAttack: boolean = false
   futurePos: vec2 | null = null
   label = ''
-  isRetreat: boolean
 
   selected = false
   previewSelected = false // временное (рамка)
@@ -123,7 +122,6 @@ export abstract class BaseUnit {
     this.ammo = 0;
     this.morale = s.morale ?? 0;
     this.setCommands(s.commands?.map(c => createUnitCommand(c)) ?? []);
-    this.isRetreat = s.isRetreat ?? false;
 
     this.formation = s.formation ?? 'default';
     this.activeAbilityType = s.activeAbilityType ?? null;
@@ -308,7 +306,6 @@ export abstract class BaseUnit {
       this.setCommands([cmd]);
     }
 
-    this.isRetreat = true
     this.setDirty()
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
   }
@@ -575,7 +572,6 @@ export abstract class BaseUnit {
   }
 
   clearCommands() {
-    this.isRetreat = false;
     this.commands = []
     this.refreshFuturePos();
     this.setDirty();
@@ -771,5 +767,9 @@ export abstract class BaseUnit {
   setAutoAttack(autoAttack: boolean) {
     this.autoAttack = autoAttack;
     this.setDirty();
+  }
+
+  get isRetreat() {
+    return this.commands.map(c => c.type).includes(UnitCommandTypes.Retreat)
   }
 }

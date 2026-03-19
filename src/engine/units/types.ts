@@ -33,8 +33,6 @@ export interface unitstate {
   fatigue?: number
   autoAttack?: boolean
 
-  isRetreat?: boolean,
-
   label?: string
 
   hp?: number

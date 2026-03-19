@@ -42,7 +42,6 @@ function apply() {
     })
     u.clearCommands()
     u.setCommands([cmd])
-    u.isRetreat = true
     u.setDirty()
   }
 

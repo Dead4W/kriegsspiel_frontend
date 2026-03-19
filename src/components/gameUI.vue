@@ -102,7 +102,7 @@ onUnmounted(() => {
   <div class="krig-ui">
     <ForcesBar v-if="isAdmin()"/>
 
-    <div class="top-bar no-select">
+    <div v-if="!isEnd || !isAdmin()" class="top-bar no-select">
       <TurnTimer />
       <WeatherControl class="weather-under" v-if="isAdmin() && isEnabledWeatherModifiers() && !isEnd" />
     </div>

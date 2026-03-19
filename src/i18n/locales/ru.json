@@ -176,6 +176,17 @@
       "end_war": "Закончить войну",
       "copy_team_link": "Ссылка команды"
     },
+    "demo": {
+      "prev": "Назад",
+      "next": "Вперёд",
+      "first": "В начало",
+      "last": "В конец",
+      "select_time": "Выбрать время",
+      "loading": "Загрузка…",
+      "empty": "Нет снимков",
+      "snapshot_of": "{current} / {total}",
+      "time": "Время"
+    },
     "command": {
       "command": "Приказ",
       "attack": "Атака",

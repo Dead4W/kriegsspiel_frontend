@@ -6,6 +6,7 @@ import UnitActionPanel from "@/components/UnitActionPanel.vue";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import CommandsListPanel from "@/components/CommandsListPanel.vue";
 import {Team} from "@/enums/teamKeys.ts";
+import {RoomGameStage} from "@/enums/roomStage.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
@@ -96,6 +97,10 @@ function isAdmin() {
     || window.PLAYER.team === Team.SPECTATOR;
 }
 
+function isAdminAndWar() {
+  return isAdmin() && window.ROOM_WORLD?.stage === RoomGameStage.WAR;
+}
+
 /* ================= focus ================= */
 
 function toggleFocus(u: BaseUnit) {
@@ -149,6 +154,12 @@ function selectUnit(u: BaseUnit) {
         <span v-if="selectedUnits.length === 1" class="rotate-hint">
           {{ t('tools.rotate_angle') }}
           <HotkeyTag key-label="Shift+Q/E" inline />
+          <template v-if="isAdminAndWar()">
+            <HotkeyTag key-label="Shift+Drag+Mwheel" inline />
+          </template>
+          <template v-else>
+            <HotkeyTag key-label="Drag+Mwheel" inline />
+          </template>
         </span>
       </div>
 

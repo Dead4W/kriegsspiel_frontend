@@ -380,6 +380,26 @@ export function bindUnitInteraction(
     cleanup()
   })
 
+  const ROTATE_STEP = Math.PI / 32
+  function onWheel(e: WheelEvent) {
+    if (window.INPUT.IGNORE_UNIT_INTERACTION) return
+    if (mode !== 'drag' && mode !== 'commandDrag') return
+    const selected = w.units.getSelected()
+    if (selected.length !== 1) return
+    if (window.PLAYER.team === Team.ADMIN && w.stage === RoomGameStage.WAR && !shiftKeyActive) return
+
+    const u = selected[0]!
+    const delta = e.deltaY > 0 ? ROTATE_STEP : -ROTATE_STEP
+    let a = u.angle + delta
+    const tau = Math.PI * 2
+    u.angle = ((a % tau) + tau) % tau
+    u.setDirty()
+    w.events.emit('changed', { reason: 'unit' })
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  window.addEventListener('wheel', onWheel, { passive: false, capture: true })
+
   canvas.addEventListener('dblclick', (e) => {
     const worldPos = w.camera.screenToWorld({
       x: e.clientX,

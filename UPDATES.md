@@ -3,6 +3,7 @@
 - Add error message on error load map or height map
 - Add error message on error load resourcePack
 - Improve & optimize demo player
+- Fix isRetreat in demo
 
 [2026-03-18]
 - Fix max height for route move order

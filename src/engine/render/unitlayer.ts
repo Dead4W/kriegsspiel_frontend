@@ -1,4 +1,5 @@
 import type {world} from '@/engine'
+import {unitType, type vec2} from "@/engine";
 import {getTeamColor} from '@/engine/render/util.ts'
 import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys'
 import {translate} from '@/i18n'
@@ -9,14 +10,13 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
-import {unitType, type vec2} from "@/engine";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
-import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
-import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
-import { getFormationIcon } from "@/engine/resourcePack/formations.ts";
-import { getUnitNumberParam, getUnitStringParam } from "@/engine/resourcePack/units.ts";
+import {getInaccuracyAbility} from "@/engine/resourcePack/abilities.ts";
+import {getEnvironmentIcon} from "@/engine/resourcePack/environment.ts";
+import {getFormationIcon} from "@/engine/resourcePack/formations.ts";
+import {getUnitNumberParam, getUnitStringParam} from "@/engine/resourcePack/units.ts";
 
 type MoveOrderRange = {
   min: number
@@ -444,7 +444,7 @@ export class unitlayer {
       icons.push('👁️')
     }
 
-    if (unit.isRetreat) {
+    if (unit.isRetreat || unit.getCommands().map((c) => c.type).includes(UnitCommandTypes.Retreat)) {
       icons.push('🏳️')
     }
 

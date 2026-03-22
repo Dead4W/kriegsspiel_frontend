@@ -8,8 +8,8 @@ import type {unitTeam} from "@/engine";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys";
 import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {useI18n} from 'vue-i18n'
-import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
-import {MoveCommand, type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
+import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
+import {type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 
 const { t } = useI18n()
 
@@ -77,15 +77,18 @@ function processUnitCommands(dt: number) {
     if (unit.autoAttack) {
       const directEnemyVision = window.ROOM_WORLD.units.getDirectView(unit)
         .filter(u => u.team !== unit.team)
+      const hasInaccuracyAttack = commands.filter(c => c.type === UnitCommandTypes.Attack && (c.getState().state as AttackCommandState).inaccuracyPoint).length > 0
 
-      commands = commands.filter(c => c.type !== UnitCommandTypes.Attack)
-      const attackCommand = new AttackCommand({
-        targets: directEnemyVision.map(u => u.id),
-        damageModifier: 1,
-        abilities: [],
-        inaccuracyPoint: null
-      })
-      commands.push(attackCommand)
+      if (!hasInaccuracyAttack) {
+        commands = commands.filter(c => c.type !== UnitCommandTypes.Attack)
+        const attackCommand = new AttackCommand({
+          targets: directEnemyVision.map(u => u.id),
+          damageModifier: 1,
+          abilities: [],
+          inaccuracyPoint: null
+        })
+        commands.push(attackCommand)
+      }
     }
     if (commands.length === 0) continue;
 

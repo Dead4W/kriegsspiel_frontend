@@ -1,3 +1,6 @@
+[2026-03-22]
+- Fix inaccuracy
+
 [2026-03-19]
 - Add hotkeys tag
 - Add error message on error load map or height map

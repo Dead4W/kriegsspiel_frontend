@@ -197,6 +197,7 @@ export class AttackCommand extends BaseCommand<
         return true;
       }
     }
+    if (this.state.inaccuracyPoint) return false;
     return this.getPriorityTargets(unit).length === 0 && !this.state.inaccuracyPoint
   }
 

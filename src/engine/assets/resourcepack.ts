@@ -9,6 +9,7 @@ import {
   type ResourcePackDistanceModifiers,
 } from "@/engine/resourcePack/distanceModifiers.ts";
 import { applyResourcePackTitles } from "@/engine/resourcePack/title.ts";
+import { toProxyAssetUrl } from "@/engine/assets/proxy.ts";
 
 
 export type SegmentStartEnd = {
@@ -262,15 +263,29 @@ export function resolveResourcePackUrl(urlOrPath: string): string {
   }
 }
 
+async function fetchResourcePackJson(url: string): Promise<unknown> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`resourcepack_load_failed:${res.status}`)
+  return await res.json()
+}
+
+async function fetchResourcePackJsonWithFallback(url: string): Promise<unknown> {
+  try {
+    return await fetchResourcePackJson(url)
+  } catch {
+    const proxyUrl = toProxyAssetUrl(url)
+    if (!proxyUrl) throw new Error('resourcepack_load_failed')
+    return await fetchResourcePackJson(proxyUrl)
+  }
+}
+
 export async function loadResourcePack(url: string): Promise<ResourcePack | null> {
   if (inFlight) return inFlight
 
   inFlight = (async () => {
     try {
       loadedFromUrlAbs = new URL(url, window.location.href).toString()
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`resourcepack_load_failed:${res.status}`)
-      const json = await res.json()
+      const json = await fetchResourcePackJsonWithFallback(url)
       cached = normalizePack(json)
       window.RESOURCEPACK = cached
       applyTitlesOnce(cached)

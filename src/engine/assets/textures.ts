@@ -1,6 +1,7 @@
 import {unitType} from "@/engine";
 import {getSpawnUnitTypes, getUnitStringParam} from "@/engine/resourcePack/units.ts";
 import { resolveResourcePackUrl } from "@/engine/assets/resourcepack.ts";
+import { toProxyAssetUrl } from "@/engine/assets/proxy.ts";
 
 const textureCache = new Map<string, HTMLImageElement>()
 
@@ -18,6 +19,11 @@ function getTexture(url: string): HTMLImageElement {
   if (img) return img
 
   img = new Image()
+  const proxyUrl = toProxyAssetUrl(url)
+  img.onerror = () => {
+    if (!proxyUrl || img!.src === proxyUrl) return
+    img!.src = proxyUrl
+  }
   img.src = url
   textureCache.set(url, img)
 

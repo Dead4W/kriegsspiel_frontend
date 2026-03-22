@@ -1,5 +1,5 @@
 
-const PROXY =  import.meta.env.VITE_API_URL + "/proxy/image?url="
+import { toProxyAssetUrl } from "@/engine/assets/proxy.ts"
 
 export async function loadImageWithProgress(
   url: string,
@@ -7,9 +7,11 @@ export async function loadImageWithProgress(
 ): Promise<ImageBitmap> {
   try {
     return await loadWithProgress(url, onProgress)
-  } catch (e) {
-    // CORS / network → retry via proxy
-    return await loadWithProgress(PROXY + encodeURIComponent(url), onProgress)
+  } catch {
+    // CORS / network / remote access issue -> retry via backend proxy
+    const proxyUrl = toProxyAssetUrl(url)
+    if (!proxyUrl) throw new Error('map_load_failed')
+    return await loadWithProgress(proxyUrl, onProgress)
   }
 }
 

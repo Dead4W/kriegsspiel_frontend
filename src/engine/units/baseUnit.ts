@@ -629,7 +629,7 @@ export abstract class BaseUnit {
     // Message history
     const messages = this.messages
     for (const message of messages) {
-      const user = message.unitIds.includes(this.id) ? 'assistant' : 'user'
+      const user = message.author_team === Team.ADMIN ? 'assistant' : 'user'
       result.push({
         user: user,
         text: message.text,

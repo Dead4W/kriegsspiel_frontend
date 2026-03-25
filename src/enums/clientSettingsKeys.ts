@@ -57,6 +57,9 @@ export const CLIENT_SETTING_KEYS = {
 
   // Show unit detail
   SHOW_UNIT_DETAIL: 'showUnitDetail',
+
+  // Debug mode
+  DEBUG_MODE: 'debugMode',
 } as const
 
 export type ClientSettingKey =
@@ -120,6 +123,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.CHAT_WIDTH]: null,
     [CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]: false,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL]: true,
+    [CLIENT_SETTING_KEYS.DEBUG_MODE]: false,
   };
 }
 

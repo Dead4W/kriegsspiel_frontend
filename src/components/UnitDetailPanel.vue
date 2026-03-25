@@ -6,6 +6,7 @@ import {Team} from "@/enums/teamKeys.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {unitType} from "@/engine";
 import {clamp} from "@/engine/math.ts";
+import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 
 const { unit } = defineProps<{ unit: UnwrapRef<BaseUnit> }>()
 
@@ -108,6 +109,10 @@ function isEnabledAmmo() {
   return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]
 }
 
+function isDebug() {
+  return window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.DEBUG_MODE]
+}
+
 // force refresh on changed
 const refreshKey = ref(0)
 function syncSelection(data: {reason: string}) {
@@ -133,6 +138,7 @@ onUnmounted(() => {
       <div class="type-row">
         <span class="team-dot" :class="unit.team" />
         <span class="type-text">{{ typeLabel }}</span>
+        <span class="type-text" v-if="isDebug()">#{{ unit.id }}</span>
       </div>
 
       <input

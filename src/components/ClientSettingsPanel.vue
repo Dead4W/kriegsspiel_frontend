@@ -157,6 +157,11 @@ const uiDef: ClientSettingsUiItem[] = [
     key: CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG,
     labelI18nKey: 'client_settings.performance_debug',
   },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.DEBUG_MODE,
+    labelI18nKey: 'client_settings.debug_mode',
+  },
 ]
 
 function setLang(lang: 'ru' | 'en') {

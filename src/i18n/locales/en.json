@@ -612,7 +612,8 @@
     "forest_map": "Show forest map",
     "height_map": "Show height map",
     "show_weather_shaders": "Show weather shaders",
-    "performance_debug": "Performance debug"
+    "performance_debug": "Performance debug",
+    "debug_mode": "Debug mode"
   },
 
   "settings": {

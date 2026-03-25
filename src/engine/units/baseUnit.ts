@@ -641,9 +641,9 @@ export abstract class BaseUnit {
     selfInfo.push(`UNIT INFO`)
     selfInfo.push(`type: ${this.type}`)
     selfInfo.push(`team: ${this.team}`)
-    selfInfo.push(`position: x=${Math.round(this.pos.x)}, y=${Math.round(this.pos.y)}`)
-    selfInfo.push(`hp: ${this.hp}/${this.stats.maxHp}`)
-    selfInfo.push(`ammo: ${this.ammo}/${this.stats.ammoMax}`)
+    selfInfo.push(`position: x=${this.pos.x.toFixed(2)}, y=${this.pos.y.toFixed(2)}`)
+    selfInfo.push(`hp: ${this.hp.toFixed(2)}/${this.stats.maxHp}`)
+    selfInfo.push(`ammo: ${this.ammo.toFixed(2)}/${this.stats.ammoMax}`)
     selfInfo.push(`morale: ${this.morale}`)
     selfInfo.push(`formation: ${this.formation}`)
     selfInfo.push(`alive: ${this.alive}`)
@@ -676,8 +676,8 @@ export abstract class BaseUnit {
         const dist = Math.hypot(this.pos.x - u.pos.x, this.pos.y - u.pos.y) * window.ROOM_WORLD.map.metersPerPixel;
 
         selfInfo.push(
-          `- id= ${u.id}, type=${u.type}, team=${u.team}, hp=${u.hp}/${u.stats.maxHp}, ` +
-          `pos=(${Math.round(u.pos.x)}, ${Math.round(u.pos.y)}), ` +
+          `- id= ${u.id}, type=${u.type}, team=${u.team}, hp=${u.hp.toFixed(2)}/${u.stats.maxHp}, ` +
+          `pos=(${u.pos.x.toFixed(2)}, ${u.pos.y.toFixed(2)}), ` +
           `distance=${Math.round(dist)} meters, `
         )
       }
@@ -708,7 +708,7 @@ export abstract class BaseUnit {
 
         selfInfo.push(
           `- type=${a.type}, team=${a.team}, ` +
-          `hp=${a.hp}/${a.stats.maxHp}, ` +
+          `hp=${a.hp.toFixed(2)}/${a.stats.maxHp}, ` +
           `distance=${Math.round(dist)} meters`
         )
       }
@@ -735,7 +735,7 @@ export abstract class BaseUnit {
 
         selfInfo.push(
           `- type=${t.type}, team=${t.team}, ` +
-          `hp=${t.hp}/${t.stats.maxHp}, ` +
+          `hp=${t.hp.toFixed(2)}/${t.stats.maxHp}, ` +
           `distance=${Math.round(dist)} meters`
         )
       }

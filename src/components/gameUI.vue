@@ -17,7 +17,6 @@ import HelpPanel from "@/components/tools/HelpPanel.vue";
 import WeatherControl from "@/components/WeatherControl.vue";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import PaintTool from "@/components/tools/PaintTool.vue";
-import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 
 const { t } = useI18n()

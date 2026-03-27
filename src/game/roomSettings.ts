@@ -72,6 +72,14 @@ export const ROOM_SETTINGS: readonly RoomSetting[] = [
     level: 'stable',
     default: false,
   },
+  {
+    key: ROOM_SETTING_KEYS.IS_PLAYER_ROOM_MAP,
+    type: 'boolean',
+    i18nLabel: 'settings.isPlayerRoomMap.label',
+    i18nDescription: 'settings.isPlayerRoomMap.description',
+    level: 'stable',
+    default: false,
+  },
 
   // === beta ===
   {

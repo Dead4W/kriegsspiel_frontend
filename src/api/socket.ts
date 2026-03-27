@@ -45,6 +45,7 @@ export class GameSocket {
   connect(params: {
     roomId: string
     team: string
+    userId?: number | null
     key?: string
     token?: string
     world: world
@@ -53,6 +54,7 @@ export class GameSocket {
     const query = new URLSearchParams({
       room_id: params.roomId,
       team: params.team,
+      user_id: params.userId != null ? String(params.userId) : '',
       key: params.key ?? '',
       token: params.token ?? '',
     })

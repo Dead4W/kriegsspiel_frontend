@@ -8,6 +8,7 @@ export const ROOM_SETTING_KEYS = {
   LIMITED_AMMO: 'limitedAmmo',
   GENERAL_VISION_UPDATE: 'generalVisionUpdate',
   AUTO_STATS_UPDATE: 'autoStatsUpdate',
+  IS_PLAYER_ROOM_MAP: 'isPlayerRoomMap',
 
   TIME_MODIFIERS: 'timeModifiers',
   WEATHER_MODIFIERS: 'weatherModifiers',

@@ -1,6 +1,7 @@
 [2026-03-27]
 - Massive optimize server
 - Fix paint
+- Add connections list
 
 [2026-03-22]
 - Fix inaccuracy

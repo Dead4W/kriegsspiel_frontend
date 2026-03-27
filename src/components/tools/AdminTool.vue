@@ -3,11 +3,13 @@ import {useI18n} from 'vue-i18n'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import {onMounted, onUnmounted, ref, type UnwrapRef} from "vue";
+import ConnectionsList from '@/components/ConnectionsList.vue'
 
 const { t } = useI18n()
 
 const stage = ref(window.ROOM_WORLD.stage);
 const copiedTeam = ref<Team | null>(null)
+const connections = window.ROOM_WORLD.connections
 
 /* ================= actions ================= */
 
@@ -87,6 +89,8 @@ onUnmounted(() => {
         <span style="color:#3a82f6">{{ t('team.blue') }}</span>
       </span>
     </button>
+
+    <ConnectionsList :connections="connections" />
   </div>
 </template>
 

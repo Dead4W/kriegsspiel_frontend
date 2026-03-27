@@ -56,10 +56,10 @@ function toggle(e: MouseEvent, tool: Tools) {
 function isAdmin() {
   return window.PLAYER.team === Team.ADMIN;
 }
+
 function isEnabledWeatherModifiers() {
   return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]
 }
-
 
 const ROTATE_STEP = Math.PI / 32
 
@@ -315,6 +315,5 @@ onUnmounted(() => {
   pointer-events: auto;
   z-index: 20;
 }
-
 
 </style>

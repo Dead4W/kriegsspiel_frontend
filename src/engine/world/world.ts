@@ -15,6 +15,7 @@ import {RoomGameStage} from "@/enums/roomStage.ts";
 import type {OutMessage} from "@/api/socket.ts";
 import {type Ref, ref, watch} from "vue";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
+import type {ConnectionInfo} from "@/engine/types/connectionTypes.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import {type TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import { getTimeOfDayIdByHour } from "@/engine/resourcePack/timeOfDay.ts";
@@ -64,6 +65,7 @@ export class world {
   cursor = new cursorregistry()
 
   logs: Ref<BattleLogEntry[]> = ref<BattleLogEntry[]>([])
+  connections: Ref<ConnectionInfo[]> = ref<ConnectionInfo[]>([])
 
   constructor(map: mapmeta) {
     this.map = map

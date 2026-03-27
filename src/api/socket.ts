@@ -11,6 +11,7 @@ import type {PaintStroke} from "@/engine/types/paintTypes.ts";
 import type {vec2} from "@/engine/types.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
 import type {Weather} from "@/engine/resourcePack/weather.ts";
+import type {ConnectionInfo} from "@/engine/types/connectionTypes.ts";
 
 export type OutMessage =
   | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: Weather} }
@@ -29,11 +30,11 @@ export type OutMessage =
   | { type: 'direct_view'; team: Team; data: unitstate[] }
   | { type: 'weather'; data: Weather }
   | { type: 'log'; data: BattleLogEntry }
+  | { type: 'connection_new'; data: ConnectionInfo }
+  | { type: 'connection_close'; data: { id: number } }
 
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
-  | { type: 'list_connections'; data: number[] }
-  | { type: 'new_connection'; meta: { team: string } }
   | { type: 'error'; message: string }
 
 export class GameSocket {
@@ -267,6 +268,13 @@ export class GameSocket {
           window.ROOM_WORLD.newWeather.value = m.data
         } else if (m.type === 'log') {
           window.ROOM_WORLD.logs.value.push(m.data)
+        } else if (m.type === 'connection_new') {
+          const exists = this.world.connections.value.some(c => c.id === m.data.id);
+          if (!exists) {
+            this.world.connections.value.push(m.data)
+          }
+        } else if (m.type === 'connection_close') {
+          this.world.connections.value = this.world.connections.value.filter(c => c.id !== m.data.id);
         } else if (m.type === 'paint_add') {
           this.world.addPaintStroke(m.data, 'remote')
         } else if (m.type === 'paint_undo') {

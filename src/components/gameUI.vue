@@ -11,8 +11,6 @@ import {Team} from "@/enums/teamKeys.ts";
 import AdminTool from "@/components/tools/AdminTool.vue";
 import ForcesBar from "@/components/ForcesBar.vue";
 import NotificationsPanel from "@/components/NotificationsPanel.vue";
-import BattleLog from "@/components/BattleLog.vue";
-import ChartTool from "@/components/tools/ChartTool.vue";
 import DemoTool from "@/components/tools/DemoTool.vue";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import HelpPanel from "@/components/tools/HelpPanel.vue";
@@ -29,8 +27,6 @@ enum Tools {
   RULER = 'ruler',
   PAINT = 'paint',
   ADMIN = 'admin',
-  LOGS = 'logs',
-  CHART = 'chart',
   HELP = 'help',
 }
 
@@ -138,30 +134,12 @@ onUnmounted(() => {
       </button>
 
       <button
-        v-if="isAdmin() && !isEnd"
-        :class="{ active: activeTool === Tools.LOGS}"
-        @pointerdown.stop.prevent
-        @click="toggle($event, Tools.LOGS)"
-      >
-        📜 {{ t('tools.logs.title') }}
-      </button>
-
-      <button
         v-if="isAdmin()"
         :class="{ active: activeTool === Tools.ADMIN }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.ADMIN)"
       >
         🛡️ {{ t('team.admin') }}
-      </button>
-
-      <button
-        v-if="isAdmin()"
-        :class="{ active: activeTool === Tools.CHART }"
-        @pointerdown.stop.prevent
-        @click="toggle($event, Tools.CHART)"
-      >
-        📈 {{ t('tools.chart') }}
       </button>
 
       <button
@@ -208,15 +186,6 @@ onUnmounted(() => {
     <AdminTool
       v-if="isAdmin() && activeTool === Tools.ADMIN"
       class="no-select"
-    />
-
-    <ChartTool
-      v-if="isAdmin() && activeTool === Tools.CHART"
-      @close="close"
-    />
-
-    <BattleLog
-      v-if="isAdmin() && activeTool === Tools.LOGS"
     />
 
     <!-- Инструменты -->

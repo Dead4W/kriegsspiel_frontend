@@ -2,14 +2,18 @@
 import {useI18n} from 'vue-i18n'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
-import {onMounted, onUnmounted, ref, type UnwrapRef} from "vue";
+import {onMounted, onUnmounted, ref} from "vue";
 import ConnectionsList from '@/components/ConnectionsList.vue'
+import ChartTool from '@/components/tools/ChartTool.vue'
+import BattleLog from '@/components/BattleLog.vue'
 
 const { t } = useI18n()
 
 const stage = ref(window.ROOM_WORLD.stage);
 const copiedTeam = ref<Team | null>(null)
 const connections = window.ROOM_WORLD.connections
+const isChartOpen = ref(false)
+const isLogsOpen = ref(false)
 
 /* ================= actions ================= */
 
@@ -43,6 +47,18 @@ function copyTeamLink(team: Team) {
       copiedTeam.value = null;
     }, 2000);
   });
+}
+
+function openChart() {
+  isChartOpen.value = true
+}
+
+function closeChart() {
+  isChartOpen.value = false
+}
+
+function toggleLogs() {
+  isLogsOpen.value = !isLogsOpen.value
 }
 
 /* LIFE CYCLE */
@@ -90,7 +106,18 @@ onUnmounted(() => {
       </span>
     </button>
 
+    <button @click="openChart">
+      📈 {{ t('tools.chart') }}
+    </button>
+
+    <button @click="toggleLogs">
+      📜 {{ t('tools.logs.title') }}
+    </button>
+
     <ConnectionsList :connections="connections" />
+
+    <BattleLog v-if="isLogsOpen" />
+    <ChartTool v-if="isChartOpen" @close="closeChart" />
   </div>
 </template>
 

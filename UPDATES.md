@@ -2,6 +2,7 @@
 - Massive optimize server
 - Fix paint
 - Add connections list
+- Move Chart & Logs buttons to Umpire tool
 
 [2026-03-22]
 - Fix inaccuracy

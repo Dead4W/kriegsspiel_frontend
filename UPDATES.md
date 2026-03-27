@@ -1,5 +1,6 @@
 [2026-03-27]
 - Massive optimize server
+- Fix paint
 
 [2026-03-22]
 - Fix inaccuracy

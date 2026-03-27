@@ -102,11 +102,7 @@ function onPointerMove(e: PointerEvent) {
 function finishStroke() {
   if (!currentStroke) return
 
-  if (currentStroke.points.length < 4) {
-    window.ROOM_WORLD.undoPaint(window.CLIENT_ID)
-  } else {
-    window.ROOM_WORLD.markPaintStrokeDirty(currentStroke.id)
-  }
+  window.ROOM_WORLD.markPaintStrokeDirty(currentStroke.id)
 
   painting = false
   activePointerId = null

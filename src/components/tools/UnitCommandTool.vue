@@ -113,8 +113,10 @@ function clearCommands() {
 }
 
 function onKeydown(e: KeyboardEvent) {
+  const hasSystemModifier = e.ctrlKey || e.metaKey || e.altKey
+
   // C — cancel/clear planned commands for selected units
-  if (e.code === 'KeyC' && !e.repeat) {
+  if (!hasSystemModifier && e.code === 'KeyC' && !e.repeat) {
     // Keep behavior consistent with the ❌ button.
     if (props.units.length) {
       clearCommands()
@@ -126,7 +128,7 @@ function onKeydown(e: KeyboardEvent) {
     return
   }
 
-  if ((e.key === 'Enter' || e.code === 'KeyE') && activeOrder.value) {
+  if (!hasSystemModifier && (e.key === 'Enter' || e.code === 'KeyE') && activeOrder.value) {
     e.preventDefault()
     e.stopPropagation()
 
@@ -153,7 +155,7 @@ function onKeydown(e: KeyboardEvent) {
     return
   }
 
-  if (e.key === 'Escape' || e.code === 'KeyQ') {
+  if (e.key === 'Escape' || (!hasSystemModifier && e.code === 'KeyQ')) {
     if (activeOrder.value) {
       close()
       e.preventDefault()
@@ -166,7 +168,7 @@ function onKeydown(e: KeyboardEvent) {
   if (activeOrder.value) return
 
   // 1 — autoattack toggle
-  if (e.key === '1' && props.units.length && !e.repeat) {
+  if (!hasSystemModifier && e.key === '1' && props.units.length && !e.repeat) {
     toggleAutoAttack()
     e.preventDefault()
     e.stopPropagation()
@@ -178,12 +180,14 @@ function onKeydown(e: KeyboardEvent) {
   const isMoralePlus  = e.code === 'NumpadAdd' || e.code === 'Equal'
   const isMoraleMinus = e.code === 'NumpadSubtract' || e.code === 'Minus'
 
-  if ((isMoralePlus || isMoraleMinus) && props.units.length) {
+  if (!hasSystemModifier && (isMoralePlus || isMoraleMinus) && props.units.length) {
     adjustMorale(isMoralePlus ? 1 : -1)
     e.preventDefault()
     e.stopPropagation()
     return
   }
+
+  if (hasSystemModifier) return
 
   const command = hotkeys[e.key]
   if (!command) return

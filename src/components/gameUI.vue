@@ -61,9 +61,10 @@ const ROTATE_STEP = Math.PI / 32
 function onKeydown(e: KeyboardEvent) {
   nextTick();
   shiftHeld.value = e.shiftKey
+  const hasSystemModifier = e.ctrlKey || e.metaKey || e.altKey
 
   // Shift+Q / Shift+E — rotate selected unit angle (only when exactly one selected)
-  if (e.shiftKey && (e.code === 'KeyQ' || e.code === 'KeyE')) {
+  if (!hasSystemModifier && e.shiftKey && (e.code === 'KeyQ' || e.code === 'KeyE')) {
     const selected = window.ROOM_WORLD?.units.getSelected() ?? []
     if (selected.length === 1) {
       const u = selected[0]!
@@ -78,7 +79,7 @@ function onKeydown(e: KeyboardEvent) {
     }
   } else if (e.key === 'Escape') {
     activeTool.value = null
-  } else if (e.code === 'KeyV') {
+  } else if (!hasSystemModifier && e.code === 'KeyV') {
     activeTool.value = activeTool.value === Tools.RULER ? null : Tools.RULER
   }
 }

@@ -9,7 +9,20 @@ export function bindPointer(canvas: HTMLCanvasElement, w: world) {
   let needUpdate = false
 
   // отключаем контекстное меню
-  document.body.addEventListener('contextmenu', (e) => e.preventDefault())
+  document.body.addEventListener('contextmenu', (e) => {
+    const el = e.target as HTMLElement | null
+    if (!el) return
+
+    // Keep native context menu in chat and editable controls.
+    if (
+      el.closest('.krig-chat') ||
+      el.closest('input, textarea, [contenteditable=""], [contenteditable="true"]')
+    ) {
+      return
+    }
+
+    e.preventDefault()
+  })
 
   canvas.addEventListener('pointerdown', (e) => {
     if (e.button !== 2) return

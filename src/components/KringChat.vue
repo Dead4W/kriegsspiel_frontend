@@ -516,7 +516,7 @@ function onChangedWorld(event: { reason: string }) {
       messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
       messageSound.play().catch(() => {})
     } else {
-      const messageSound = new Audio('/assets/sounds/message.wav')
+      const messageSound = new Audio('/assets/sounds/new_message.ogg')
       messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
       messageSound.play().catch(() => {})
     }

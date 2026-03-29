@@ -697,6 +697,7 @@
   "notifications": {
     "units_with_new_order": "Юнитов с новым приказом",
     "units_without_order": "Юнитов без приказа",
+    "units_without_ammo": "Юнитов без боеприпасов",
     "messengers_without_order": "Посыльных без приказа"
   },
 

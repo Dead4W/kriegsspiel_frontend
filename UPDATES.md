@@ -1,6 +1,7 @@
 [2026-03-29]
 - Fix hotkey events for CTRL modifier
 - Fix contextmenu for chat
+- Add notification units without ammo
 
 [2026-03-27]
 - Massive optimize server

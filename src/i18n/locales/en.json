@@ -692,6 +692,7 @@
   "notifications": {
     "units_with_new_order": "Units with new command",
     "units_without_order": "Units without command",
+    "units_without_ammo": "Units without ammo",
     "messengers_without_order": "Messengers without order"
   },
 

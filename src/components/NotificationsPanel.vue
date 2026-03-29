@@ -5,6 +5,7 @@ import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
 import { unitType } from "@/engine";
+import { ROOM_SETTING_KEYS } from "@/enums/roomSettingsKeys";
 
 const { t } = useI18n()
 
@@ -70,6 +71,8 @@ function refreshNotifications() {
     })
   const messengersWithoutOrder = unitsWithoutOrder
     .filter(u => u.type === unitType.MESSENGER)
+  const unitsWithoutAmmo = units
+    .filter(u => u.ammo <= 0 && !u.isRetreat)
 
 
   const result = []
@@ -92,6 +95,17 @@ function refreshNotifications() {
       count: unitsWithoutOrder.length,
       onClick: () => {
         focusUnits(unitsWithoutOrder)
+      }
+    })
+  }
+
+  if (unitsWithoutAmmo.length > 0 && window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]) {
+    result.push({
+      id: 'without-ammo',
+      text: t('notifications.units_without_ammo'),
+      count: unitsWithoutAmmo.length,
+      onClick: () => {
+        focusUnits(unitsWithoutAmmo)
       }
     })
   }
@@ -258,6 +272,15 @@ onUnmounted(() => {
 .notification[data-type="without-order"] .badge {
   background: rgba(234, 179, 8, 0.25);
   color: #fde047;
+}
+
+.notification[data-type="without-ammo"] {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.notification[data-type="without-ammo"] .badge {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
 }
 
 /* анимация */

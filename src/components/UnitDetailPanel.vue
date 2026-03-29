@@ -82,6 +82,7 @@ const ammoProxy = computed({
 
     if (Number.isNaN(num)) {
       unit.ammo = 0
+      onEdit();
       return
     }
 
@@ -100,6 +101,7 @@ const hpProxy = computed({
     const num = Number(value)
     if (Number.isNaN(num)) {
       unit.hp = 0
+      onEdit();
       return
     }
     unit.hp = num;

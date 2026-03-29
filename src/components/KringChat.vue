@@ -511,9 +511,15 @@ function autoResizeInput() {
 function onChangedWorld(event: { reason: string }) {
   const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => m.author_team !== window.PLAYER.team);
   if (new_messages.length) {
-    const messageSound = new Audio('/assets/sounds/message.wav')
-    messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-    messageSound.play().catch(() => {})
+    if (window.ROOM_WORLD.id == 'bcb5fcfe-52be-438f-868f-3d3cda532241') {
+      const messageSound = new Audio('/assets/sounds/message_lol.ogg')
+      messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
+      messageSound.play().catch(() => {})
+    } else {
+      const messageSound = new Audio('/assets/sounds/message.wav')
+      messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
+      messageSound.play().catch(() => {})
+    }
   }
 
   let lastWasAtBottom = wasAtBottom.value;

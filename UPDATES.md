@@ -1,3 +1,6 @@
+[2026-03-29]
+- Add beta room setting "isPlayerRoomMap"
+
 [2026-03-27]
 - Massive optimize server
 - Fix paint

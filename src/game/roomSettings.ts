@@ -72,22 +72,22 @@ export const ROOM_SETTINGS: readonly RoomSetting[] = [
     level: 'stable',
     default: false,
   },
+
+  // === beta ===
   {
     key: ROOM_SETTING_KEYS.IS_PLAYER_ROOM_MAP,
     type: 'boolean',
     i18nLabel: 'settings.isPlayerRoomMap.label',
     i18nDescription: 'settings.isPlayerRoomMap.description',
-    level: 'stable',
+    level: 'beta',
     default: false,
   },
-
-  // === beta ===
   {
     key: ROOM_SETTING_KEYS.LIMITED_AMMO,
     type: 'boolean',
     i18nLabel: 'settings.limitedAmmo.label',
     i18nDescription: 'settings.limitedAmmo.description',
-    level: 'wip',
+    level: 'beta',
     default: false,
   },
 ] as const

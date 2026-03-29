@@ -21,12 +21,25 @@ export class DeliveryCommand extends BaseCommand<
   }
 
   update(unit: BaseUnit, dt: number) {
+    const roomUserIds = Array.from(new Set(
+      this.state.targets
+        .map((id) => window.ROOM_WORLD.units.get(id)?.roomMapUserId ?? 0)
+        .filter((id) => id > 0)
+    ));
+
     for (const id of this.state.targets) {
       const u = window.ROOM_WORLD.units.get(id);
       if (!u) continue;
       for (const m of unit.messages) {
         if (u.type === unitType.GENERAL) {
-          window.ROOM_WORLD.events.emit('api', {type: 'messenger_delivery', data: {id: m.id, time: window.ROOM_WORLD.time}})
+          window.ROOM_WORLD.events.emit('api', {
+            type: 'messenger_delivery',
+            data: {
+              id: m.id,
+              roomUserIds,
+              time: window.ROOM_WORLD.time
+            }
+          })
         } else {
           window.ROOM_WORLD.units.withNewCommandsTmp.add(id)
         }

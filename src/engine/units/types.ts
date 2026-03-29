@@ -33,6 +33,8 @@ export interface unitstate {
   fatigue?: number
   autoAttack?: boolean
   angle?: number
+  roomMapUserId?: number
+  seenRoomUserIds?: number[]
 
   label?: string
 

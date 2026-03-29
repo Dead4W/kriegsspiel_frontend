@@ -175,17 +175,40 @@ export class unitregistry {
     const directViewByTeam = new Map<unitTeam, uuid[]>();
     directViewByTeam.set(Team.RED, [])
     directViewByTeam.set(Team.BLUE, [])
+    const seenByUnit = new Map<uuid, Set<number>>()
+
+    const addSeenRoomUserId = (unit: BaseUnit, roomUserId: number) => {
+      if (roomUserId <= 0) return
+      if (!seenByUnit.has(unit.id)) {
+        seenByUnit.set(unit.id, new Set())
+      }
+      seenByUnit.get(unit.id)!.add(roomUserId)
+    }
 
     for (const generalUnit of this.list()) {
       if (generalUnit.team !== Team.RED && generalUnit.team !== Team.BLUE) continue;
       if (generalUnit.type !== unitType.GENERAL) continue;
       generalUnit.directView = true;
+      addSeenRoomUserId(generalUnit, generalUnit.roomMapUserId)
 
       const visionUnits = this.getDirectView(generalUnit)
+      for (const visionUnit of visionUnits) {
+        addSeenRoomUserId(visionUnit, generalUnit.roomMapUserId)
+      }
       const directViewUnitTeam = directViewByTeam
         .get(generalUnit.team)!
       directViewUnitTeam.push(...visionUnits.map(v => v.id));
       directViewUnitTeam.push(generalUnit.id)
+    }
+
+    for (const unit of this.list()) {
+      const next = Array.from(seenByUnit.get(unit.id) ?? []).sort((a, b) => a - b)
+      const prev = unit.seenRoomUserIds
+      const isSame = prev.length === next.length && prev.every((id, i) => id === next[i])
+      if (!isSame) {
+        unit.seenRoomUserIds = next
+        unit.setDirty()
+      }
     }
 
     return directViewByTeam;

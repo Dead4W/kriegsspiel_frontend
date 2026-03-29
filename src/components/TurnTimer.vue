@@ -198,6 +198,7 @@ async function startTurn() {
             type: u.type,
             team: u.team,
             pos: u.pos,
+            seenRoomUserIds: u.seenRoomUserIds,
 
             hp: u.hp,
             ammo: u.ammo,

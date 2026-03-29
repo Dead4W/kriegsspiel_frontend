@@ -86,6 +86,7 @@ const ammoProxy = computed({
     }
 
     unit.ammo = num
+    onEdit();
   }
 })
 
@@ -102,6 +103,7 @@ const hpProxy = computed({
       return
     }
     unit.hp = num;
+    onEdit();
   }
 })
 

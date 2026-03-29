@@ -4,6 +4,7 @@
 - Add notification units without ammo
 - Fix general view isRetreat
 - Fix negative ammo
+- Fix edit hp/ammo update
 
 [2026-03-27]
 - Massive optimize server

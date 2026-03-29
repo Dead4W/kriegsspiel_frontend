@@ -25,14 +25,16 @@ import {getTimeMultipliers} from "@/engine/units/modifiers/UnitTimeModifiers.ts"
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
-import type { MoveCommandState } from './commands/moveCommand';
+import type {MoveCommandState} from './commands/moveCommand';
 import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {type Weather} from "@/engine/resourcePack/weather.ts";
 import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
-import { getUnitNumberParam } from "@/engine/resourcePack/units.ts";
-import { getEnvironmentMoraleCheckMod, type EnvironmentStateId } from "@/engine/resourcePack/environment.ts";
-import { getMoraleCheckConfig, type MoraleOutcomeId } from "@/engine/resourcePack/moraleCheck.ts";
-
+import {getUnitNumberParam} from "@/engine/resourcePack/units.ts";
+import {
+  type EnvironmentStateId,
+  getEnvironmentMoraleCheckMod
+} from "@/engine/resourcePack/environment.ts";
+import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/moraleCheck.ts";
 
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
@@ -74,6 +76,7 @@ export abstract class BaseUnit {
   futurePos: vec2 | null = null
   label = ''
 
+  isRetreatState: boolean = false
   angle: number = 0
 
   selected = false
@@ -120,6 +123,7 @@ export abstract class BaseUnit {
     this.autoAttack = s.autoAttack ?? false
 
     this.angle = s.angle ?? 0
+    this.isRetreatState = s.isRetreatState ?? false
 
     this.label = s.label ?? translate(`unit.${s.type}`)
     this.hp = 0;
@@ -347,6 +351,7 @@ export abstract class BaseUnit {
       autoAttack: this.autoAttack,
 
       angle: this.angle,
+      isRetreatState: this.isRetreat,
 
       label: this.label,
 
@@ -774,6 +779,9 @@ export abstract class BaseUnit {
   }
 
   get isRetreat() {
+    if (window.PLAYER.team !== Team.ADMIN && window.PLAYER.team !== Team.SPECTATOR) {
+      return this.isRetreatState
+    }
     return this.commands.map(c => c.type).includes(UnitCommandTypes.Retreat)
   }
 }

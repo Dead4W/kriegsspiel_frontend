@@ -2,6 +2,7 @@
 - Fix hotkey events for CTRL modifier
 - Fix contextmenu for chat
 - Add notification units without ammo
+- Fix general view isRetreat
 
 [2026-03-27]
 - Massive optimize server

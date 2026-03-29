@@ -33,6 +33,7 @@ export interface unitstate {
   fatigue?: number
   autoAttack?: boolean
   angle?: number
+  isRetreatState?: boolean
 
   label?: string
 

@@ -199,6 +199,8 @@ async function startTurn() {
             team: u.team,
             pos: u.pos,
 
+            isRetreatState: u.isRetreat,
+
             hp: u.hp,
             ammo: u.ammo,
 

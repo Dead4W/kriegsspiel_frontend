@@ -14,6 +14,7 @@ import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyMo
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
 import { getUnitBoolParam, getUnitNumberParam, getUnitStringArrayParam } from "@/engine/resourcePack/units.ts";
+import {clamp} from "@/engine/math.ts";
 
 export interface AttackCommandState {
   targets: uuid[]
@@ -188,6 +189,7 @@ export class AttackCommand extends BaseCommand<
     }
 
     unit.ammo -= dt / 60 / 60
+    unit.ammo = clamp(unit.ammo, 0, unit.stats.ammoMax!)
   }
 
   isFinished(unit: BaseUnit): boolean {

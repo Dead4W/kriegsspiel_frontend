@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useHead } from '@vueuse/head'
+import axios from 'axios'
 import api from '@/api/client'
 
 const route = useRoute()
@@ -110,6 +111,29 @@ if (redirect) {
   router.replace(redirect);
 }
 
+function decodeQueryError(value: string): string {
+  try {
+    return decodeURIComponent(value.replace(/\+/g, ' '))
+  } catch {
+    return value
+  }
+}
+
+async function applyAuthErrorFromQuery() {
+  const rawError = route.query.error
+  const queryError = Array.isArray(rawError) ? rawError[0] : rawError
+  if (!queryError || typeof queryError !== 'string') return
+
+  error.value = decodeQueryError(queryError)
+
+  const { error: _error, ...queryWithoutError } = route.query
+  await router.replace({
+    name: route.name!,
+    params: route.params,
+    query: queryWithoutError
+  })
+}
+
 function createRoom() {
   router.push({
     name: 'create-room',
@@ -159,8 +183,18 @@ async function register() {
       name: nickname.value,
     }
     showAuth.value = false
-  } catch {
-    error.value = 'Ошибка регистрации'
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      const responseData = err.response?.data as {
+        message?: string
+        errors?: Record<string, string[]>
+      } | undefined
+
+      const fieldError = responseData?.errors?.name?.[0]
+      error.value = fieldError || responseData?.message || 'Ошибка регистрации'
+    } else {
+      error.value = 'Ошибка регистрации'
+    }
   } finally {
     loading.value = false
   }
@@ -174,6 +208,7 @@ async function register() {
 }
 
 onMounted(checkAuth)
+onMounted(applyAuthErrorFromQuery)
 onMounted(fetchUpdates)
 
 onMounted(() => {

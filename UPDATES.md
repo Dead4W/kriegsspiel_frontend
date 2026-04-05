@@ -1,3 +1,7 @@
+[2026-04-05]
+- Fix empty messenger when start war
+- Fix selection update on click unit list in chat
+
 [2026-03-29]
 - Fix hotkey events for CTRL modifier
 - Fix contextmenu for chat

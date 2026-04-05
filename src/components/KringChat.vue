@@ -176,7 +176,6 @@ function focusUnits(units: BaseUnit[]) {
   cam.pos.y = centerY - halfH
 
   cam.clampToWorld()
-  // w.events.emit('changed', { reason: 'camera' })
 }
 
 function onUnitsBlockClick(units: BaseUnit[]) {
@@ -188,6 +187,7 @@ function onUnitsBlockClick(units: BaseUnit[]) {
   }
 
   focusUnits(units)
+  w.events.emit('changed', { reason: 'unit-selected' })
 }
 
 function renderMarkdown(text: string): string {

@@ -329,7 +329,7 @@ function send() {
 
   // Instant create messenger for delivery
   const isGeneralSelected = selected.filter(u => u.type === unitType.GENERAL).length > 0;
-  if (isGeneralSelected) {
+  if (isGeneralSelected && window.PLAYER.team === Team.ADMIN) {
     const messengerState: unitstate = {
       id: crypto.randomUUID(),
       type: unitType.MESSENGER,

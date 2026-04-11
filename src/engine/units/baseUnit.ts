@@ -75,6 +75,8 @@ export abstract class BaseUnit {
   autoAttack: boolean = false
   futurePos: vec2 | null = null
   label = ''
+  roomMapUserId: number = 0
+  seenRoomUserIds: number[] = []
 
   isRetreatState: boolean = false
   angle: number = 0
@@ -124,6 +126,8 @@ export abstract class BaseUnit {
 
     this.angle = s.angle ?? 0
     this.isRetreatState = s.isRetreatState ?? false
+    this.roomMapUserId = s.roomMapUserId ?? 0
+    this.seenRoomUserIds = s.seenRoomUserIds ?? []
 
     this.label = s.label ?? translate(`unit.${s.type}`)
     this.hp = 0;
@@ -349,6 +353,8 @@ export abstract class BaseUnit {
       pos: this.pos,
       fatigue: this.fatigue,
       autoAttack: this.autoAttack,
+      roomMapUserId: this.roomMapUserId,
+      seenRoomUserIds: this.seenRoomUserIds,
 
       angle: this.angle,
       isRetreatState: this.isRetreat,

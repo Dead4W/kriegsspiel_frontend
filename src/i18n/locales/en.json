@@ -641,6 +641,10 @@
       "label": "Automatic stats update",
       "description": "Stats of unit are updated automatically for player upon receiving reports (HP, Ammo, position)"
     },
+    "isPlayerRoomMap": {
+      "label": "Individual player maps",
+      "description": "Each red/blue player gets their own team map and map updates are sent only to that player."
+    },
     "timeModifiers": {
       "label": "Time of day modifiers",
       "description": "Unit stats change depending on the time of day."

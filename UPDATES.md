@@ -1,3 +1,6 @@
+[2026-04-11]
+- Add beta room setting "isPlayerRoomMap"
+
 [2026-04-05]
 - Fix empty messenger when start war
 - Fix selection update on click unit list in chat

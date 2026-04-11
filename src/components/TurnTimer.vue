@@ -198,6 +198,7 @@ async function startTurn() {
             type: u.type,
             team: u.team,
             pos: u.pos,
+            seenRoomUserIds: u.seenRoomUserIds,
 
             isRetreatState: u.isRetreat,
 

@@ -26,6 +26,7 @@ import { loadResourcePack } from '@/engine/assets/resourcepack.ts'
 const props = defineProps<{
   room: RoomData
   team: Team
+  userId?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -189,6 +190,7 @@ async function initWorld(room: RoomData) {
   socket.connect({
     roomId: String(room.uuid),
     team: props.team,
+    userId: props.userId ?? null,
     key:
       localStorage.getItem(`room_admin_key_${room.uuid}`)
       ?? localStorage.getItem(`room_key_${room.uuid}`)

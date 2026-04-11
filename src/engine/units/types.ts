@@ -34,6 +34,8 @@ export interface unitstate {
   autoAttack?: boolean
   angle?: number
   isRetreatState?: boolean
+  roomMapUserId?: number
+  seenRoomUserIds?: number[]
 
   label?: string
 

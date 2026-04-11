@@ -26,7 +26,7 @@ export type OutMessage =
   | { type: 'skip_time'; data: string }
   | { type: 'skip_time_success'; data: true }
   | { type: 'set_stage'; data: RoomGameStage }
-  | { type: 'messenger_delivery'; data: {id: uuid, time: string} }
+  | { type: 'messenger_delivery'; data: {id: uuid, roomUserIds: number[], time: string} }
   | { type: 'direct_view'; team: Team; data: unitstate[] }
   | { type: 'weather'; data: Weather }
   | { type: 'log'; data: BattleLogEntry }
@@ -45,6 +45,7 @@ export class GameSocket {
   connect(params: {
     roomId: string
     team: string
+    userId?: number | null
     key?: string
     token?: string
     world: world
@@ -53,6 +54,7 @@ export class GameSocket {
     const query = new URLSearchParams({
       room_id: params.roomId,
       team: params.team,
+      user_id: params.userId != null ? String(params.userId) : '',
       key: params.key ?? '',
       token: params.token ?? '',
     })

@@ -28,6 +28,7 @@ const errorParams = ref<Record<string, string>>({})
 const mapProgress = ref(0)
 const roomData = ref<RoomData | null>(null)
 const selectedTeam = ref<Team | null>(null)
+const selectedUserId = ref<number | null>(null)
 const autoTeam = ref<Team | null>(null)
 
 /* ================== helpers ================== */
@@ -107,9 +108,10 @@ async function loadRoom() {
 
 /* ================== team select ================== */
 
-function onTeamSelected(team: Team) {
+function onTeamSelected(payload: { team: Team; userId: number | null }) {
   stage.value = RoomStage.LOADING_MAP
-  selectedTeam.value = team
+  selectedTeam.value = payload.team
+  selectedUserId.value = payload.userId
   autoTeam.value = null
 }
 
@@ -161,6 +163,7 @@ onMounted(loadRoom)
   <TeamSelect
     v-if="stage === RoomStage.TEAM_SELECT || (stage === RoomStage.LOADING_MAP && autoTeam != null)"
     :room-id="route.params.uuid as string"
+    :room-maps="roomData?.room_maps"
     :auto-team="stage === RoomStage.LOADING_MAP ? autoTeam : null"
     @select="onTeamSelected"
   />
@@ -171,6 +174,7 @@ onMounted(loadRoom)
     v-show="stage === RoomStage.READY"
     :room="roomData"
     :team="selectedTeam"
+    :user-id="selectedUserId"
     @progress="onGameProgress"
     @error="onGameError"
     @ready="onGameReady"

@@ -1,5 +1,6 @@
 [2026-04-11]
 - Add beta room setting "isPlayerRoomMap"
+- Add preview distance for ruler
 
 [2026-04-05]
 - Fix empty messenger when start war

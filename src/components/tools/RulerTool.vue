@@ -100,13 +100,37 @@ function rebuildOverlay() {
 
   // preview сегмент
   if (points.value.length && preview.value) {
+    const a = points.value[points.value.length - 1]!
+    const b = preview.value
+    const d = distance(a, b) * window.ROOM_WORLD.map.metersPerPixel
+    const previewDistance = totalDistance + d
+    const m = mid(a, b)
+    const rawAngle = angleAtan2(a, b)
+    const { angle, flipped } = readableAngle(rawAngle)
+    const sign = flipped ? -1 : 1
+    const normalOffset = 14
+
     items.push({
       type: 'line',
-      from: points.value[points.value.length - 1]!,
-      to: preview.value,
+      from: a,
+      to: b,
       color: '#3cff0088',
       width: 1,
     })
+
+    items.push({
+      type: 'text',
+      pos: {
+        x: m.x - Math.sin(angle) * normalOffset * sign,
+        y: m.y + Math.cos(angle) * normalOffset * sign,
+      },
+      text: `${Math.round(previewDistance)} M`,
+      angle,
+      size: 24,
+      strokeColor: '#000',
+      strokeWidth: 1,
+      color: '#3cff0088',
+    } satisfies OverlayText)
   }
 
   window.ROOM_WORLD.setOverlay(items)

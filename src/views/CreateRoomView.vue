@@ -11,7 +11,7 @@ const router = useRouter()
 const { t } = useI18n()
 
 const DEFAULT_RESOURCE_PACK_URL =
-  'https://kriegsspiel.io/assets/default_resourcepack.json'
+  `${location.origin}/assets/default_resourcepack.json`
 
 const roomName = ref('')
 const isCreating = ref(false)

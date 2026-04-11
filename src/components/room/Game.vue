@@ -75,7 +75,7 @@ async function initWorld(room: RoomData) {
     'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png'
   let defaultMetersPerPixel = 5.38
   let defaultResourcePackUrl =
-    'https://kriegsspiel.io/assets/default_resourcepack.json'
+    `${location.origin}/assets/default_resourcepack.json`
 
   if (window.location.hostname === 'localhost') {
     room.options.mapUrl = ''

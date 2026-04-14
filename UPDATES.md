@@ -1,3 +1,8 @@
+[2026-04-14]
+- Add client settings for unit commands
+- Add button for hide units\
+- Save camera
+
 [2026-04-11]
 - Add beta room setting "isPlayerRoomMap"
 - Add preview distance for ruler

@@ -13,7 +13,6 @@ A **ResourcePack** is a JSON file that controls game balance and behavior:
 
 ## Quick start
 
-1. Copy `public/assets/default_resourcepack.json`.
+1. Copy [default_resourcepack.json](https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json).
 2. Edit values in your own JSON file.
 3. Upload your JSON file to a public host (for example, Pastebin or any similar service) and copy the direct file URL.
-4. Load it with `loadResourcePack(url)` using that link (see `src/engine/assets/resourcepack.ts`).

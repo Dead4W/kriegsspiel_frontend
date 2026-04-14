@@ -13,6 +13,6 @@ ResourcePack позволяет глубоко настраивать игру: 
 
 ## Быстрый старт
 
-1. Скопируйте `public/assets/default_resourcepack.json`.
+1. Скопируйте [default_resourcepack.json](https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json).
 2. Измените значения в своем JSON-файле.
 3. Загрузите JSON-файл на публичный хост (например, Pastebin или аналогичный сервис) и скопируйте прямую ссылку на файл.

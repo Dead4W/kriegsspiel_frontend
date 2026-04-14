@@ -72,6 +72,14 @@ export const CLIENT_SETTING_KEYS = {
 
   // Debug mode
   DEBUG_MODE: 'debugMode',
+
+  // Last room id where camera state was saved
+  LAST_ROOM_ID: 'lastRoomId',
+
+  // Last saved camera state (world coordinates + zoom)
+  LAST_CAMERA_POS_X: 'lastCameraPosX',
+  LAST_CAMERA_POS_Y: 'lastCameraPosY',
+  LAST_CAMERA_ZOOM: 'lastCameraZoom',
 } as const
 
 export type ClientSettingKey =
@@ -140,6 +148,10 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]: false,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL]: true,
     [CLIENT_SETTING_KEYS.DEBUG_MODE]: false,
+    [CLIENT_SETTING_KEYS.LAST_ROOM_ID]: null,
+    [CLIENT_SETTING_KEYS.LAST_CAMERA_POS_X]: null,
+    [CLIENT_SETTING_KEYS.LAST_CAMERA_POS_Y]: null,
+    [CLIENT_SETTING_KEYS.LAST_CAMERA_ZOOM]: null,
   };
 }
 
@@ -147,15 +159,21 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
 export function createClientSettings() {
   const initial = loadClientSettings();
 
+  let saveTimer: number | null = null
   const save = () => {
-    localStorage.setItem(
-      CLIENT_SETTINGS_STORAGE_KEY,
-      JSON.stringify(window.CLIENT_SETTINGS)
-    )
+    if (saveTimer != null) return
+    saveTimer = window.setTimeout(() => {
+      localStorage.setItem(
+        CLIENT_SETTINGS_STORAGE_KEY,
+        JSON.stringify(window.CLIENT_SETTINGS)
+      )
+      saveTimer = null
+    }, 1000)
   }
 
   return new Proxy(initial, {
     set(target, prop: ClientSettingKey, value) {
+      if (Object.is(target[prop], value)) return true
       target[prop] = value;
       window.ROOM_WORLD.events.emit('changed', {reason: 'clientSettings'});
       save()

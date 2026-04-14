@@ -6,6 +6,7 @@ import { Team } from '@/enums/teamKeys'
 import { GameSocket } from '@/api/socket.ts'
 import type { RoomData } from '@/structures/room'
 import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
+import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
 
 import {
   bindKeyboard,
@@ -43,8 +44,76 @@ let renderer: canvasrenderer | null = null
 let rafId: number | null = null
 let resizeHandler: (() => void) | null = null
 let socket: GameSocket | null = null
+let cameraPersistTimer: number | null = null
 
 const ready = ref(false)
+const CAMERA_STATE_EPSILON = 0.0001
+
+function asFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function isCameraClose(a: number, b: number) {
+  return Math.abs(a - b) < CAMERA_STATE_EPSILON
+}
+
+function restoreSavedCameraState(currentRoomId: string, currentWorld: world) {
+  const savedRoomId = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_ROOM_ID]
+  if (savedRoomId !== currentRoomId) return
+
+  const savedX = asFiniteNumber(
+    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_POS_X]
+  )
+  const savedY = asFiniteNumber(
+    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_POS_Y]
+  )
+  const savedZoom = asFiniteNumber(
+    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_ZOOM]
+  )
+
+  if (savedX == null || savedY == null || savedZoom == null) return
+
+  currentWorld.camera.zoom = savedZoom
+  currentWorld.camera.pos.x = savedX
+  currentWorld.camera.pos.y = savedY
+  currentWorld.camera.clampToWorld()
+}
+
+function startCameraStatePersistence(currentRoomId: string, currentWorld: world) {
+  if (cameraPersistTimer != null) {
+    clearInterval(cameraPersistTimer)
+  }
+
+  cameraPersistTimer = window.setInterval(() => {
+    const cam = currentWorld.camera
+    const savedRoomId = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_ROOM_ID]
+    const savedX = asFiniteNumber(
+      window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_POS_X]
+    )
+    const savedY = asFiniteNumber(
+      window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_POS_Y]
+    )
+    const savedZoom = asFiniteNumber(
+      window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_ZOOM]
+    )
+
+    const hasSameRoom = savedRoomId === currentRoomId
+    const hasSameCamera =
+      savedX != null &&
+      savedY != null &&
+      savedZoom != null &&
+      isCameraClose(savedX, cam.pos.x) &&
+      isCameraClose(savedY, cam.pos.y) &&
+      isCameraClose(savedZoom, cam.zoom)
+
+    if (hasSameRoom && hasSameCamera) return
+
+    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_ROOM_ID] = currentRoomId
+    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_POS_X] = cam.pos.x
+    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_POS_Y] = cam.pos.y
+    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.LAST_CAMERA_ZOOM] = cam.zoom
+  }, 1000)
+}
 
 function cleanup() {
   if (rafId != null) {
@@ -59,6 +128,11 @@ function cleanup() {
 
   socket?.disconnect()
   socket = null
+
+  if (cameraPersistTimer != null) {
+    clearInterval(cameraPersistTimer)
+    cameraPersistTimer = null
+  }
 
   renderer = null
   w = null
@@ -172,6 +246,7 @@ async function initWorld(room: RoomData) {
 
   window.addEventListener('resize', resizeHandler)
   resizeHandler()
+  restoreSavedCameraState(String(room.uuid), w)
 
   renderer.setMapImage(bitmap)
   w.setForestMap(await buildForestMap(bitmap, map.width, map.height))
@@ -184,6 +259,7 @@ async function initWorld(room: RoomData) {
   bindKeyboard(w)
   bindUnitInteraction(canvasEl.value, w)
   bindUnitContextCommands(w)
+  startCameraStatePersistence(String(room.uuid), w)
 
   socket?.disconnect()
   socket = new GameSocket()

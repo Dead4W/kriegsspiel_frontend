@@ -18,6 +18,7 @@ import WeatherControl from "@/components/WeatherControl.vue";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import PaintTool from "@/components/tools/PaintTool.vue";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
+import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 
 const { t } = useI18n()
 
@@ -34,12 +35,21 @@ const activeTool = ref<Tools | null>(null)
 const world = ref(window.ROOM_WORLD)
 const isEnd = ref(false)
 const isWar = ref(false)
+const hideUnitsLayer = ref(!!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER])
 
 const shiftHeld = ref(false)
 
 function toggleHardMove(e: MouseEvent) {
   e.preventDefault()
   e.stopPropagation()
+}
+
+function toggleHideUnitsLayer(e: MouseEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  const value = !window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]
+  window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER] = value
+  hideUnitsLayer.value = !!value
 }
 
 function toggle(e: MouseEvent, tool: Tools) {
@@ -96,6 +106,7 @@ function sync() {
   world.value = window.ROOM_WORLD
   isEnd.value = world.value.stage === RoomGameStage.END
   isWar.value = world.value.stage === RoomGameStage.WAR
+  hideUnitsLayer.value = !!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]
 }
 
 onMounted(() => {
@@ -176,6 +187,14 @@ onUnmounted(() => {
       >
         ❓ {{ t('tools.modifiers.button') }}
       </button>
+
+      <button
+        :class="{ active: hideUnitsLayer }"
+        @pointerdown.stop.prevent
+        @click="toggleHideUnitsLayer"
+      >
+        👁️‍🗨️ {{ t('tools.hide_units_layer') }}
+      </button>
     </div>
 
     <DemoTool
@@ -189,6 +208,8 @@ onUnmounted(() => {
     />
 
     <!-- Инструменты -->
+    
+
     <SpawnTool
       v-if="activeTool === Tools.SPAWN"
       class="no-select"

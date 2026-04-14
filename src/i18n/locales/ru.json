@@ -387,6 +387,7 @@
     "rotate_angle": "Поворот",
     "hard_move": "HARD MOVE",
     "hard_move_description": "Форсированное движение юнитов. Без этого режима, вы назначаете приказ движения юнитов, а не перемещаете их.",
+    "hide_units_layer": "Скрыть юниты",
     "ruler": "Линейка",
     "paint": {
       "title": "Рисование",
@@ -609,6 +610,9 @@
     "show_unit_labels": "Показывать подписи юнитов",
     "show_unit_label_type": "Показывать тип юнита",
     "opacity_unit": "Прозрачность юнита",
+    "show_unit_commands": "Показывать команды юнитов",
+    "show_unit_commands_only_selected": "Показывать только для выделенных юнитов",
+    "opacity_commands": "Прозрачность команд",
     "size_unit": "Размер юнита",
     "show_hp_unit_on_map": "Показывать HP на карте",
     "show_unit_modificators": "Показывать иконки модификаторов юнита",

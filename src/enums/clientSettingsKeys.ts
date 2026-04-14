@@ -21,8 +21,20 @@ export const CLIENT_SETTING_KEYS = {
   // Прозрачность юнита
   OPACITY_UNIT: 'opacityUnit',
 
+  // Показывать команды юнита
+  SHOW_UNIT_COMMANDS: 'showUnitCommands',
+
+  // Показывать команды только у выделенных юнитов
+  SHOW_UNIT_COMMANDS_ONLY_SELECTED: 'showUnitCommandsOnlySelected',
+
+  // Прозрачность команд юнита
+  OPACITY_COMMANDS: 'opacityCommands',
+
   // Размер юнита
   SIZE_UNIT: 'sizeUnit',
+
+  // Skip rendering units layer
+  HIDE_UNITS_LAYER: 'hideUnitsLayer',
 
   // Показывать HP юнита на карте
   SHOW_HP_UNIT_ON_MAP: 'showHpUnitOnMap',
@@ -110,7 +122,11 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS]: true,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_LABEL_TYPE]: false,
     [CLIENT_SETTING_KEYS.OPACITY_UNIT]: 0.8,
+    [CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS]: true,
+    [CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS_ONLY_SELECTED]: false,
+    [CLIENT_SETTING_KEYS.OPACITY_COMMANDS]: 0.8,
     [CLIENT_SETTING_KEYS.SIZE_UNIT]: 1,
+    [CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]: false,
     [CLIENT_SETTING_KEYS.SHOW_HP_UNIT_ON_MAP]: true,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_VISION]: true,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED]: false,

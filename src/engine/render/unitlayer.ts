@@ -64,6 +64,10 @@ export class unitlayer {
   // =============================
 
   draw(ctx: CanvasRenderingContext2D, w: world) {
+    if (window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]) {
+      return
+    }
+
     this.inaccuracyRenderedPoints = [];
 
     const cam = w.camera
@@ -80,7 +84,7 @@ export class unitlayer {
     for (const unit of units) {
       debugPerformance('drawCommands', () => {
         ctx.save()
-        this.drawCommands(ctx, cam, unit)
+        this.drawCommands(ctx, cam, unit, settings)
         ctx.restore()
         ctx.closePath()
       })
@@ -247,12 +251,21 @@ export class unitlayer {
   private drawCommands(
     ctx: CanvasRenderingContext2D,
     cam: world['camera'],
-    unit: BaseUnit
+    unit: BaseUnit,
+    settings: typeof window.CLIENT_SETTINGS
   ) {
+    if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS]) return
+    if (
+      settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS_ONLY_SELECTED]
+      && !unit.selected
+    ) {
+      return
+    }
+
     const commands = unit.getCommands()
     if (!commands.length) return
 
-    ctx.globalAlpha = 0.8
+    ctx.globalAlpha = settings[CLIENT_SETTING_KEYS.OPACITY_COMMANDS] ?? 0.8
     const { r, g, b } = getTeamColor(unit.team)
     const color = `rgba(${r},${g},${b},1)`
 

@@ -104,6 +104,30 @@ const uiDef: ClientSettingsUiItem[] = [
 
   { kind: 'hr' },
 
+  {
+    kind: 'range',
+    key: CLIENT_SETTING_KEYS.OPACITY_COMMANDS,
+    labelI18nKey: 'client_settings.opacity_commands',
+    min: 0.1,
+    max: 1,
+    step: 0.05,
+    valueFormat: 'fixed2',
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS,
+    labelI18nKey: 'client_settings.show_unit_commands',
+  },
+  {
+    kind: 'checkbox',
+    key: CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS_ONLY_SELECTED,
+    labelI18nKey: 'client_settings.show_unit_commands_only_selected',
+    indent: true,
+    disabled: () => !settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS],
+  },
+
+  { kind: 'hr' },
+
   // Other toggles
   {
     kind: 'checkbox',

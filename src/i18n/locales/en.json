@@ -382,6 +382,7 @@
     "rotate_angle": "Rotate",
     "hard_move": "HARD MOVE",
     "hard_move_description": "Force move units position. Without this mode, you set move orders to units, not move them.",
+    "hide_units_layer": "Hide Units",
     "ruler": "Ruler",
     "paint": {
       "title": "Paint",
@@ -603,6 +604,9 @@
     "show_unit_labels": "Show unit labels",
     "show_unit_label_type": "Show unit type",
     "opacity_unit": "Unit opacity",
+    "show_unit_commands": "Show unit commands",
+    "show_unit_commands_only_selected": "Show only for selected units",
+    "opacity_commands": "Command opacity",
     "size_unit": "Unit size",
     "show_hp_unit_on_map": "Show unit HP on map",
     "show_unit_modificators": "Show icon modificators on unit",

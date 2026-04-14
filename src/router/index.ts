@@ -7,6 +7,7 @@ const HomeView = () => import('@/views/HomeView.vue')
 const CreateRoomView = () => import('@/views/CreateRoomView.vue')
 const RoomView = () => import('@/views/RoomView.vue')
 const AboutView  = () => import('@/views/AboutView.vue')
+const WikiView  = () => import('@/views/WikiView.vue')
 const CookiesView  = () => import('@/views/CookiesView.vue')
 const PrivacyView  = () => import('@/views/PrivacyView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
@@ -49,6 +50,11 @@ const router = createRouter({
           path: 'about',
           name: 'about',
           component: AboutView,
+        },
+        {
+          path: 'wiki',
+          name: 'wiki',
+          component: WikiView,
         },
         {
           path: 'cookies',

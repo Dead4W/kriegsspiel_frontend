@@ -266,6 +266,12 @@ function acceptCookies() {
           {{ t('createRoomBtn') }}
         </button>
 
+        <router-link
+          class="wiki-cta"
+          :to="{ name: 'wiki', params: { locale: route.params.locale } }"
+        >
+          {{ t('wiki') }}
+        </router-link>
       </div>
 
       <div class="updates-block">
@@ -436,12 +442,32 @@ h1 {
   display: flex;
   gap: 1rem;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
-.actions button {
+.actions button,
+.wiki-cta {
   min-width: 200px;
   padding: 0.9rem 1.5rem;
   border: none;
+}
+
+.wiki-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in oklab, var(--accent) 60%, white 10%);
+  border-radius: var(--radius, 8px);
+  background: color-mix(in oklab, var(--accent) 18%, var(--panel) 82%);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .primary {
@@ -453,6 +479,16 @@ h1 {
   background: var(--accent-hover);
   transform: translateY(-1px);
   filter: none;
+}
+
+.wiki-cta:hover {
+  background: color-mix(in oklab, var(--accent) 28%, var(--panel) 72%);
+  border-color: var(--accent);
+  color: var(--text);
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 10px 24px rgba(15, 23, 42, 0.24);
 }
 
 .updates-block {

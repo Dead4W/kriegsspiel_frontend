@@ -12,6 +12,8 @@
   "copied": "Скопировано",
   "hotkey": "Горячая клавиша",
   "about": "О проекте",
+  "wiki": "Вики",
+  "backToHome": "Назад",
   "resourcePackCreator": {
     "homeButton": "Конструктор ресурс-пака",
     "title": "Конструктор ресурс-пака",
@@ -310,6 +312,43 @@
   "aboutSeo": {
     "title": "О проекте — KRIEGSSPIEL",
     "description": "Что такое Кригшпиль, исходный код проекта и полезные ссылки."
+  },
+
+  "wikiSeo": {
+    "title": "Вики — KRIEGSSPIEL",
+    "description": "Гайды по игре, базовые правила и тактические заметки."
+  },
+
+  "wikiPage": {
+    "loading": "Загрузка страницы вики...",
+    "pageNotFound": "Эта страница пока не готова.",
+    "pageLoadError": "Не удалось загрузить страницу вики.",
+    "sections": {
+      "gettingStarted": "Начало",
+      "gameplay": "Игровой процесс",
+      "resourcepack": "ResourcePack"
+    },
+    "tabs": {
+      "overview": "Обзор",
+      "firstRoom": "Первая комната",
+      "controls": "Управление",
+      "short": "Коротко",
+      "roles": "По ролям",
+      "orders": "Судья - Приказы",
+      "umpireNotifications": "Судья - Уведомления",
+      "fogOfWar": "Туман войны",
+      "resourcepackOverview": "Обзор",
+      "timeOfDay": "Время суток",
+      "weather": "Погода",
+      "inaccuracy": "Неточность",
+      "moraleCheck": "Проверка морали",
+      "environment": "Окружение",
+      "formations": "Формации",
+      "abilities": "Способности",
+      "units": "Юниты",
+      "angleModifiers": "Модификаторы угла",
+      "distanceModifiers": "Модификаторы дистанции"
+    }
   },
 
   "aboutSections": {

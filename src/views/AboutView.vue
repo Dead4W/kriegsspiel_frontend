@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { useHead } from '@vueuse/head'
 
+const route = useRoute()
 const { t, locale } = useI18n()
 
 useHead(() => ({
@@ -21,6 +23,11 @@ useHead(() => ({
 <template>
   <section class="about">
     <div class="card">
+      <div class="card-header">
+        <router-link class="brand-link" :to="{ name: 'home', params: { locale: route.params.locale } }">
+          {{ t('title') }}
+        </router-link>
+      </div>
       <h1>{{ t('about') }}</h1>
       <div class="tags" aria-label="Project technologies">
         <span class="tag">GitHub Pages</span>
@@ -102,6 +109,27 @@ useHead(() => ({
   box-shadow:
     var(--shadow-lg),
     var(--shadow-inset);
+}
+
+.card-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.brand-link {
+  display: block;
+  margin: 0;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 3rem;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.brand-link:hover {
+  color: var(--accent);
 }
 
 .tags {

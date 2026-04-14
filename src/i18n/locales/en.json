@@ -12,6 +12,8 @@
   "copied": "Copied",
   "hotkey": "Hotkey",
   "about": "About project",
+  "wiki": "Wiki",
+  "backToHome": "Back",
   "resourcePackCreator": {
     "homeButton": "Resource Pack Creator",
     "title": "Resource Pack Creator",
@@ -308,6 +310,43 @@
   "aboutSeo": {
     "title": "About — KRIEGSSPIEL",
     "description": "Learn what Kriegsspiel is, read the source code, and find helpful links."
+  },
+
+  "wikiSeo": {
+    "title": "Wiki — KRIEGSSPIEL",
+    "description": "Read game guides, gameplay basics, and tactical notes."
+  },
+
+  "wikiPage": {
+    "loading": "Loading wiki page...",
+    "pageNotFound": "This page is not ready yet.",
+    "pageLoadError": "Failed to load wiki page.",
+    "sections": {
+      "gettingStarted": "Getting started",
+      "gameplay": "Gameplay",
+      "resourcepack": "ResourcePack"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "firstRoom": "First room",
+      "controls": "Controls",
+      "short": "Quick flow",
+      "roles": "Roles",
+      "orders": "Umpire - Orders",
+      "umpireNotifications": "Umpire - Notifications",
+      "fogOfWar": "Fog of war",
+      "resourcepackOverview": "Overview",
+      "timeOfDay": "Time of day",
+      "weather": "Weather",
+      "inaccuracy": "Inaccuracy",
+      "moraleCheck": "Morale check",
+      "environment": "Environment",
+      "formations": "Formations",
+      "abilities": "Abilities",
+      "units": "Units",
+      "angleModifiers": "Angle modifiers",
+      "distanceModifiers": "Distance modifiers"
+    }
   },
 
   "aboutSections": {

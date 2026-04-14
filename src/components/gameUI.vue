@@ -208,7 +208,7 @@ onUnmounted(() => {
     />
 
     <!-- Инструменты -->
-    
+
 
     <SpawnTool
       v-if="activeTool === Tools.SPAWN"

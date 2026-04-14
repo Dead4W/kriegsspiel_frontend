@@ -148,6 +148,11 @@ onMounted(loadProfile)
 <template>
   <section class="profile">
     <div class="card">
+      <div class="card-header">
+        <router-link class="brand-link" :to="{ name: 'home', params: { locale: route.params.locale } }">
+          {{ t('title') }}
+        </router-link>
+      </div>
       <h1>{{ t('profile') }}</h1>
 
       <template v-if="loading">
@@ -255,6 +260,27 @@ onMounted(loadProfile)
   box-shadow:
     var(--shadow-lg),
     var(--shadow-inset);
+}
+
+.card-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.brand-link {
+  display: block;
+  margin: 0;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 3rem;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.brand-link:hover {
+  color: var(--accent);
 }
 
 .profile-avatar-wrap {

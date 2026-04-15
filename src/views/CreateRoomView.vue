@@ -165,14 +165,16 @@ async function createRoom() {
 
             <div class="field">
               <label>{{ t('settings.resourcePack.url') }}</label>
-              <a
+              <RouterLink
                 class="help-link"
-                href="https://github.com/Dead4W/kriegsspiel_frontend/blob/main/docs/resourcepack.md"
-                target="_blank"
-                rel="noopener noreferrer"
+                :to="{
+                  name: 'wiki',
+                  params: { locale: route.params.locale },
+                  query: { section: 'resourcepack', tab: 'overview' },
+                }"
               >
-                Resource pack docs <span class="help-link__icon" aria-hidden="true">↗</span>
-              </a>
+                Resource pack docs
+              </RouterLink>
               <input
                 v-model="resourcePackUrl"
                 :placeholder="t('settings.resourcePack.placeholder')"

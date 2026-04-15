@@ -2,7 +2,7 @@
 
 ResourcePack позволяет глубоко настраивать игру: редактировать юниты, настраивать боевые расчеты, менять текстуры юнитов и многое другое. Это дает возможность играть с разными наборами правил, сценариями и стилями баланса.
 
-Файл по умолчанию: `public/assets/default_resourcepack.json`.
+Файл по умолчанию: [default_resourcepack.json](https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json).
 
 **ResourcePack** — это JSON-файл, который управляет балансом и поведением игры:
 

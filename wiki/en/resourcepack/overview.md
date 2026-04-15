@@ -2,7 +2,7 @@
 
 ResourcePack lets you deeply customize the game: edit units, tune combat calculations, change unit textures, and much more. This makes it possible to play with different rulesets, scenarios, and balancing styles.
 
-Default file: `public/assets/default_resourcepack.json`.
+Default file: [default_resourcepack.json](https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json).
 
 A **ResourcePack** is a JSON file that controls game balance and behavior:
 

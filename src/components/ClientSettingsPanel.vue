@@ -143,7 +143,6 @@ const uiDef: ClientSettingsUiItem[] = [
     kind: 'checkbox',
     key: CLIENT_SETTING_KEYS.SHOW_UNIT_VISION,
     labelI18nKey: 'client_settings.show_unit_vision',
-    disabled: () => !!settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP],
   },
   {
     kind: 'checkbox',

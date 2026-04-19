@@ -154,6 +154,7 @@ function onClick(e: PointerEvent) {
       id: crypto.randomUUID(),
       type: selectedType.value,
       team: selectedTeam.value,
+      roomMapUserId: window.PLAYER.id,
       pos,
       label: getNextUnitName(
         w,

@@ -105,8 +105,7 @@ export class unitlayer {
     settings: typeof window.CLIENT_SETTINGS
   ) {
     if (
-      settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION] &&
-      !settings[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]
+      settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION]
     ) {
       debugPerformance('drawUnitVision', () => {
         drawUnitVision(ctx, w, settings)

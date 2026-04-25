@@ -1,8 +1,13 @@
 import type { world } from '../world/world'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import { Team } from '@/enums/teamKeys.ts'
 
 export class maplayer {
   private img: CanvasImageSource | null = null
+
+  private canRenderDebugMaps() {
+    return window.PLAYER.team === Team.ADMIN || window.PLAYER.team === Team.SPECTATOR
+  }
 
   setImage(img: CanvasImageSource) {
     this.img = img
@@ -26,6 +31,7 @@ export class maplayer {
 
     // ===== DEBUG: FOREST MAP =====
     if (
+      this.canRenderDebugMaps() &&
       w.forestCanvas &&
       window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_FOREST_MAP]
     ) {
@@ -34,6 +40,7 @@ export class maplayer {
 
     // ===== DEBUG: FOREST MAP =====
     if (
+      this.canRenderDebugMaps() &&
       w.forestCanvas &&
       window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]
     ) {

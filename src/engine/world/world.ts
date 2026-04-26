@@ -20,6 +20,8 @@ import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import {type TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import { getTimeOfDayIdByHour } from "@/engine/resourcePack/timeOfDay.ts";
 import type {Weather} from "@/engine/resourcePack/weather.ts";
+import {Team} from "@/enums/teamKeys.ts";
+import type {PlayerReadyInfo} from "@/engine/types/connectionTypes.ts";
 
 type worldevents = {
   changed: { reason: string }
@@ -66,6 +68,7 @@ export class world {
 
   logs: Ref<BattleLogEntry[]> = ref<BattleLogEntry[]>([])
   connections: Ref<ConnectionInfo[]> = ref<ConnectionInfo[]>([])
+  playerReadyStates: Ref<PlayerReadyInfo[]> = ref<PlayerReadyInfo[]>([])
 
   constructor(map: mapmeta) {
     this.map = map
@@ -225,5 +228,43 @@ export class world {
   getHeightAt(pos: vec2) {
     if (!this.heightMap) return 0
     return this.heightMap.getHeightAt(pos)
+  }
+
+  upsertPlayerReadyState(state: PlayerReadyInfo) {
+    const idx = this.playerReadyStates.value.findIndex(
+      (item) => item.user_id === state.user_id && item.team === state.team
+    )
+    if (idx >= 0) {
+      this.playerReadyStates.value[idx] = {
+        user_id: state.user_id,
+        user: state.user ?? this.playerReadyStates.value[idx]?.user,
+        team: state.team,
+        is_ready: state.is_ready,
+      }
+      return
+    }
+    this.playerReadyStates.value.push(state)
+  }
+
+  getPlayerReadyStats() {
+    const candidates = this.playerReadyStates.value.filter(
+      (state) => state.team === Team.RED || state.team === Team.BLUE
+    )
+    const seen = new Set<string>()
+    let total = 0;
+    let ready = 0;
+    for (const state of candidates) {
+      const key = `${state.team}:${state.user_id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      total++
+      if (state.is_ready) {
+        ready++
+      }
+    }
+    return {
+      ready,
+      total,
+    }
   }
 }

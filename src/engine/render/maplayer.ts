@@ -77,7 +77,7 @@ export class maplayer {
     const h = srcCanvas.height
 
     const srcCtx = srcCanvas.getContext("2d")!
-    const srcImg = srcCtx.getImageData(0, 0, w, h)
+    const srcImg = (srcCtx as CanvasRenderingContext2D).getImageData(0, 0, w, h)
 
     const data = srcImg.data
 

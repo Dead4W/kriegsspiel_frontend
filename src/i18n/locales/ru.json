@@ -444,6 +444,12 @@
     "admin": {
       "title": "Администрирование",
       "start_war": "Начать войну",
+      "start_war_disabled_no_players": "Запуск недоступен: в комнате пока нет игроков red/blue.",
+      "start_war_warning_not_ready": "Готовы не все игроки: {ready} / {total}.",
+      "start_war_warning_offline": "Некоторые игроки OFFLINE: {offline}.",
+      "start_war_warning_not_ready_offline": "Готовы не все игроки ({ready} / {total}) и есть OFFLINE ({offline}).",
+      "start_war_warning_hint": "Часть игроков еще готовит приказы и может не успеть закончить планирование.",
+      "start_war_warning_confirm": "Начать войну с предупреждением? Готовы: {ready}/{total}, OFFLINE: {offline}.",
       "end_war": "Закончить войну",
       "copy_team_link": "Ссылка команды"
     },
@@ -579,6 +585,18 @@
   },
 
   "continue": "Продолжить",
+
+  "turn_timer": {
+    "ready_on": "Готов",
+    "ready_disable": "Снять готовность",
+    "ready_off": "Готовность",
+    "ready_count": "Готовы: {ready} / {total}"
+  },
+
+  "connections": {
+    "not_ready": "Не готов",
+    "offline": "OFFLINE"
+  },
 
   "authModal": {
     "nickname": "Ник",

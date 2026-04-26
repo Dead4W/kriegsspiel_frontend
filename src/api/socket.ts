@@ -32,6 +32,7 @@ export type OutMessage =
   | { type: 'log'; data: BattleLogEntry }
   | { type: 'connection_new'; data: ConnectionInfo }
   | { type: 'connection_close'; data: { id: number } }
+  | { type: 'room_user_ready'; data: { is_ready: boolean } | { user_id: number; user?: string; team: Team; is_ready: boolean } }
 
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
@@ -271,12 +272,51 @@ export class GameSocket {
         } else if (m.type === 'log') {
           window.ROOM_WORLD.logs.value.push(m.data)
         } else if (m.type === 'connection_new') {
-          const exists = this.world.connections.value.some(c => c.id === m.data.id);
-          if (!exists) {
+          const idx = this.world.connections.value.findIndex(c => c.id === m.data.id);
+          if (idx >= 0) {
+            this.world.connections.value[idx] = {
+              ...this.world.connections.value[idx],
+              ...m.data,
+            }
+          } else {
             this.world.connections.value.push(m.data)
+          }
+          if (
+            m.data.user_id
+            && (m.data.team === Team.RED || m.data.team === Team.BLUE)
+            && typeof m.data.is_ready === 'boolean'
+          ) {
+            this.world.upsertPlayerReadyState({
+              user_id: m.data.user_id,
+              user: m.data.user,
+              team: m.data.team,
+              is_ready: m.data.is_ready,
+            })
           }
         } else if (m.type === 'connection_close') {
           this.world.connections.value = this.world.connections.value.filter(c => c.id !== m.data.id);
+        } else if (m.type === 'room_user_ready') {
+          const readyData = m.data
+          if ('user_id' in readyData) {
+            this.world.upsertPlayerReadyState({
+              user_id: readyData.user_id,
+              user: readyData.user,
+              team: readyData.team,
+              is_ready: readyData.is_ready,
+            })
+            this.world.connections.value = this.world.connections.value.map((connection) => {
+              if (
+                connection.team === readyData.team
+                && connection.user_id === readyData.user_id
+              ) {
+                return {
+                  ...connection,
+                  is_ready: readyData.is_ready,
+                }
+              }
+              return connection
+            })
+          }
         } else if (m.type === 'paint_add') {
           this.world.addPaintStroke(m.data, 'remote')
         } else if (m.type === 'paint_undo') {

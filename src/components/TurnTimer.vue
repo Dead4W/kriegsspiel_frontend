@@ -39,6 +39,18 @@ function isWar() {
   return window.ROOM_WORLD.stage === RoomGameStage.WAR;
 }
 
+function isPlanning() {
+  return window.ROOM_WORLD.stage === RoomGameStage.PLANNING;
+}
+
+function isPlayerTeam() {
+  return window.PLAYER?.team === Team.RED || window.PLAYER?.team === Team.BLUE;
+}
+
+function isAdminOrSpectator() {
+  return window.PLAYER?.team === Team.ADMIN || window.PLAYER?.team === Team.SPECTATOR;
+}
+
 function isEnabledTimeModifiers() {
   return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.TIME_MODIFIERS]
 }
@@ -236,6 +248,36 @@ function stopTurn() {
   running.value = false
 }
 
+const readyStats = computed(() => window.ROOM_WORLD.getPlayerReadyStats())
+const currentPlayerReady = computed(() => {
+  if (!isPlayerTeam()) return false
+  const playerId = Number(window.PLAYER?.id)
+  if (!Number.isFinite(playerId) || playerId <= 0) return false
+  const team = window.PLAYER.team
+  return window.ROOM_WORLD.playerReadyStates.value.some(
+    (state) => state.user_id === playerId && state.team === team && state.is_ready
+  )
+})
+
+function setReady(isReady: boolean) {
+  if (!isPlanning() || !isPlayerTeam()) return
+  const playerId = Number(window.PLAYER?.id)
+  if (!Number.isFinite(playerId) || playerId <= 0) return
+
+  window.ROOM_WORLD.events.emit('api', {
+    type: 'room_user_ready',
+    data: {
+      is_ready: isReady,
+    },
+  })
+  window.ROOM_WORLD.upsertPlayerReadyState({
+    user_id: playerId,
+    team: window.PLAYER.team,
+    is_ready: isReady,
+  })
+  window.ROOM_WORLD.events.emit('changed', { reason: 'room_user_ready' })
+}
+
 // LIFE CYCLE
 
 
@@ -270,6 +312,20 @@ onUnmounted(() => {
     </div>
 
     <div class="turn-row">
+      <div v-if="isPlanning() && isPlayerTeam()" class="planning-ready-controls">
+        <button
+          class="ready-btn"
+          :class="{ active: currentPlayerReady }"
+          @pointerdown="setReady(!currentPlayerReady)"
+        >
+          {{ currentPlayerReady ? t('turn_timer.ready_disable') : t('turn_timer.ready_off') }}
+        </button>
+      </div>
+
+      <div v-if="isPlanning() && isAdminOrSpectator()" class="planning-ready-stats">
+        {{ t('turn_timer.ready_count', readyStats) }}
+      </div>
+
       <div v-if="isAdmin() && isWar()" class="admin-controls">
         <div class="turn-time">
           ⏱ {{ displayTurnTime }}
@@ -340,7 +396,32 @@ onUnmounted(() => {
 .turn-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
+}
+
+.planning-ready-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.ready-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: white;
+  cursor: pointer;
+}
+
+.ready-btn.active {
+  background: #0f5132;
+  border-color: #198754;
+}
+
+.planning-ready-stats {
+  font-size: 13px;
+  opacity: 0.95;
 }
 
 .turn-time {

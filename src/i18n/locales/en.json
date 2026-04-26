@@ -439,6 +439,12 @@
     "admin": {
       "title": "Administration",
       "start_war": "Start war",
+      "start_war_disabled_no_players": "Start is unavailable: no red/blue players in the room yet.",
+      "start_war_warning_not_ready": "Not all players are ready: {ready} / {total}.",
+      "start_war_warning_offline": "Some players are OFFLINE: {offline}.",
+      "start_war_warning_not_ready_offline": "Not all players are ready ({ready} / {total}) and some are OFFLINE ({offline}).",
+      "start_war_warning_hint": "Some players still prepare orders and may miss the planning phase.",
+      "start_war_warning_confirm": "Start war with warning? Ready: {ready}/{total}, OFFLINE: {offline}.",
       "end_war": "End war",
       "clear_commands": "Clear commands",
       "copy_team_link": "Copy link team"
@@ -573,6 +579,18 @@
   },
 
   "continue": "Continue",
+
+  "turn_timer": {
+    "ready_on": "Ready",
+    "ready_disable": "Cancel Ready",
+    "ready_off": "Set Ready",
+    "ready_count": "Ready: {ready} / {total}"
+  },
+
+  "connections": {
+    "not_ready": "Not ready",
+    "offline": "OFFLINE"
+  },
 
   "authModal": {
     "nickname": "Nickname",

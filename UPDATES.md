@@ -2,6 +2,7 @@
 - Add is ready button for players
 - Fix player hp/ammo edit float values
 - Fix Disable heightmap & forestmap for players
+- Chat improvements
 
 [2026-04-14]
 - Add client settings for unit commands

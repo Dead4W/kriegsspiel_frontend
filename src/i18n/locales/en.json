@@ -641,11 +641,21 @@
     "you": "You",
     "units_messages": "Units",
     "input_placeholder": "Command or message…",
+    "send": "Send",
     "first_unread": "First unread",
     "mark_as_read": "Mark as read",
     "mark_all_as_read": "Mark all as read",
     "selection_warning": "Message cannot be sent",
     "spawn_messenger": "Spawn messenger",
+    "markdown": {
+      "bold": "Bold text",
+      "italic": "Italic text",
+      "code": "Inline code",
+      "link": "Insert link",
+      "image": "Insert image",
+      "list": "Bulleted list",
+      "input_hint": "Markdown is supported. Enter to send, Shift+Enter for a new line"
+    },
     "warning": {
       "selection_hint": "Select at least one unit to send a chat message",
       "selection_both_team": "Selected units from many teams, please select units from one team"
@@ -657,6 +667,7 @@
     "language": "Language",
     "dark_theme": "Dark theme",
     "sound_volume": "Sound volume",
+    "chat_text_size": "Chat text size",
     "test_sound": "Test",
     "show_unit_labels": "Show unit labels",
     "show_unit_label_type": "Show unit type",

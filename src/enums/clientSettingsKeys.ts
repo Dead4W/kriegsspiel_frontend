@@ -60,6 +60,7 @@ export const CLIENT_SETTING_KEYS = {
   // Размеры чата
   CHAT_HEIGHT: 'chatHeight',
   CHAT_WIDTH: 'chatWidth',
+  CHAT_TEXT_SIZE: 'chatTextSize',
 
   // Weather shaders
   SHOW_WEATHER_SHADERS: 'showWeatherShaders',
@@ -145,6 +146,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS]: false,
     [CLIENT_SETTING_KEYS.CHAT_HEIGHT]: null,
     [CLIENT_SETTING_KEYS.CHAT_WIDTH]: null,
+    [CLIENT_SETTING_KEYS.CHAT_TEXT_SIZE]: 15,
     [CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]: false,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_DETAIL]: true,
     [CLIENT_SETTING_KEYS.DEBUG_MODE]: false,

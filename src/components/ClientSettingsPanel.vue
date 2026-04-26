@@ -67,6 +67,17 @@ const uiDef: ClientSettingsUiItem[] = [
 
   { kind: 'hr' },
 
+  {
+    kind: 'range',
+    key: CLIENT_SETTING_KEYS.CHAT_TEXT_SIZE,
+    labelI18nKey: 'client_settings.chat_text_size',
+    min: 12,
+    max: 24,
+    step: 1,
+  },
+
+  { kind: 'hr' },
+
   // Labels
   {
     kind: 'checkbox',

@@ -196,7 +196,25 @@ function renderMarkdown(text: string): string {
     gfm: true,
   }) as string
 
-  return DOMPurify.sanitize(html)
+  const sanitized = DOMPurify.sanitize(html, {
+    ADD_ATTR: ['target', 'rel', 'loading', 'decoding', 'referrerpolicy'],
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:https?|mailto|tel|blob):|data:image\/(?:png|jpeg|jpg|gif|webp|svg\+xml);base64,)|[^a-z]|[a-z+.\-.]+(?:[^a-z+.\-:]|$))/i,
+  })
+
+  const doc = new DOMParser().parseFromString(sanitized, 'text/html')
+
+  doc.querySelectorAll('a').forEach((link) => {
+    link.setAttribute('target', '_blank')
+    link.setAttribute('rel', 'noopener noreferrer nofollow')
+  })
+
+  doc.querySelectorAll('img').forEach((image) => {
+    image.setAttribute('loading', 'lazy')
+    image.setAttribute('decoding', 'async')
+    image.setAttribute('referrerpolicy', 'no-referrer')
+  })
+
+  return doc.body.innerHTML
 }
 
 /* =======================
@@ -207,6 +225,7 @@ const isOpen = ref(false)
 
 const width = ref(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.CHAT_WIDTH] ?? 320)
 const height = ref(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.CHAT_HEIGHT] ?? 420)
+const textSize = ref(Number(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.CHAT_TEXT_SIZE] ?? 15))
 
 const minWidth = 300
 const maxWidth = 1000
@@ -300,6 +319,106 @@ const wasAtBottom = ref(true)
 const messages = ref<ChatMessage[]>([])
 
 const input = ref('')
+
+function insertAtCursor(value: string) {
+  const el = textarea.value
+  if (!el) {
+    input.value += value
+    return
+  }
+
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  input.value = input.value.slice(0, start) + value + input.value.slice(end)
+
+  nextTick(() => {
+    const pos = start + value.length
+    el.focus()
+    el.setSelectionRange(pos, pos)
+    autoResizeInput()
+  })
+}
+
+function wrapSelection(prefix: string, suffix = prefix) {
+  const el = textarea.value
+  if (!el) return
+
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const selected = input.value.slice(start, end)
+  const wrapped = `${prefix}${selected || 'text'}${suffix}`
+
+  input.value = input.value.slice(0, start) + wrapped + input.value.slice(end)
+
+  nextTick(() => {
+    const pos = start + wrapped.length
+    el.focus()
+    el.setSelectionRange(pos, pos)
+    autoResizeInput()
+  })
+}
+
+function insertMarkdownLink() {
+  insertAtCursor('[text](https://example.com)')
+}
+
+function insertMarkdownImage() {
+  insertAtCursor('![image](https://example.com/image.png)')
+}
+
+function insertMarkdownList() {
+  insertAtCursor('- ')
+}
+
+function isImageUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return false
+    }
+    return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url.pathname + url.search)
+  } catch {
+    return false
+  }
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('Failed to read image file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function onInputPaste(event: ClipboardEvent) {
+  const clipboardData = event.clipboardData
+  if (!clipboardData) return
+
+  const pastedText = clipboardData.getData('text/plain')?.trim()
+  if (pastedText && isImageUrl(pastedText)) {
+    event.preventDefault()
+    insertAtCursor(`![image](${pastedText})`)
+    return
+  }
+
+  const imageFiles = Array.from(clipboardData.items)
+    .filter(item => item.type.startsWith('image/'))
+    .map(item => item.getAsFile())
+    .filter((file): file is File => Boolean(file))
+
+  if (!imageFiles.length) return
+
+  event.preventDefault()
+
+  const markdownImages = await Promise.all(imageFiles.map(async (file) => {
+    const src = await fileToDataUrl(file)
+    const fileName = file.name || 'image'
+    return `![${fileName}](${src})`
+  }))
+
+  insertAtCursor(markdownImages.join('\n'))
+}
 
 function send() {
   if (!input.value.trim()) return
@@ -509,6 +628,8 @@ function autoResizeInput() {
 }
 
 function onChangedWorld(event: { reason: string }) {
+  textSize.value = Number(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.CHAT_TEXT_SIZE] ?? 15)
+
   const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => m.author_team !== window.PLAYER.team);
   if (new_messages.length) {
     if (window.ROOM_WORLD.id == 'bcb5fcfe-52be-438f-868f-3d3cda532241') {
@@ -586,7 +707,11 @@ onBeforeUnmount(() => {
   <div
     v-if="isOpen"
     class="krig-chat"
-    :style="{ width: width + 'px', height: height + 'px' }"
+    :style="{
+      width: width + 'px',
+      height: height + 'px',
+      '--chat-text-size': textSize + 'px',
+    }"
   >
     <!-- resize handles -->
     <div
@@ -700,17 +825,29 @@ onBeforeUnmount(() => {
     <template v-if="!isEnd()">
       <template v-if="!getSendWarningMessage()">
         <form class="chat-input" @submit.prevent="send">
-      <textarea
-        ref="textarea"
-        v-model="input"
-        rows="1"
-        :placeholder="t('chat.input_placeholder')"
-        @keydown.enter.exact.prevent="send"
-        @keydown.enter.shift.stop
-        @input="autoResizeInput"
-        @keydown.stop
-      />
-          <button type="submit">➤</button>
+          <div class="chat-md-tools">
+            <button type="button" :title="t('chat.markdown.bold')" @click="wrapSelection('**')"><b>B</b></button>
+            <button type="button" :title="t('chat.markdown.italic')" @click="wrapSelection('*')"><i>I</i></button>
+            <button type="button" :title="t('chat.markdown.code')" @click="wrapSelection('`')">Code</button>
+            <button type="button" :title="t('chat.markdown.link')" @click="insertMarkdownLink">Link</button>
+            <button type="button" :title="t('chat.markdown.image')" @click="insertMarkdownImage">Image</button>
+            <button type="button" :title="t('chat.markdown.list')" @click="insertMarkdownList">List</button>
+          </div>
+          <div class="chat-input-main">
+            <textarea
+              ref="textarea"
+              v-model="input"
+              rows="1"
+              :placeholder="t('chat.input_placeholder')"
+              :title="t('chat.markdown.input_hint')"
+              @keydown.enter.exact.prevent="send"
+              @keydown.enter.shift.stop
+              @input="autoResizeInput"
+              @paste="onInputPaste"
+              @keydown.stop
+            />
+            <button type="submit" :title="t('chat.send')">➤</button>
+          </div>
         </form>
       </template>
       <template v-else>
@@ -889,8 +1026,8 @@ onBeforeUnmount(() => {
 
 .text {
   margin-top: 5px;
-  font-size: 13px;
-  white-space: pre-wrap;
+  font-size: var(--chat-text-size, 15px);
+  white-space: normal;
   word-break: break-word;
 }
 
@@ -945,7 +1082,16 @@ onBeforeUnmount(() => {
 .markdown ul,
 .markdown ol {
   padding-left: 18px;
-  margin: 6px 0;
+  margin: 4px 0;
+}
+
+.markdown li {
+  line-height: 1.2;
+  margin: 1px 0;
+}
+
+.markdown li p {
+  margin: 0;
 }
 
 .markdown a {
@@ -953,12 +1099,55 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
+.markdown img {
+  display: block;
+  max-width: min(100%, 360px);
+  width: auto;
+  height: auto;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #020617;
+}
+
+.markdown hr {
+  border: 0;
+  border-top: 1px solid #334155;
+  margin: 8px 0;
+}
+
 /* input */
 .chat-input {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   padding: 8px;
   border-top: 1px solid #334155;
+}
+
+.chat-input-main {
+  display: flex;
+  gap: 6px;
+}
+
+.chat-md-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chat-md-tools button {
+  background: #0f172a;
+  color: var(--text);
+  border: 1px solid #334155;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.chat-md-tools button:hover {
+  border-color: #475569;
 }
 
 .chat-input textarea {
@@ -978,11 +1167,13 @@ onBeforeUnmount(() => {
   max-height: 120px;
 }
 
-.chat-input button {
+.chat-input-main > button[type='submit'] {
   background: var(--accent);
   border: none;
   border-radius: 8px;
-  padding: 0 12px;
+  width: 44px;
+  height: 34px;
+  flex-shrink: 0;
 }
 
 .resize-handle-xy {

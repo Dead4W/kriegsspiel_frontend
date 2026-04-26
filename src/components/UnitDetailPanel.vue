@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {useI18n} from 'vue-i18n'
 import type {BaseUnit, StatKey} from '@/engine/units/baseUnit'
-import {computed, onMounted, onUnmounted, ref, type UnwrapRef} from "vue";
+import {onMounted, onUnmounted, ref, type UnwrapRef} from "vue";
 import {Team} from "@/enums/teamKeys.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {unitType} from "@/engine";
@@ -65,49 +65,33 @@ function percentClass(key: StatKey, p: number): string {
 }
 
 // PROXIES
+function formatStatInput(value: number | undefined) {
+  const safeValue = value ?? 0
+  return safeValue % 1 === 0 ? String(safeValue) : safeValue.toFixed(2)
+}
+
+function syncInputValues() {
+  hpProxy.value = formatStatInput(unit.hp)
+  ammoProxy.value = formatStatInput(unit.ammo)
+}
+
 function commitInput() {
-  unit.hp = clamp(Number(hpProxy.value), 0, unit.stats.maxHp!);
-  unit.ammo = clamp(Number(ammoProxy.value), 0, unit.stats.ammoMax!);
+  const hp = Number(hpProxy.value.replace(',', '.'))
+  if (!Number.isNaN(hp)) {
+    unit.hp = clamp(hp, 0, unit.stats.maxHp!)
+  }
+
+  const ammo = Number(ammoProxy.value.replace(',', '.'))
+  if (!Number.isNaN(ammo) && unit.stats.ammoMax != null) {
+    unit.ammo = clamp(ammo, 0, unit.stats.ammoMax)
+  }
+
+  syncInputValues()
   onEdit();
 }
 
-const ammoProxy = computed({
-  get() {
-    refreshKey.value // Update on change refresh world
-    const ammo = unit.ammo ?? 0
-    return ammo % 1 === 0 ? String(ammo) : ammo.toFixed(2)
-  },
-  set(value) {
-    const num = Number(value)
-
-    if (Number.isNaN(num)) {
-      unit.ammo = 0
-      onEdit();
-      return
-    }
-
-    unit.ammo = num
-    onEdit();
-  }
-})
-
-const hpProxy = computed({
-  get() {
-    refreshKey.value // Update on change refresh world
-    const hp = unit.hp
-    return hp % 1 === 0 ? String(hp) : hp.toFixed(2)
-  },
-  set(value) {
-    const num = Number(value)
-    if (Number.isNaN(num)) {
-      unit.hp = 0
-      onEdit();
-      return
-    }
-    unit.hp = num;
-    onEdit();
-  }
-})
+const ammoProxy = ref('0')
+const hpProxy = ref('0')
 
 function isEnabledAmmo() {
   return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]
@@ -124,6 +108,7 @@ function syncSelection(data: {reason: string}) {
     return;
   }
   isMessenger.value = unit.type === unitType.MESSENGER;
+  syncInputValues()
   refreshKey.value++
 }
 onMounted(() => {
@@ -161,7 +146,8 @@ onUnmounted(() => {
         <div class="stat">
           <label>{{ t('stat.hp') }}</label>
           <input
-            type="number"
+            type="text"
+            inputmode="decimal"
             v-model="hpProxy"
             min="0"
             :max="unit.stats.maxHp"
@@ -182,7 +168,8 @@ onUnmounted(() => {
         <div v-if="isEnabledAmmo() && unit.stats.ammoMax != null" class="stat">
           <label>{{ t('stat.ammo') }} ({{ t('time.hours') }})</label>
           <input
-            type="number"
+            type="text"
+            inputmode="decimal"
             v-model="ammoProxy"
             min="0"
             :max="unit.stats.ammoMax"

@@ -1,3 +1,6 @@
+[2026-04-27]
+- Optimize backend from one thread to multi thread
+
 [2026-04-26]
 - Add is ready button for players
 - Fix player hp/ammo edit float values

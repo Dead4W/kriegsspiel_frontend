@@ -81,7 +81,7 @@ function isUnreadMessage(m: ChatMessage): boolean {
   if (currentAuthorTeam === Team.ADMIN) {
     return m.author_team !== currentAuthorTeam && m.status !== ChatMessageStatus.Read
   } else {
-    return m.author_team !== currentAuthorTeam && m.delivered
+    return m.author_team !== currentAuthorTeam && m.delivered && m.status !== ChatMessageStatus.Read
   }
 }
 

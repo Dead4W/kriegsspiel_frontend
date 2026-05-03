@@ -158,6 +158,7 @@
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 4500, "visionRange": 1000, "ammoMax": 32 },
         "abilities": ["inaccuracy_fire", "throttle"],
         "params": {
+          "priorityTargets": 3,
           "renderIcon": "A",
           "textureUrl": "/assets/units/artillery.png",
           "renderWidthMult": 1.15,

@@ -439,7 +439,6 @@
     "admin": {
       "title": "Administration",
       "start_war": "Start war",
-      "start_war_disabled_no_players": "Start is unavailable: no red/blue players in the room yet.",
       "start_war_warning_not_ready": "Not all players are ready: {ready} / {total}.",
       "start_war_warning_offline": "Some players are OFFLINE: {offline}.",
       "start_war_warning_not_ready_offline": "Not all players are ready ({ready} / {total}) and some are OFFLINE ({offline}).",

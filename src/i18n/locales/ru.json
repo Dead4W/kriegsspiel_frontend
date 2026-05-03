@@ -444,7 +444,6 @@
     "admin": {
       "title": "Администрирование",
       "start_war": "Начать войну",
-      "start_war_disabled_no_players": "Запуск недоступен: в комнате пока нет игроков red/blue.",
       "start_war_warning_not_ready": "Готовы не все игроки: {ready} / {total}.",
       "start_war_warning_offline": "Некоторые игроки OFFLINE: {offline}.",
       "start_war_warning_not_ready_offline": "Готовы не все игроки ({ready} / {total}) и есть OFFLINE ({offline}).",

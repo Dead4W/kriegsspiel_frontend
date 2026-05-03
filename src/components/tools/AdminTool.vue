@@ -38,10 +38,6 @@ const offlinePlayersCount = computed(() => {
 })
 const startWarBlockedReason = computed(() => {
   if (stage.value !== RoomGameStage.PLANNING) return ''
-  const {ready, total} = readyStats.value
-  if (total <= 0) {
-    return t('tools.admin.start_war_disabled_no_players')
-  }
   return ''
 })
 const startWarWarningReason = computed(() => {

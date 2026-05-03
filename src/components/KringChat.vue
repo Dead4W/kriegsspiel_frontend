@@ -527,7 +527,8 @@ function onClickMarkAllAsRead() {
   const messages = window.ROOM_WORLD.messages.list();
   let lastId = null;
   for (const message of messages) {
-    message.status = ChatMessageStatus.Read;
+    const originMessage = window.ROOM_WORLD.messages.get(message.id)!;
+    originMessage.status = ChatMessageStatus.Read;
     lastId = message.id;
   }
   if (lastId) {

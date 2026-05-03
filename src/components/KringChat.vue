@@ -12,6 +12,7 @@ import {marked} from 'marked'
 import DOMPurify from 'dompurify'
 import {Messenger} from "@/engine/units/messenger.ts";
 import {DeliveryCommand} from "@/engine/units/commands/deliveryCommand.ts";
+import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 
 const { t } = useI18n()
 
@@ -37,6 +38,26 @@ function getLastReadMessageId(team: Team): string | null {
 
 function setLastReadMessageId(team: Team, messageId: string) {
   localStorage.setItem(getLastReadKey(team), messageId)
+}
+
+function isPlayerRoomMap() {
+  return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.IS_PLAYER_ROOM_MAP]
+}
+
+function isOwnMessage(m: ChatMessage) {
+  if (window.PLAYER.team === Team.SPECTATOR) {
+    return m.author_team === Team.ADMIN;
+  }
+
+  if (isPlayer() && isPlayerRoomMap()) {
+    if (m.author_id != null && window.PLAYER.id != null) {
+      return m.author_id === window.PLAYER.id;
+    }
+
+    return m.author_team === window.PLAYER.team && m.author === window.PLAYER.name;
+  }
+
+  return m.author_team === window.PLAYER.team;
 }
 
 function syncPlayerChatReadState() {
@@ -79,9 +100,9 @@ function isUnreadMessage(m: ChatMessage): boolean {
   if (currentAuthorTeam === Team.SPECTATOR) currentAuthorTeam = Team.ADMIN;
 
   if (currentAuthorTeam === Team.ADMIN) {
-    return m.author_team !== currentAuthorTeam && m.status !== ChatMessageStatus.Read
+    return !isOwnMessage(m) && m.status !== ChatMessageStatus.Read
   } else {
-    return m.author_team !== currentAuthorTeam && m.delivered && m.status !== ChatMessageStatus.Read
+    return !isOwnMessage(m) && m.delivered && m.status !== ChatMessageStatus.Read
   }
 }
 
@@ -430,6 +451,7 @@ function send() {
   const m = {
     id: crypto.randomUUID(),
     author: window.PLAYER.name,
+    author_id: window.PLAYER.id,
     author_team: window.PLAYER.team,
     unitIds: selected.map(u => u.id),
     text: input.value,
@@ -476,13 +498,6 @@ function send() {
 function scrollDown() {
   const el = document.querySelector('.chat-messages')
   el?.scrollTo({ top: el.scrollHeight })
-}
-
-function isMessageAuthorTeam(message_team: Team) {
-  if (window.PLAYER.team === Team.SPECTATOR) {
-    return message_team === Team.ADMIN;
-  }
-  return message_team === window.PLAYER.team;
 }
 
 function onMessagesScroll() {
@@ -631,7 +646,7 @@ function autoResizeInput() {
 function onChangedWorld(event: { reason: string }) {
   textSize.value = Number(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.CHAT_TEXT_SIZE] ?? 15)
 
-  const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => m.author_team !== window.PLAYER.team);
+  const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => !isOwnMessage(m));
   if (new_messages.length) {
     if (window.ROOM_WORLD.id == 'bcb5fcfe-52be-438f-868f-3d3cda532241') {
       const messageSound = new Audio('/assets/sounds/message_lol.ogg')
@@ -764,7 +779,7 @@ onBeforeUnmount(() => {
         class="chat-message-wrapper"
         :class="{
           unread: isUnreadMessage(m),
-          self: isMessageAuthorTeam(m.author_team),
+          self: isOwnMessage(m),
         }"
       >
         <div

@@ -9,6 +9,7 @@ export enum ChatMessageStatus {
 export type ChatMessage = {
   id: uuid
   author: string
+  author_id?: number
   author_team: Team
   unitIds: uuid[]
   text: string

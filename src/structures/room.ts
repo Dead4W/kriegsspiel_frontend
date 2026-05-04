@@ -1,6 +1,8 @@
 import type { uuid } from '@/engine'
 import type { Team } from '@/enums/teamKeys'
 import type { RoomSettingKey } from '@/enums/roomSettingsKeys'
+import type { RoomGameStage } from '@/enums/roomStage'
+import type { Weather } from '@/engine/resourcePack/weather'
 
 export type RoomMapUser = {
   id: number
@@ -16,7 +18,10 @@ export type RoomMapInfo = {
 export type RoomData = {
   uuid: uuid
   team: Team
+  stage?: RoomGameStage
   name: string
+  weather?: Weather
+  ingame_time?: string
   admin_id: number
   options: Record<RoomSettingKey, any>
   room_maps?: RoomMapInfo[]

@@ -6,6 +6,7 @@
 - Chat - add avatars
 - Chat - add fallback title from Umpire map when unit is not found on map
 - Server - Optimizations
+- Bug - fix load room stage, weather, time can load with delay
 
 [2026-04-27]
 - Optimize backend from one thread to multi thread

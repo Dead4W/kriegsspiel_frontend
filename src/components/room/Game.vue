@@ -233,6 +233,16 @@ async function initWorld(room: RoomData) {
 
   window.ROOM_WORLD = w = new world(map)
   w.id = room.uuid
+  if (room.ingame_time) {
+    w.time = room.ingame_time
+  }
+  if (room.stage) {
+    w.stage = room.stage
+  }
+  if (room.weather) {
+    w.weather.value = room.weather
+    w.newWeather.value = room.weather
+  }
 
   renderer = new canvasrenderer(canvasEl.value, canvasOverlayEl.value)
 

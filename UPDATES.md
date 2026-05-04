@@ -1,3 +1,8 @@
+[2026-05-04]
+- Fixes chat
+- Add modal for player in planning stage
+- Fix chat sort
+
 [2026-04-27]
 - Optimize backend from one thread to multi thread
 

@@ -263,9 +263,12 @@ function renderMarkdown(text: string): string {
   return doc.body.innerHTML
 }
 
-function getAuthorInitial(author: string): string {
-  const firstChar = author.trim().charAt(0)
-  return (firstChar || '?').toUpperCase()
+function getAuthorFallback(author: string): string {
+  const normalizedAuthor = author.trim()
+  if (!normalizedAuthor) {
+    return '?'
+  }
+  return normalizedAuthor.slice(0, 2).toUpperCase()
 }
 
 function getAuthorAvatar(m: ChatMessage): string | null {
@@ -935,7 +938,7 @@ onBeforeUnmount(() => {
                   v-else
                   class="author-avatar-fallback"
                 >
-                  {{ getAuthorInitial(m.author) }}
+                  {{ getAuthorFallback(m.author) }}
                 </span>
               </div>
               <span class="author" :title="m.author">{{ m.author }}</span>
@@ -1235,8 +1238,13 @@ onBeforeUnmount(() => {
 }
 
 .author-avatar-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
   color: #f8fafc;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
 }

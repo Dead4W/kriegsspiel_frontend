@@ -319,7 +319,9 @@ if (window.PLAYER.team !== Team.ADMIN && window.PLAYER.team !== Team.SPECTATOR) 
 
 function parseTimestamp(value?: string | null): number {
   if (!value) return 0
-  const ts = new Date(value.replace(' ', 'T')).getTime()
+  const normalized = value.replace(' ', 'T')
+  const hasTimezone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(normalized)
+  const ts = new Date(hasTimezone ? normalized : `${normalized}Z`).getTime()
   return Number.isNaN(ts) ? 0 : ts
 }
 

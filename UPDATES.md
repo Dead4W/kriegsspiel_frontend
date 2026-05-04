@@ -3,6 +3,7 @@
 - Add modal for player in planning stage
 - Fix chat sort
 - Allow editing chat message before skip time
+- Chat add avatars
 
 [2026-04-27]
 - Optimize backend from one thread to multi thread

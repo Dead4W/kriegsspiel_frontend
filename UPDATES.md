@@ -4,6 +4,7 @@
 - Fix chat sort
 - Allow editing chat message before skip time
 - Chat add avatars
+- Chat - add unit not found on map fallback title from Umpire map
 
 [2026-04-27]
 - Optimize backend from one thread to multi thread

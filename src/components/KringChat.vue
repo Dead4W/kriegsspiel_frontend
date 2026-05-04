@@ -173,6 +173,27 @@ function getMessageUnits(m: ChatMessage): BaseUnit[] | uuid[] {
     .map(id => w.units.get(id)! ?? id)
 }
 
+function getMessageUnitTitle(m: ChatMessage, u: BaseUnit | uuid): string {
+  if (u instanceof BaseUnit) {
+    return u.label
+  }
+
+  const fallbackTitle = m.unitFallbackTitles?.[u]
+  if (fallbackTitle) {
+    return fallbackTitle
+  }
+
+  return `#${u}`
+}
+
+function isFallbackUnitTitle(m: ChatMessage, u: BaseUnit | uuid): boolean {
+  if (u instanceof BaseUnit) {
+    return false
+  }
+
+  return !!m.unitFallbackTitles?.[u]
+}
+
 function focusUnits(units: BaseUnit[]) {
   if (!units.length) return
 
@@ -965,8 +986,8 @@ onBeforeUnmount(() => {
               :key="u instanceof BaseUnit ? u.id : u"
               class="unit-card"
             >
-              <div class="unit-name">
-                {{ u instanceof BaseUnit ? u.label : `#${u}`}}
+              <div class="unit-name" :class="{ 'unit-name-fallback': isFallbackUnitTitle(m, u) }">
+                {{ getMessageUnitTitle(m, u) }}
               </div>
             </div>
           </div>
@@ -1673,6 +1694,10 @@ onBeforeUnmount(() => {
 .unit-name {
   font-weight: 600;
   white-space: nowrap;
+}
+
+.unit-name-fallback {
+  color: #ef4444;
 }
 
 .spawn-messenger-btn {

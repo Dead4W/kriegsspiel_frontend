@@ -17,6 +17,7 @@ export type ChatMessage = {
   time: string
   created_at?: string
   delivered_at?: string | null
+  unitFallbackTitles?: Record<uuid, string>
   team: Team
   status: ChatMessageStatus
   delivered: boolean

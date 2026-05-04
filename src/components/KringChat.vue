@@ -242,6 +242,49 @@ function renderMarkdown(text: string): string {
   return doc.body.innerHTML
 }
 
+function getAuthorInitial(author: string): string {
+  const firstChar = author.trim().charAt(0)
+  return (firstChar || '?').toUpperCase()
+}
+
+function getAuthorAvatar(m: ChatMessage): string | null {
+  if (typeof m.author_avatar !== 'string') {
+    return null
+  }
+  const avatar = m.author_avatar.trim()
+  return avatar.length ? avatar : null
+}
+
+function getCurrentPlayerAvatar(): string | null {
+  const player = window.PLAYER as unknown as {
+    avatar_url?: string | null
+    picture?: string | null
+    avatar?: string | null
+  }
+  const rawAvatar = player.avatar_url ?? player.picture ?? player.avatar ?? null
+  if (typeof rawAvatar !== 'string') {
+    return null
+  }
+  const avatar = rawAvatar.trim()
+  return avatar.length ? avatar : null
+}
+
+const brokenAuthorAvatarMessageIds = ref<Set<string>>(new Set())
+
+function hasVisibleAuthorAvatar(m: ChatMessage): boolean {
+  const avatar = getAuthorAvatar(m)
+  return !!avatar && !brokenAuthorAvatarMessageIds.value.has(m.id)
+}
+
+function onAuthorAvatarError(messageId: string) {
+  if (brokenAuthorAvatarMessageIds.value.has(messageId)) {
+    return
+  }
+  const next = new Set(brokenAuthorAvatarMessageIds.value)
+  next.add(messageId)
+  brokenAuthorAvatarMessageIds.value = next
+}
+
 /* =======================
    STATES
 ======================= */
@@ -511,6 +554,7 @@ function send() {
     id: crypto.randomUUID(),
     author: window.PLAYER.name,
     author_id: window.PLAYER.id,
+    author_avatar: getCurrentPlayerAvatar(),
     author_team: window.PLAYER.team,
     unitIds: selected.map(u => u.id),
     text: input.value,
@@ -853,7 +897,26 @@ onBeforeUnmount(() => {
           class="chat-message"
         >
           <div class="meta">
-            <span class="author" :title="m.author">{{ m.author }}</span>
+            <div class="author-block">
+              <div class="author-avatar">
+                <img
+                  v-if="hasVisibleAuthorAvatar(m)"
+                  :src="getAuthorAvatar(m)!"
+                  :alt="m.author"
+                  loading="lazy"
+                  decoding="async"
+                  referrerpolicy="no-referrer"
+                  @error="onAuthorAvatarError(m.id)"
+                >
+                <span
+                  v-else
+                  class="author-avatar-fallback"
+                >
+                  {{ getAuthorInitial(m.author) }}
+                </span>
+              </div>
+              <span class="author" :title="m.author">{{ m.author }}</span>
+            </div>
 
             <div class="meta-right">
                 <span class="datetime" :title="m.time">
@@ -1084,7 +1147,9 @@ onBeforeUnmount(() => {
 }
 
 .chat-message .author {
-  max-width: 50%;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1114,8 +1179,43 @@ onBeforeUnmount(() => {
 .meta {
   display: flex;
   align-items: center;
+  gap: 8px;
   font-size: 11px;
   color: #dbe5f3;
+}
+
+.author-block {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.author-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.author-avatar-fallback {
+  color: #f8fafc;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .meta-right {

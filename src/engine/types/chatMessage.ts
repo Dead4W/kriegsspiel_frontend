@@ -10,6 +10,7 @@ export type ChatMessage = {
   id: uuid
   author: string
   author_id?: number
+  author_avatar?: string | null
   author_team: Team
   unitIds: uuid[]
   text: string

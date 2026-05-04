@@ -10,7 +10,14 @@ export class messageregistry {
   upsert(item: ChatMessage, source: 'local' | 'remote' = 'local', ignoreNew: boolean = false): ChatMessage {
     const existing = this.map.get(item.id)
     if (existing) {
-      Object.assign(existing, item)
+      const next: ChatMessage = { ...item }
+      if ((next.author_avatar == null || next.author_avatar === '') && existing.author_avatar) {
+        next.author_avatar = existing.author_avatar
+      }
+      if (next.author_id == null && existing.author_id != null) {
+        next.author_id = existing.author_id
+      }
+      Object.assign(existing, next)
       return existing
     }
 

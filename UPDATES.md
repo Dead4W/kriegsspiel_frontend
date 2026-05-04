@@ -2,6 +2,7 @@
 - Fixes chat
 - Add modal for player in planning stage
 - Fix chat sort
+- Allow editing chat message before skip time
 
 [2026-04-27]
 - Optimize backend from one thread to multi thread
@@ -11,6 +12,7 @@
 - Fix player hp/ammo edit float values
 - Fix Disable heightmap & forestmap for players
 - Chat improvements
+- Add edit chat message
 
 [2026-04-14]
 - Add client settings for unit commands

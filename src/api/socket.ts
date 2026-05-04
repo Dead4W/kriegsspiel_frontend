@@ -21,6 +21,7 @@ export type OutMessage =
   | { type: 'paint_undo'; data: { id: string } }
   | { type: 'ruler'; data: { points: vec2[] } }
   | { type: 'chat'; data: ChatMessage; meta?: {ignore?: boolean} }
+  | { type: 'chat_edit'; data: { id: uuid; text: string } }
   | { type: 'chat_read'; data: uuid[] }
   | { type: 'cursor'; data: CursorObject }
   | { type: 'skip_time'; data: string }

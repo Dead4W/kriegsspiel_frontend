@@ -143,6 +143,10 @@ function isPlayer() {
 }
 
 function getSendWarningMessage() {
+  if (isEditing.value) {
+    return null;
+  }
+
   if (selectedUnits.value.length === 0) {
     return t('chat.warning.selection_hint');
   }
@@ -349,6 +353,29 @@ const wasAtBottom = ref(true)
 const messages = ref<ChatMessage[]>([])
 
 const input = ref('')
+const editingMessageId = ref<uuid | null>(null)
+const isEditing = computed(() => editingMessageId.value !== null)
+
+function canEditMessage(message: ChatMessage): boolean {
+  return isOwnMessage(message)
+    && message.time === window.ROOM_WORLD.time
+}
+
+function startEditMessage(message: ChatMessage) {
+  if (!canEditMessage(message)) return
+  editingMessageId.value = message.id
+  input.value = message.text
+  nextTick(() => {
+    autoResizeInput()
+    textarea.value?.focus()
+  })
+}
+
+function cancelEditMessage() {
+  editingMessageId.value = null
+  input.value = ''
+  nextTick(() => autoResizeInput())
+}
 
 function insertAtCursor(value: string) {
   const el = textarea.value
@@ -452,6 +479,29 @@ async function onInputPaste(event: ClipboardEvent) {
 
 function send() {
   if (!input.value.trim()) return
+
+  if (editingMessageId.value) {
+    const message = window.ROOM_WORLD.messages.get(editingMessageId.value)
+    if (!message || !canEditMessage(message)) {
+      cancelEditMessage()
+      return
+    }
+
+    message.text = input.value
+    window.ROOM_WORLD.events.emit('api', {
+      type: 'chat_edit',
+      data: {
+        id: message.id,
+        text: message.text,
+      },
+    })
+    window.ROOM_WORLD.events.emit('changed', { reason: 'chat_edit' })
+    cancelEditMessage()
+    nextTick(() => {
+      scrollDown()
+    })
+    return
+  }
 
   const selected = window.ROOM_WORLD.units.getSelected()
     .filter(u => u.type !== unitType.MESSENGER)
@@ -673,6 +723,12 @@ function onChangedWorld(event: { reason: string }) {
   let lastWasAtBottom = wasAtBottom.value;
 
   messages.value = window.ROOM_WORLD.messages.list()
+  if (editingMessageId.value) {
+    const editingMessage = window.ROOM_WORLD.messages.get(editingMessageId.value)
+    if (!editingMessage || !canEditMessage(editingMessage)) {
+      cancelEditMessage()
+    }
+  }
   selectedUnits.value = window.ROOM_WORLD.units.getSelected()
   selectedUnits.value = selectedUnits.value.filter(u => u.type !== unitType.MESSENGER);
   if (isPlayer()) {
@@ -815,6 +871,15 @@ onBeforeUnmount(() => {
               </button>
 
               <button
+                v-if="canEditMessage(m)"
+                class="edit-message-btn"
+                :title="t('chat.edit')"
+                @click.stop="startEditMessage(m)"
+              >
+                ✎
+              </button>
+
+              <button
                 v-if="isUnreadMessage(m) && !isPlayer()"
                 class="mark-read-btn"
                 :title="t('chat.mark_as_read')"
@@ -852,6 +917,13 @@ onBeforeUnmount(() => {
     <template v-if="!isEnd()">
       <template v-if="!getSendWarningMessage()">
         <form class="chat-input" @submit.prevent="send">
+          <div v-if="isEditing" class="chat-editing-banner">
+            <span>{{ t('chat.editing') }}</span>
+            <button type="button" @click="cancelEditMessage">
+              {{ t('chat.cancel') }}
+            </button>
+          </div>
+
           <div class="chat-md-tools">
             <button type="button" :title="t('chat.markdown.bold')" @click="wrapSelection('**')"><b>B</b></button>
             <button type="button" :title="t('chat.markdown.italic')" @click="wrapSelection('*')"><i>I</i></button>
@@ -873,7 +945,9 @@ onBeforeUnmount(() => {
               @paste="onInputPaste"
               @keydown.stop
             />
-            <button type="submit" :title="t('chat.send')">➤</button>
+            <button type="submit" :title="isEditing ? t('chat.save') : t('chat.send')">
+              {{ isEditing ? '✓' : '➤' }}
+            </button>
           </div>
         </form>
       </template>
@@ -1041,7 +1115,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   font-size: 11px;
-  opacity: 0.7;
+  color: #dbe5f3;
 }
 
 .meta-right {
@@ -1150,6 +1224,33 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 8px;
   border-top: 1px solid #334155;
+}
+
+.chat-editing-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #e2e8f0;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.chat-editing-banner button {
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.chat-editing-banner button:hover {
+  background: #334155;
 }
 
 .chat-input-main {
@@ -1373,9 +1474,9 @@ onBeforeUnmount(() => {
 
 .mark-read-btn {
   margin-left: 8px;
-  background: transparent;
-  border: 1px solid var(--accent);
-  color: var(--accent);
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 6px;
@@ -1385,6 +1486,22 @@ onBeforeUnmount(() => {
 
 .mark-read-btn:hover {
   background: var(--accent);
+  color: #020617;
+}
+
+.edit-message-btn {
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.edit-message-btn:hover {
+  background: #38bdf8;
   color: #020617;
 }
 
@@ -1457,10 +1574,9 @@ onBeforeUnmount(() => {
 }
 
 .spawn-messenger-btn {
-  background: transparent;
+  background: #0f172a;
   border: 1px solid #38bdf8;
   color: #38bdf8;
-  background: black;
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 6px;

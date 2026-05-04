@@ -1,10 +1,10 @@
 [2026-05-04]
-- Fixes chat
-- Add modal for player in planning stage
-- Fix chat sort
-- Allow editing chat message before skip time
-- Chat add avatars
-- Chat - add unit not found on map fallback title from Umpire map
+- Fix chat
+- Add player modal in planning stage
+- Fix chat sorting
+- Allow editing chat messages before time skip
+- Add chat avatars
+- Add fallback title from Umpire map when unit is not found on map in chat
 
 [2026-04-27]
 - Optimize backend from one thread to multi thread

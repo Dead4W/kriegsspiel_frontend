@@ -14,6 +14,8 @@ export type ChatMessage = {
   unitIds: uuid[]
   text: string
   time: string
+  created_at?: string
+  delivered_at?: string | null
   team: Team
   status: ChatMessageStatus
   delivered: boolean

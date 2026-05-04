@@ -270,8 +270,16 @@ if (window.PLAYER.team !== Team.ADMIN && window.PLAYER.team !== Team.SPECTATOR) 
   ];
 }
 
-function parseTime(t: string): number {
-  return new Date(t.replace(' ', 'T')).getTime()
+function parseTimestamp(value?: string | null): number {
+  if (!value) return 0
+  const ts = new Date(value.replace(' ', 'T')).getTime()
+  return Number.isNaN(ts) ? 0 : ts
+}
+
+function getMessageOrderTimestamp(message: ChatMessage): number {
+  return parseTimestamp(message.delivered_at)
+    || parseTimestamp(message.created_at)
+    || parseTimestamp(message.time)
 }
 
 // Фильтр сообщений по чату
@@ -292,8 +300,8 @@ const visibleMessages: ComputedRef<ChatMessage[]> = computed(() => {
       }
     }
 
-    // сортировка по времени
-    result.sort((a, b) => parseTime(a.time) - parseTime(b.time))
+    // сортировка по реальному времени отправки/доставки
+    result.sort((a, b) => getMessageOrderTimestamp(a) - getMessageOrderTimestamp(b))
 
     return result
   }
@@ -302,6 +310,7 @@ const visibleMessages: ComputedRef<ChatMessage[]> = computed(() => {
   return messages.value
     .filter(m => m.time <= window.ROOM_WORLD.time)
     .filter(m => m.team === activeTeam.value)
+    .sort((a, b) => getMessageOrderTimestamp(a) - getMessageOrderTimestamp(b))
 })
 const textarea = ref<HTMLTextAreaElement | null>(null)
 
@@ -456,6 +465,8 @@ function send() {
     unitIds: selected.map(u => u.id),
     text: input.value,
     time: window.ROOM_WORLD.time,
+    created_at: new Date().toISOString(),
+    delivered_at: null,
     team: team,
     status: ChatMessageStatus.Sent,
     delivered: false,

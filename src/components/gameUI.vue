@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {nextTick, onMounted, onUnmounted, ref} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
 import SpawnTool from '@/components/tools/SpawnTool.vue'
 import RulerTool from '@/components/tools/RulerTool.vue'
 import {useI18n} from 'vue-i18n'
@@ -19,6 +19,7 @@ import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import PaintTool from "@/components/tools/PaintTool.vue";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import PlanningEntryModal from '@/components/PlanningEntryModal.vue'
 
 const { t } = useI18n()
 
@@ -36,6 +37,16 @@ const world = ref(window.ROOM_WORLD)
 const isEnd = ref(false)
 const isWar = ref(false)
 const hideUnitsLayer = ref(!!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER])
+const isPlanningEntryModalVisible = ref(false)
+const planningEntryModalClosed = ref(false)
+
+const playerTeam = computed<Team | null>(() => window.PLAYER?.team ?? null)
+const playerTeamForModal = computed<Team.RED | Team.BLUE | null>(() => {
+  if (playerTeam.value === Team.RED || playerTeam.value === Team.BLUE) {
+    return playerTeam.value
+  }
+  return null
+})
 
 const shiftHeld = ref(false)
 
@@ -60,6 +71,10 @@ function toggle(e: MouseEvent, tool: Tools) {
 
 function isAdmin() {
   return window.PLAYER.team === Team.ADMIN;
+}
+
+function isPlayerTeam() {
+  return window.PLAYER.team === Team.RED || window.PLAYER.team === Team.BLUE
 }
 
 function isEnabledWeatherModifiers() {
@@ -102,11 +117,32 @@ function close() {
   activeTool.value = null
 }
 
+function closePlanningEntryModal() {
+  planningEntryModalClosed.value = true
+  isPlanningEntryModalVisible.value = false
+}
+
+function syncPlanningEntryModalState() {
+  const shouldDisplay =
+    isPlayerTeam()
+    && world.value.stage === RoomGameStage.PLANNING
+
+  if (!shouldDisplay) {
+    isPlanningEntryModalVisible.value = false
+    return
+  }
+
+  if (!planningEntryModalClosed.value) {
+    isPlanningEntryModalVisible.value = true
+  }
+}
+
 function sync() {
   world.value = window.ROOM_WORLD
   isEnd.value = world.value.stage === RoomGameStage.END
   isWar.value = world.value.stage === RoomGameStage.WAR
   hideUnitsLayer.value = !!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]
+  syncPlanningEntryModalState()
 }
 
 onMounted(() => {
@@ -124,6 +160,12 @@ onUnmounted(() => {
 
 <template>
   <div class="krig-ui">
+    <PlanningEntryModal
+      v-if="isPlanningEntryModalVisible && playerTeamForModal"
+      :team="playerTeamForModal"
+      @close="closePlanningEntryModal"
+    />
+
     <ForcesBar v-if="isAdmin()"/>
 
     <div v-if="!isEnd || !isAdmin()" class="top-bar no-select">

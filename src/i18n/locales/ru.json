@@ -604,6 +604,12 @@
     "or": "или"
   },
 
+  "planningEntryModal": {
+    "title": "Стадия планирования",
+    "team_info": "Вы играете за команду:",
+    "close": "Закрыть"
+  },
+
   "profile": "Профиль",
   "profileSeo": {
     "title": "Профиль — KRIEGSSPIEL",

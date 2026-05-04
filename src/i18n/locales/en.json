@@ -598,6 +598,12 @@
     "or": "or"
   },
 
+  "planningEntryModal": {
+    "title": "Planning Stage",
+    "team_info": "You are playing for team:",
+    "close": "Close"
+  },
+
   "profile": "Profile",
   "profileSeo": {
     "title": "Profile — KRIEGSSPIEL",

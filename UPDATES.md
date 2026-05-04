@@ -7,6 +7,7 @@
 - Chat - add fallback title from Umpire map when unit is not found on map
 - Server - Optimizations
 - Bug - fix load room stage, weather, time can load with delay
+- ResourcePack - Artillery max targets set to 1
 
 [2026-04-27]
 - Optimize backend from one thread to multi thread

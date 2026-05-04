@@ -6,6 +6,7 @@ import { useHead } from '@vueuse/head'
 import api from '@/api/client'
 import type {Team} from "@/enums/teamKeys.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
+import IdenticonAvatar from '@/components/ui/IdenticonAvatar.vue'
 
 interface UserRoom {
   uuid: string
@@ -163,7 +164,7 @@ onMounted(loadProfile)
         <div class="profile-avatar-wrap">
           <div class="profile-avatar" :class="{ 'has-image': user.avatar_url || user.picture }">
             <img v-if="user.avatar_url || user.picture" :src="(user.avatar_url || user.picture)!" :alt="user.name" />
-            <span v-else class="avatar-initials">{{ user.name.slice(0, 2).toUpperCase() }}</span>
+            <IdenticonAvatar v-else :value="user.name" :size="80" />
           </div>
           <span v-if="user.provider === 'google'" class="provider-badge" :title="t('authModal.signInWithGoogle')">
             <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

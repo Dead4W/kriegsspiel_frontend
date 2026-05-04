@@ -13,6 +13,7 @@ import DOMPurify from 'dompurify'
 import {Messenger} from "@/engine/units/messenger.ts";
 import {DeliveryCommand} from "@/engine/units/commands/deliveryCommand.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
+import IdenticonAvatar from "@/components/ui/IdenticonAvatar.vue";
 
 const { t } = useI18n()
 
@@ -261,14 +262,6 @@ function renderMarkdown(text: string): string {
   })
 
   return doc.body.innerHTML
-}
-
-function getAuthorFallback(author: string): string {
-  const normalizedAuthor = author.trim()
-  if (!normalizedAuthor) {
-    return '?'
-  }
-  return normalizedAuthor.slice(0, 2).toUpperCase()
 }
 
 function getAuthorAvatar(m: ChatMessage): string | null {
@@ -938,7 +931,7 @@ onBeforeUnmount(() => {
                   v-else
                   class="author-avatar-fallback"
                 >
-                  {{ getAuthorFallback(m.author) }}
+                  <IdenticonAvatar :value="m.author" :size="28" />
                 </span>
               </div>
               <span class="author" :title="m.author">{{ m.author }}</span>
@@ -1238,15 +1231,9 @@ onBeforeUnmount(() => {
 }
 
 .author-avatar-fallback {
-  display: flex;
+  display: block;
   width: 100%;
   height: 100%;
-  align-items: center;
-  justify-content: center;
-  color: #f8fafc;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
 }
 
 .meta-right {

@@ -21,9 +21,20 @@ const index = ref(0)
 const snapshotLoading = ref(false)
 const listLoading = ref(false)
 const error = ref<string | null>(null)
+const isPlaying = ref(false)
+const speedMinutesPerSecond = ref(1)
+const currentPlaybackTime = ref<string | null>(null)
 
 type SnapshotData = { units: Record<uuid, unitstate>; paint?: PaintStroke[] }
 const snapshotCache = new Map<string, Promise<SnapshotData>>()
+let playbackRaf: number | null = null
+let playbackToken = 0
+type ActiveTransition = {
+  fromIndex: number
+  toIndex: number
+  progress: number
+}
+const activeTransition = ref<ActiveTransition | null>(null)
 
 /* ---------- computed ---------- */
 
@@ -34,8 +45,51 @@ const snapshotLabel = computed(() =>
   })
 )
 
+function getSnapshotOptionLabel(raw: string, optionIndex: number) {
+  if (optionIndex === index.value && currentPlaybackTime.value) {
+    return currentPlaybackTime.value
+  }
+  return formatSnapshotTime(raw)
+}
+
 function formatSnapshotTime(raw: string) {
   return raw.replace('T', ' ').replace('.000000Z', '')
+}
+
+function parseSnapshotTimestamp(raw: string): number | null {
+  let normalized = raw.trim()
+  if (!normalized) return null
+  normalized = normalized.replace(' ', 'T')
+
+  normalized = normalized.replace(
+    /\.(\d{3})\d+(Z)?$/,
+    (_, ms: string, z: string | undefined) => `.${ms}${z ?? ''}`
+  )
+
+  const parsed = Date.parse(normalized)
+  if (!Number.isFinite(parsed)) return null
+  return parsed
+}
+
+function getSnapshotDeltaMinutes(fromTime: string, toTime: string): number {
+  const from = parseSnapshotTimestamp(fromTime)
+  const to = parseSnapshotTimestamp(toTime)
+  if (from == null || to == null) return 0
+  return Math.max(0, (to - from) / 60000)
+}
+
+function getTransitionDurationMs(fromTime: string, toTime: string): number {
+  const deltaMinutes = getSnapshotDeltaMinutes(fromTime, toTime)
+  const speed = Math.max(0.01, Number(speedMinutesPerSecond.value) || 0.01)
+  if (deltaMinutes <= 0) return 100
+  return Math.max(100, (deltaMinutes / speed) * 1000)
+}
+
+function cancelPlaybackRaf() {
+  if (playbackRaf != null) {
+    cancelAnimationFrame(playbackRaf)
+    playbackRaf = null
+  }
 }
 
 /* ---------- api ---------- */
@@ -126,6 +180,17 @@ async function loadSnapshot() {
   }
 }
 
+async function loadSnapshotByIndex(newIndex: number) {
+  stopPlayback()
+  activeTransition.value = null
+  if (snapshotLoading.value) return
+  const clamped = Math.max(0, Math.min(newIndex, snapshots.value.length - 1))
+  if (index.value !== clamped) {
+    index.value = clamped
+  }
+  await loadSnapshot()
+}
+
 /* ---------- world ---------- */
 
 function applySnapshot(
@@ -133,23 +198,183 @@ function applySnapshot(
   data: { units: Record<uuid, unitstate>; paint?: PaintStroke[] }
 ) {
   const w = window.ROOM_WORLD
-
-  w.clear()
+  const existingIds = new Set(w.units.list().map((u) => u.id))
 
   for (const unitId in data.units) {
     const unit = data.units[unitId] as unitstate
     w.units.upsert(unit, 'remote')
+    existingIds.delete(unit.id)
+  }
+  for (const staleId of existingIds) {
+    w.units.remove(staleId, 'remote')
   }
 
+  w.clearPaint()
   if (Array.isArray(data.paint) && data.paint.length > 0) {
-    w.clearPaint()
     for (const stroke of data.paint) {
       w.addPaintStroke(stroke, 'remote')
     }
   }
 
   w.time = time.replace('T', ' ').replace('.000000Z', '')
+  currentPlaybackTime.value = w.time
   w.events.emit('changed', { reason: 'unit' })
+}
+
+async function interpolateToSnapshot(
+  fromTime: string,
+  fromData: SnapshotData,
+  toTime: string,
+  toData: SnapshotData,
+  fromIndex: number,
+  toIndex: number,
+  initialProgress: number,
+  token: number
+) {
+  const w = window.ROOM_WORLD
+  const durationMs = getTransitionDurationMs(fromTime, toTime)
+  const startMs = performance.now() - durationMs * Math.max(0, Math.min(1, initialProgress))
+
+  const movingIds = new Set<uuid>()
+  for (const id in fromData.units) {
+    if (toData.units[id]) {
+      movingIds.add(id as uuid)
+    }
+  }
+
+  const fromTimestamp = parseSnapshotTimestamp(fromTime)
+  const toTimestamp = parseSnapshotTimestamp(toTime)
+
+  return await new Promise<boolean>((resolve) => {
+    const tick = (now: number) => {
+      if (!isPlaying.value || token !== playbackToken) {
+        cancelPlaybackRaf()
+        resolve(false)
+        return
+      }
+
+      const elapsed = now - startMs
+      const progress = Math.min(1, elapsed / durationMs)
+      activeTransition.value = {
+        fromIndex,
+        toIndex,
+        progress,
+      }
+
+      for (const id of movingIds) {
+        const startUnit = fromData.units[id]
+        const endUnit = toData.units[id]
+        const liveUnit = w.units.get(id)
+        if (!startUnit || !endUnit || !liveUnit) continue
+
+        liveUnit.pos = {
+          x: startUnit.pos.x + (endUnit.pos.x - startUnit.pos.x) * progress,
+          y: startUnit.pos.y + (endUnit.pos.y - startUnit.pos.y) * progress,
+        }
+      }
+
+      if (fromTimestamp != null && toTimestamp != null) {
+        const currentTimestamp = fromTimestamp + (toTimestamp - fromTimestamp) * progress
+        w.time = new Date(currentTimestamp).toISOString().slice(0, 19).replace('T', ' ')
+        currentPlaybackTime.value = w.time
+      }
+
+      w.events.emit('changed', { reason: 'demo-interpolate' })
+
+      if (progress >= 1) {
+        cancelPlaybackRaf()
+        activeTransition.value = null
+        resolve(true)
+        return
+      }
+
+      playbackRaf = requestAnimationFrame(tick)
+    }
+
+    playbackRaf = requestAnimationFrame(tick)
+  })
+}
+
+async function playLoop(token: number) {
+  while (isPlaying.value && token === playbackToken) {
+    if (index.value >= snapshots.value.length - 1) {
+      isPlaying.value = false
+      break
+    }
+
+    const currentTime = snapshots.value[index.value]
+    const nextTime = snapshots.value[index.value + 1]
+    if (!currentTime || !nextTime) {
+      isPlaying.value = false
+      break
+    }
+
+    const resume =
+      activeTransition.value
+      && activeTransition.value.fromIndex === index.value
+      && activeTransition.value.toIndex === index.value + 1
+        ? activeTransition.value
+        : null
+
+    const nextNextTime = snapshots.value[index.value + 2]
+    if (nextNextTime) preloadSnapshot(nextNextTime)
+
+    const [currentData, nextData] = await Promise.all([
+      fetchSnapshot(currentTime).catch(() => null),
+      fetchSnapshot(nextTime).catch(() => null),
+    ])
+    if (!currentData || !nextData) {
+      error.value = 'Failed to load snapshot'
+      isPlaying.value = false
+      break
+    }
+
+    if (!resume || resume.progress <= 0) {
+      applySnapshot(currentTime, currentData)
+    }
+
+    const completed = await interpolateToSnapshot(
+      currentTime,
+      currentData,
+      nextTime,
+      nextData,
+      index.value,
+      index.value + 1,
+      resume?.progress ?? 0,
+      token
+    )
+    if (!completed || !isPlaying.value || token !== playbackToken) break
+
+    index.value += 1
+    applySnapshot(nextTime, nextData)
+    preloadAdjacent()
+  }
+}
+
+function play() {
+  if (isPlaying.value || snapshotLoading.value) return
+  if (!snapshots.value.length || index.value >= snapshots.value.length - 1) return
+  error.value = null
+  isPlaying.value = true
+  playbackToken += 1
+  void playLoop(playbackToken)
+}
+
+function pause() {
+  if (!isPlaying.value) return
+  isPlaying.value = false
+  playbackToken += 1
+  cancelPlaybackRaf()
+}
+
+function stopPlayback() {
+  pause()
+}
+
+function onSpeedInput(value: string) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return
+  speedMinutesPerSecond.value = Math.max(0.1, Math.min(600, numeric))
 }
 
 /* ---------- navigation ---------- */
@@ -157,24 +382,21 @@ function applySnapshot(
 function prev() {
   if (snapshotLoading.value) return
   if (index.value > 0) {
-    index.value--
-    loadSnapshot()
+    void loadSnapshotByIndex(index.value - 1)
   }
 }
 
 function next() {
   if (snapshotLoading.value) return
   if (index.value < snapshots.value.length - 1) {
-    index.value++
-    loadSnapshot()
+    void loadSnapshotByIndex(index.value + 1)
   }
 }
 
 function goToFirst() {
   if (snapshotLoading.value) return
   if (index.value !== 0) {
-    index.value = 0
-    loadSnapshot()
+    void loadSnapshotByIndex(0)
   }
 }
 
@@ -182,18 +404,13 @@ function goToLast() {
   if (snapshotLoading.value) return
   const last = snapshots.value.length - 1
   if (index.value !== last) {
-    index.value = last
-    loadSnapshot()
+    void loadSnapshotByIndex(last)
   }
 }
 
 function goToIndex(newIndex: number) {
   if (snapshotLoading.value) return
-  const clamped = Math.max(0, Math.min(newIndex, snapshots.value.length - 1))
-  if (index.value !== clamped) {
-    index.value = clamped
-    loadSnapshot()
-  }
+  void loadSnapshotByIndex(newIndex)
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -223,6 +440,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  stopPlayback()
   window.removeEventListener('keydown', onKeydown)
 })
 </script>
@@ -230,9 +448,18 @@ onUnmounted(() => {
 <template>
   <div class="demo-panel no-select">
     <button
+      class="play-btn"
+      :disabled="listLoading || snapshotLoading || !snapshots.length || index >= snapshots.length - 1"
+      :title="isPlaying ? t('tools.demo.pause') : t('tools.demo.play')"
+      @click="isPlaying ? pause() : play()"
+    >
+      {{ isPlaying ? '⏸' : '▶' }}
+    </button>
+
+    <button
       class="nav-btn"
       :title="t('tools.demo.first')"
-      :disabled="index === 0 || snapshotLoading"
+      :disabled="index === 0 || snapshotLoading || isPlaying"
       @click="goToFirst"
     >
       ⏮
@@ -241,7 +468,7 @@ onUnmounted(() => {
     <button
       class="nav-btn"
       :title="t('tools.demo.prev')"
-      :disabled="index === 0 || snapshotLoading"
+      :disabled="index === 0 || snapshotLoading || isPlaying"
       @click="prev"
     >
       ‹
@@ -261,7 +488,7 @@ onUnmounted(() => {
         <select
           class="demo-select"
           :value="index"
-          :disabled="snapshotLoading"
+          :disabled="snapshotLoading || isPlaying"
           :title="t('tools.demo.select_time')"
           @change="e => goToIndex(+(e.target as HTMLSelectElement).value)"
         >
@@ -270,9 +497,22 @@ onUnmounted(() => {
             :key="snap"
             :value="i"
           >
-            {{ formatSnapshotTime(snap) }}
+            {{ getSnapshotOptionLabel(snap, i) }}
           </option>
         </select>
+        <label class="demo-speed">
+          <span>{{ t('tools.demo.speed') }}</span>
+          <input
+            type="number"
+            min="0.1"
+            max="600"
+            step="0.1"
+            :value="speedMinutesPerSecond"
+            :disabled="snapshotLoading"
+            @input="e => onSpeedInput((e.target as HTMLInputElement).value)"
+          />
+          <span>{{ t('tools.demo.speed_unit') }}</span>
+        </label>
         <span class="demo-index">{{ snapshotLabel }}</span>
       </template>
     </div>
@@ -280,7 +520,7 @@ onUnmounted(() => {
     <button
       class="nav-btn"
       :title="t('tools.demo.next')"
-      :disabled="index === snapshots.length - 1 || snapshotLoading"
+      :disabled="index === snapshots.length - 1 || snapshotLoading || isPlaying"
       @click="next"
     >
       ›
@@ -289,7 +529,7 @@ onUnmounted(() => {
     <button
       class="nav-btn"
       :title="t('tools.demo.last')"
-      :disabled="index === snapshots.length - 1 || snapshotLoading"
+      :disabled="index === snapshots.length - 1 || snapshotLoading || isPlaying"
       @click="goToLast"
     >
       ⏭
@@ -323,7 +563,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   min-width: 200px;
 }
 
@@ -354,6 +594,23 @@ onUnmounted(() => {
   opacity: 0.8;
 }
 
+.demo-speed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.demo-speed input {
+  width: 78px;
+  padding: 2px 6px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: white;
+}
+
 .demo-status,
 .demo-error {
   font-size: 13px;
@@ -373,6 +630,28 @@ onUnmounted(() => {
   background: #0f172a;
   border: 1px solid #334155;
   transition: background 0.15s, border-color 0.15s;
+}
+
+.play-btn {
+  padding: 6px 12px;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  background: #1d4ed8;
+  border: 1px solid #3b82f6;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.play-btn:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #60a5fa;
+}
+
+.play-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .nav-btn:hover:not(:disabled) {

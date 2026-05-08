@@ -1,11 +1,11 @@
-import type { world } from '../world/world'
+import type { world } from '@/engine/world/world'
 import { maplayer } from './maplayer'
 import { unitlayer } from './unitlayer'
 import { overlaylayer } from './overlaylayer'
-import {cursorlayer} from "@/engine/render/cursorlayer.ts";
+import {cursorlayer} from "@/engine/2d/render/cursorlayer.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
-import {WeatherLayer} from "@/engine/render/weatherlayer.ts";
-import {PaintLayer} from "@/engine/render/paintlayer.ts";
+import {WeatherLayer} from "@/engine/2d/render/weatherlayer.ts";
+import {PaintLayer} from "@/engine/2d/render/paintlayer.ts";
 
 export class canvasrenderer {
   private canvas: HTMLCanvasElement

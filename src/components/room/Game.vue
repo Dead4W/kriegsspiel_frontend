@@ -9,12 +9,10 @@ import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
 import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
 
 import {
-  bindKeyboard,
-  bindPointer,
-  bindUnitInteraction,
-  bindUnitContextCommands,
-  canvasrenderer,
+  type EngineRenderer,
+  InputOrchestrator,
   loadImageWithProgress,
+  RenderOrchestrator,
   type mapmeta,
   type uuid,
   world,
@@ -40,11 +38,15 @@ const canvasEl = ref<HTMLCanvasElement | null>(null)
 const canvasOverlayEl = ref<HTMLCanvasElement | null>(null)
 
 let w: world | null = null
-let renderer: canvasrenderer | null = null
+let renderer: EngineRenderer | null = null
 let rafId: number | null = null
 let resizeHandler: (() => void) | null = null
 let socket: GameSocket | null = null
 let cameraPersistTimer: number | null = null
+let teardown2DInput: (() => void) | null = null
+
+const renderOrchestrator = new RenderOrchestrator('2d')
+const inputOrchestrator = new InputOrchestrator('2d')
 
 const ready = ref(false)
 const CAMERA_STATE_EPSILON = 0.0001
@@ -128,6 +130,9 @@ function cleanup() {
 
   socket?.disconnect()
   socket = null
+
+  teardown2DInput?.()
+  teardown2DInput = null
 
   if (cameraPersistTimer != null) {
     clearInterval(cameraPersistTimer)
@@ -244,7 +249,10 @@ async function initWorld(room: RoomData) {
     w.newWeather.value = room.weather
   }
 
-  renderer = new canvasrenderer(canvasEl.value, canvasOverlayEl.value)
+  renderer = renderOrchestrator.createRenderer(
+    canvasEl.value,
+    canvasOverlayEl.value
+  )
 
   resizeHandler = () => {
     if (!w || !renderer) return
@@ -265,10 +273,7 @@ async function initWorld(room: RoomData) {
     await w.setHeightMap(bitmapHeightMap)
   }
 
-  bindPointer(canvasEl.value, w)
-  bindKeyboard(w)
-  bindUnitInteraction(canvasEl.value, w)
-  bindUnitContextCommands(w)
+  teardown2DInput = inputOrchestrator.mount(canvasEl.value, w)
   startCameraStatePersistence(String(room.uuid), w)
 
   socket?.disconnect()

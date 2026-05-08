@@ -5,10 +5,10 @@ import type {OverlayItem} from '@/engine/types/overlayTypes'
 import type {vec2} from '@/engine/types'
 import {MoveCommand} from '@/engine/units/commands/moveCommand'
 import {useI18n} from 'vue-i18n'
-import {getTeamColor} from '@/engine/render/util'
+import {getTeamColor} from '@/engine/2d/render'
 import {type commandstate, type unitTeam, unitType, type uuid} from '@/engine'
 import type {unsub} from '@/engine/events'
-import {unitlayer} from "@/engine/render/unitlayer.ts";
+import {unitlayer} from "@/engine/2d/render";
 import {normalize, sub} from "@/engine/math.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";

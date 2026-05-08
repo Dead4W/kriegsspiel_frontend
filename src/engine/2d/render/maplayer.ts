@@ -1,4 +1,4 @@
-import type { world } from '../world/world'
+import type { world } from '@/engine/world/world'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { Team } from '@/enums/teamKeys.ts'
 

@@ -1,11 +1,11 @@
 import type {world} from '@/engine'
 import {unitType, type vec2} from "@/engine";
-import {getTeamColor} from '@/engine/render/util.ts'
+import {getTeamColor} from '@/engine/2d/render/util.ts'
 import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys'
 import {translate} from '@/i18n'
-import {drawUnitVision} from "@/engine/render/unitlayer/visionlayer.ts";
+import {drawUnitVision} from "@/engine/2d/render/unitlayer/visionlayer.ts";
 import {getUnitTexture} from "@/engine/assets/textures.ts";
-import {drawAttackWaveIcons} from "@/engine/render/canvasUtil.ts";
+import {drawAttackWaveIcons} from "@/engine/2d/render/canvasUtil.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";

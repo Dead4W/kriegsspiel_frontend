@@ -2,7 +2,7 @@ import {type unitstate, type unitTeam, unitType, type uuid} from '@/engine/units
 import type {BaseUnit} from '@/engine/units/baseUnit'
 import {createUnit} from '@/engine/units'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
-import {buildVisionPolygon, pointInPolygon} from "@/engine/render/unitlayer/visionlayer.ts";
+import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
 import {Team} from "@/enums/teamKeys.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 

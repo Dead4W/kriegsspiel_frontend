@@ -1,15 +1,17 @@
-import type {world} from '../world/world'
-import type {vec2} from '../types'
+import type {world} from '@/engine/world/world'
+import type {vec2} from '@/engine/types'
 import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys.ts'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
-import {emitUnitCommandRequest} from "@/engine/input/unitCommandBus.ts";
+import {emitUnitCommandRequest} from "@/engine/2d/input/unitCommandBus";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import { InputLifecycle } from '@/engine/input/lifecycle'
 
 export function bindUnitInteraction(
   canvas: HTMLCanvasElement,
   w: world
 ) {
+  const lifecycle = new InputLifecycle()
   let mode: 'idle' | 'drag' | 'select' | 'commandDrag' = 'idle'
 
   let startWorld: vec2 | null = null
@@ -168,7 +170,7 @@ export function bindUnitInteraction(
 
   /* ================= EVENTS ================= */
 
-  canvas.addEventListener('pointermove', (e) => {
+  const onPointerMove = (e: PointerEvent) => {
     if (window.INPUT.IGNORE_UNIT_INTERACTION) {
       // If something else captured pointer (e.g. paint tool),
       // cancel any active unit interaction immediately.
@@ -179,21 +181,24 @@ export function bindUnitInteraction(
     screenY = e.clientY
     dirty = true
     requestTick()
-  })
+  }
+  lifecycle.listen(canvas, 'pointermove', onPointerMove)
 
-  w.events.on('camera', () => {
+  const offCamera = w.events.on('camera', () => {
     dirty = true
     requestTick()
   })
+  lifecycle.add(offCamera)
 
-  w.events.on('changed', ({ reason }) => {
+  const offChanged = w.events.on('changed', ({ reason }) => {
     if (reason === 'camera') {
       dirty = true
       requestTick()
     }
   })
+  lifecycle.add(offChanged)
 
-  canvas.addEventListener('pointerdown', (e) => {
+  const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return
 
     const worldPos = w.camera.screenToWorld({
@@ -293,9 +298,10 @@ export function bindUnitInteraction(
 
 
     canvas.setPointerCapture(e.pointerId)
-  })
+  }
+  lifecycle.listen(canvas, 'pointerdown', onPointerDown)
 
-  canvas.addEventListener('pointerup', (e) => {
+  const onPointerUp = (e: PointerEvent) => {
     if (window.INPUT.IGNORE_UNIT_INTERACTION) {
       if (mode !== 'idle') cleanup(e.pointerId)
       return
@@ -370,15 +376,17 @@ export function bindUnitInteraction(
       cleanup(e.pointerId)
       w.events.emit('changed', { reason: 'select' })
     }
-  })
+  }
+  lifecycle.listen(canvas, 'pointerup', onPointerUp)
 
-  canvas.addEventListener('pointerleave', () => {
+  const onPointerLeave = () => {
     if (window.INPUT.IGNORE_UNIT_INTERACTION) {
       cleanup()
       return
     }
     cleanup()
-  })
+  }
+  lifecycle.listen(canvas, 'pointerleave', onPointerLeave)
 
   const ROTATE_STEP = Math.PI / 32
   function onWheel(e: WheelEvent) {
@@ -398,9 +406,9 @@ export function bindUnitInteraction(
     e.preventDefault()
     e.stopPropagation()
   }
-  window.addEventListener('wheel', onWheel, { passive: false, capture: true })
+  lifecycle.listen(window, 'wheel', onWheel, { passive: false, capture: true })
 
-  canvas.addEventListener('dblclick', (e) => {
+  const onDblClick = (e: MouseEvent) => {
     const worldPos = w.camera.screenToWorld({
       x: e.clientX,
       y: e.clientY,
@@ -459,7 +467,8 @@ export function bindUnitInteraction(
     }
 
     w.events.emit('changed', { reason: 'select' })
-  })
+  }
+  lifecycle.listen(canvas, 'dblclick', onDblClick)
 
   function cleanup(pointerId?: number) {
    if (mode !== 'idle') {
@@ -503,6 +512,15 @@ export function bindUnitInteraction(
     if (!e.shiftKey) shiftKeyActive = false
   }
 
-  window.addEventListener('keydown', onKeyDown)
-  window.addEventListener('keyup', onKeyUp)
+  lifecycle.listen(window, 'keydown', onKeyDown)
+  lifecycle.listen(window, 'keyup', onKeyUp)
+
+  return () => {
+    cleanup()
+    if (rafId != null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+    lifecycle.dispose()
+  }
 }

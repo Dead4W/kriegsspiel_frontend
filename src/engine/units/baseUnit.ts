@@ -571,6 +571,7 @@ export abstract class BaseUnit {
     }
     this.commands.push(command)
     this.refreshFuturePos();
+    this.refreshAngleFromCommands();
     this.setDirty()
     window.ROOM_WORLD.units.withNewCommands.delete(this.id)
   }
@@ -582,6 +583,7 @@ export abstract class BaseUnit {
   setCommands(commands: BaseCommand<any, any>[]) {
     this.commands = commands.map(c => JSON.parse(JSON.stringify(c.getState())));
     this.refreshFuturePos();
+    this.refreshAngleFromCommands();
     this.setDirty();
     window.ROOM_WORLD.units.withNewCommands.delete(this.id)
   }
@@ -777,6 +779,41 @@ export abstract class BaseUnit {
       return
     }
     this.futurePos = null
+  }
+
+  private refreshAngleFromCommands() {
+    const attackCommand = this.commands.find((cmd) => cmd.type === UnitCommandTypes.Attack)
+    if (attackCommand) {
+      const nearestTarget = attackCommand.state.targets
+        .map((targetId) => window.ROOM_WORLD.units.get(targetId))
+        .filter((unit): unit is BaseUnit => !!unit && unit.alive && unit.team !== this.team)
+        .sort((a, b) => {
+          const distA = Math.hypot(a.pos.x - this.pos.x, a.pos.y - this.pos.y)
+          const distB = Math.hypot(b.pos.x - this.pos.x, b.pos.y - this.pos.y)
+          return distA - distB
+        })[0]
+
+      if (nearestTarget) {
+        this.rotateTowardsPoint(nearestTarget.pos)
+        return
+      }
+    }
+
+    const firstMoveCommand = this.commands.find((cmd) => cmd.type === UnitCommandTypes.Move)
+    if (firstMoveCommand) {
+      this.rotateTowardsPoint(firstMoveCommand.state.target)
+    }
+  }
+
+  private rotateTowardsPoint(target: vec2) {
+    const dx = target.x - this.pos.x
+    const dy = target.y - this.pos.y
+    if (dx === 0 && dy === 0) return
+
+    const tau = Math.PI * 2
+    // Unit textures are "forward = top", so shift from +X-based angle.
+    const angle = Math.atan2(dy, dx) + Math.PI / 2
+    this.angle = ((angle % tau) + tau) % tau
   }
 
   setAutoAttack(autoAttack: boolean) {

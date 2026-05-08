@@ -1,3 +1,6 @@
+[2026-05-08]
+- Add auto rotate units by move/attack orders
+
 [2026-05-04]
 - Add player modal in planning stage
 - Chat - bug fixes

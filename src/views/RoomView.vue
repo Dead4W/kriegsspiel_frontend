@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import { loadRoom as apiLoadRoom } from '@/api/client'
 
 import TeamSelect from '@/components/room/TeamSelect.vue'
 import Game from '@/components/room/Game.vue'
+import type { GameLoadingState } from '@/components/room/loading'
 
 import type { uuid } from '@/engine'
 
@@ -25,11 +26,20 @@ const { t } = useI18n()
 
 const error = ref('')
 const errorParams = ref<Record<string, string>>({})
-const mapProgress = ref(0)
+const loadingState = ref<GameLoadingState | null>(null)
 const roomData = ref<RoomData | null>(null)
 const selectedTeam = ref<Team | null>(null)
 const selectedUserId = ref<number | null>(null)
 const autoTeam = ref<Team | null>(null)
+
+const activeLoadingLabelKey = computed(() => {
+  const state = loadingState.value
+  if (!state?.activeStageKey) return 'loading_map'
+  return (
+    state.stages.find((stage) => stage.key === state.activeStageKey)?.labelKey ||
+    'loading_map'
+  )
+})
 
 /* ================== helpers ================== */
 
@@ -115,8 +125,8 @@ function onTeamSelected(payload: { team: Team; userId: number | null }) {
   autoTeam.value = null
 }
 
-function onGameProgress(p: number) {
-  mapProgress.value = p
+function onGameProgress(next: GameLoadingState) {
+  loadingState.value = next
 }
 
 function onGameError(i18nKey: string, url?: string) {
@@ -142,13 +152,16 @@ onMounted(loadRoom)
 
   <!-- 2️⃣ loading map -->
   <section v-if="stage === RoomStage.LOADING_MAP" class="state loading">
-    <div>{{ t('loading_map') }}</div>
-
-    <div class="progress">
-      <div class="bar" :style="{ width: mapProgress + '%' }"></div>
+    <div class="loading-title">{{ t('loadingStages.title') }}</div>
+    <div class="loading-active">
+      {{ t(activeLoadingLabelKey) }}
     </div>
 
-    <div class="percent">{{ Math.round(mapProgress) }}%</div>
+    <div class="progress">
+      <div class="bar" :style="{ width: (loadingState?.totalProgress || 0) + '%' }"></div>
+    </div>
+
+    <div class="percent">{{ Math.round(loadingState?.totalProgress || 0) }}%</div>
   </section>
 
   <!-- error -->
@@ -226,5 +239,14 @@ onMounted(loadRoom)
 .percent {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+.loading-title {
+  font-size: 1rem;
+}
+
+.loading-active {
+  font-size: 0.82rem;
+  color: var(--text-soft);
 }
 </style>

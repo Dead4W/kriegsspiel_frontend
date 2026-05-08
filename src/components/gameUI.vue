@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import SpawnTool from '@/components/tools/SpawnTool.vue'
 import RulerTool from '@/components/tools/RulerTool.vue'
 import {useI18n} from 'vue-i18n'
@@ -22,6 +22,9 @@ import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import PlanningEntryModal from '@/components/PlanningEntryModal.vue'
 
 const { t } = useI18n()
+const props = defineProps<{
+  is3dMode?: boolean
+}>()
 
 enum Tools {
   SPAWN = 'spawn',
@@ -117,6 +120,20 @@ function close() {
   activeTool.value = null
 }
 
+watch(
+  () => props.is3dMode,
+  (is3dMode) => {
+    if (!is3dMode) return
+    if (
+      activeTool.value === Tools.SPAWN
+      || activeTool.value === Tools.RULER
+      || activeTool.value === Tools.PAINT
+    ) {
+      activeTool.value = null
+    }
+  }
+)
+
 function closePlanningEntryModal() {
   planningEntryModalClosed.value = true
   isPlanningEntryModalVisible.value = false
@@ -176,7 +193,7 @@ onUnmounted(() => {
     <!-- Панель инструментов -->
     <div class="toolbar no-select">
       <button
-        v-if="isAdmin() && isWar"
+        v-if="isAdmin() && isWar && !props.is3dMode"
         :class="{ active: shiftHeld }"
         @pointerdown.stop.prevent
         @click="toggleHardMove"
@@ -196,7 +213,7 @@ onUnmounted(() => {
       </button>
 
       <button
-        v-if="!isEnd"
+        v-if="!isEnd && !props.is3dMode"
         :class="{ active: activeTool === Tools.SPAWN }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.SPAWN)"
@@ -205,6 +222,7 @@ onUnmounted(() => {
       </button>
 
       <button
+        v-if="!props.is3dMode"
         :class="{ active: activeTool === Tools.RULER }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.RULER)"
@@ -215,6 +233,7 @@ onUnmounted(() => {
       </button>
 
       <button
+        v-if="!props.is3dMode"
         :class="{ active: activeTool === Tools.PAINT }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.PAINT)"
@@ -231,6 +250,7 @@ onUnmounted(() => {
       </button>
 
       <button
+        v-if="!props.is3dMode"
         :class="{ active: hideUnitsLayer }"
         @pointerdown.stop.prevent
         @click="toggleHideUnitsLayer"

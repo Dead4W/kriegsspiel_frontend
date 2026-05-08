@@ -12,7 +12,9 @@ type Option = {
   label: string
 }
 
-type TextParamKey = 'textureUrl' | 'renderIcon'
+type TextParamKey =
+  | 'textureUrl'
+  | 'renderIcon'
 type NumberParamKey =
   | 'renderWidthMult'
   | 'renderHeightMult'

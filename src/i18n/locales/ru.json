@@ -7,6 +7,18 @@
   "to_home": "На главную.",
   "loading": "Загрузка...",
   "loading_map": "Загрузка карты...",
+  "loadingStages": {
+    "title": "Загрузка игровых данных",
+    "resourcePack": "Ресурс-пак",
+    "mapImage": "Карта",
+    "heightMapImage": "Карта высот",
+    "objectMapImage": "Карта объектов",
+    "objectMapMeta": "Метаданные карты объектов",
+    "forestMap": "Построение карты лесов",
+    "heightMapProcessing": "Обработка карты высот",
+    "rendererInit": "Инициализация рендера",
+    "switchTo3d": "Подготовка 3D-сцены"
+  },
   "select_team": "Выбор команды",
   "clear": "Очистить",
   "copied": "Скопировано",

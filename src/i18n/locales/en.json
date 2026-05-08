@@ -7,6 +7,18 @@
   "to_home": "Go Home",
   "loading": "Loading...",
   "loading_map": "Loading map...",
+  "loadingStages": {
+    "title": "Loading game assets",
+    "resourcePack": "Resource pack",
+    "mapImage": "Map image",
+    "heightMapImage": "Height map image",
+    "objectMapImage": "Object map image",
+    "objectMapMeta": "Object map metadata",
+    "forestMap": "Forest map build",
+    "heightMapProcessing": "Height map processing",
+    "rendererInit": "Renderer initialization",
+    "switchTo3d": "Preparing 3D scene"
+  },
   "select_team": "Select team",
   "clear": "Clear",
   "copied": "Copied",

@@ -6,6 +6,7 @@ import {cursorlayer} from "@/engine/2d/render/cursorlayer.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {WeatherLayer} from "@/engine/2d/render/weatherlayer.ts";
 import {PaintLayer} from "@/engine/2d/render/paintlayer.ts";
+import type { RenderSceneAssets } from '@/engine/orchestrators/renderOrchestrator'
 
 export class canvasrenderer {
   private canvas: HTMLCanvasElement
@@ -38,6 +39,10 @@ export class canvasrenderer {
 
   setMapImage(img: CanvasImageSource) {
     this.map.setImage(img)
+  }
+
+  setSceneAssets(assets: RenderSceneAssets) {
+    this.setMapImage(assets.mapImage)
   }
 
   resize(w: number, h: number) {
@@ -97,4 +102,6 @@ export class canvasrenderer {
       this.cursor.draw(this.overlayCtx, w)
     })
   }
+
+  dispose() {}
 }

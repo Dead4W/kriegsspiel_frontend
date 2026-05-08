@@ -141,7 +141,7 @@ export abstract class BaseUnit {
     this.envState = s.envState ?? [];
     this.messagesLinked = s.messagesLinked ?? [];
     this.directView = s.directView ?? false
-    this.refreshEnvState();
+    this.refreshAngleFromCommands();
   }
 
   move(to: vec2) {
@@ -154,7 +154,6 @@ export abstract class BaseUnit {
     to.y = clamp(to.y, 0, window.ROOM_WORLD.map.height);
 
     this.pos = to;
-    this.refreshEnvState();
 
     const now = performance.now()
     if (!this.isDirty) {
@@ -380,40 +379,6 @@ export abstract class BaseUnit {
     }
   }
 
-  refreshEnvState() {
-
-
-    // const world = window.ROOM_WORLD
-    // const forest = world.forestImageData
-    //
-    // // если лес ещё не готов
-    // if (!forest) return
-    //
-    // const x = Math.floor(this.pos.x)
-    // const y = Math.floor(this.pos.y)
-    //
-    // // вне карты
-    // if (
-    //   x < 0 || y < 0 ||
-    //   x >= forest.width ||
-    //   y >= forest.height
-    // ) {
-    //   return
-    // }
-    //
-    // const i = (y * forest.width + x) * 4
-    // const alpha = forest.data[i + 3]!
-    //
-    // if (alpha > 0 && this.envState.filter(s => s !== UnitEnvironmentState.InForest).length === 0) {
-    //   if (!this.envState.includes(UnitEnvironmentState.InForest)) {
-    //     this.envState.push(UnitEnvironmentState.InForest);
-    //   }
-    // } else {
-    //   this.envState = this.envState.filter(
-    //     state => state !== UnitEnvironmentState.InForest
-    //   );
-    // }
-  }
 
   protected getStatMultiplier<K extends StatKey>(
     key: K

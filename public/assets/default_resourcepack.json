@@ -142,7 +142,11 @@
         "title": "Infantry",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["double_time_move"],
-        "params": { "priorityTargets": 3, "renderIcon": "I", "textureUrl": "/assets/units/infantry.png" }
+        "params": {
+          "priorityTargets": 3,
+          "renderIcon": "I",
+          "textureUrl": "/assets/units/infantry.png"
+        }
       },
       {
         "id": "cavalry",

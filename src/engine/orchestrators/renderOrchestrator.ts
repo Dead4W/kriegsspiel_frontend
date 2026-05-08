@@ -1,13 +1,25 @@
 import type { world } from '@/engine/world/world'
 import { canvasrenderer } from '@/engine/2d/render'
+import { threeRenderer } from '@/engine/3d/render'
 
 export type RenderBackend = '2d' | '3d'
 
+export type RenderSceneAssets = {
+  mapImage: CanvasImageSource
+  objectMapImage?: ImageBitmap | null
+  objectMapMeta?: Record<string, unknown> | null
+  metersPerPixel: number
+}
+
 export type EngineRenderer = {
   setMapImage(img: CanvasImageSource): void
+  setSceneAssets?(assets: RenderSceneAssets): Promise<void> | void
+  getCameraState?(): unknown
+  setCameraState?(state: unknown): void
   resize(w: number, h: number): void
   render(w: world): void
   renderOverlay(w: world): void
+  dispose?(): void
 }
 
 export class RenderOrchestrator {
@@ -25,7 +37,7 @@ export class RenderOrchestrator {
       case '2d':
         return new canvasrenderer(canvas, overlayCanvas)
       case '3d':
-        throw new Error('render_backend_3d_not_implemented')
+        return new threeRenderer(canvas, overlayCanvas)
     }
   }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue'
+import {computed, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ROOM_SETTINGS } from '@/game/roomSettings'
@@ -20,9 +20,19 @@ const selectedMapId = ref<string>('essex')
 
 const customMapUrl = ref('')
 const customHeightMapUrl = ref('')
+const customObjectMapUrl = ref('')
+const customObjectMapMetaUrl = ref('')
 const customMetersPerPixel = ref('')
 const gameDate = ref('1882-06-12 09:00:00')
 const resourcePackUrl = ref(DEFAULT_RESOURCE_PACK_URL)
+
+const isCustomMapSelected = computed(() => selectedMapId.value === 'custom')
+const hasCustomObjectMapUrl = computed(() => customObjectMapUrl.value.trim().length > 0)
+const hasCustomObjectMapMetaUrl = computed(() => customObjectMapMetaUrl.value.trim().length > 0)
+const isObjectMapPairValid = computed(() => {
+  if (!isCustomMapSelected.value) return true
+  return hasCustomObjectMapUrl.value === hasCustomObjectMapMetaUrl.value
+})
 
 type RoomSettingsState = Record<string, boolean | string | number>
 /** состояние настроек комнаты */
@@ -41,6 +51,8 @@ type GameMap = {
   preview: string
   mapUrl?: string
   heightMapUrl?: string
+  objectMapUrl?: string
+  objectMapMetaUrl?: string
   metersPerPixel?: number
   custom?: boolean
 }
@@ -53,6 +65,8 @@ const GAME_MAPS: GameMap[] = [
     preview: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map_preview.jpeg',
     mapUrl: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_map.jpeg',
     heightMapUrl: 'https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_height_map.png',
+    objectMapUrl: `${location.origin}/assets/default_map_objects.png`,
+    objectMapMetaUrl: `${location.origin}/assets/default_map_objects_meta.json`,
     metersPerPixel: 5.38,
   },
   {
@@ -82,10 +96,14 @@ function applyMapSettings() {
   if (map.custom) {
     settings.value[ROOM_SETTING_KEYS.MAP_URL] = customMapUrl.value || ''
     settings.value[ROOM_SETTING_KEYS.HEIGHT_MAP_URL] = customHeightMapUrl.value || ''
+    settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_URL] = customObjectMapUrl.value || ''
+    settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_META_URL] = customObjectMapMetaUrl.value || ''
     settings.value[ROOM_SETTING_KEYS.MAP_METERS_PER_PIXEL] = +(customMetersPerPixel.value || 1)
   } else {
     settings.value[ROOM_SETTING_KEYS.MAP_URL] = map.mapUrl!
     settings.value[ROOM_SETTING_KEYS.HEIGHT_MAP_URL] = map.heightMapUrl!
+    settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_URL] = map.objectMapUrl || ''
+    settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_META_URL] = map.objectMapMetaUrl || ''
     settings.value[ROOM_SETTING_KEYS.MAP_METERS_PER_PIXEL] = +(map.metersPerPixel || 1)
   }
 }
@@ -96,7 +114,7 @@ function applyResourcePackSettings() {
 }
 
 async function createRoom() {
-  if (!roomName.value.trim() || isCreating.value) return
+  if (!roomName.value.trim() || isCreating.value || !isObjectMapPairValid.value) return
 
   isCreating.value = true
   const payload = {
@@ -200,6 +218,12 @@ async function createRoom() {
                   class="preview"
                   :style="map.preview ? { backgroundImage: `url(${map.preview})` } : {}"
                 >
+                  <span
+                    v-if="map.objectMapUrl && map.objectMapMetaUrl"
+                    class="map-tag"
+                  >
+                    3D
+                  </span>
                   <span v-if="map.custom">
                     Custom
                     <br>
@@ -229,6 +253,39 @@ async function createRoom() {
                   generate_height_map.py <span class="help-link__icon" aria-hidden="true">↗</span>
                 </a>
                 <input v-model="customHeightMapUrl" placeholder="https://example.com/height_map.jpeg" @input="applyMapSettings" />
+              </div>
+
+              <div
+                class="object-map-group"
+                :class="{ invalid: !isObjectMapPairValid }"
+              >
+                <label class="object-map-group__title">
+                  {{ t('settings.customMap.objectMapGroupTitle') }}
+                </label>
+
+                <div class="field">
+                  <label>{{ t('settings.customMap.objectMapUrl') }}</label>
+                  <input
+                    v-model="customObjectMapUrl"
+                    :required="hasCustomObjectMapMetaUrl"
+                    placeholder="https://example.com/object_map.png"
+                    @input="applyMapSettings"
+                  />
+                </div>
+
+                <div class="field">
+                  <label>{{ t('settings.customMap.objectMapMetaUrl') }}</label>
+                  <input
+                    v-model="customObjectMapMetaUrl"
+                    :required="hasCustomObjectMapUrl"
+                    placeholder="https://example.com/object_map_meta.json"
+                    @input="applyMapSettings"
+                  />
+                </div>
+
+                <small v-if="!isObjectMapPairValid" class="object-map-group__error">
+                  {{ t('settings.customMap.objectMapPairError') }}
+                </small>
               </div>
 
               <div class="field">
@@ -302,7 +359,7 @@ async function createRoom() {
 
         <!-- Действия -->
         <div class="actions">
-          <button class="primary" type="submit" :disabled="isCreating">
+          <button class="primary" type="submit" :disabled="isCreating || !isObjectMapPairValid">
             {{ isCreating ? t('createRoom.actions.creating') : t('createRoom.actions.create') }}
           </button>
 
@@ -533,6 +590,7 @@ label {
 }
 
 .map-card .preview {
+  position: relative;
   height: 90px;
   background-size: cover;
   background-position: center;
@@ -541,6 +599,25 @@ label {
   justify-content: center;
   color: var(--text-muted);
   font-size: 0.75rem;
+}
+
+.map-tag {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
 }
 
 .map-card .name {
@@ -552,6 +629,33 @@ label {
 
 .custom-map {
   margin-top: 1rem;
+}
+
+.object-map-group {
+  margin-bottom: 1.2rem;
+  padding: 0.8rem;
+  border: 1px dashed var(--panel-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.object-map-group.invalid {
+  border-color: var(--danger);
+}
+
+.object-map-group__title {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.object-map-group .field:last-of-type {
+  margin-bottom: 0;
+}
+
+.object-map-group__error {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--danger);
 }
 
 </style>

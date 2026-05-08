@@ -749,6 +749,10 @@
       "title": "Карта",
       "mapUrl": "URL Карты",
       "heightMapUrl": "URL Карты высот (опционально)",
+      "objectMapGroupTitle": "Карта объектов",
+      "objectMapUrl": "URL Карты объектов (png, jpeg и т.д.)",
+      "objectMapMetaUrl": "URL Метаданных карты объектов (json)",
+      "objectMapPairError": "Если заполнено одно поле карты объектов, нужно заполнить и второе.",
       "metersPerPixel": "Метров на пиксель"
     },
     "gameDate": "Игровая дата",

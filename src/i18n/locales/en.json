@@ -744,6 +744,10 @@
       "title": "Map",
       "mapUrl": "Map URL",
       "heightMapUrl": "Height map URL (optional)",
+      "objectMapGroupTitle": "Object map",
+      "objectMapUrl": "Object map URL (png, jpeg, etc.)",
+      "objectMapMetaUrl": "Object map metadata URL (json)",
+      "objectMapPairError": "If one object map field is filled, the other one is required too.",
       "metersPerPixel": "Meters per pixel"
     },
     "gameDate": "Game Date",

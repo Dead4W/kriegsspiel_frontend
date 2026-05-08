@@ -1,0 +1,55 @@
+{
+  "image": "/home/Dead4W/projects/python/kriegsspiel-3d/default_map.jpeg",
+  "mask_png": "/home/Dead4W/projects/python/kriegsspiel-3d/default_map_masks.png",
+  "background_color": [
+    0,
+    0,
+    0
+  ],
+  "entity_to_color": {
+    "bridge": [
+      255,
+      175,
+      20
+    ],
+    "good_road": [
+      107,
+      20,
+      255
+    ],
+    "road": [
+      20,
+      255,
+      38
+    ],
+    "river": [
+      255,
+      20,
+      71
+    ],
+    "building": [
+      20,
+      139,
+      255
+    ],
+    "red_building": [
+      208,
+      255,
+      20
+    ],
+    "forest": [
+      234,
+      20,
+      255
+    ]
+  },
+  "entity_to_hex": {
+    "bridge": "#ffaf14",
+    "good_road": "#6b14ff",
+    "road": "#14ff26",
+    "river": "#ff1447",
+    "building": "#148bff",
+    "red_building": "#d0ff14",
+    "forest": "#ea14ff"
+  }
+}

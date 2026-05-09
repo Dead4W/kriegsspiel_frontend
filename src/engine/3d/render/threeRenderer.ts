@@ -631,20 +631,9 @@ export class threeRenderer {
   }
 
   private bindInput() {
-    const requestPointerLockForInteraction = (
-      event: Pick<PointerEvent, 'clientX' | 'clientY' | 'button'>
-    ) => {
-      const insideCanvas = this.isPointInsideCanvas(event.clientX, event.clientY)
-      if (!insideCanvas) return
-      if (event.button === 0 && this.handleMinimapClick(event)) return
-      if (document.pointerLockElement === this.canvas) return
-      this.canvas.requestPointerLock()
-    }
-    const onDocumentPointerDownCapture = (event: PointerEvent) => {
-      requestPointerLockForInteraction(event)
-    }
     const onCanvasClick = (event: MouseEvent) => {
-      requestPointerLockForInteraction(event)
+      if (event.button === 0 && this.handleMinimapClick(event)) return
+      this.canvas.requestPointerLock()
     }
     const onPointerLockChange = () => {
       this.pointerLocked = document.pointerLockElement === this.canvas
@@ -674,7 +663,6 @@ export class threeRenderer {
       this.clampCameraToWorldBounds()
     }
 
-    document.addEventListener('pointerdown', onDocumentPointerDownCapture, true)
     this.canvas.addEventListener('click', onCanvasClick)
     this.canvas.addEventListener('wheel', onWheel, { passive: false })
     document.addEventListener('pointerlockchange', onPointerLockChange)
@@ -682,9 +670,6 @@ export class threeRenderer {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
 
-    this.removeListeners.push(() =>
-      document.removeEventListener('pointerdown', onDocumentPointerDownCapture, true)
-    )
     this.removeListeners.push(() => this.canvas.removeEventListener('click', onCanvasClick))
     this.removeListeners.push(() =>
       document.removeEventListener('pointerlockchange', onPointerLockChange)
@@ -709,17 +694,7 @@ export class threeRenderer {
     return { cssWidth, cssHeight, minimapWidth, minimapHeight, x, y }
   }
 
-  private isPointInsideCanvas(clientX: number, clientY: number) {
-    const rect = this.canvas.getBoundingClientRect()
-    return (
-      clientX >= rect.left &&
-      clientX <= rect.right &&
-      clientY >= rect.top &&
-      clientY <= rect.bottom
-    )
-  }
-
-  private handleMinimapClick(event: Pick<MouseEvent, 'clientX' | 'clientY'>) {
+  private handleMinimapClick(event: MouseEvent) {
     const { minimapWidth, minimapHeight, x, y } = this.resolveMinimapLayout()
     const rect = this.canvas.getBoundingClientRect()
     const localX = event.clientX - rect.left

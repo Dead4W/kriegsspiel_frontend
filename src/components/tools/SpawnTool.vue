@@ -7,6 +7,8 @@ import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import { getSpawnUnitTypes } from "@/engine/resourcePack/units.ts";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
+import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import type {unitstate} from "@/engine/units/types.ts";
 
 const { t } = useI18n()
 
@@ -18,6 +20,9 @@ if ([Team.RED, Team.BLUE].includes(window.PLAYER.team)) {
   selectedTeam.value = window.PLAYER.team as unitTeam
 }
 const spawnCount = ref(1)
+const debugUnitStateJson = ref('')
+const debugCreateError = ref('')
+const debugCreateSuccess = ref(false)
 
 /* ================= computed i18n data ================= */
 
@@ -126,6 +131,61 @@ function getNextUnitName(
   let i = 1
   while (used.includes(i)) i++
   return t(`unit.${type}`) + ` ${i}`
+}
+
+function isDebugMode() {
+  return !!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.DEBUG_MODE]
+}
+
+function parseDebugUnitState(raw: string): unitstate {
+  const parsed = JSON.parse(raw) as Partial<unitstate>
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('invalid-json')
+  }
+  if (!parsed.type || typeof parsed.type !== 'string') {
+    throw new Error('missing-type')
+  }
+  if (!parsed.team || !['red', 'blue', 'neutral'].includes(parsed.team)) {
+    throw new Error('missing-team')
+  }
+  if (!parsed.pos || typeof parsed.pos.x !== 'number' || typeof parsed.pos.y !== 'number') {
+    throw new Error('missing-pos')
+  }
+
+  return {
+    ...parsed,
+    id: typeof parsed.id === 'string' && parsed.id.length > 0
+      ? parsed.id
+      : crypto.randomUUID(),
+    type: parsed.type,
+    team: parsed.team,
+    pos: { x: parsed.pos.x, y: parsed.pos.y },
+  }
+}
+
+function createUnitFromDebugJson() {
+  debugCreateError.value = ''
+  debugCreateSuccess.value = false
+  const raw = debugUnitStateJson.value.trim()
+  if (!raw) {
+    debugCreateError.value = t('spawn.debug_create_error_empty')
+    return
+  }
+
+  try {
+    const parsed = parseDebugUnitState(raw)
+    const w = window.ROOM_WORLD
+    if (!w) return
+    const state: unitstate = {
+      ...parsed,
+      id: parsed.id ?? crypto.randomUUID(),
+      roomMapUserId: parsed.roomMapUserId ?? window.PLAYER.id,
+    }
+    w.addUnits([state])
+    debugCreateSuccess.value = true
+  } catch {
+    debugCreateError.value = t('spawn.debug_create_error_parse')
+  }
 }
 
 /* ================= spawn ================= */
@@ -259,6 +319,20 @@ onBeforeUnmount(() => {
     <div class="hint">
       {{ t('spawn.hint') }}
     </div>
+
+    <div v-if="isDebugMode()" class="debug-section">
+      <label>{{ t('spawn.debug_create_title') }}</label>
+      <textarea
+        v-model="debugUnitStateJson"
+        class="debug-textarea"
+        :placeholder="t('spawn.debug_create_placeholder')"
+      />
+      <button type="button" class="debug-create-btn" @click="createUnitFromDebugJson">
+        {{ t('spawn.debug_create_button') }}
+      </button>
+      <div v-if="debugCreateError" class="debug-msg err">{{ debugCreateError }}</div>
+      <div v-else-if="debugCreateSuccess" class="debug-msg ok">{{ t('spawn.debug_create_success') }}</div>
+    </div>
   </div>
 </template>
 
@@ -334,6 +408,55 @@ select {
   margin-top: 8px;
   font-size: 11px;
   color: #94a3b8;
+}
+
+.debug-section {
+  margin-top: 10px;
+  border-top: 1px solid #334155;
+  padding-top: 10px;
+}
+
+.debug-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  background: #020617;
+  color: white;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.debug-create-btn {
+  margin-top: 6px;
+  width: 100%;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #020617;
+  color: #cbd5f5;
+  padding: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.debug-create-btn:hover {
+  color: white;
+  border-color: var(--accent);
+}
+
+.debug-msg {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.debug-msg.ok {
+  color: #86efac;
+}
+
+.debug-msg.err {
+  color: #fca5a5;
 }
 
 input {

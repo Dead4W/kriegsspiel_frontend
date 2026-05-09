@@ -558,7 +558,10 @@
     "attackRange": "Даль. атаки",
     "visionRange": "Даль. обзора",
     "height": "Высота",
-    "details": "Подробнее"
+    "details": "Подробнее",
+    "debug_copy_unit_state": "DEBUG: Копировать unitState JSON",
+    "debug_copy_success": "Скопировано",
+    "debug_copy_error": "Ошибка копирования"
   },
 
   "spawn": {
@@ -566,7 +569,13 @@
     "team": "Команда",
     "count": "Количество",
     "unit_type": "Тип юнита",
-    "hint": "Клик по карте — поставить юнит"
+    "hint": "Клик по карте — поставить юнит",
+    "debug_create_title": "DEBUG: Создать юнит из unitState JSON",
+    "debug_create_placeholder": "Вставьте unitState JSON",
+    "debug_create_button": "Создать юнит из JSON",
+    "debug_create_success": "Юнит создан",
+    "debug_create_error_empty": "Сначала вставьте unitState JSON",
+    "debug_create_error_parse": "Некорректный unitState JSON"
   },
 
   "unit": {

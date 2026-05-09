@@ -552,7 +552,10 @@
     "attackRange": "Attack range",
     "visionRange": "Vision range",
     "height": "Height",
-    "details": "Details"
+    "details": "Details",
+    "debug_copy_unit_state": "DEBUG: Copy unitState JSON",
+    "debug_copy_success": "Copied",
+    "debug_copy_error": "Copy failed"
   },
 
   "spawn": {
@@ -560,7 +563,13 @@
     "team": "Team",
     "count": "Count",
     "unit_type": "Unit type",
-    "hint": "Click on map — add unit"
+    "hint": "Click on map — add unit",
+    "debug_create_title": "DEBUG: Create unit from unitState JSON",
+    "debug_create_placeholder": "Paste unitState JSON here",
+    "debug_create_button": "Create unit from JSON",
+    "debug_create_success": "Unit created",
+    "debug_create_error_empty": "Paste unitState JSON first",
+    "debug_create_error_parse": "Invalid unitState JSON"
   },
 
   "unit": {

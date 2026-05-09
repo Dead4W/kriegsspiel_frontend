@@ -1,4 +1,5 @@
 [2026-05-10]
+- Debug - Add copy/paste unit data
 - Chat - Umpire receive orders only for next tick
 - Chat - multiple new messages now have only 1 sound alert
 - Auth - Add error message if server down

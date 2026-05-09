@@ -347,6 +347,7 @@
       "short": "Quick flow",
       "roles": "Roles",
       "orders": "Umpire - Orders",
+      "suppression": "Suppression",
       "umpireNotifications": "Umpire - Notifications",
       "fogOfWar": "Fog of war",
       "resourcepackOverview": "Overview",

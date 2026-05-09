@@ -37,6 +37,7 @@ const wikiSections: WikiSection[] = [
       { id: 'roles', titleKey: 'wikiPage.tabs.roles' },
       { id: 'orders', titleKey: 'wikiPage.tabs.orders' },
       { id: 'umpire-notifications', titleKey: 'wikiPage.tabs.umpireNotifications' },
+      { id: 'suppression', titleKey: 'wikiPage.tabs.suppression' },
     ],
   },
   {

@@ -1020,7 +1020,7 @@ function toggleRendererBackend() {
       :disabled="isBackendMounting"
       @click="toggleRendererBackend"
     >
-      {{ currentBackend.toUpperCase() }}
+      {{ currentBackend === '2d' ? '3D' : '2D' }}
     </button>
     <canvas ref="canvas2dEl" class="map-canvas" :class="{ hidden: displayedBackend !== '2d' }" />
     <canvas

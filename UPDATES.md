@@ -5,6 +5,7 @@
 - Auth - Add error message if server down
 - DirectView - add chain spread in `COLLISION_RANGE * 2` area
 - DirectView - for non-direct visibility update only unit position
+- DirectView - show attack & move commands
 - Demo - fix loading last state instead of first snapshot
 - Units - add suppression
 - Loading - add background animation

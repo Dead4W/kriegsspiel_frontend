@@ -203,25 +203,34 @@ async function startTurn() {
   if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.GENERAL_VISION_UPDATE]) {
     const directViewByTeam = window.ROOM_WORLD.units.getDirectViewByGenerals();
     for (const team of [Team.RED, Team.BLUE]) {
-      window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team as unitTeam)!.map(uuid => {
-          const u = window.ROOM_WORLD.units.get(uuid)!
+      window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team as unitTeam)!.map(({id, isDirect}) => {
+        const u = window.ROOM_WORLD.units.get(id)!
+        if (!isDirect) {
+          // For chained (non-direct) visibility update only position data.
           return {
             id: u.id,
             type: u.type,
             team: u.team,
             pos: u.pos,
-            seenRoomUserIds: u.seenRoomUserIds,
-
-            isRetreatState: u.isRetreat,
-
-            hp: u.hp,
-            ammo: u.ammo,
-
-            envState: u.envState,
-            formation: u.getFormation(),
-            activeAbilityType: u.activeAbilityType,
           }
-        })})
+        }
+        return {
+          id: u.id,
+          type: u.type,
+          team: u.team,
+          pos: u.pos,
+          seenRoomUserIds: u.seenRoomUserIds,
+
+          isRetreatState: u.isRetreat,
+
+          hp: u.hp,
+          ammo: u.ammo,
+
+          envState: u.envState,
+          formation: u.getFormation(),
+          activeAbilityType: u.activeAbilityType,
+        }
+      })})
     }
   }
 

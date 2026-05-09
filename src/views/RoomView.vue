@@ -80,6 +80,12 @@ async function loadRoom() {
   // если key пришёл из URL — сохраним
   if (keyFromRoute) {
     localStorage.setItem(`room_key_${uuid}`, keyFromRoute)
+    await router.replace({
+      name: 'room',
+      params: { locale: route.params.locale, uuid },
+      query: route.query,
+      hash: route.hash,
+    })
   }
 
   try {
@@ -95,12 +101,6 @@ async function loadRoom() {
         red_key: roomData.value!.red_key!,
       }
     } else {
-      if (keyFromRoute) {
-        await router.push({
-          name: 'room',
-          params: {locale: route.params.locale, uuid: uuid}
-        })
-      }
       stage.value = RoomStage.LOADING_MAP
       autoTeam.value = roomData.value!.team
     }

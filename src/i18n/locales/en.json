@@ -173,6 +173,7 @@
         "renderWidthMult": "Width mult",
         "renderHeightMult": "Height mult",
         "priorityTargets": "Priority targets",
+        "suppressionThreshold": "Suppression threshold",
         "moraleCheckMod": "Morale mod",
         "attackIgnoreTargetEnvMult": "Ignore env mult",
         "attackIgnoreHeightModifier": "Ignore height modifier"

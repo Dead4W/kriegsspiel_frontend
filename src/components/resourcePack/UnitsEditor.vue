@@ -19,6 +19,7 @@ type NumberParamKey =
   | 'renderWidthMult'
   | 'renderHeightMult'
   | 'priorityTargets'
+  | 'suppressionThreshold'
   | 'attackIgnoreTargetEnvMult'
   | 'moraleCheckMod'
 
@@ -475,6 +476,18 @@ function getStatLabel(statKey: (typeof statKeys)[number]): string {
                 inputmode="numeric"
                 :value="unit.params?.priorityTargets ?? ''"
                 @input="updateNumberParam(unit, 'priorityTargets', getEventValue($event))"
+              />
+            </label>
+
+            <label class="field short-field">
+              <span>{{ t('resourcePackCreator.unitsEditor.fields.suppressionThreshold') }}</span>
+              <input
+                type="number"
+                step="0.05"
+                min="0"
+                inputmode="decimal"
+                :value="unit.params?.suppressionThreshold ?? ''"
+                @input="updateNumberParam(unit, 'suppressionThreshold', getEventValue($event))"
               />
             </label>
 

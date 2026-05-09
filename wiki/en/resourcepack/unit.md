@@ -51,6 +51,7 @@ For rendering:
 For combat and targeting:
 
 - `priorityTargets` (number) - attack command selects only the nearest N targets
+- `suppressionThreshold` (number) - incoming suppression points required to block this unit's attack; if omitted, suppression is disabled for this unit
 - `attackIgnoreHeightModifier` (boolean) - disables height-angle damage modifier for this attacker
 - `attackIgnoreTargetEnvs` (string[]) - target environment IDs that trigger a special multiplier
 - `attackIgnoreTargetEnvMult` (number, default `2`) - applied when the target environment matches

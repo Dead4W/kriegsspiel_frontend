@@ -154,9 +154,11 @@ function markStageDone(stageKey: string) {
 
 function emitLoading(activeStageKey: string | null = null) {
   if (!loadingStages.length) return
+  const stagesForTotal = loadingStages.filter((stage) => stage.key !== 'forestMap')
+  const totalStages = Math.max(1, stagesForTotal.length)
   const total =
-    loadingStages.reduce((sum, stage) => sum + stage.progress, 0) /
-    Math.max(1, loadingStages.length)
+    stagesForTotal.reduce((sum, stage) => sum + stage.progress, 0) /
+    totalStages
   emit('progress', {
     totalProgress: total,
     activeStageKey,
@@ -870,11 +872,21 @@ async function initWorld(room: RoomData) {
 
   window.addEventListener('resize', resizeHandler)
 
-  const forestMap = await runStageWithPulse(
-    'forestMap',
-    10,
-    95,
-    async () => await buildForestMap(bitmap, map.width, map.height)
+  setStageProgress('forestMap', 1)
+  const forestMapBuildStartedAt =
+    typeof performance !== 'undefined' ? performance.now() : Date.now()
+  const forestMap = await buildForestMap(
+    bitmap,
+    map.width,
+    map.height,
+    3,
+    (progress) => setStageProgress('forestMap', progress)
+  )
+  const forestMapBuildEndedAt =
+    typeof performance !== 'undefined' ? performance.now() : Date.now()
+  const forestMapBuildMs = Math.round(forestMapBuildEndedAt - forestMapBuildStartedAt)
+  console.info(
+    `[loading] forest map build completed in ${forestMapBuildMs}ms (${map.width}x${map.height})`
   )
   w.setForestMap(forestMap)
   markStageDone('forestMap')

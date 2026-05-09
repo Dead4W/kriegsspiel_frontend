@@ -52,6 +52,9 @@ const activeLoadingLabelKey = computed(() => {
 const MAP_PREVIEW_CHUNK_COLS = 12
 const MAP_PREVIEW_CHUNK_ROWS = 7
 const MAP_PREVIEW_CHUNK_TOTAL = MAP_PREVIEW_CHUNK_COLS * MAP_PREVIEW_CHUNK_ROWS
+const FOREST_PREVIEW_PIXEL_COLS = 96
+const FOREST_PREVIEW_PIXEL_ROWS = 54
+const FOREST_PREVIEW_PIXEL_TOTAL = FOREST_PREVIEW_PIXEL_COLS * FOREST_PREVIEW_PIXEL_ROWS
 
 const mapPreviewUrl = computed(() => {
   const mapUrl = roomData.value?.options?.mapUrl
@@ -71,6 +74,19 @@ const mapImageStageProgress = computed(() => {
   return Math.max(0, Math.min(100, state.totalProgress))
 })
 
+const totalLoadingProgress = computed(() =>
+  Math.max(0, Math.min(100, loadingState.value?.totalProgress || 0))
+)
+function getStageProgress(stageKey: string) {
+  const state = loadingState.value
+  if (!state) return 0
+  const stage = state.stages.find((item) => item.key === stageKey)
+  if (!stage) return 0
+  return Math.max(0, Math.min(100, stage.progress))
+}
+const forestMapStageProgress = computed(() => getStageProgress('forestMap'))
+const isForestBuildStage = computed(() => loadingState.value?.activeStageKey === 'forestMap')
+
 const revealedChunkCount = computed(() =>
   Math.round((mapImageStageProgress.value / 100) * MAP_PREVIEW_CHUNK_TOTAL)
 )
@@ -87,6 +103,26 @@ const chunkTiles = computed(() => {
     return {
       id: index,
       revealed: shiftedOrder < revealedChunkCount.value,
+    }
+  })
+})
+
+const revealedForestPixelCount = computed(() =>
+  Math.round((forestMapStageProgress.value / 100) * FOREST_PREVIEW_PIXEL_TOTAL)
+)
+
+const forestPixels = computed(() => {
+  const roomSeed = String(roomData.value?.uuid || route.params.uuid || '')
+  const roomSeedOffset = Array.from(roomSeed).reduce(
+    (sum, char) => sum + char.charCodeAt(0),
+    0
+  ) % FOREST_PREVIEW_PIXEL_TOTAL
+
+  return Array.from({ length: FOREST_PREVIEW_PIXEL_TOTAL }, (_, index) => {
+    const shiftedOrder = (index + roomSeedOffset) % FOREST_PREVIEW_PIXEL_TOTAL
+    return {
+      id: index,
+      revealed: shiftedOrder < revealedForestPixelCount.value,
     }
   })
 })
@@ -228,6 +264,20 @@ onMounted(() => {
       @error="onMapPreviewError"
     />
     <div
+      v-if="isForestBuildStage"
+      class="loading-forest-mask"
+      :class="{ 'loading-forest-mask--fallback': !hasMapPreview }"
+      aria-hidden="true"
+    >
+      <div
+        v-for="pixel in forestPixels"
+        :key="pixel.id"
+        class="loading-forest-mask__pixel"
+        :class="{ 'loading-forest-mask__pixel--revealed': pixel.revealed }"
+      />
+    </div>
+    <div
+      v-else
       class="loading-map-mask"
       :class="{ 'loading-map-mask--fallback': !hasMapPreview }"
       aria-hidden="true"
@@ -247,10 +297,10 @@ onMounted(() => {
       </div>
 
       <div class="progress">
-        <div class="bar" :style="{ width: (loadingState?.totalProgress || 0) + '%' }"></div>
+        <div class="bar" :style="{ width: totalLoadingProgress + '%' }"></div>
       </div>
 
-      <div class="percent">{{ Math.round(loadingState?.totalProgress || 0) }}%</div>
+      <div class="percent">{{ Math.round(totalLoadingProgress) }}%</div>
     </div>
   </section>
 
@@ -385,6 +435,29 @@ onMounted(() => {
 
 .loading-map-mask__tile--revealed {
   opacity: 0;
+}
+
+.loading-forest-mask {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(96, minmax(0, 1fr));
+  grid-template-rows: repeat(54, minmax(0, 1fr));
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.loading-forest-mask__pixel {
+  background: rgba(8, 12, 18, 0.78);
+  transition: opacity 0.08s linear;
+}
+
+.loading-forest-mask--fallback .loading-forest-mask__pixel {
+  background: rgba(9, 30, 20, 0.7);
+}
+
+.loading-forest-mask__pixel--revealed {
+  background: rgba(70, 178, 102, 0.62);
 }
 
 .loading-panel {

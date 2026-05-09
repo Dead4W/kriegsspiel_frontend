@@ -38,9 +38,9 @@ export async function buildForestMap(
   bitmap: ImageBitmap,
   width: number,
   height: number,
-  radius = 3
+  radius = 3,
+  onProgress?: (percent: number) => void
 ): Promise<OffscreenCanvas | HTMLCanvasElement> {
-
   const canvas =
     typeof OffscreenCanvas !== 'undefined'
       ? new OffscreenCanvas(width, height)
@@ -67,6 +67,7 @@ export async function buildForestMap(
   // @ts-ignore
   ctx.fillStyle = 'rgba(0,255,0,1)'
 
+  let lastReportedPercent = 0
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4
@@ -84,6 +85,19 @@ export async function buildForestMap(
         ctx.fill()
       }
     }
+
+    const progress = Math.round(((y + 1) / Math.max(1, height)) * 100)
+    const shouldReport = progress - lastReportedPercent >= 30
+
+    if (shouldReport) {
+      lastReportedPercent = progress
+      onProgress?.(progress)
+      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0))
+    }
+  }
+
+  if (lastReportedPercent < 100) {
+    onProgress?.(100)
   }
 
   return canvas

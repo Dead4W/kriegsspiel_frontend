@@ -14,7 +14,7 @@
     "heightMapImage": "Height map image",
     "objectMapImage": "Object map image",
     "objectMapMeta": "Object map metadata",
-    "forestMap": "Forest map build",
+    "forestMap": "Forest assembly",
     "heightMapProcessing": "Height map processing",
     "rendererInit": "Renderer initialization",
     "switchTo3d": "Preparing 3D scene"

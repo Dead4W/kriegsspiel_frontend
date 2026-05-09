@@ -54,6 +54,16 @@ const DEMO_BLOCKED_INCOMING_TYPES = new Set<OutMessage['type']>([
 
 let isDemoReadonlyMode = false
 
+function isPlayerTeam(team: Team): boolean {
+  return team === Team.RED || team === Team.BLUE
+}
+
+function clearUnitCommandsForDirectView(unit: unknown) {
+  const mutableUnit = unit as { commands?: unknown[]; futurePos?: { x: number; y: number } | null }
+  mutableUnit.commands = []
+  mutableUnit.futurePos = null
+}
+
 export function setDemoReadonlyMode(enabled: boolean) {
   isDemoReadonlyMode = enabled
 }
@@ -273,6 +283,7 @@ export class GameSocket {
               ) {
                 window.ROOM_WORLD.units.remove(u.id)
               } else {
+                clearUnitCommandsForDirectView(u)
                 u.directView = false;
               }
             }

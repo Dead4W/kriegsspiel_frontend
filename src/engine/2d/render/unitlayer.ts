@@ -336,6 +336,17 @@ export class unitlayer {
             }
           } else {
             const targets = command.getPriorityTargets(unit)
+            if (targets.length === 0 && cmdState.directViewTargetPoint) {
+              debugPerformance('drawAttackWaveIcons', () => {
+                drawAttackWaveIcons(
+                  ctx,
+                  unit.pos,
+                  cmdState.directViewTargetPoint!,
+                  color,
+                  cam.zoom
+                )
+              })
+            }
             for (const target of targets) {
               debugPerformance('drawAttackWaveIcons', () => {
                 drawAttackWaveIcons(

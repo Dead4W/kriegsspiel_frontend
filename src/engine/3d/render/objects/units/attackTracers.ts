@@ -10,12 +10,16 @@ const SHOT_FREQUENCY_MULTIPLIER = 0.05
 const SHOT_FREQUENCY_MULTIPLIER_ARTILLERY = 0.03
 const ARTILLERY_SPEED_MULTIPLIER = 3
 
-export type AttackMode = 'none' | 'direct' | 'artillery'
+export type AttackMode = 'none' | 'direct' | 'direct_point' | 'artillery'
 
 export type AttackIntent =
   | {
     mode: 'direct'
     target: BaseUnit
+  }
+  | {
+    mode: 'direct_point'
+    point: THREE.Vector3
   }
   | {
     mode: 'artillery'
@@ -199,7 +203,7 @@ export function maybeEmitShotTracer<TRecord extends AttackShotRecord>(
       toward: to,
       world,
     }) ?? from
-  } else {
+  } else if (attackIntent.mode === 'direct') {
     const targetRecord = records.get(attackIntent.target.id)
     to =
       targetRecord != null
@@ -228,6 +232,15 @@ export function maybeEmitShotTracer<TRecord extends AttackShotRecord>(
       toward: from,
       world,
     }) ?? to
+  } else {
+    to = attackIntent.point.clone()
+    from = resolveShotPointOverride?.({
+      unit,
+      record,
+      fallback: from,
+      toward: to,
+      world,
+    }) ?? from
   }
   const distance = from.distanceTo(to)
   if (distance >= 0.001) {
@@ -294,6 +307,11 @@ export function disposeAttackVisuals(params: DisposeAttackVisualsParams) {
 
 function resolveAttackSyncKey(attackIntent: AttackIntent) {
   if (attackIntent.mode === 'direct') return `direct:${attackIntent.target.id}`
+  if (attackIntent.mode === 'direct_point') {
+    const x = Math.round(attackIntent.point.x * 10)
+    const z = Math.round(attackIntent.point.z * 10)
+    return `direct_point:${x}:${z}`
+  }
   const cx = Math.round(attackIntent.center.x * 10)
   const cz = Math.round(attackIntent.center.z * 10)
   const r = Math.round(attackIntent.radius * 10)
@@ -338,11 +356,24 @@ function resolveAttackTarget(
       if (candidate.team === unit.team) continue
       candidates.push(candidate)
     }
-    if (!candidates.length) continue
-    const randomIndex = Math.floor(Math.random() * candidates.length)
-    return {
-      mode: 'direct',
-      target: candidates[randomIndex]!,
+    const directViewTargetPoint = state?.directViewTargetPoint
+    if (candidates.length) {
+      const randomIndex = Math.floor(Math.random() * candidates.length)
+      return {
+        mode: 'direct',
+        target: candidates[randomIndex]!,
+      }
+    }
+    if (directViewTargetPoint) {
+      return {
+        mode: 'direct_point',
+        point: worldPointToWorld(
+          world,
+          directViewTargetPoint.x,
+          directViewTargetPoint.y,
+          world.objectSize * 1.5
+        ),
+      }
     }
   }
   return null

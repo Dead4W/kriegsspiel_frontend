@@ -22,6 +22,7 @@ export interface AttackCommandState {
   radiusModifier?: number
   abilities: UnitAbilityType[]
   inaccuracyPoint: vec2 | null
+  directViewTargetPoint?: vec2 | null
 }
 
 export class AttackCommand extends BaseCommand<

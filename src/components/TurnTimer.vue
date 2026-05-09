@@ -5,11 +5,14 @@ import {RoomGameStage} from "@/enums/roomStage.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import type {unitTeam} from "@/engine";
+import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys";
 import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {useI18n} from 'vue-i18n'
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
+import {type commandstate, unitType} from "@/engine/units/types.ts";
+import type {vec2} from "@/engine/types.ts";
 
 const { t } = useI18n()
 
@@ -161,6 +164,145 @@ function processUnitCommands(dt: number) {
   }
 }
 
+function pointInTeamGeneralVision(team: unitTeam, point: vec2): boolean {
+  const generals = window.ROOM_WORLD.units.list()
+    .filter((unit) => unit.team === team && unit.type === unitType.GENERAL && unit.alive)
+
+  for (const general of generals) {
+    const visionPoly = buildVisionPolygon(general, window.ROOM_WORLD)
+    if (pointInPolygon(point, visionPoly)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function lineSegmentIntersectionT(
+  a1: vec2,
+  a2: vec2,
+  b1: vec2,
+  b2: vec2
+): number | null {
+  const r = {x: a2.x - a1.x, y: a2.y - a1.y}
+  const s = {x: b2.x - b1.x, y: b2.y - b1.y}
+  const denominator = r.x * s.y - r.y * s.x
+  if (Math.abs(denominator) < 1e-9) return null
+
+  const qp = {x: b1.x - a1.x, y: b1.y - a1.y}
+  const t = (qp.x * s.y - qp.y * s.x) / denominator
+  const u = (qp.x * r.y - qp.y * r.x) / denominator
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null
+  return t
+}
+
+function getLineExitPointFromVisionPolygon(from: vec2, to: vec2, polygon: vec2[]): vec2 | null {
+  if (polygon.length < 2) return null
+
+  let bestT: number | null = null
+  for (let i = 0; i < polygon.length; i++) {
+    const p1 = polygon[i]!
+    const p2 = polygon[(i + 1) % polygon.length]!
+    const t = lineSegmentIntersectionT(from, to, p1, p2)
+    if (t == null) continue
+    if (bestT == null || t > bestT) {
+      bestT = t
+    }
+  }
+
+  if (bestT == null) return null
+  return {
+    x: from.x + (to.x - from.x) * bestT,
+    y: from.y + (to.y - from.y) * bestT,
+  }
+}
+
+function getAttackDirectViewTargetPoint(attackerPos: vec2, targetPos: vec2, team: unitTeam): vec2 | null {
+  const generals = window.ROOM_WORLD.units.list()
+    .filter((unit) => unit.team === team && unit.type === unitType.GENERAL && unit.alive)
+
+  let bestPoint: vec2 | null = null
+  let bestDistance = -1
+  for (const general of generals) {
+    const visionPoly = buildVisionPolygon(general, window.ROOM_WORLD)
+    const attackerVisible = pointInPolygon(attackerPos, visionPoly)
+    if (!attackerVisible) continue
+
+    const targetVisible = pointInPolygon(targetPos, visionPoly)
+    const point = targetVisible
+      ? targetPos
+      : getLineExitPointFromVisionPolygon(attackerPos, targetPos, visionPoly)
+    if (!point) continue
+
+    const distance = Math.hypot(point.x - attackerPos.x, point.y - attackerPos.y)
+    if (distance > bestDistance) {
+      bestDistance = distance
+      bestPoint = point
+    }
+  }
+
+  return bestPoint
+}
+
+function mapAttackCommandForDirectView(command: commandstate, unitId: string, team: unitTeam): commandstate {
+  if (command.type !== UnitCommandTypes.Attack) return command
+
+  const unit = window.ROOM_WORLD.units.get(unitId)
+  if (!unit) return command
+
+  const attackState = command.state as AttackCommandState
+  let targetPoint: vec2 | null = null
+  let nearestTargetDist = Infinity
+  for (const targetId of attackState.targets) {
+    const target = window.ROOM_WORLD.units.get(targetId)
+    if (!target || !target.alive || target.team === unit.team) continue
+    const dist = Math.hypot(target.pos.x - unit.pos.x, target.pos.y - unit.pos.y)
+    if (dist < nearestTargetDist) {
+      nearestTargetDist = dist
+      targetPoint = getAttackDirectViewTargetPoint(unit.pos, target.pos, team)
+    }
+  }
+
+  return {
+    ...command,
+    state: {
+      ...attackState,
+      targets: [],
+      directViewTargetPoint: targetPoint,
+    },
+  }
+}
+
+function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
+  const unit = window.ROOM_WORLD.units.get(unitId)
+  if (!unit) return []
+
+  const rawCommands = unit.getCommands().map((command) => command.getState() as commandstate)
+  const isEnemyUnit = unit.team !== team
+  let firstMoveIncluded = false
+
+  return rawCommands
+    .filter((command) => {
+      if (command.type === UnitCommandTypes.Attack) {
+        return true
+      }
+      if (command.type !== UnitCommandTypes.Move) {
+        return false
+      }
+      if (isEnemyUnit) {
+        return false
+      }
+
+      if (!firstMoveIncluded) {
+        firstMoveIncluded = true
+        return true
+      }
+
+      return pointInTeamGeneralVision(team, command.state.target)
+    })
+    .map((command) => mapAttackCommandForDirectView(command, unitId, team))
+}
+
 /* ===== timer ===== */
 
 async function startTurn() {
@@ -231,6 +373,7 @@ async function startTurn() {
           envState: u.envState,
           formation: u.getFormation(),
           activeAbilityType: u.activeAbilityType,
+          commands: getDirectViewCommands(u.id, team as unitTeam),
         }
       })})
     }

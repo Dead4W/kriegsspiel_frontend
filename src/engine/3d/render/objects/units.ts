@@ -327,7 +327,7 @@ export class UnitsLayerRenderer {
   }
 
   private animateRecord(record: UnitRenderRecord, elapsedSeconds: number, attackMode: AttackMode) {
-    const isDirectAttack = attackMode === 'direct'
+    const isDirectAttack = attackMode === 'direct' || attackMode === 'direct_point'
     const isArtilleryAttack = attackMode === 'artillery'
     const attackBoost = isArtilleryAttack ? 0.09 : (isDirectAttack ? 0.05 : 0)
     const pulse = 0.5 + 0.5 * Math.sin(elapsedSeconds * 3.1 + record.pulsePhase)

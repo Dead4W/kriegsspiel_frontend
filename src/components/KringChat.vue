@@ -16,6 +16,14 @@ import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import IdenticonAvatar from "@/components/ui/IdenticonAvatar.vue";
 
 const { t } = useI18n()
+const props = withDefaults(
+  defineProps<{
+    is3dMode?: boolean
+  }>(),
+  {
+    is3dMode: false,
+  }
+)
 
 
 /* =======================
@@ -112,6 +120,7 @@ function canSpawnMessenger(m: ChatMessage): boolean {
 }
 
 function onSpawnMessenger(m: ChatMessage) {
+  if (props.is3dMode) return
   const pos = window.ROOM_WORLD.camera.screenToWorld({
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
@@ -226,6 +235,7 @@ function focusUnits(units: BaseUnit[]) {
 }
 
 function onUnitsBlockClick(units: BaseUnit[]) {
+  if (props.is3dMode) return
   const w = window.ROOM_WORLD
 
   w.units.clearSelection()

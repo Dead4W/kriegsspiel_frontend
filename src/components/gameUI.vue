@@ -288,6 +288,7 @@ onUnmounted(() => {
     />
 
     <SelectionPanel
+      v-if="!props.is3dMode"
       :isEnd="isEnd"
       class="no-select"
     />
@@ -299,9 +300,9 @@ onUnmounted(() => {
 
     <ClientSettingsPanel />
 
-    <KringChat />
+    <KringChat :is3d-mode="props.is3dMode" />
 
-    <NotificationsPanel v-if="isAdmin() && !isEnd"/>
+    <NotificationsPanel v-if="isAdmin() && !isEnd && !props.is3dMode" :is3d-mode="props.is3dMode" />
   </div>
 </template>
 

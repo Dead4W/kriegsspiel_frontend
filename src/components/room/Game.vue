@@ -65,7 +65,6 @@ const currentBackend = ref<RenderBackend>('2d')
 const displayedBackend = ref<RenderBackend>(currentBackend.value)
 const isInitial3DLoad = ref(false)
 const CAMERA_STATE_EPSILON = 0.0001
-const LOAD_DEBUG_PREFIX = '[LoadDebug]'
 const SWITCH_TO_3D_PITCH = -Math.PI / 2 + 0.05
 const THREE_CAMERA_FOV_DEG = 58
 const showBackendSwitchOverlay = computed(
@@ -92,14 +91,6 @@ type Camera3DState = {
 
 let runtime2DCameraState: Camera2DState | null = null
 let runtime3DCameraState: Camera3DState | null = null
-
-function debugLoad(message: string, payload?: Record<string, unknown>) {
-  if (payload) {
-    console.log(`${LOAD_DEBUG_PREFIX} ${message}`, payload)
-    return
-  }
-  console.log(`${LOAD_DEBUG_PREFIX} ${message}`)
-}
 
 function asFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
@@ -180,11 +171,6 @@ async function runStageWithPulse<T>(
   task: () => Promise<T>,
   pulseIntervalMs = 180
 ) {
-  const stageStartedAt = performance.now()
-  debugLoad(`stage:${stageKey}:start`, {
-    startProgress,
-    pulseMaxProgress,
-  })
   const start = Math.max(0, Math.min(100, startProgress))
   const maxPulse = Math.max(start, Math.min(99, pulseMaxProgress))
   let localProgress = start
@@ -196,11 +182,7 @@ async function runStageWithPulse<T>(
   }, pulseIntervalMs)
 
   try {
-    const result = await task()
-    debugLoad(`stage:${stageKey}:done`, {
-      elapsedMs: Math.round(performance.now() - stageStartedAt),
-    })
-    return result
+    return await task()
   } finally {
     clearInterval(timer)
   }
@@ -591,24 +573,12 @@ self.onmessage = async (event) => {
   }
 
   const tryLoad = async (targetUrl: string) => {
-    const startedAt = performance.now()
-    debugLoad('objectMapMeta:request:start', { targetUrl })
     return await loadSlimMetaInWorker<Record<string, unknown>>(toAbsoluteUrl(targetUrl))
-      .then((meta) => {
-        debugLoad('objectMapMeta:request:done', {
-          elapsedMs: Math.round(performance.now() - startedAt),
-          keys: Object.keys(meta),
-          entityCount: Object.keys((meta.entity_to_color as Record<string, unknown> | undefined) ?? {})
-            .length,
-        })
-        return meta
-      })
   }
 
   try {
     return await tryLoad(url)
   } catch {
-    debugLoad('objectMapMeta:request:fallback')
     const proxyUrl = toProxyAssetUrl(url)
     if (!proxyUrl) throw new Error('object_map_meta_load_failed')
     return await tryLoad(proxyUrl)
@@ -616,8 +586,6 @@ self.onmessage = async (event) => {
 }
 
 async function mountActiveBackend() {
-  const startedAt = performance.now()
-  debugLoad('mountActiveBackend:start', { backend: currentBackend.value })
   if (!w || !sceneAssets) return
   if (!allow3DRender() && currentBackend.value === '3d') {
     currentBackend.value = '2d'
@@ -664,11 +632,6 @@ async function mountActiveBackend() {
     renderer.render(w)
     renderer.renderOverlay(w)
     displayedBackend.value = currentBackend.value
-    debugLoad('mountActiveBackend:done', {
-      elapsedMs: Math.round(performance.now() - startedAt),
-      backend: currentBackend.value,
-      reusedRenderer: !createdRenderer,
-    })
   } catch (error) {
     if (!rendererSwapped && createdRenderer && nextRenderer) {
       nextRenderer.dispose?.()
@@ -688,8 +651,6 @@ async function mountActiveBackend() {
 }
 
 async function initWorld(room: RoomData) {
-  const initStartedAt = performance.now()
-  debugLoad('initWorld:start', { roomId: String(room.uuid) })
   cleanup()
 
   let defaultMapUrl =
@@ -737,15 +698,6 @@ async function initWorld(room: RoomData) {
     ? configuredObjectMapMetaUrl || (isDefaultMapSelected ? defaultObjectMapMetaUrl : '')
     : ''
   const hasObjectMap = canUse3D && Boolean(selectedObjectMapUrl && selectedObjectMapMetaUrl)
-  debugLoad('initWorld:map-options', {
-    canUse3D,
-    hasObjectMap,
-    isDefaultMapSelected,
-    mapUrl: room.options.mapUrl,
-    heightMapUrl: room.options.heightMapUrl ?? null,
-    objectMapUrl: selectedObjectMapUrl,
-    objectMapMetaUrl: selectedObjectMapMetaUrl,
-  })
 
   initLoading([
     { key: 'resourcePack', labelKey: 'loadingStages.resourcePack' },
@@ -970,10 +922,6 @@ async function initWorld(room: RoomData) {
   ready.value = true
   emit('ready', w)
   emitLoading()
-  debugLoad('initWorld:done', {
-    roomId: String(room.uuid),
-    elapsedMs: Math.round(performance.now() - initStartedAt),
-  })
   return w
 }
 

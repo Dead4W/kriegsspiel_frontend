@@ -81,7 +81,6 @@ export class threeRenderer {
   private skyLayer: SkyLayer = createSkyLayer(this.scene)
   private unitsLayer: UnitsLayerRenderer | null = null
   private viewDistance = 1800
-  private static readonly DEBUG_PREFIX = '[3DLoadDebug]'
 
   constructor(canvas: HTMLCanvasElement, overlayCanvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -118,17 +117,12 @@ export class threeRenderer {
   }
 
   async setSceneAssets(assets: RenderSceneAssets) {
-    const startedAt = performance.now()
-    this.debugLog('setSceneAssets:start')
     this.assets = assets
     this.mapImage = assets.mapImage
     this.metersPerPixel = Math.max(0.01, Number(assets.metersPerPixel) || 1)
     this.minimapStaticCanvas = this.buildMinimapStaticCanvas(assets.mapImage)
     this.inited = false
     await this.ensureSceneReady()
-    this.debugLog('setSceneAssets:done', {
-      elapsedMs: Math.round(performance.now() - startedAt),
-    })
   }
 
   getCameraState(): ThreeCameraState {
@@ -293,7 +287,7 @@ export class threeRenderer {
         this.inited = true
       })
       .catch((error) => {
-        console.error('[3DLoadDebug] rebuildScene:error', error)
+        console.error('rebuildScene:error', error)
         // Stop retry storms on permanent failures.
         this.inited = true
       })
@@ -304,15 +298,10 @@ export class threeRenderer {
 
   private async rebuildScene() {
     if (!this.mapImage || !this.assets?.objectMapImage || !this.assets?.objectMapMeta) return
-    const startedAt = performance.now()
-    let stepStartedAt = startedAt
-    this.debugLog('rebuildScene:start')
 
     this.clearObjects()
     this.waterUpdater = null
-    this.debugStep('clearObjects', stepStartedAt)
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
 
     const bitmap = this.assets.objectMapImage
     const sourceCanvas = document.createElement('canvas')
@@ -322,12 +311,7 @@ export class threeRenderer {
     if (!sourceCtx) return
     sourceCtx.drawImage(bitmap, 0, 0)
     const imageData = sourceCtx.getImageData(0, 0, bitmap.width, bitmap.height)
-    this.debugStep('readImageData', stepStartedAt, {
-      width: bitmap.width,
-      height: bitmap.height,
-    })
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
     const longestSide = Math.max(bitmap.width, bitmap.height)
     const targetMaxSide =
       longestSide >= 9000 ? 2600 : longestSide >= 7000 ? 2800 : longestSide >= 5000 ? 3000 : 3400
@@ -339,14 +323,7 @@ export class threeRenderer {
       this.assets.objectMapMeta as Record<string, unknown>,
       { chunkRows: 96, targetMaxSide }
     )
-    this.debugStep('parseColorMaskFromImageData', stepStartedAt, {
-      sampledWidth: parsedMask.width,
-      sampledHeight: parsedMask.height,
-      sampleStep: parsedMask.sampleStep,
-      targetMaxSide,
-    })
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
     const sourceSampleStep = Math.max(1, Number(parsedMask.sampleStep ?? 1))
     const sampledPixelSpan = Math.max(1, sourceSampleStep)
 
@@ -372,9 +349,7 @@ export class threeRenderer {
       threeRenderer.MAX_VIEW_DISTANCE
     )
     this.updateVisibilityRanges()
-    this.debugStep('cameraAndWorldSetup', stepStartedAt)
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
 
     const halfW = () => worldInfo.width / 2
     const halfH = () => worldInfo.height / 2
@@ -393,9 +368,7 @@ export class threeRenderer {
     this.unitsLayer = createUnitsLayer(context)
 
     makeGround(context)
-    this.debugStep('makeGround', stepStartedAt)
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
 
     const layerSamplingSteps: Record<string, number> = {
       // Keep forest dense even when mask parsing is downsampled.
@@ -415,16 +388,7 @@ export class threeRenderer {
     const bridgeComponents = extractLayerComponentsFromMask(parsedMask, 'bridge', 2)
     const riverForBridge = extractLayerPointsFromMask(parsedMask, 'river', 1)
     const riverRaw = extractLayerPointsFromMask(parsedMask, 'river', riverSamplingStep)
-    this.debugStep('extractBaseLayers', stepStartedAt, {
-      forestPoints: forestRaw.points.length,
-      buildingComponents: buildingComponentsRaw.length,
-      redBuildingComponents: redBuildingComponentsRaw.length,
-      bridgeComponents: bridgeComponents.length,
-      riverPoints: riverRaw.points.length,
-      layerSamplingSteps,
-    })
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
 
     const roadDatasets = buildRoadDatasets(
       {
@@ -435,12 +399,7 @@ export class threeRenderer {
       },
       { passes: 1, minNeighborsToKeep: 2, minNeighborsToAdd: 6, minComponentSize: 4 }
     )
-    this.debugStep('buildRoadDatasets', stepStartedAt, {
-      roadPoints: roadDatasets.road.points.length,
-      goodRoadPoints: roadDatasets.goodRoad.points.length,
-    })
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
 
     const bridgeOccupancy = buildPixelOccupancyFromComponents(bridgeComponents, 2)
     const roadPointsForExclusion = roadDatasets.roadForBridge.points.concat(
@@ -500,14 +459,7 @@ export class threeRenderer {
         return merged
       })(),
     }
-    this.debugStep('filterAndMergeLayers', stepStartedAt, {
-      forestPoints: forest.points.length,
-      roadPoints: road.points.length,
-      goodRoadPoints: goodRoad.points.length,
-      riverPoints: river.points.length,
-    })
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
 
     const buildingRoadPoints = road.points.concat(goodRoad.points)
     const forestTrees = addForestTrees(context, forest.points, {
@@ -559,9 +511,7 @@ export class threeRenderer {
       maxWidthPx: 4.2,
       roadWidthToBridgeWidthScale: 1.9,
     })
-    this.debugStep('placeNatureAndStructures', stepStartedAt)
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
 
     renderRoadLayer(context, road.points, {
       seed: 9,
@@ -639,14 +589,7 @@ export class threeRenderer {
         ),
       materialFactory: createRoadTransitionMaterialFactory('stone'),
     })
-    this.debugStep('renderRoads', stepStartedAt, {
-      roadPoints: road.points.length,
-      goodRoadPoints: goodRoad.points.length,
-      roadTransitionPoints: roadTransitionPoints.length,
-      goodRoadTransitionPoints: goodRoadTransitionPoints.length,
-    })
     await this.yieldToMainThread()
-    stepStartedAt = performance.now()
     const riverRender = addWaterLayer(context, river.points, {
       yBase: worldInfo.objectSize * 0.1,
       deepColor: 0x2a62ad,
@@ -655,10 +598,6 @@ export class threeRenderer {
     this.waterUpdater = riverRender.update
     this.applyRadialFogToSceneMaterials()
     this.renderer.shadowMap.needsUpdate = true
-    this.debugStep('addWaterLayer', stepStartedAt)
-    this.debugLog('rebuildScene:done', {
-      totalMs: Math.round(performance.now() - startedAt),
-    })
   }
 
   private clearObjects() {
@@ -692,19 +631,20 @@ export class threeRenderer {
   }
 
   private bindInput() {
-    const onCanvasPointerDown = (event: PointerEvent) => {
-      if (event.button === 0 && this.handleMinimapClick(event)) {
-        return
-      }
+    const requestPointerLockForInteraction = (
+      event: Pick<PointerEvent, 'clientX' | 'clientY' | 'button'>
+    ) => {
+      const insideCanvas = this.isPointInsideCanvas(event.clientX, event.clientY)
+      if (!insideCanvas) return
+      if (event.button === 0 && this.handleMinimapClick(event)) return
       if (document.pointerLockElement === this.canvas) return
       this.canvas.requestPointerLock()
     }
+    const onDocumentPointerDownCapture = (event: PointerEvent) => {
+      requestPointerLockForInteraction(event)
+    }
     const onCanvasClick = (event: MouseEvent) => {
-      if (event.button === 0 && this.handleMinimapClick(event)) {
-        return
-      }
-      if (document.pointerLockElement === this.canvas) return
-      this.canvas.requestPointerLock()
+      requestPointerLockForInteraction(event)
     }
     const onPointerLockChange = () => {
       this.pointerLocked = document.pointerLockElement === this.canvas
@@ -734,7 +674,7 @@ export class threeRenderer {
       this.clampCameraToWorldBounds()
     }
 
-    this.canvas.addEventListener('pointerdown', onCanvasPointerDown)
+    document.addEventListener('pointerdown', onDocumentPointerDownCapture, true)
     this.canvas.addEventListener('click', onCanvasClick)
     this.canvas.addEventListener('wheel', onWheel, { passive: false })
     document.addEventListener('pointerlockchange', onPointerLockChange)
@@ -743,7 +683,7 @@ export class threeRenderer {
     window.addEventListener('keyup', onKeyUp)
 
     this.removeListeners.push(() =>
-      this.canvas.removeEventListener('pointerdown', onCanvasPointerDown)
+      document.removeEventListener('pointerdown', onDocumentPointerDownCapture, true)
     )
     this.removeListeners.push(() => this.canvas.removeEventListener('click', onCanvasClick))
     this.removeListeners.push(() =>
@@ -767,6 +707,16 @@ export class threeRenderer {
     )
     const y = threeRenderer.MINIMAP_TOP_MARGIN
     return { cssWidth, cssHeight, minimapWidth, minimapHeight, x, y }
+  }
+
+  private isPointInsideCanvas(clientX: number, clientY: number) {
+    const rect = this.canvas.getBoundingClientRect()
+    return (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    )
   }
 
   private handleMinimapClick(event: Pick<MouseEvent, 'clientX' | 'clientY'>) {
@@ -891,19 +841,6 @@ export class threeRenderer {
     }
     ;(material.userData as Record<string, unknown>)[marker] = true
     material.needsUpdate = true
-  }
-
-  private debugLog(message: string, payload?: Record<string, unknown>) {
-    if (payload) {
-      console.log(`${threeRenderer.DEBUG_PREFIX} ${message}`, payload)
-      return
-    }
-    console.log(`${threeRenderer.DEBUG_PREFIX} ${message}`)
-  }
-
-  private debugStep(step: string, stepStartedAt: number, payload?: Record<string, unknown>) {
-    const elapsedMs = Math.round(performance.now() - stepStartedAt)
-    this.debugLog(step, payload ? { elapsedMs, ...payload } : { elapsedMs })
   }
 
   private async yieldToMainThread() {

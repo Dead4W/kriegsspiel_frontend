@@ -262,6 +262,16 @@ async function createRoom() {
                 <label class="object-map-group__title">
                   {{ t('settings.customMap.objectMapGroupTitle') }}
                 </label>
+                <RouterLink
+                  class="help-link"
+                  :to="{
+                    name: 'wiki',
+                    params: { locale: route.params.locale },
+                    query: { section: 'getting-started', tab: 'map-3d' },
+                  }"
+                >
+                  {{ t('settings.customMap.wiki3dMapLink') }}
+                </RouterLink>
 
                 <div class="field">
                   <label>{{ t('settings.customMap.objectMapUrl') }}</label>

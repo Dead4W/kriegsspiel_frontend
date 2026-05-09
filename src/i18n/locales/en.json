@@ -342,6 +342,7 @@
     "tabs": {
       "overview": "Overview",
       "firstRoom": "First room",
+      "map3d": "3D map",
       "controls": "Controls",
       "short": "Quick flow",
       "roles": "Roles",
@@ -773,7 +774,8 @@
       "title": "Map",
       "mapUrl": "Map URL",
       "heightMapUrl": "Height map URL (optional)",
-      "objectMapGroupTitle": "Object map",
+      "objectMapGroupTitle": "Object map (3D Map)",
+      "wiki3dMapLink": "3D map documentation",
       "objectMapUrl": "Object map URL (png, jpeg, etc.)",
       "objectMapMetaUrl": "Object map metadata URL (json)",
       "objectMapPairError": "If one object map field is filled, the other one is required too.",

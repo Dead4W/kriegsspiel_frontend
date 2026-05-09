@@ -39,6 +39,25 @@ export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
   | { type: 'error'; message: string }
 
+const DEMO_BLOCKED_INCOMING_TYPES = new Set<OutMessage['type']>([
+  'unit',
+  'unit-remove',
+  'paint_add',
+  'paint_undo',
+  'cursor',
+  'skip_time',
+  'set_stage',
+  'direct_view',
+  'weather',
+  'room',
+])
+
+let isDemoReadonlyMode = false
+
+export function setDemoReadonlyMode(enabled: boolean) {
+  isDemoReadonlyMode = enabled
+}
+
 export class GameSocket {
   private ws!: WebSocket
   private world!: world
@@ -194,6 +213,9 @@ export class GameSocket {
     if (msg.type === 'messages') {
       for (const m of msg.messages) {
         if (this.world.socketLock) return
+        if (isDemoReadonlyMode && DEMO_BLOCKED_INCOMING_TYPES.has(m.type)) {
+          continue
+        }
 
         if (m.type === 'unit') {
           const mData = {...m.data};

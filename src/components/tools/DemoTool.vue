@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import api from '@/api/client'
+import { setDemoReadonlyMode } from '@/api/socket'
 import type { unitstate, uuid } from '@/engine'
 import type { PaintStroke } from '@/engine/types/paintTypes'
 
@@ -105,7 +106,15 @@ async function loadSnapshotsList() {
         key: window.ROOM_KEYS.admin_key ?? '',
       },
     })
-    snapshots.value = res.data
+    const orderedSnapshots = [...(res.data as string[])].sort((a, b) => {
+      const aTime = parseSnapshotTimestamp(a)
+      const bTime = parseSnapshotTimestamp(b)
+      if (aTime != null && bTime != null) return aTime - bTime
+      if (aTime != null) return -1
+      if (bTime != null) return 1
+      return a.localeCompare(b)
+    })
+    snapshots.value = orderedSnapshots
     index.value = 0
     snapshotCache.clear()
   } catch (e) {
@@ -432,6 +441,7 @@ function onKeydown(e: KeyboardEvent) {
 /* ---------- lifecycle ---------- */
 
 onMounted(async () => {
+  setDemoReadonlyMode(true)
   window.addEventListener('keydown', onKeydown)
   await loadSnapshotsList()
   if (snapshots.value.length > 0) {
@@ -441,6 +451,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopPlayback()
+  setDemoReadonlyMode(false)
   window.removeEventListener('keydown', onKeydown)
 })
 </script>

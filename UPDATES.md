@@ -1,4 +1,5 @@
 [2026-05-10]
+- Fix demo loads last state instead of first snapshot
 - Add 3D view if set object map url
 - Add object map url for Essex
 - 3D Example for Essex now live

@@ -305,6 +305,7 @@ function resolveAttackTarget(
   unitsById: Map<string, BaseUnit>,
   world: WorldMetrics
 ): AttackIntent | null {
+  if (unit.isRetreat) return null
   const commands = unit.getCommands()
   for (let i = 0; i < commands.length; i += 1) {
     const command = commands[i] as any
@@ -333,6 +334,7 @@ function resolveAttackTarget(
       const candidate = unitsById.get(targetIds[t]!)
       if (!candidate) continue
       if (!candidate.alive) continue
+      if (candidate.isRetreat) continue
       if (candidate.team === unit.team) continue
       candidates.push(candidate)
     }

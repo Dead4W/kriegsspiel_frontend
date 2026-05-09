@@ -69,12 +69,22 @@ export function makeGround(context: WorldRenderContext) {
   plane.receiveShadow = true
   scene.add(plane)
 
+  const worldWidthMeters = world.width * world.cellSize
+  const worldHeightMeters = world.height * world.cellSize
+  // Keep the base layer far beyond fog so its edge never shows through haze.
+  const baseWidthMeters = Math.max(worldWidthMeters * 1.25, worldWidthMeters + 40000)
+  const baseHeightMeters = Math.max(worldHeightMeters * 1.25, worldHeightMeters + 40000)
+  const baseFogSegments = Math.max(
+    baseSegments,
+    Math.min(160, Math.round(Math.max(baseWidthMeters, baseHeightMeters) / 520))
+  )
+
   const base = new THREE.Mesh(
     new THREE.PlaneGeometry(
-      world.width * world.cellSize * 1.25,
-      world.height * world.cellSize * 1.25,
-      baseSegments,
-      baseSegments
+      baseWidthMeters,
+      baseHeightMeters,
+      baseFogSegments,
+      baseFogSegments
     ),
     new THREE.MeshStandardMaterial({ color: 0x97b88f, roughness: 1, metalness: 0 })
   )

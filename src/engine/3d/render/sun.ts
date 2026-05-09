@@ -59,10 +59,6 @@ export function createSunSystem({ scene }: { scene: THREE.Scene }) {
   scene.add(sun.target)
   const moon = new THREE.DirectionalLight(0xaec8ff, 0.0)
   scene.add(moon)
-  const dayFog = new THREE.Color(0x86a7df)
-  const sunsetFog = new THREE.Color(0xab7a67)
-  const nightFog = new THREE.Color(0x121a2b)
-  const temp = new THREE.Color()
   const sunColor = new THREE.Color()
   let stableShadowExtent = 1400
   return {
@@ -120,11 +116,6 @@ export function createSunSystem({ scene }: { scene: THREE.Scene }) {
       moon.position.set(lightTargetX - x, -y, lightTargetZ - z)
       moon.intensity = moonlight * 0.11
       ambientLight.intensity = 0.035 + daylight * 0.3 + twilight * 0.06 + moonlight * 0.045
-      if (scene?.fog?.color) {
-        temp.copy(nightFog).lerp(dayFog, daylight)
-        temp.lerp(sunsetFog, twilight * 0.65)
-        scene.fog.color.copy(temp)
-      }
       return {
         sunPosition: sun.position.clone(),
         daylight,

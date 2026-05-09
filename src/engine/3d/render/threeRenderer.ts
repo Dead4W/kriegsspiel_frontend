@@ -43,7 +43,8 @@ export class threeRenderer {
   private static readonly MIN_VIEW_DISTANCE = 1800
   private static readonly MAX_VIEW_DISTANCE = 6000
   private static readonly VIEW_DISTANCE_MAP_FACTOR = 1.04
-  private static readonly FOG_NEAR_FACTOR = 1.6
+  // Start fog much earlier to avoid a visible horizon seam.
+  private static readonly FOG_NEAR_FACTOR = 0.75
   private static readonly FOG_FAR_FACTOR = 2.5
   private static readonly CAMERA_SPEED_NEAR_MULTIPLIER = 0.3
   private static readonly CAMERA_SPEED_FAR_MULTIPLIER = 1.9

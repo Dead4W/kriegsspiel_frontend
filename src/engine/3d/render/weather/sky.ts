@@ -12,6 +12,12 @@ export type SkyLayer = {
   dispose(): void
 }
 
+function smoothstep(edge0: number, edge1: number, x: number) {
+  if (edge0 === edge1) return x < edge0 ? 0 : 1
+  const t = THREE.MathUtils.clamp((x - edge0) / (edge1 - edge0), 0, 1)
+  return t * t * (3 - 2 * t)
+}
+
 const VERTEX_SHADER = `
 varying vec3 vWorldDirection;
 
@@ -84,10 +90,13 @@ export function createSkyLayer(scene: THREE.Scene): SkyLayer {
   const topSunset = new THREE.Color(0x4f7ccf)
   const horizonSunset = new THREE.Color(0xffaf72)
   const bottomSunset = new THREE.Color(0xc08174)
-  const topNight = new THREE.Color(0x0b1430)
-  const horizonNight = new THREE.Color(0x1a2848)
-  const bottomNight = new THREE.Color(0x1b2137)
+  const topNight = new THREE.Color(0x03050e)
+  const horizonNight = new THREE.Color(0x03050e)
+  const bottomNight = new THREE.Color(0x03050e)
   const mixColor = new THREE.Color()
+  const computedFogColor = new THREE.Color()
+  const hazeColor = new THREE.Color(0.76, 0.79, 0.84)
+  const horizonSampleY = 0.5
 
   return {
     update({ camera, sunPosition, daylight, twilight, weatherEffect }) {
@@ -110,8 +119,19 @@ export function createSkyLayer(scene: THREE.Scene): SkyLayer {
       uniforms.uBottomColor.value.copy(mixColor)
 
       uniforms.uSunGlow.value = 0.08 + dayWeight * 1.2 + twilightWeight * 0.35
-      uniforms.uCloudiness.value = weatherEffect?.type === 'clouds' ? 1 : 0
+      const cloudiness = weatherEffect?.type === 'clouds' ? 1 : 0
+      uniforms.uCloudiness.value = cloudiness
       material.opacity = 1 - nightWeight * 0.04
+
+      // Match fog with the horizon by reproducing the exact sky gradient math.
+      const horizonBand = smoothstep(0.18, 0.68, horizonSampleY)
+      computedFogColor.copy(uniforms.uBottomColor.value).lerp(uniforms.uHorizonColor.value, horizonBand)
+      computedFogColor.lerp(uniforms.uTopColor.value, smoothstep(0.45, 1.0, horizonSampleY))
+      const haze = smoothstep(0.1, 0.55, 1.0 - horizonSampleY) * cloudiness * 0.28
+      computedFogColor.lerp(hazeColor, haze)
+      if (scene.fog?.color) {
+        scene.fog.color.copy(computedFogColor)
+      }
     },
     dispose() {
       scene.remove(dome)

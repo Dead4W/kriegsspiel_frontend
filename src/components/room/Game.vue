@@ -704,13 +704,11 @@ async function initWorld(room: RoomData) {
   initLoading([
     { key: 'resourcePack', labelKey: 'loadingStages.resourcePack' },
     { key: 'mapImage', labelKey: 'loadingStages.mapImage' },
-    ...(canUse3D ? [{ key: 'heightMapImage', labelKey: 'loadingStages.heightMapImage' }] : []),
+    { key: 'heightMapImage', labelKey: 'loadingStages.heightMapImage' },
+    { key: 'forestMap', labelKey: 'loadingStages.forestMap' },
     ...(canUse3D ? [{ key: 'objectMapImage', labelKey: 'loadingStages.objectMapImage' }] : []),
     ...(canUse3D ? [{ key: 'objectMapMeta', labelKey: 'loadingStages.objectMapMeta' }] : []),
-    { key: 'forestMap', labelKey: 'loadingStages.forestMap' },
-    ...(canUse3D
-      ? [{ key: 'heightMapProcessing', labelKey: 'loadingStages.heightMapProcessing' }]
-      : []),
+    { key: 'heightMapProcessing', labelKey: 'loadingStages.heightMapProcessing' },
     { key: 'rendererInit', labelKey: 'loadingStages.rendererInit' },
   ])
 
@@ -735,47 +733,52 @@ async function initWorld(room: RoomData) {
     metersPerPixel: resolveRoomMetersPerPixel(room.options, null, defaultMetersPerPixel),
   }
 
-  let loadMapProgress = 0
-  let loadHeightMapProgress = 0
-
   let bitmap: ImageBitmap
-  let bitmapHeightMap: ImageBitmap | null = null
-  if (canUse3D && map.heightMapUrl) {
-    const loaded = await Promise.all([
-      loadImageWithProgress(map.imageUrl, (p) => {
-        loadMapProgress = p
-        setStageProgress('mapImage', loadMapProgress)
-      }),
-      loadImageWithProgress(map.heightMapUrl, (p) => {
-        loadHeightMapProgress = p
-        setStageProgress('heightMapImage', loadHeightMapProgress)
-      }),
-    ]).catch((err) => {
-      const urls = map.heightMapUrl
-        ? `${map.imageUrl}\n${map.heightMapUrl}`
-        : map.imageUrl
-      emit('error', 'error.map_load_failed', urls)
-      throw err
-    })
-    bitmap = loaded[0]
-    bitmapHeightMap = loaded[1]
-    markStageDone('heightMapImage')
-  } else {
+  try {
     bitmap = await loadImageWithProgress(map.imageUrl, (p) => {
-      loadMapProgress = p
-      setStageProgress('mapImage', loadMapProgress)
-    }).catch((err) => {
-      emit('error', 'error.map_load_failed', map.imageUrl)
-      throw err
+      setStageProgress('mapImage', p)
     })
-    if (canUse3D) {
-      markStageDone('heightMapImage')
-    }
+  } catch (err) {
+    emit('error', 'error.map_load_failed', map.imageUrl)
+    throw err
   }
   markStageDone('mapImage')
 
   map.width = bitmap.width
   map.height = bitmap.height
+
+  let bitmapHeightMap: ImageBitmap | null = null
+  if (map.heightMapUrl) {
+    try {
+      bitmapHeightMap = await loadImageWithProgress(map.heightMapUrl, (p) => {
+        setStageProgress('heightMapImage', p)
+      })
+    } catch (err) {
+      emit('error', 'error.map_load_failed', `${map.imageUrl}\n${map.heightMapUrl}`)
+      throw err
+    }
+    markStageDone('heightMapImage')
+  } else {
+    markStageDone('heightMapImage')
+  }
+
+  setStageProgress('forestMap', 1)
+  const forestMapBuildStartedAt =
+    typeof performance !== 'undefined' ? performance.now() : Date.now()
+  const forestMap = await buildForestMap(
+    bitmap,
+    map.width,
+    map.height,
+    3,
+    (progress) => setStageProgress('forestMap', progress)
+  )
+  const forestMapBuildEndedAt =
+    typeof performance !== 'undefined' ? performance.now() : Date.now()
+  const forestMapBuildMs = Math.round(forestMapBuildEndedAt - forestMapBuildStartedAt)
+  console.info(
+    `[loading] forest map build completed in ${forestMapBuildMs}ms (${map.width}x${map.height})`
+  )
+  markStageDone('forestMap')
 
   let objectMapBitmap: ImageBitmap | null = null
   let objectMapMeta: Record<string, unknown> | null = null
@@ -872,34 +875,17 @@ async function initWorld(room: RoomData) {
 
   window.addEventListener('resize', resizeHandler)
 
-  setStageProgress('forestMap', 1)
-  const forestMapBuildStartedAt =
-    typeof performance !== 'undefined' ? performance.now() : Date.now()
-  const forestMap = await buildForestMap(
-    bitmap,
-    map.width,
-    map.height,
-    3,
-    (progress) => setStageProgress('forestMap', progress)
-  )
-  const forestMapBuildEndedAt =
-    typeof performance !== 'undefined' ? performance.now() : Date.now()
-  const forestMapBuildMs = Math.round(forestMapBuildEndedAt - forestMapBuildStartedAt)
-  console.info(
-    `[loading] forest map build completed in ${forestMapBuildMs}ms (${map.width}x${map.height})`
-  )
   w.setForestMap(forestMap)
-  markStageDone('forestMap')
 
-  if (bitmapHeightMap && canUse3D) {
+  if (bitmapHeightMap) {
     await runStageWithPulse(
       'heightMapProcessing',
       10,
       94,
-      async () => await w!.setHeightMap(bitmapHeightMap)
+      async () => await w!.setHeightMap(bitmapHeightMap!)
     )
     markStageDone('heightMapProcessing')
-  } else if (canUse3D) {
+  } else {
     markStageDone('heightMapProcessing')
   }
 

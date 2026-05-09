@@ -61,8 +61,21 @@ const mapPreviewUrl = computed(() => {
   if (typeof mapUrl !== 'string') return ''
   return mapUrl.trim()
 })
+const heightPreviewUrl = computed(() => {
+  const url = roomData.value?.options?.heightMapUrl
+  if (typeof url !== 'string') return ''
+  return url.trim()
+})
 const isMapPreviewVisible = ref(true)
+const isHeightPreviewVisible = ref(true)
 const hasMapPreview = computed(() => Boolean(mapPreviewUrl.value) && isMapPreviewVisible.value)
+const hasHeightPreview = computed(() => Boolean(heightPreviewUrl.value) && isHeightPreviewVisible.value)
+
+const showHeightPreviewLayer = computed(() => {
+  if (!hasHeightPreview.value) return false
+  if (loadingState.value?.activeStageKey !== 'heightMapImage') return false
+  return true
+})
 
 const mapImageStageProgress = computed(() => {
   const state = loadingState.value
@@ -87,9 +100,14 @@ function getStageProgress(stageKey: string) {
 const forestMapStageProgress = computed(() => getStageProgress('forestMap'))
 const isForestBuildStage = computed(() => loadingState.value?.activeStageKey === 'forestMap')
 
-const revealedChunkCount = computed(() =>
-  Math.round((mapImageStageProgress.value / 100) * MAP_PREVIEW_CHUNK_TOTAL)
-)
+const revealedChunkCount = computed(() => {
+  const state = loadingState.value
+  const progress =
+    state?.activeStageKey === 'heightMapImage'
+      ? getStageProgress('heightMapImage')
+      : mapImageStageProgress.value
+  return Math.round((progress / 100) * MAP_PREVIEW_CHUNK_TOTAL)
+})
 
 const chunkTiles = computed(() => {
   const roomSeed = String(roomData.value?.uuid || route.params.uuid || '')
@@ -129,6 +147,10 @@ const forestPixels = computed(() => {
 
 watch(mapPreviewUrl, () => {
   isMapPreviewVisible.value = true
+})
+
+watch(heightPreviewUrl, () => {
+  isHeightPreviewVisible.value = true
 })
 
 /* ================== helpers ================== */
@@ -235,6 +257,10 @@ function onMapPreviewError() {
   isMapPreviewVisible.value = false
 }
 
+function onHeightPreviewError() {
+  isHeightPreviewVisible.value = false
+}
+
 /* ================== lifecycle ================== */
 
 onMounted(() => {
@@ -262,6 +288,15 @@ onMounted(() => {
       alt=""
       draggable="false"
       @error="onMapPreviewError"
+    />
+    <img
+      v-if="showHeightPreviewLayer"
+      class="loading-map-preview loading-height-preview"
+      :class="{ 'loading-map-preview--dark': isDarkTheme }"
+      :src="heightPreviewUrl"
+      alt=""
+      draggable="false"
+      @error="onHeightPreviewError"
     />
     <div
       v-if="isForestBuildStage"
@@ -413,6 +448,10 @@ onMounted(() => {
 
 .loading-map-preview--dark {
   filter: invert(1) hue-rotate(180deg);
+}
+
+.loading-height-preview {
+  opacity: 0.1;
 }
 
 .loading-map-mask {

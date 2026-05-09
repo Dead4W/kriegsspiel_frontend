@@ -59,23 +59,9 @@ export function createSunSystem({ scene }: { scene: THREE.Scene }) {
   scene.add(sun.target)
   const moon = new THREE.DirectionalLight(0xaec8ff, 0.0)
   scene.add(moon)
-  const sunDisc = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 20, 20),
-    new THREE.MeshBasicMaterial({
-      color: 0xffde94,
-      transparent: true,
-      opacity: 0.95,
-      fog: false,
-      depthTest: false,
-      depthWrite: false,
-      toneMapped: false,
-    })
-  )
-  sunDisc.renderOrder = 1000
-  scene.add(sunDisc)
-  const dayFog = new THREE.Color(0x8cb0ff)
-  const sunsetFog = new THREE.Color(0xb7775d)
-  const nightFog = new THREE.Color(0x0b1220)
+  const dayFog = new THREE.Color(0x86a7df)
+  const sunsetFog = new THREE.Color(0xab7a67)
+  const nightFog = new THREE.Color(0x121a2b)
   const temp = new THREE.Color()
   const sunColor = new THREE.Color()
   let stableShadowExtent = 1400
@@ -131,14 +117,6 @@ export function createSunSystem({ scene }: { scene: THREE.Scene }) {
       sun.intensity = daylight * 1.15
       sun.visible = daylight > 0.001
       sun.color.copy(sunColor.setHSL(0.11, 0.52, 0.52 + daylight * 0.3))
-      const discRadius = Math.max(40, Math.min(240, worldSpan * 0.04))
-      const skyOffset = Math.max(200, distance * 0.4)
-      sunDisc.position
-        .copy(camera.position)
-        .add(new THREE.Vector3(horizontalX, Math.max(0.1, sunElevation), horizontalZ).normalize().multiplyScalar(skyOffset))
-      sunDisc.scale.setScalar(discRadius)
-      ;(sunDisc.material as THREE.MeshBasicMaterial).color.copy(sun.color)
-      sunDisc.visible = daylight > 0.001
       moon.position.set(lightTargetX - x, -y, lightTargetZ - z)
       moon.intensity = moonlight * 0.11
       ambientLight.intensity = 0.035 + daylight * 0.3 + twilight * 0.06 + moonlight * 0.045
@@ -146,12 +124,12 @@ export function createSunSystem({ scene }: { scene: THREE.Scene }) {
         temp.copy(nightFog).lerp(dayFog, daylight)
         temp.lerp(sunsetFog, twilight * 0.65)
         scene.fog.color.copy(temp)
-        if (scene.background instanceof THREE.Color) scene.background.copy(temp)
       }
       return {
         sunPosition: sun.position.clone(),
         daylight,
         moonlight,
+        twilight,
         skyColor:
           scene?.fog?.color ?? (scene.background instanceof THREE.Color ? scene.background : new THREE.Color(0x8cb0ff)),
       }

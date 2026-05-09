@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import type { world } from '@/engine/world/world'
 import type { RenderSceneAssets } from '@/engine/orchestrators/renderOrchestrator'
+import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
+import { getWeatherEffect } from '@/engine/resourcePack/weather'
 import {
   buildPixelOccupancyFromComponents,
   buildPixelOccupancyFromPoints,
@@ -26,6 +28,8 @@ import {
 import { addWaterLayer } from './objects/water'
 import { createUnitsLayer, type UnitsLayerRenderer } from './objects/units'
 import { createSunSystem, resolveSunTimeHoursFromWorldTime } from './sun'
+import { createCloudyWeatherLayer, type CloudyWeatherLayer } from './weather/cloudy'
+import { createSkyLayer, type SkyLayer } from './weather/sky'
 
 export type ThreeCameraState = {
   x: number
@@ -72,6 +76,8 @@ export class threeRenderer {
   private removeListeners: Array<() => void> = []
   private waterUpdater: ((elapsedSeconds: number, camera: THREE.PerspectiveCamera, lighting: any) => void) | null =
     null
+  private cloudyWeatherLayer: CloudyWeatherLayer = createCloudyWeatherLayer(this.scene)
+  private skyLayer: SkyLayer = createSkyLayer(this.scene)
   private unitsLayer: UnitsLayerRenderer | null = null
   private viewDistance = 1800
   private static readonly DEBUG_PREFIX = '[3DLoadDebug]'
@@ -91,7 +97,7 @@ export class threeRenderer {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.shadowMap.autoUpdate = true
 
-    this.scene.background = new THREE.Color(0x8cb0ff)
+    this.scene.background = null
     this.scene.fog = new THREE.Fog(0x8cb0ff, this.viewDistance * 0.58, this.viewDistance)
     this.scene.add(this.objectsGroup)
 
@@ -181,10 +187,27 @@ export class threeRenderer {
       sunTimeHours: this.sunTimeHours,
       camera: this.camera,
     })
+    const weatherEffect = getWeatherEffect(w.weather.value)
+    this.skyLayer.update({
+      camera: this.camera,
+      sunPosition: sunState.sunPosition,
+      daylight: sunState.daylight,
+      twilight: sunState.twilight,
+      weatherEffect,
+    })
     this.updateVisibilityRanges()
     this.applyRadialFogToSceneMaterials()
     this.waterUpdater?.(elapsed, this.camera, sunState)
     this.unitsLayer?.update(w.units.list(), elapsed, delta, this.camera)
+    const weatherShadersEnabled = Boolean(
+      window.CLIENT_SETTINGS?.[CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS]
+    )
+    this.cloudyWeatherLayer.update({
+      camera: this.camera,
+      elapsedSeconds: elapsed,
+      enabled: weatherShadersEnabled && weatherEffect?.type === 'clouds',
+      daylight: sunState.daylight,
+    })
     this.renderer.render(this.scene, this.camera)
   }
 
@@ -248,6 +271,8 @@ export class threeRenderer {
     for (let i = 0; i < this.removeListeners.length; i += 1) this.removeListeners[i]!()
     this.removeListeners = []
     this.renderer.dispose()
+    this.skyLayer.dispose()
+    this.cloudyWeatherLayer.dispose()
     this.clearObjects()
     this.waterUpdater = null
   }

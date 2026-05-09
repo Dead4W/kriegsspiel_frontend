@@ -143,7 +143,12 @@ export class UnitsLayerRenderer {
     this.context.scene.add(this.effectsRoot)
   }
 
-  update(units: BaseUnit[], elapsedSeconds: number, deltaSeconds: number, camera: THREE.PerspectiveCamera) {
+  update(
+    units: BaseUnit[],
+    elapsedSeconds: number,
+    deltaSeconds: number,
+    camera: THREE.PerspectiveCamera
+  ) {
     const aliveIds = new Set<string>()
     const unitsById = new Map<string, BaseUnit>()
     const mapHalfWidth = this.context.world.width * 0.5

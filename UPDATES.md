@@ -1,3 +1,8 @@
+[2026-05-10]
+- Add 3D view if set object map url
+- Add object map url for Essex
+- 3D Example for Essex now live
+
 [2026-05-08]
 - Add auto rotate units by move/attack orders
 

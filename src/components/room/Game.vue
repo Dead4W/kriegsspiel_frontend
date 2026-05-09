@@ -73,7 +73,7 @@ const showBackendSwitchOverlay = computed(
 )
 
 function allow3DRender() {
-  return props.team === Team.ADMIN
+  return true
 }
 
 type Camera2DState = {
@@ -1083,7 +1083,7 @@ function toggleRendererBackend() {
 
 .renderer-toggle {
   position: absolute;
-  top: 0.85rem;
+  top: 16px;
   right: 4.5rem;
   z-index: 4;
   min-width: 3.1rem;

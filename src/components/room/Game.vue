@@ -1086,14 +1086,14 @@ function toggleRendererBackend() {
   top: 16px;
   right: 4.5rem;
   z-index: 4;
-  min-width: 3.1rem;
-  padding: 0.35rem 0.55rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--panel-border);
-  background: rgba(15, 22, 33, 0.75);
-  color: var(--text);
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
+  pointer-events: auto;
+  cursor: pointer;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #020617cc;
+  color: white;
+  padding: 6px 10px;
+  font-size: 16px;
 }
 
 .renderer-toggle:disabled {

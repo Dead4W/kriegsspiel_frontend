@@ -692,10 +692,18 @@ export class threeRenderer {
   }
 
   private bindInput() {
+    const onCanvasPointerDown = (event: PointerEvent) => {
+      if (event.button === 0 && this.handleMinimapClick(event)) {
+        return
+      }
+      if (document.pointerLockElement === this.canvas) return
+      this.canvas.requestPointerLock()
+    }
     const onCanvasClick = (event: MouseEvent) => {
       if (event.button === 0 && this.handleMinimapClick(event)) {
         return
       }
+      if (document.pointerLockElement === this.canvas) return
       this.canvas.requestPointerLock()
     }
     const onPointerLockChange = () => {
@@ -726,6 +734,7 @@ export class threeRenderer {
       this.clampCameraToWorldBounds()
     }
 
+    this.canvas.addEventListener('pointerdown', onCanvasPointerDown)
     this.canvas.addEventListener('click', onCanvasClick)
     this.canvas.addEventListener('wheel', onWheel, { passive: false })
     document.addEventListener('pointerlockchange', onPointerLockChange)
@@ -733,6 +742,9 @@ export class threeRenderer {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
 
+    this.removeListeners.push(() =>
+      this.canvas.removeEventListener('pointerdown', onCanvasPointerDown)
+    )
     this.removeListeners.push(() => this.canvas.removeEventListener('click', onCanvasClick))
     this.removeListeners.push(() =>
       document.removeEventListener('pointerlockchange', onPointerLockChange)
@@ -757,7 +769,7 @@ export class threeRenderer {
     return { cssWidth, cssHeight, minimapWidth, minimapHeight, x, y }
   }
 
-  private handleMinimapClick(event: MouseEvent) {
+  private handleMinimapClick(event: Pick<MouseEvent, 'clientX' | 'clientY'>) {
     const { minimapWidth, minimapHeight, x, y } = this.resolveMinimapLayout()
     const rect = this.canvas.getBoundingClientRect()
     const localX = event.clientX - rect.left

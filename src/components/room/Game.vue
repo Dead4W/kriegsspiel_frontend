@@ -70,6 +70,9 @@ const THREE_CAMERA_FOV_DEG = 58
 const showBackendSwitchOverlay = computed(
   () => isInitial3DLoad.value && currentBackend.value === '3d'
 )
+const canShowBackendToggle = computed(
+  () => allow3DRender() && window.PLAYER?.name === 'Dead4W'
+)
 
 function allow3DRender() {
   return true
@@ -962,7 +965,7 @@ function toggleRendererBackend() {
 <template>
   <section class="room" :data-team="team">
     <button
-      v-if="allow3DRender()"
+      v-if="canShowBackendToggle"
       class="renderer-toggle"
       type="button"
       :disabled="isBackendMounting"

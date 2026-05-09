@@ -321,7 +321,7 @@ export class threeRenderer {
       bitmap.width,
       bitmap.height,
       this.assets.objectMapMeta as Record<string, unknown>,
-      { chunkRows: 96, targetMaxSide }
+      { targetMaxSide }
     )
     await this.yieldToMainThread()
     const sourceSampleStep = Math.max(1, Number(parsedMask.sampleStep ?? 1))

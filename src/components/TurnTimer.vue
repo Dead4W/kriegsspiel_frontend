@@ -212,6 +212,7 @@ async function startTurn() {
             type: u.type,
             team: u.team,
             pos: u.pos,
+            angle: u.angle,
           }
         }
         return {
@@ -219,6 +220,7 @@ async function startTurn() {
           type: u.type,
           team: u.team,
           pos: u.pos,
+          angle: u.angle,
           seenRoomUserIds: u.seenRoomUserIds,
 
           isRetreatState: u.isRetreat,

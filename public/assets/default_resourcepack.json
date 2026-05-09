@@ -212,7 +212,7 @@
         "title": "Messenger",
         "stats": { "maxHp": 1, "damage": 0.01, "speed": 400, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
         "abilities": [],
-        "params": { "suppressionThreshold": 10, "renderIcon": "✉" }
+        "params": { "suppressionThreshold": 0, "renderIcon": "✉️" }
       }
     ]
   },

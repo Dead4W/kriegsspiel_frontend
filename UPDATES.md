@@ -3,6 +3,7 @@
 - DirectView - for non-direct visibility update only unit position
 - Demo - fix loading last state instead of first snapshot
 - Units - add suppression
+- Loading - add background animation
 - 3D Render - add 3D view when object map url is set
 - 3D Render - add object map url for Essex
 - 3D Render - Essex example is now live

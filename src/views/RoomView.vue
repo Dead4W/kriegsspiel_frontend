@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import { loadRoom as apiLoadRoom } from '@/api/client'
@@ -7,6 +7,7 @@ import { loadRoom as apiLoadRoom } from '@/api/client'
 import TeamSelect from '@/components/room/TeamSelect.vue'
 import Game from '@/components/room/Game.vue'
 import type { GameLoadingState } from '@/components/room/loading'
+import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
 
 import type { uuid } from '@/engine'
 
@@ -31,6 +32,13 @@ const roomData = ref<RoomData | null>(null)
 const selectedTeam = ref<Team | null>(null)
 const selectedUserId = ref<number | null>(null)
 const autoTeam = ref<Team | null>(null)
+const isDarkTheme = ref(false)
+
+function syncDarkTheme() {
+  isDarkTheme.value = Boolean(window.CLIENT_SETTINGS?.[CLIENT_SETTING_KEYS.DARK_THEME])
+}
+
+syncDarkTheme()
 
 const activeLoadingLabelKey = computed(() => {
   const state = loadingState.value
@@ -39,6 +47,52 @@ const activeLoadingLabelKey = computed(() => {
     state.stages.find((stage) => stage.key === state.activeStageKey)?.labelKey ||
     'loading_map'
   )
+})
+
+const MAP_PREVIEW_CHUNK_COLS = 12
+const MAP_PREVIEW_CHUNK_ROWS = 7
+const MAP_PREVIEW_CHUNK_TOTAL = MAP_PREVIEW_CHUNK_COLS * MAP_PREVIEW_CHUNK_ROWS
+
+const mapPreviewUrl = computed(() => {
+  const mapUrl = roomData.value?.options?.mapUrl
+  if (typeof mapUrl !== 'string') return ''
+  return mapUrl.trim()
+})
+const isMapPreviewVisible = ref(true)
+const hasMapPreview = computed(() => Boolean(mapPreviewUrl.value) && isMapPreviewVisible.value)
+
+const mapImageStageProgress = computed(() => {
+  const state = loadingState.value
+  if (!state) return 0
+  const mapStage = state.stages.find((stage) => stage.key === 'mapImage')
+  if (mapStage) {
+    return Math.max(0, Math.min(100, mapStage.progress))
+  }
+  return Math.max(0, Math.min(100, state.totalProgress))
+})
+
+const revealedChunkCount = computed(() =>
+  Math.round((mapImageStageProgress.value / 100) * MAP_PREVIEW_CHUNK_TOTAL)
+)
+
+const chunkTiles = computed(() => {
+  const roomSeed = String(roomData.value?.uuid || route.params.uuid || '')
+  const roomSeedOffset = Array.from(roomSeed).reduce(
+    (sum, char) => sum + char.charCodeAt(0),
+    0
+  ) % MAP_PREVIEW_CHUNK_TOTAL
+
+  return Array.from({ length: MAP_PREVIEW_CHUNK_TOTAL }, (_, index) => {
+    const shiftedOrder = (index + roomSeedOffset) % MAP_PREVIEW_CHUNK_TOTAL
+    return {
+      id: index,
+      revealed: shiftedOrder < revealedChunkCount.value,
+    }
+  })
+})
+
+watch(mapPreviewUrl, () => {
+  isMapPreviewVisible.value = true
 })
 
 /* ================== helpers ================== */
@@ -123,10 +177,12 @@ function onTeamSelected(payload: { team: Team; userId: number | null }) {
   selectedTeam.value = payload.team
   selectedUserId.value = payload.userId
   autoTeam.value = null
+  syncDarkTheme()
 }
 
 function onGameProgress(next: GameLoadingState) {
   loadingState.value = next
+  syncDarkTheme()
 }
 
 function onGameError(i18nKey: string, url?: string) {
@@ -139,9 +195,16 @@ function onGameReady() {
   stage.value = RoomStage.READY
 }
 
+function onMapPreviewError() {
+  isMapPreviewVisible.value = false
+}
+
 /* ================== lifecycle ================== */
 
-onMounted(loadRoom)
+onMounted(() => {
+  syncDarkTheme()
+  loadRoom()
+})
 </script>
 
 <template>
@@ -151,17 +214,44 @@ onMounted(loadRoom)
   </section>
 
   <!-- 2️⃣ loading map -->
-  <section v-if="stage === RoomStage.LOADING_MAP" class="state loading">
-    <div class="loading-title">{{ t('loadingStages.title') }}</div>
-    <div class="loading-active">
-      {{ t(activeLoadingLabelKey) }}
+  <section
+    v-if="stage === RoomStage.LOADING_MAP"
+    class="state loading loading-map"
+  >
+    <img
+      v-if="hasMapPreview"
+      class="loading-map-preview"
+      :class="{ 'loading-map-preview--dark': isDarkTheme }"
+      :src="mapPreviewUrl"
+      alt=""
+      draggable="false"
+      @error="onMapPreviewError"
+    />
+    <div
+      class="loading-map-mask"
+      :class="{ 'loading-map-mask--fallback': !hasMapPreview }"
+      aria-hidden="true"
+    >
+      <div
+        v-for="tile in chunkTiles"
+        :key="tile.id"
+        class="loading-map-mask__tile"
+        :class="{ 'loading-map-mask__tile--revealed': tile.revealed }"
+      />
     </div>
 
-    <div class="progress">
-      <div class="bar" :style="{ width: (loadingState?.totalProgress || 0) + '%' }"></div>
-    </div>
+    <div class="loading-panel">
+      <div class="loading-title">{{ t('loadingStages.title') }}</div>
+      <div class="loading-active">
+        {{ t(activeLoadingLabelKey) }}
+      </div>
 
-    <div class="percent">{{ Math.round(loadingState?.totalProgress || 0) }}%</div>
+      <div class="progress">
+        <div class="bar" :style="{ width: (loadingState?.totalProgress || 0) + '%' }"></div>
+      </div>
+
+      <div class="percent">{{ Math.round(loadingState?.totalProgress || 0) }}%</div>
+    </div>
   </section>
 
   <!-- error -->
@@ -248,5 +338,67 @@ onMounted(loadRoom)
 .loading-active {
   font-size: 0.82rem;
   color: var(--text-soft);
+}
+
+.loading-map {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(28, 45, 68, 0.55), transparent 45%),
+    radial-gradient(circle at 80% 75%, rgba(33, 54, 79, 0.5), transparent 50%),
+    #0a111b;
+}
+
+.loading-map-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+.loading-map-preview--dark {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.loading-map-mask {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  pointer-events: none;
+}
+
+.loading-map-mask__tile {
+  background: rgba(7, 11, 18, 0.88);
+  transition: opacity 0.2s ease;
+}
+
+.loading-map-mask--fallback .loading-map-mask__tile {
+  background: rgba(13, 24, 37, 0.66);
+}
+
+.loading-map-mask__tile--revealed {
+  opacity: 0;
+}
+
+.loading-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-md);
+  background: rgba(7, 11, 18, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(3px);
 }
 </style>

@@ -12,6 +12,7 @@ const { t, locale } = useI18n()
 
 const user = ref<{ id: number; name: string } | null>(null)
 const showAuth = ref(false)
+const showServerError = ref(false)
 const nickname = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -160,8 +161,17 @@ async function checkAuth() {
   try {
     const { data } = await api.get('/user/auth')
     user.value = data
-  } catch {
-    showAuth.value = true
+    showAuth.value = false
+    showServerError.value = false
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
+      showAuth.value = true
+      showServerError.value = false
+      return
+    }
+
+    showAuth.value = false
+    showServerError.value = true
   }
 }
 
@@ -341,6 +351,15 @@ function acceptCookies() {
         >
           {{ loading ? '...' : t('continue') }}
         </button>
+      </div>
+    </div>
+
+    <div v-if="showServerError" class="modal">
+      <div class="modal-card">
+        <h2>{{ t('authModal.serverErrorTitle') }}</h2>
+        <p class="error">
+          {{ t('authModal.serverErrorReload') }}
+        </p>
       </div>
     </div>
 

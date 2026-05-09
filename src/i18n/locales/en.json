@@ -613,7 +613,9 @@
     "enterName": "Enter nickname",
     "signInWithGoogle": "Sign in with Google",
     "or": "or",
-    "registrationFailed": "Server error, registration failed"
+    "registrationFailed": "Server error, registration failed",
+    "serverErrorTitle": "Server error",
+    "serverErrorReload": "Server error, please reload the page."
   },
 
   "planningEntryModal": {

@@ -619,7 +619,9 @@
     "enterName": "Введите ник",
     "signInWithGoogle": "Войти через Google",
     "or": "или",
-    "registrationFailed": "Ошибка сервера, регистрация не удалась"
+    "registrationFailed": "Ошибка сервера, регистрация не удалась",
+    "serverErrorTitle": "Ошибка сервера",
+    "serverErrorReload": "Ошибка сервера, попробуйте перезагрузить страницу."
   },
 
   "planningEntryModal": {

@@ -1,4 +1,5 @@
 [2026-05-10]
+- Auth - Add error message if server down
 - DirectView - add chain spread in `COLLISION_RANGE * 2` area
 - DirectView - for non-direct visibility update only unit position
 - Demo - fix loading last state instead of first snapshot

@@ -749,6 +749,11 @@ export abstract class BaseUnit {
   private refreshAngleFromCommands() {
     const attackCommand = this.commands.find((cmd) => cmd.type === UnitCommandTypes.Attack)
     if (attackCommand) {
+      if (attackCommand.state.inaccuracyPoint) {
+        this.rotateTowardsPoint(attackCommand.state.inaccuracyPoint)
+        return
+      }
+
       const nearestTarget = attackCommand.state.targets
         .map((targetId) => window.ROOM_WORLD.units.get(targetId))
         .filter((unit): unit is BaseUnit => !!unit && unit.alive && unit.team !== this.team)
@@ -760,6 +765,11 @@ export abstract class BaseUnit {
 
       if (nearestTarget) {
         this.rotateTowardsPoint(nearestTarget.pos)
+        return
+      }
+
+      if (attackCommand.state.directViewTargetPoint) {
+        this.rotateTowardsPoint(attackCommand.state.directViewTargetPoint)
         return
       }
     }

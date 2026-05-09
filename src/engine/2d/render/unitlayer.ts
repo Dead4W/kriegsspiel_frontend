@@ -17,6 +17,7 @@ import {getInaccuracyAbility} from "@/engine/resourcePack/abilities.ts";
 import {getEnvironmentIcon} from "@/engine/resourcePack/environment.ts";
 import {getFormationIcon} from "@/engine/resourcePack/formations.ts";
 import {getUnitNumberParam, getUnitStringParam} from "@/engine/resourcePack/units.ts";
+import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 
 type MoveOrderRange = {
   min: number
@@ -76,6 +77,7 @@ export class unitlayer {
 
     this.drawVision(ctx, w, settings)
     this.updateMoveOrders()
+    this.drawDirectViewObjects(ctx, w, settings)
 
     const units = w.units
       .list()
@@ -365,6 +367,41 @@ export class unitlayer {
     }
 
     ctx.globalAlpha = 1
+  }
+
+  private drawDirectViewObjects(
+    ctx: CanvasRenderingContext2D,
+    w: world,
+    settings: typeof window.CLIENT_SETTINGS
+  ) {
+    if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS]) return
+
+    const cam = w.camera
+    const objects: DirectViewObjectState[] = w.directViewObjects.value
+    for (const object of objects) {
+      if (object.type !== 'inaccuracy') continue
+
+      const inaccuracyPointKey =
+        `${object.data.point.x.toFixed(1)}_${object.data.point.y.toFixed(1)}_${object.data.radiusMeters.toFixed(1)}`
+      if (this.inaccuracyRenderedPoints.includes(inaccuracyPointKey)) continue
+
+      const radiusPixels = object.data.radiusMeters / window.ROOM_WORLD.map.metersPerPixel
+      const {x, y} = cam.worldToScreen(object.data.point)
+
+      ctx.save()
+      ctx.globalAlpha = settings[CLIENT_SETTING_KEYS.OPACITY_COMMANDS] ?? 0.8
+      ctx.fillStyle = 'rgba(168,85,247,0.45)'
+      ctx.strokeStyle = 'black'
+      ctx.lineWidth = 1 * cam.zoom
+
+      ctx.beginPath()
+      ctx.arc(x, y, radiusPixels * cam.zoom, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+
+      this.inaccuracyRenderedPoints.push(inaccuracyPointKey)
+    }
   }
 
   // =============================

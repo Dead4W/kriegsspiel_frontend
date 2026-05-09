@@ -13,6 +13,9 @@ import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/at
 import {type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {type commandstate, unitType} from "@/engine/units/types.ts";
 import type {vec2} from "@/engine/types.ts";
+import {getInaccuracyAbility} from "@/engine/resourcePack/abilities.ts";
+import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
+import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 
 const { t } = useI18n()
 
@@ -178,6 +181,56 @@ function pointInTeamGeneralVision(team: unitTeam, point: vec2): boolean {
   return false
 }
 
+function distancePointToSegment(point: vec2, segStart: vec2, segEnd: vec2): number {
+  const vx = segEnd.x - segStart.x
+  const vy = segEnd.y - segStart.y
+  const wx = point.x - segStart.x
+  const wy = point.y - segStart.y
+
+  const segmentLengthSq = vx * vx + vy * vy
+  if (segmentLengthSq <= 1e-9) {
+    return Math.hypot(point.x - segStart.x, point.y - segStart.y)
+  }
+
+  const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / segmentLengthSq))
+  const closestX = segStart.x + vx * t
+  const closestY = segStart.y + vy * t
+  return Math.hypot(point.x - closestX, point.y - closestY)
+}
+
+function circleIntersectsPolygon(center: vec2, radius: number, polygon: vec2[]): boolean {
+  if (polygon.length < 2) return false
+
+  if (pointInPolygon(center, polygon)) {
+    return true
+  }
+
+  for (let i = 0; i < polygon.length; i++) {
+    const edgeStart = polygon[i]!
+    const edgeEnd = polygon[(i + 1) % polygon.length]!
+    if (distancePointToSegment(center, edgeStart, edgeEnd) <= radius) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function inaccuracyAreaInTeamGeneralVision(team: unitTeam, center: vec2, radiusMeters: number): boolean {
+  const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel
+  const generals = window.ROOM_WORLD.units.list()
+    .filter((unit) => unit.team === team && unit.type === unitType.GENERAL && unit.alive)
+
+  for (const general of generals) {
+    const visionPoly = buildVisionPolygon(general, window.ROOM_WORLD)
+    if (circleIntersectsPolygon(center, radiusPixels, visionPoly)) {
+      return true
+    }
+  }
+
+  return false
+}
+
 function lineSegmentIntersectionT(
   a1: vec2,
   a2: vec2,
@@ -262,11 +315,15 @@ function mapAttackCommandForDirectView(command: commandstate, unitId: string, te
       targetPoint = getAttackDirectViewTargetPoint(unit.pos, target.pos, team)
     }
   }
+  if (!targetPoint && attackState.inaccuracyPoint) {
+    targetPoint = getAttackDirectViewTargetPoint(unit.pos, attackState.inaccuracyPoint, team)
+  }
 
   return {
     ...command,
     state: {
       ...attackState,
+      inaccuracyPoint: unit.team === team ? attackState.inaccuracyPoint : null,
       targets: [],
       directViewTargetPoint: targetPoint,
     },
@@ -301,6 +358,45 @@ function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
       return pointInTeamGeneralVision(team, command.state.target)
     })
     .map((command) => mapAttackCommandForDirectView(command, unitId, team))
+}
+
+function getDirectViewObjects(team: unitTeam): DirectViewObjectState[] {
+  const result: DirectViewObjectState[] = []
+
+  for (const unit of window.ROOM_WORLD.units.list()) {
+    if (!unit.alive || unit.team === team) continue
+
+    for (const command of unit.getCommands()) {
+      if (command.type !== UnitCommandTypes.Attack) continue
+
+      const attackState = command.getState().state as AttackCommandState
+      if (!attackState.inaccuracyPoint) continue
+
+      const activeAbilities = (attackState.abilities ?? [])
+        .filter((ability) => unit.abilities.includes(ability))
+      const inaccuracyAbility = getInaccuracyAbility(activeAbilities)
+      if (!inaccuracyAbility) continue
+
+      const radiusMeters =
+        computeInaccuracyRadius(unit, attackState.inaccuracyPoint)
+        * (attackState.radiusModifier ?? 1)
+        * inaccuracyAbility.radiusMult
+      const normalizedRadius = Math.max(0, radiusMeters)
+      if (!inaccuracyAreaInTeamGeneralVision(team, attackState.inaccuracyPoint, normalizedRadius)) continue
+
+      result.push({
+        type: 'inaccuracy',
+        team: unit.team,
+        seenRoomUserIds: unit.seenRoomUserIds,
+        data: {
+          point: attackState.inaccuracyPoint,
+          radiusMeters: normalizedRadius,
+        },
+      })
+    }
+  }
+
+  return result
 }
 
 /* ===== timer ===== */
@@ -355,6 +451,7 @@ async function startTurn() {
             team: u.team,
             pos: u.pos,
             angle: u.angle,
+            seenRoomUserIds: u.seenRoomUserIds,
           }
         }
         return {
@@ -376,6 +473,11 @@ async function startTurn() {
           commands: getDirectViewCommands(u.id, team as unitTeam),
         }
       })})
+      window.ROOM_WORLD.events.emit('api', {
+        type: 'direct_view_objects',
+        team,
+        data: getDirectViewObjects(team as unitTeam),
+      })
     }
   }
 

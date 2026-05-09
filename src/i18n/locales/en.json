@@ -612,7 +612,8 @@
     "nickname": "Nickname",
     "enterName": "Enter nickname",
     "signInWithGoogle": "Sign in with Google",
-    "or": "or"
+    "or": "or",
+    "registrationFailed": "Server error, registration failed"
   },
 
   "planningEntryModal": {

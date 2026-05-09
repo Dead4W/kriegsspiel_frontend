@@ -618,7 +618,8 @@
     "nickname": "Ник",
     "enterName": "Введите ник",
     "signInWithGoogle": "Войти через Google",
-    "or": "или"
+    "or": "или",
+    "registrationFailed": "Ошибка сервера, регистрация не удалась"
   },
 
   "planningEntryModal": {

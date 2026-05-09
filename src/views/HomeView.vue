@@ -191,9 +191,9 @@ async function register() {
       } | undefined
 
       const fieldError = responseData?.errors?.name?.[0]
-      error.value = fieldError || responseData?.message || 'Ошибка регистрации'
+      error.value = fieldError || responseData?.message || 'authModal.registrationFailed'
     } else {
-      error.value = 'Ошибка регистрации'
+      error.value = 'authModal.registrationFailed'
     }
   } finally {
     loading.value = false

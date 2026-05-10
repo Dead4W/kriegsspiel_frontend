@@ -22,6 +22,7 @@ import { getTimeOfDayIdByHour } from "@/engine/resourcePack/timeOfDay.ts";
 import type {Weather} from "@/engine/resourcePack/weather.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import type {PlayerReadyInfo} from "@/engine/types/connectionTypes.ts";
+import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 
 type worldevents = {
   changed: { reason: string }
@@ -66,6 +67,8 @@ export class world {
 
   cursor = new cursorregistry()
 
+  directViewObjects: Ref<DirectViewObjectState[]> = ref<DirectViewObjectState[]>([])
+
   logs: Ref<BattleLogEntry[]> = ref<BattleLogEntry[]>([])
   connections: Ref<ConnectionInfo[]> = ref<ConnectionInfo[]>([])
   playerReadyStates: Ref<PlayerReadyInfo[]> = ref<PlayerReadyInfo[]>([])
@@ -96,6 +99,10 @@ export class world {
   addMessage(message: ChatMessage) {
     this.messages.upsert(message);
     this.events.emit('changed', { reason: 'chat' });
+  }
+
+  setDirectViewObjects(items: DirectViewObjectState[]) {
+    this.directViewObjects.value = items
   }
 
   setViewport(w: number, h: number) {
@@ -213,6 +220,7 @@ export class world {
 
   clear() {
     this.units = new unitregistry()
+    this.directViewObjects.value = []
     this.clearOverlay()
     // this.messages = new messageregistry()
     this.cursor = new cursorregistry()

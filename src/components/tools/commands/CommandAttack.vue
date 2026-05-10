@@ -4,7 +4,7 @@ import type {BaseUnit} from '@/engine/units/baseUnit'
 import {useI18n} from 'vue-i18n'
 import type {OverlayCircle, OverlayItem, OverlayLine} from "@/engine/types/overlayTypes.ts";
 import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
-import {getTeamColor} from "@/engine/render/util.ts";
+import {getTeamColor} from "@/engine/2d/render";
 import {type unitTeam, unitType} from "@/engine";
 import type {unsub} from "@/engine/events";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";

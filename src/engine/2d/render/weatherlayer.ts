@@ -1,8 +1,8 @@
 import type {world} from '@/engine/world/world'
 import { getWeatherEffect } from '@/engine/resourcePack/weather'
 
-import {drawFog} from './weathers/fog'
-import {drawClouds} from './weathers/clouds'
+import {drawFog} from '@/engine/2d/render/weathers/fog'
+import {drawClouds} from '@/engine/2d/render/weathers/clouds'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 
 export class WeatherLayer {

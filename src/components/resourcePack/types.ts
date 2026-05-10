@@ -96,6 +96,7 @@ export type ResourcePackUnitParams = {
   renderWidthMult?: number
   renderHeightMult?: number
   priorityTargets?: number
+  suppressionThreshold?: number
   attackIgnoreHeightModifier?: boolean
   attackIgnoreTargetEnvs?: string[]
   attackIgnoreTargetEnvMult?: number

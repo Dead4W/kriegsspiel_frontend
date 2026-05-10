@@ -1,3 +1,18 @@
+[2026-05-10]
+- Debug - Add copy/paste unit data
+- Chat - Umpire receive orders only for next tick
+- Chat - multiple new messages now have only 1 sound alert
+- Auth - Add error message if server down
+- DirectView - add chain spread in `COLLISION_RANGE * 2` area
+- DirectView - for non-direct visibility update only unit position
+- DirectView - show attack & move commands
+- Demo - fix loading last state instead of first snapshot
+- Units - add suppression
+- Loading - add background animation
+- 3D Render - add 3D view when object map url is set
+- 3D Render - add object map url for Essex
+- 3D Render - Essex example is now live
+
 [2026-05-08]
 - Add auto rotate units by move/attack orders
 

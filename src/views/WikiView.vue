@@ -25,6 +25,7 @@ const wikiSections: WikiSection[] = [
       { id: 'overview', titleKey: 'wikiPage.tabs.overview' },
       { id: 'fog-of-war', titleKey: 'wikiPage.tabs.fogOfWar' },
       { id: 'first-room', titleKey: 'wikiPage.tabs.firstRoom' },
+      { id: 'map-3d', titleKey: 'wikiPage.tabs.map3d' },
     ],
   },
   {
@@ -36,6 +37,7 @@ const wikiSections: WikiSection[] = [
       { id: 'roles', titleKey: 'wikiPage.tabs.roles' },
       { id: 'orders', titleKey: 'wikiPage.tabs.orders' },
       { id: 'umpire-notifications', titleKey: 'wikiPage.tabs.umpireNotifications' },
+      { id: 'suppression', titleKey: 'wikiPage.tabs.suppression' },
     ],
   },
   {
@@ -499,6 +501,15 @@ h1 {
 
 .wiki-content :deep(a) {
   color: var(--accent);
+}
+
+.wiki-content :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.8rem auto;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--panel-border) 85%, transparent);
 }
 
 @media (max-width: 860px) {

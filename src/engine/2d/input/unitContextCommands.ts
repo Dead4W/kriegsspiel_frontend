@@ -2,8 +2,9 @@ import type { world } from '@/engine/world/world'
 import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
 import { unitType } from '@/engine/units/types'
 import { UnitCommandTypes } from '@/engine/units/enums/UnitCommandTypes'
-import { emitUnitCommandRequest } from '@/engine/input/unitCommandBus'
+import { emitUnitCommandRequest } from '@/engine/2d/input/unitCommandBus'
 import type { BaseUnit } from '@/engine/units/baseUnit'
+import { InputLifecycle } from '@/engine/input/lifecycle'
 
 function isUiEventTarget(target: EventTarget | null) {
   const el = target as HTMLElement | null
@@ -71,6 +72,7 @@ function isAnyOrderOpen() {
  * Replaces logic previously located in UnitCommandTool.vue.
  */
 export function bindUnitContextCommands(w: world) {
+  const lifecycle = new InputLifecycle()
   const onPointerDownCapture = (e: PointerEvent) => {
     if (e.button !== 2) return
     if (window.INPUT.IGNORE_UNIT_INTERACTION) return
@@ -149,6 +151,8 @@ export function bindUnitContextCommands(w: world) {
   }
 
   // capture=true: перехватываем до canvas, чтобы отключить drag камеры на ПКМ.
-  window.addEventListener('pointerdown', onPointerDownCapture, true)
+  lifecycle.listen(window, 'pointerdown', onPointerDownCapture, true)
+
+  return () => lifecycle.dispose()
 }
 

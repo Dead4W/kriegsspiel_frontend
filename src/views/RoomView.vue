@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import { loadRoom as apiLoadRoom } from '@/api/client'
 
 import TeamSelect from '@/components/room/TeamSelect.vue'
 import Game from '@/components/room/Game.vue'
+import type { GameLoadingState } from '@/components/room/loading'
+import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
 
 import type { uuid } from '@/engine'
 
@@ -25,11 +27,131 @@ const { t } = useI18n()
 
 const error = ref('')
 const errorParams = ref<Record<string, string>>({})
-const mapProgress = ref(0)
+const loadingState = ref<GameLoadingState | null>(null)
 const roomData = ref<RoomData | null>(null)
 const selectedTeam = ref<Team | null>(null)
 const selectedUserId = ref<number | null>(null)
 const autoTeam = ref<Team | null>(null)
+const isDarkTheme = ref(false)
+
+function syncDarkTheme() {
+  isDarkTheme.value = Boolean(window.CLIENT_SETTINGS?.[CLIENT_SETTING_KEYS.DARK_THEME])
+}
+
+syncDarkTheme()
+
+const activeLoadingLabelKey = computed(() => {
+  const state = loadingState.value
+  if (!state?.activeStageKey) return 'loading_map'
+  return (
+    state.stages.find((stage) => stage.key === state.activeStageKey)?.labelKey ||
+    'loading_map'
+  )
+})
+
+const MAP_PREVIEW_CHUNK_COLS = 12
+const MAP_PREVIEW_CHUNK_ROWS = 7
+const MAP_PREVIEW_CHUNK_TOTAL = MAP_PREVIEW_CHUNK_COLS * MAP_PREVIEW_CHUNK_ROWS
+const FOREST_PREVIEW_PIXEL_COLS = 96
+const FOREST_PREVIEW_PIXEL_ROWS = 54
+const FOREST_PREVIEW_PIXEL_TOTAL = FOREST_PREVIEW_PIXEL_COLS * FOREST_PREVIEW_PIXEL_ROWS
+
+const mapPreviewUrl = computed(() => {
+  const mapUrl = roomData.value?.options?.mapUrl
+  if (typeof mapUrl !== 'string') return ''
+  return mapUrl.trim()
+})
+const heightPreviewUrl = computed(() => {
+  const url = roomData.value?.options?.heightMapUrl
+  if (typeof url !== 'string') return ''
+  return url.trim()
+})
+const isMapPreviewVisible = ref(true)
+const isHeightPreviewVisible = ref(true)
+const hasMapPreview = computed(() => Boolean(mapPreviewUrl.value) && isMapPreviewVisible.value)
+const hasHeightPreview = computed(() => Boolean(heightPreviewUrl.value) && isHeightPreviewVisible.value)
+
+const showHeightPreviewLayer = computed(() => {
+  if (!hasHeightPreview.value) return false
+  if (loadingState.value?.activeStageKey !== 'heightMapImage') return false
+  return true
+})
+
+const mapImageStageProgress = computed(() => {
+  const state = loadingState.value
+  if (!state) return 0
+  const mapStage = state.stages.find((stage) => stage.key === 'mapImage')
+  if (mapStage) {
+    return Math.max(0, Math.min(100, mapStage.progress))
+  }
+  return Math.max(0, Math.min(100, state.totalProgress))
+})
+
+const totalLoadingProgress = computed(() =>
+  Math.max(0, Math.min(100, loadingState.value?.totalProgress || 0))
+)
+function getStageProgress(stageKey: string) {
+  const state = loadingState.value
+  if (!state) return 0
+  const stage = state.stages.find((item) => item.key === stageKey)
+  if (!stage) return 0
+  return Math.max(0, Math.min(100, stage.progress))
+}
+const forestMapStageProgress = computed(() => getStageProgress('forestMap'))
+const isForestBuildStage = computed(() => loadingState.value?.activeStageKey === 'forestMap')
+
+const revealedChunkCount = computed(() => {
+  const state = loadingState.value
+  const progress =
+    state?.activeStageKey === 'heightMapImage'
+      ? getStageProgress('heightMapImage')
+      : mapImageStageProgress.value
+  return Math.round((progress / 100) * MAP_PREVIEW_CHUNK_TOTAL)
+})
+
+const chunkTiles = computed(() => {
+  const roomSeed = String(roomData.value?.uuid || route.params.uuid || '')
+  const roomSeedOffset = Array.from(roomSeed).reduce(
+    (sum, char) => sum + char.charCodeAt(0),
+    0
+  ) % MAP_PREVIEW_CHUNK_TOTAL
+
+  return Array.from({ length: MAP_PREVIEW_CHUNK_TOTAL }, (_, index) => {
+    const shiftedOrder = (index + roomSeedOffset) % MAP_PREVIEW_CHUNK_TOTAL
+    return {
+      id: index,
+      revealed: shiftedOrder < revealedChunkCount.value,
+    }
+  })
+})
+
+const revealedForestPixelCount = computed(() =>
+  Math.round((forestMapStageProgress.value / 100) * FOREST_PREVIEW_PIXEL_TOTAL)
+)
+
+const forestPixels = computed(() => {
+  const roomSeed = String(roomData.value?.uuid || route.params.uuid || '')
+  const roomSeedOffset = Array.from(roomSeed).reduce(
+    (sum, char) => sum + char.charCodeAt(0),
+    0
+  ) % FOREST_PREVIEW_PIXEL_TOTAL
+
+  return Array.from({ length: FOREST_PREVIEW_PIXEL_TOTAL }, (_, index) => {
+    const shiftedOrder = (index + roomSeedOffset) % FOREST_PREVIEW_PIXEL_TOTAL
+    return {
+      id: index,
+      revealed: shiftedOrder < revealedForestPixelCount.value,
+    }
+  })
+})
+
+watch(mapPreviewUrl, () => {
+  isMapPreviewVisible.value = true
+})
+
+watch(heightPreviewUrl, () => {
+  isHeightPreviewVisible.value = true
+})
 
 /* ================== helpers ================== */
 
@@ -70,6 +192,12 @@ async function loadRoom() {
   // если key пришёл из URL — сохраним
   if (keyFromRoute) {
     localStorage.setItem(`room_key_${uuid}`, keyFromRoute)
+    await router.replace({
+      name: 'room',
+      params: { locale: route.params.locale, uuid },
+      query: route.query,
+      hash: route.hash,
+    })
   }
 
   try {
@@ -85,12 +213,6 @@ async function loadRoom() {
         red_key: roomData.value!.red_key!,
       }
     } else {
-      if (keyFromRoute) {
-        await router.push({
-          name: 'room',
-          params: {locale: route.params.locale, uuid: uuid}
-        })
-      }
       stage.value = RoomStage.LOADING_MAP
       autoTeam.value = roomData.value!.team
     }
@@ -113,10 +235,12 @@ function onTeamSelected(payload: { team: Team; userId: number | null }) {
   selectedTeam.value = payload.team
   selectedUserId.value = payload.userId
   autoTeam.value = null
+  syncDarkTheme()
 }
 
-function onGameProgress(p: number) {
-  mapProgress.value = p
+function onGameProgress(next: GameLoadingState) {
+  loadingState.value = next
+  syncDarkTheme()
 }
 
 function onGameError(i18nKey: string, url?: string) {
@@ -129,9 +253,20 @@ function onGameReady() {
   stage.value = RoomStage.READY
 }
 
+function onMapPreviewError() {
+  isMapPreviewVisible.value = false
+}
+
+function onHeightPreviewError() {
+  isHeightPreviewVisible.value = false
+}
+
 /* ================== lifecycle ================== */
 
-onMounted(loadRoom)
+onMounted(() => {
+  syncDarkTheme()
+  loadRoom()
+})
 </script>
 
 <template>
@@ -141,14 +276,67 @@ onMounted(loadRoom)
   </section>
 
   <!-- 2️⃣ loading map -->
-  <section v-if="stage === RoomStage.LOADING_MAP" class="state loading">
-    <div>{{ t('loading_map') }}</div>
-
-    <div class="progress">
-      <div class="bar" :style="{ width: mapProgress + '%' }"></div>
+  <section
+    v-if="stage === RoomStage.LOADING_MAP"
+    class="state loading loading-map"
+  >
+    <img
+      v-if="hasMapPreview"
+      class="loading-map-preview"
+      :class="{ 'loading-map-preview--dark': isDarkTheme }"
+      :src="mapPreviewUrl"
+      alt=""
+      draggable="false"
+      @error="onMapPreviewError"
+    />
+    <img
+      v-if="showHeightPreviewLayer"
+      class="loading-map-preview loading-height-preview"
+      :class="{ 'loading-map-preview--dark': isDarkTheme }"
+      :src="heightPreviewUrl"
+      alt=""
+      draggable="false"
+      @error="onHeightPreviewError"
+    />
+    <div
+      v-if="isForestBuildStage"
+      class="loading-forest-mask"
+      :class="{ 'loading-forest-mask--fallback': !hasMapPreview }"
+      aria-hidden="true"
+    >
+      <div
+        v-for="pixel in forestPixels"
+        :key="pixel.id"
+        class="loading-forest-mask__pixel"
+        :class="{ 'loading-forest-mask__pixel--revealed': pixel.revealed }"
+      />
+    </div>
+    <div
+      v-else
+      class="loading-map-mask"
+      :class="{ 'loading-map-mask--fallback': !hasMapPreview }"
+      aria-hidden="true"
+    >
+      <div
+        v-for="tile in chunkTiles"
+        :key="tile.id"
+        class="loading-map-mask__tile"
+        :class="{ 'loading-map-mask__tile--revealed': tile.revealed }"
+      />
     </div>
 
-    <div class="percent">{{ Math.round(mapProgress) }}%</div>
+    <div class="loading-panel">
+      <div class="loading-title">{{ t('loadingStages.title') }}</div>
+      <div class="loading-active">
+        {{ t(activeLoadingLabelKey) }}
+      </div>
+
+      <div class="progress">
+        <div class="bar" :style="{ width: totalLoadingProgress + '%' }"></div>
+      </div>
+
+      <div class="percent">{{ Math.round(totalLoadingProgress) }}%</div>
+    </div>
   </section>
 
   <!-- error -->
@@ -226,5 +414,103 @@ onMounted(loadRoom)
 .percent {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+.loading-title {
+  font-size: 1rem;
+}
+
+.loading-active {
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+.loading-map {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(28, 45, 68, 0.55), transparent 45%),
+    radial-gradient(circle at 80% 75%, rgba(33, 54, 79, 0.5), transparent 50%),
+    #0a111b;
+}
+
+.loading-map-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+.loading-map-preview--dark {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.loading-height-preview {
+  opacity: 0.1;
+}
+
+.loading-map-mask {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  pointer-events: none;
+}
+
+.loading-map-mask__tile {
+  background: rgba(7, 11, 18, 0.88);
+  transition: opacity 0.2s ease;
+}
+
+.loading-map-mask--fallback .loading-map-mask__tile {
+  background: rgba(13, 24, 37, 0.66);
+}
+
+.loading-map-mask__tile--revealed {
+  opacity: 0;
+}
+
+.loading-forest-mask {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(96, minmax(0, 1fr));
+  grid-template-rows: repeat(54, minmax(0, 1fr));
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.loading-forest-mask__pixel {
+  background: rgba(8, 12, 18, 0.78);
+  transition: opacity 0.08s linear;
+}
+
+.loading-forest-mask--fallback .loading-forest-mask__pixel {
+  background: rgba(9, 30, 20, 0.7);
+}
+
+.loading-forest-mask__pixel--revealed {
+  background: rgba(70, 178, 102, 0.62);
+}
+
+.loading-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-md);
+  background: rgba(7, 11, 18, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(3px);
 }
 </style>

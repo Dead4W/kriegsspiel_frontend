@@ -8,6 +8,14 @@ import { unitType } from "@/engine";
 import { ROOM_SETTING_KEYS } from "@/enums/roomSettingsKeys";
 
 const { t } = useI18n()
+const props = withDefaults(
+  defineProps<{
+    is3dMode?: boolean
+  }>(),
+  {
+    is3dMode: false,
+  }
+)
 
 export type NotificationItem = {
   id: string
@@ -19,6 +27,7 @@ export type NotificationItem = {
 const notifications: Ref<NotificationItem[]> = ref([]);
 
 function focusUnits(units: BaseUnit[]) {
+  if (props.is3dMode) return
   if (!units.length) return
 
   const w = window.ROOM_WORLD
@@ -55,6 +64,10 @@ function focusUnits(units: BaseUnit[]) {
 }
 
 function refreshNotifications() {
+  if (props.is3dMode) {
+    notifications.value = []
+    return
+  }
   const units = window.ROOM_WORLD.units.list()
 
   const unitsWithNewOrder = units.filter(u => window.ROOM_WORLD.units.withNewCommands.has(u.id))

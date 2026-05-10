@@ -28,6 +28,11 @@
 - Если у вас есть исходная `.tiff` карта высот, её можно подготовить по координатам через скрипт:
   [generate_height_map.py](https://github.com/Dead4W/kriegsspiel_backend/blob/main/helpers/generate_height_map.py).
 
+### 3D карта (object map + object meta) (опционально)
+
+- Подробный гайд вынесен в отдельную страницу:
+  [3D карта (object map + object meta)](?section=getting-started&tab=map-3d).
+
 ## Параметры комнаты
 
 ### Названия сторон

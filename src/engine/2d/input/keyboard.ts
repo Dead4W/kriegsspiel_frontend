@@ -1,20 +1,26 @@
-import type { world } from '../world/world'
+import type { world } from '@/engine/world/world'
+import { InputLifecycle } from '@/engine/input/lifecycle'
 
 export function bindKeyboard(w: world) {
   const keys = new Set<string>()
   let running = true
+  const lifecycle = new InputLifecycle()
 
   const SPEED = 1000 // мировые единицы в секунду
 
-  window.addEventListener('keydown', (e) => {
+  const onKeyDown = (e: KeyboardEvent) => {
     keys.add(e.code)
-  })
+  }
 
-  window.addEventListener('keyup', (e) => {
+  const onKeyUp = (e: KeyboardEvent) => {
     keys.delete(e.code)
-  })
+  }
+
+  lifecycle.listen(window, 'keydown', onKeyDown)
+  lifecycle.listen(window, 'keyup', onKeyUp)
 
   let lastTime = performance.now()
+  let rafId: number | null = null
 
   function loop(time: number) {
     if (!running) return
@@ -41,12 +47,17 @@ export function bindKeyboard(w: world) {
       w.events.emit('camera', {}).then()
     }
 
-    requestAnimationFrame(loop)
+    rafId = requestAnimationFrame(loop)
   }
 
-  requestAnimationFrame(loop)
+  rafId = requestAnimationFrame(loop)
 
   return () => {
     running = false
+    if (rafId != null) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+    lifecycle.dispose()
   }
 }

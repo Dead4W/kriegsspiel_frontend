@@ -1,4 +1,4 @@
-import {getTeamColor} from "@/engine/render/util.ts";
+import {getTeamColor} from "@/engine/2d/render/util.ts";
 import {type unitTeam, type vec2, world} from "@/engine";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";

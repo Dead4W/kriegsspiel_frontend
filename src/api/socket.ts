@@ -12,6 +12,7 @@ import type {vec2} from "@/engine/types.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
 import type {Weather} from "@/engine/resourcePack/weather.ts";
 import type {ConnectionInfo} from "@/engine/types/connectionTypes.ts";
+import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 
 export type OutMessage =
   | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: Weather} }
@@ -29,6 +30,7 @@ export type OutMessage =
   | { type: 'set_stage'; data: RoomGameStage }
   | { type: 'messenger_delivery'; data: {id: uuid, roomUserIds: number[], time: string} }
   | { type: 'direct_view'; team: Team; data: unitstate[] }
+  | { type: 'direct_view_objects'; team: Team; data: DirectViewObjectState[] }
   | { type: 'weather'; data: Weather }
   | { type: 'log'; data: BattleLogEntry }
   | { type: 'connection_new'; data: ConnectionInfo }
@@ -38,6 +40,36 @@ export type OutMessage =
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
   | { type: 'error'; message: string }
+
+const DEMO_BLOCKED_INCOMING_TYPES = new Set<OutMessage['type']>([
+  'unit',
+  'unit-remove',
+  'paint_add',
+  'paint_undo',
+  'cursor',
+  'skip_time',
+  'set_stage',
+  'direct_view',
+  'direct_view_objects',
+  'weather',
+  'room',
+])
+
+let isDemoReadonlyMode = false
+
+function isPlayerTeam(team: Team): boolean {
+  return team === Team.RED || team === Team.BLUE
+}
+
+function clearUnitCommandsForDirectView(unit: unknown) {
+  const mutableUnit = unit as { commands?: unknown[]; futurePos?: { x: number; y: number } | null }
+  mutableUnit.commands = []
+  mutableUnit.futurePos = null
+}
+
+export function setDemoReadonlyMode(enabled: boolean) {
+  isDemoReadonlyMode = enabled
+}
 
 export class GameSocket {
   private ws!: WebSocket
@@ -194,6 +226,9 @@ export class GameSocket {
     if (msg.type === 'messages') {
       for (const m of msg.messages) {
         if (this.world.socketLock) return
+        if (isDemoReadonlyMode && DEMO_BLOCKED_INCOMING_TYPES.has(m.type)) {
+          continue
+        }
 
         if (m.type === 'unit') {
           const mData = {...m.data};
@@ -251,6 +286,7 @@ export class GameSocket {
               ) {
                 window.ROOM_WORLD.units.remove(u.id)
               } else {
+                clearUnitCommandsForDirectView(u)
                 u.directView = false;
               }
             }
@@ -267,6 +303,8 @@ export class GameSocket {
               u.directView = true;
             }
           }
+        } else if (m.type === 'direct_view_objects') {
+          this.world.setDirectViewObjects(m.data)
         } else if (m.type === 'weather') {
           window.ROOM_WORLD.weather.value = m.data
           window.ROOM_WORLD.newWeather.value = m.data

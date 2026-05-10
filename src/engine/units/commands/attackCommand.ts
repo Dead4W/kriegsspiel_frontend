@@ -22,6 +22,7 @@ export interface AttackCommandState {
   radiusModifier?: number
   abilities: UnitAbilityType[]
   inaccuracyPoint: vec2 | null
+  directViewTargetPoint?: vec2 | null
 }
 
 export class AttackCommand extends BaseCommand<
@@ -45,6 +46,11 @@ export class AttackCommand extends BaseCommand<
       if (unit.abilities.includes(ability)) {
         unit.activateAbility(ability)
       }
+    }
+
+    const suppression = this.computeSuppressionState(unit)
+    if (suppression && suppression.total >= suppression.threshold) {
+      return
     }
 
     const percentHp = unit.hp / unit.stats.maxHp
@@ -260,5 +266,86 @@ export class AttackCommand extends BaseCommand<
       status: this.status,
       state: this.state
     }
+  }
+
+  private computeSuppressionState(unit: BaseUnit): { total: number; threshold: number } | null {
+    const explicitThreshold = getUnitNumberParam(unit.type, 'suppressionThreshold')
+    if (explicitThreshold == null || explicitThreshold < 0) return null
+    const threshold = Math.max(0, explicitThreshold)
+
+    let total = 0
+    for (const attacker of window.ROOM_WORLD.units.list()) {
+      if (attacker.id === unit.id) continue
+      if (!attacker.alive) continue
+      if (attacker.isRetreat) continue
+      if (attacker.team === unit.team) continue
+
+      const attackCommands = attacker.getCommands()
+        .filter((cmd) => cmd.type === UnitCommandTypes.Attack) as AttackCommand[]
+
+      for (const attackCommand of attackCommands) {
+        total += this.computeSuppressionFromAttack(attacker, attackCommand.getState().state, unit)
+      }
+    }
+
+    return { total, threshold }
+  }
+
+  private computeSuppressionFromAttack(attacker: BaseUnit, state: AttackCommandState, target: BaseUnit): number {
+    const hpFactor = attacker.stats.maxHp > 0 ? (attacker.hp / attacker.stats.maxHp) : 0
+    const baseSuppression = attacker.damage * hpFactor * state.damageModifier
+    if (baseSuppression <= 0) return 0
+
+    if (state.inaccuracyPoint) {
+      return this.computeArtillerySuppression(attacker, state, target, baseSuppression)
+    }
+
+    const suppressionTargets = this.getSuppressionTargets(attacker, state)
+    const targetCount = suppressionTargets.length
+    if (targetCount === 0) return 0
+    if (!this.hasSuppressionTarget(suppressionTargets, target.id)) return 0
+
+    return baseSuppression / targetCount
+  }
+
+  private computeArtillerySuppression(
+    attacker: BaseUnit,
+    state: AttackCommandState,
+    target: BaseUnit,
+    baseSuppression: number
+  ): number {
+    if (!state.inaccuracyPoint) return 0
+
+    const inaccuracyAbility = getInaccuracyAbility(
+      state.abilities.filter((ability) => attacker.abilities.includes(ability))
+    )
+    if (!inaccuracyAbility) return 0
+
+    const inaccuracyRadius =
+      computeInaccuracyRadius(attacker, state.inaccuracyPoint)
+      * (state.radiusModifier ?? 1)
+      * inaccuracyAbility.radiusMult
+    if (inaccuracyRadius <= 0) return 0
+
+    const distanceToPoint = Math.hypot(
+      target.pos.x - state.inaccuracyPoint.x,
+      target.pos.y - state.inaccuracyPoint.y
+    ) * window.ROOM_WORLD.map.metersPerPixel
+    if (distanceToPoint > inaccuracyRadius) return 0
+
+    const targetRadius = BaseUnit.COLLISION_RANGE / 2 * window.ROOM_WORLD.map.metersPerPixel
+    const hitFactor = (targetRadius * targetRadius) / (inaccuracyRadius * inaccuracyRadius)
+
+    return baseSuppression * hitFactor
+  }
+
+  private getSuppressionTargets(attacker: BaseUnit, state: AttackCommandState): uuid[] {
+    return new AttackCommand(state)
+      .getPriorityTargets(attacker)
+      .map((unit) => unit.id)
+  }
+
+  private hasSuppressionTarget(targetIds: uuid[], unitId: uuid): boolean {
+    return targetIds.some((id) => id === unitId)
   }
 }

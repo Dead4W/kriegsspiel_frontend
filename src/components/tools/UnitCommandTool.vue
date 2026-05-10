@@ -11,7 +11,7 @@ import CommandDelivery from "@/components/tools/commands/CommandDelivery.vue";
 import CommandChangeFormation from "@/components/tools/commands/CommandChangeFormation.vue";
 import CommandWait from "@/components/tools/commands/CommandWait.vue";
 import CommandRetreat from "@/components/tools/commands/CommandRetreat.vue";
-import { onUnitCommandRequest, type UnitCommandRequest } from '@/engine/input/unitCommandBus'
+import { onUnitCommandRequest, type UnitCommandRequest } from '@/engine/2d/input'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 
 const props = defineProps<{

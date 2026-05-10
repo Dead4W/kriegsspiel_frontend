@@ -52,6 +52,7 @@ The engine reads several known keys from `params`.
 ### Targeting / combat params
 
 - **`priorityTargets`** (number): if set, limits attack command to the nearest N targets.
+- **`suppressionThreshold`** (number): incoming suppression points needed to block this unit from attacking. If omitted, suppression is disabled for this unit.
 - **`attackIgnoreHeightModifier`** (boolean): if `true`, disables height-based damage modifier for this attacker.
 - **`attackIgnoreTargetEnvs`** (string array): environment state ids; if the target is in any of them, apply `attackIgnoreTargetEnvMult`.
 - **`attackIgnoreTargetEnvMult`** (number, default `2`): multiplier applied when `attackIgnoreTargetEnvs` matches.

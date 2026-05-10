@@ -7,6 +7,18 @@
   "to_home": "Go Home",
   "loading": "Loading...",
   "loading_map": "Loading map...",
+  "loadingStages": {
+    "title": "Loading game assets",
+    "resourcePack": "Resource pack",
+    "mapImage": "Map image",
+    "heightMapImage": "Height map image",
+    "objectMapImage": "Object map image",
+    "objectMapMeta": "Object map metadata",
+    "forestMap": "Forest assembly",
+    "heightMapProcessing": "Height map processing",
+    "rendererInit": "Renderer initialization",
+    "switchTo3d": "Preparing 3D scene"
+  },
   "select_team": "Select team",
   "clear": "Clear",
   "copied": "Copied",
@@ -161,6 +173,7 @@
         "renderWidthMult": "Width mult",
         "renderHeightMult": "Height mult",
         "priorityTargets": "Priority targets",
+        "suppressionThreshold": "Suppression threshold",
         "moraleCheckMod": "Morale mod",
         "attackIgnoreTargetEnvMult": "Ignore env mult",
         "attackIgnoreHeightModifier": "Ignore height modifier"
@@ -329,10 +342,12 @@
     "tabs": {
       "overview": "Overview",
       "firstRoom": "First room",
+      "map3d": "3D map",
       "controls": "Controls",
       "short": "Quick flow",
       "roles": "Roles",
       "orders": "Umpire - Orders",
+      "suppression": "Suppression",
       "umpireNotifications": "Umpire - Notifications",
       "fogOfWar": "Fog of war",
       "resourcepackOverview": "Overview",
@@ -453,6 +468,10 @@
       "next": "Next",
       "first": "First",
       "last": "Last",
+      "play": "Play",
+      "pause": "Pause",
+      "speed": "Speed",
+      "speed_unit": "min/s",
       "select_time": "Select time",
       "loading": "Loading…",
       "empty": "No snapshots",
@@ -535,7 +554,10 @@
     "attackRange": "Attack range",
     "visionRange": "Vision range",
     "height": "Height",
-    "details": "Details"
+    "details": "Details",
+    "debug_copy_unit_state": "DEBUG: Copy unitState JSON",
+    "debug_copy_success": "Copied",
+    "debug_copy_error": "Copy failed"
   },
 
   "spawn": {
@@ -543,7 +565,13 @@
     "team": "Team",
     "count": "Count",
     "unit_type": "Unit type",
-    "hint": "Click on map — add unit"
+    "hint": "Click on map — add unit",
+    "debug_create_title": "DEBUG: Create unit from unitState JSON",
+    "debug_create_placeholder": "Paste unitState JSON here",
+    "debug_create_button": "Create unit from JSON",
+    "debug_create_success": "Unit created",
+    "debug_create_error_empty": "Paste unitState JSON first",
+    "debug_create_error_parse": "Invalid unitState JSON"
   },
 
   "unit": {
@@ -595,7 +623,10 @@
     "nickname": "Nickname",
     "enterName": "Enter nickname",
     "signInWithGoogle": "Sign in with Google",
-    "or": "or"
+    "or": "or",
+    "registrationFailed": "Server error, registration failed",
+    "serverErrorTitle": "Server error",
+    "serverErrorReload": "Server error, please reload the page."
   },
 
   "planningEntryModal": {
@@ -744,6 +775,11 @@
       "title": "Map",
       "mapUrl": "Map URL",
       "heightMapUrl": "Height map URL (optional)",
+      "objectMapGroupTitle": "Object map (3D Map)",
+      "wiki3dMapLink": "3D map documentation",
+      "objectMapUrl": "Object map URL (png, jpeg, etc.)",
+      "objectMapMetaUrl": "Object map metadata URL (json)",
+      "objectMapPairError": "If one object map field is filled, the other one is required too.",
       "metersPerPixel": "Meters per pixel"
     },
     "gameDate": "Game Date",

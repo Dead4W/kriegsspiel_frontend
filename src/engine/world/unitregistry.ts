@@ -1,14 +1,19 @@
 import {type unitstate, type unitTeam, unitType, type uuid} from '@/engine/units/types'
-import type {BaseUnit} from '@/engine/units/baseUnit'
+import {BaseUnit} from '@/engine/units/baseUnit'
 import {createUnit} from '@/engine/units'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
-import {buildVisionPolygon, pointInPolygon} from "@/engine/render/unitlayer/visionlayer.ts";
+import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
 import {Team} from "@/enums/teamKeys.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 
 export type UnitDirtyObject = {
   unit: unitstate,
   frames: MoveFrame[],
+}
+
+export type GeneralDirectViewEntry = {
+  id: uuid
+  isDirect: boolean
 }
 
 export class unitregistry {
@@ -171,10 +176,16 @@ export class unitregistry {
     }
   }
 
-  getDirectViewByGenerals(): Map<unitTeam, uuid[]> {
-    const directViewByTeam = new Map<unitTeam, uuid[]>();
+  getDirectViewByGenerals(): Map<unitTeam, GeneralDirectViewEntry[]> {
+    const directViewByTeam = new Map<unitTeam, GeneralDirectViewEntry[]>();
+    const directViewByTeamSet = new Map<unitTeam, Set<uuid>>();
+    const strictDirectViewByTeamSet = new Map<unitTeam, Set<uuid>>();
     directViewByTeam.set(Team.RED, [])
     directViewByTeam.set(Team.BLUE, [])
+    directViewByTeamSet.set(Team.RED, new Set())
+    directViewByTeamSet.set(Team.BLUE, new Set())
+    strictDirectViewByTeamSet.set(Team.RED, new Set())
+    strictDirectViewByTeamSet.set(Team.BLUE, new Set())
     const seenByUnit = new Map<uuid, Set<number>>()
 
     const addSeenRoomUserId = (unit: BaseUnit, roomUserId: number) => {
@@ -185,20 +196,64 @@ export class unitregistry {
       seenByUnit.get(unit.id)!.add(roomUserId)
     }
 
-    for (const generalUnit of this.list()) {
+    const units = this.list()
+    const chainRange = BaseUnit.COLLISION_RANGE * 2
+
+    const getChainDirectViewUnits = (seedUnits: BaseUnit[]): BaseUnit[] => {
+      const queue = [...seedUnits]
+      const visited = new Set<uuid>(seedUnits.map(u => u.id))
+
+      while (queue.length > 0) {
+        const current = queue.shift()!
+        for (const other of units) {
+          if (other.id === current.id) continue
+          if (other.type === unitType.MESSENGER) continue
+          if (visited.has(other.id)) continue
+          if (Math.hypot(
+            other.pos.x - current.pos.x,
+            other.pos.y - current.pos.y
+          ) > chainRange) continue
+
+          visited.add(other.id)
+          queue.push(other)
+        }
+      }
+
+      return units.filter(u => visited.has(u.id))
+    }
+
+    for (const generalUnit of units) {
       if (generalUnit.team !== Team.RED && generalUnit.team !== Team.BLUE) continue;
       if (generalUnit.type !== unitType.GENERAL) continue;
       generalUnit.directView = true;
       addSeenRoomUserId(generalUnit, generalUnit.roomMapUserId)
 
       const visionUnits = this.getDirectView(generalUnit)
+      const strictDirectViewUnitTeam = strictDirectViewByTeamSet
+        .get(generalUnit.team)!
+      strictDirectViewUnitTeam.add(generalUnit.id)
       for (const visionUnit of visionUnits) {
+        strictDirectViewUnitTeam.add(visionUnit.id)
+      }
+
+      const directViewUnits = getChainDirectViewUnits([generalUnit, ...visionUnits])
+      for (const visionUnit of directViewUnits) {
         addSeenRoomUserId(visionUnit, generalUnit.roomMapUserId)
       }
-      const directViewUnitTeam = directViewByTeam
+      const directViewUnitTeam = directViewByTeamSet
         .get(generalUnit.team)!
-      directViewUnitTeam.push(...visionUnits.map(v => v.id));
-      directViewUnitTeam.push(generalUnit.id)
+      for (const directViewUnit of directViewUnits) {
+        directViewUnitTeam.add(directViewUnit.id)
+      }
+    }
+
+    for (const team of [Team.RED, Team.BLUE] as unitTeam[]) {
+      const strictDirectView = strictDirectViewByTeamSet.get(team)!
+      const entries = Array.from(directViewByTeamSet.get(team)!).map((id) => ({
+        id,
+        isDirect: strictDirectView.has(id),
+      }))
+      directViewByTeam.set(team, entries)
     }
 
     for (const unit of this.list()) {

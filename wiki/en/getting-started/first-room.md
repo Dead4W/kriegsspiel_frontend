@@ -28,6 +28,11 @@ For `Custom map`:
 - If you have a source `.tiff` elevation map, you can prepare it by coordinates using:
   [generate_height_map.py](https://github.com/Dead4W/kriegsspiel_backend/blob/main/helpers/generate_height_map.py).
 
+### 3D map (object map + object meta) (optional)
+
+- Full guide moved to a separate page:
+  [3D map (object map + object meta)](?section=getting-started&tab=map-3d).
+
 ## Room parameters
 
 ### Team names

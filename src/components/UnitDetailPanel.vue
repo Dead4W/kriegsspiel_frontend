@@ -101,6 +101,11 @@ function isDebug() {
   return window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.DEBUG_MODE]
 }
 
+function copyUnitState() {
+  const json = JSON.stringify(unit.toState(), null, 2)
+  void navigator.clipboard?.writeText(json)
+}
+
 // force refresh on changed
 const refreshKey = ref(0)
 function syncSelection(data: {reason: string}) {
@@ -137,6 +142,12 @@ onUnmounted(() => {
         @keydown.stop
         @change="onEdit"
       />
+
+      <div v-if="isDebug()" class="debug-actions">
+        <button type="button" class="debug-copy-btn" @click="copyUnitState">
+          {{ t('stat.debug_copy_unit_state') }}
+        </button>
+      </div>
     </div>
 
     <div class="detail-body">
@@ -333,6 +344,28 @@ onUnmounted(() => {
   border: 1px solid #334155;
   background: #020617;
   color: white;
+}
+
+.debug-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.debug-copy-btn {
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #020617;
+  color: #cbd5f5;
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.debug-copy-btn:hover {
+  color: white;
+  border-color: var(--accent);
 }
 
 .detail-body {

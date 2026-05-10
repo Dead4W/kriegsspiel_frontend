@@ -81,6 +81,7 @@ export const CLIENT_SETTING_KEYS = {
   LAST_CAMERA_POS_X: 'lastCameraPosX',
   LAST_CAMERA_POS_Y: 'lastCameraPosY',
   LAST_CAMERA_ZOOM: 'lastCameraZoom',
+
 } as const
 
 export type ClientSettingKey =
@@ -110,6 +111,15 @@ function loadClientSettings(): Partial<Record<ClientSettingKey, any>> {
       ...defaults,
       ...parsed,
     }
+
+    // Drop deprecated renderer/camera3d keys from persisted storage.
+    delete (merged as Record<string, unknown>).renderBackend
+    delete (merged as Record<string, unknown>).lastRoomId3d
+    delete (merged as Record<string, unknown>).lastCamera3dPosX
+    delete (merged as Record<string, unknown>).lastCamera3dPosY
+    delete (merged as Record<string, unknown>).lastCamera3dPosZ
+    delete (merged as Record<string, unknown>).lastCamera3dYaw
+    delete (merged as Record<string, unknown>).lastCamera3dPitch
 
     // optional: persist merged config (useful when new keys were added)
     localStorage.setItem(

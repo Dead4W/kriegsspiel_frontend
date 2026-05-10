@@ -7,6 +7,18 @@
   "to_home": "На главную.",
   "loading": "Загрузка...",
   "loading_map": "Загрузка карты...",
+  "loadingStages": {
+    "title": "Загрузка игровых данных",
+    "resourcePack": "Ресурс-пак",
+    "mapImage": "Карта",
+    "heightMapImage": "Карта высот",
+    "objectMapImage": "Карта объектов",
+    "objectMapMeta": "Метаданные карты объектов",
+    "forestMap": "Сборка лесов",
+    "heightMapProcessing": "Обработка карты высот",
+    "rendererInit": "Инициализация рендера",
+    "switchTo3d": "Подготовка 3D-сцены"
+  },
   "select_team": "Выбор команды",
   "clear": "Очистить",
   "copied": "Скопировано",
@@ -162,6 +174,7 @@
         "renderWidthMult": "Множ. ширины",
         "renderHeightMult": "Множ. высоты",
         "priorityTargets": "Приоритет целей",
+        "suppressionThreshold": "Порог подавления",
         "moraleCheckMod": "Модиф. морали",
         "attackIgnoreTargetEnvMult": "Множ. игнора окруж.",
         "attackIgnoreHeightModifier": "Игнорировать модификатор высоты"
@@ -331,10 +344,12 @@
     "tabs": {
       "overview": "Обзор",
       "firstRoom": "Первая комната",
+      "map3d": "3D карта",
       "controls": "Управление",
       "short": "Коротко",
       "roles": "По ролям",
       "orders": "Судья - Приказы",
+      "suppression": "Подавление",
       "umpireNotifications": "Судья - Уведомления",
       "fogOfWar": "Туман войны",
       "resourcepackOverview": "Обзор",
@@ -457,6 +472,10 @@
       "next": "Вперёд",
       "first": "В начало",
       "last": "В конец",
+      "play": "Воспроизвести",
+      "pause": "Пауза",
+      "speed": "Скорость",
+      "speed_unit": "мин/сек",
       "select_time": "Выбрать время",
       "loading": "Загрузка…",
       "empty": "Нет снимков",
@@ -541,7 +560,10 @@
     "attackRange": "Даль. атаки",
     "visionRange": "Даль. обзора",
     "height": "Высота",
-    "details": "Подробнее"
+    "details": "Подробнее",
+    "debug_copy_unit_state": "DEBUG: Копировать unitState JSON",
+    "debug_copy_success": "Скопировано",
+    "debug_copy_error": "Ошибка копирования"
   },
 
   "spawn": {
@@ -549,7 +571,13 @@
     "team": "Команда",
     "count": "Количество",
     "unit_type": "Тип юнита",
-    "hint": "Клик по карте — поставить юнит"
+    "hint": "Клик по карте — поставить юнит",
+    "debug_create_title": "DEBUG: Создать юнит из unitState JSON",
+    "debug_create_placeholder": "Вставьте unitState JSON",
+    "debug_create_button": "Создать юнит из JSON",
+    "debug_create_success": "Юнит создан",
+    "debug_create_error_empty": "Сначала вставьте unitState JSON",
+    "debug_create_error_parse": "Некорректный unitState JSON"
   },
 
   "unit": {
@@ -601,7 +629,10 @@
     "nickname": "Ник",
     "enterName": "Введите ник",
     "signInWithGoogle": "Войти через Google",
-    "or": "или"
+    "or": "или",
+    "registrationFailed": "Ошибка сервера, регистрация не удалась",
+    "serverErrorTitle": "Ошибка сервера",
+    "serverErrorReload": "Ошибка сервера, попробуйте перезагрузить страницу."
   },
 
   "planningEntryModal": {
@@ -749,6 +780,11 @@
       "title": "Карта",
       "mapUrl": "URL Карты",
       "heightMapUrl": "URL Карты высот (опционально)",
+      "objectMapGroupTitle": "Карта объектов (3D Карта)",
+      "wiki3dMapLink": "Документация по 3D карте",
+      "objectMapUrl": "URL Карты объектов (png, jpeg и т.д.)",
+      "objectMapMetaUrl": "URL Метаданных карты объектов (json)",
+      "objectMapPairError": "Если заполнено одно поле карты объектов, нужно заполнить и второе.",
       "metersPerPixel": "Метров на пиксель"
     },
     "gameDate": "Игровая дата",

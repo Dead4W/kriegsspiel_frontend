@@ -16,6 +16,14 @@ import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import IdenticonAvatar from "@/components/ui/IdenticonAvatar.vue";
 
 const { t } = useI18n()
+const props = withDefaults(
+  defineProps<{
+    is3dMode?: boolean
+  }>(),
+  {
+    is3dMode: false,
+  }
+)
 
 
 /* =======================
@@ -112,6 +120,7 @@ function canSpawnMessenger(m: ChatMessage): boolean {
 }
 
 function onSpawnMessenger(m: ChatMessage) {
+  if (props.is3dMode) return
   const pos = window.ROOM_WORLD.camera.screenToWorld({
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
@@ -226,6 +235,7 @@ function focusUnits(units: BaseUnit[]) {
 }
 
 function onUnitsBlockClick(units: BaseUnit[]) {
+  if (props.is3dMode) return
   const w = window.ROOM_WORLD
 
   w.units.clearSelection()
@@ -770,16 +780,20 @@ function autoResizeInput() {
 function onChangedWorld(event: { reason: string }) {
   textSize.value = Number(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.CHAT_TEXT_SIZE] ?? 15)
 
-  const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => !isOwnMessage(m));
-  if (new_messages.length) {
-    if (window.ROOM_WORLD.id == 'bcb5fcfe-52be-438f-868f-3d3cda532241') {
-      const messageSound = new Audio('/assets/sounds/message_lol.ogg')
-      messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-      messageSound.play().catch(() => {})
-    } else {
-      const messageSound = new Audio('/assets/sounds/new_message.ogg')
-      messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-      messageSound.play().catch(() => {})
+  // Проверяем новые сообщения только на финальном сокет-ивенте,
+  // чтобы пачка сообщений из одного ws-пакета давала одно уведомление.
+  if (event.reason === 'ws') {
+    const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => !isOwnMessage(m));
+    if (new_messages.length) {
+      if (window.ROOM_WORLD.id == 'bcb5fcfe-52be-438f-868f-3d3cda532241') {
+        const messageSound = new Audio('/assets/sounds/message_lol.ogg')
+        messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
+        messageSound.play().catch(() => {})
+      } else {
+        const messageSound = new Audio('/assets/sounds/new_message.ogg')
+        messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
+        messageSound.play().catch(() => {})
+      }
     }
   }
 

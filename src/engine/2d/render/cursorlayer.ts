@@ -1,7 +1,7 @@
 import type { world } from '@/engine'
 import type { vec2 } from '@/engine'
 import { getCursorTexture } from '@/engine/assets/textures'
-import { drawRoundRect } from '@/engine/render/util'
+import { drawRoundRect } from '@/engine/2d/render/util'
 import {Team} from "@/enums/teamKeys.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {translate} from '@/i18n'

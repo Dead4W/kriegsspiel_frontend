@@ -363,7 +363,7 @@ function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
 }
 
 function getDirectViewObjects(team: unitTeam): DirectViewObjectState[] {
-  const result: DirectViewObjectState[] = []
+  const objectsByPoint = new Map<string, DirectViewObjectState>()
 
   for (const unit of window.ROOM_WORLD.units.list()) {
     if (!unit.alive || unit.team === team) continue
@@ -387,7 +387,18 @@ function getDirectViewObjects(team: unitTeam): DirectViewObjectState[] {
       const seenRoomUserId = inaccuracyAreaInTeamGeneralVision(team, attackState.inaccuracyPoint, normalizedRadius)
       if (seenRoomUserId == null) continue
 
-      result.push({
+      const key = `${attackState.inaccuracyPoint.x}:${attackState.inaccuracyPoint.y}`
+      const existing = objectsByPoint.get(key)
+      if (existing) {
+        existing.data.radiusMeters = Math.max(existing.data.radiusMeters, normalizedRadius)
+        const existingSeenRoomUserIds = existing.seenRoomUserIds ?? []
+        if (!existingSeenRoomUserIds.includes(seenRoomUserId)) {
+          existing.seenRoomUserIds = [...existingSeenRoomUserIds, seenRoomUserId]
+        }
+        continue
+      }
+
+      objectsByPoint.set(key, {
         type: 'inaccuracy',
         team: unit.team,
         seenRoomUserIds: [seenRoomUserId],
@@ -399,7 +410,7 @@ function getDirectViewObjects(team: unitTeam): DirectViewObjectState[] {
     }
   }
 
-  return result
+  return Array.from(objectsByPoint.values())
 }
 
 /* ===== timer ===== */

@@ -72,7 +72,7 @@ const showBackendSwitchOverlay = computed(
 )
 
 function allow3DRender() {
-  return window.PLAYER?.name === 'Dead4W'
+  return true
 }
 
 type Camera2DState = {

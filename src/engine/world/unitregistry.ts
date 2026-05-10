@@ -199,8 +199,8 @@ export class unitregistry {
     const units = this.list()
     const chainRange = BaseUnit.COLLISION_RANGE * 2
 
-    const getChainDirectViewUnits = (seedUnits: BaseUnit[]): BaseUnit[] => {
-      const queue = [...seedUnits]
+    const getChainDirectViewUnits = (seedUnits: BaseUnit[], chainTeam: unitTeam): BaseUnit[] => {
+      const queue = seedUnits.filter((u) => u.team === chainTeam)
       const visited = new Set<uuid>(seedUnits.map(u => u.id))
 
       while (queue.length > 0) {
@@ -208,6 +208,7 @@ export class unitregistry {
         for (const other of units) {
           if (other.id === current.id) continue
           if (other.type === unitType.MESSENGER) continue
+          if (other.team !== chainTeam) continue
           if (visited.has(other.id)) continue
           if (Math.hypot(
             other.pos.x - current.pos.x,
@@ -236,7 +237,7 @@ export class unitregistry {
         strictDirectViewUnitTeam.add(visionUnit.id)
       }
 
-      const directViewUnits = getChainDirectViewUnits([generalUnit, ...visionUnits])
+      const directViewUnits = getChainDirectViewUnits([generalUnit, ...visionUnits], generalUnit.team)
       for (const visionUnit of directViewUnits) {
         addSeenRoomUserId(visionUnit, generalUnit.roomMapUserId)
       }

@@ -216,7 +216,7 @@ function circleIntersectsPolygon(center: vec2, radius: number, polygon: vec2[]):
   return false
 }
 
-function inaccuracyAreaInTeamGeneralVision(team: unitTeam, center: vec2, radiusMeters: number): boolean {
+function inaccuracyAreaInTeamGeneralVision(team: unitTeam, center: vec2, radiusMeters: number): number | null {
   const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel
   const generals = window.ROOM_WORLD.units.list()
     .filter((unit) => unit.team === team && unit.type === unitType.GENERAL && unit.alive)
@@ -224,11 +224,13 @@ function inaccuracyAreaInTeamGeneralVision(team: unitTeam, center: vec2, radiusM
   for (const general of generals) {
     const visionPoly = buildVisionPolygon(general, window.ROOM_WORLD)
     if (circleIntersectsPolygon(center, radiusPixels, visionPoly)) {
-      return true
+      if (general.roomMapUserId > 0) {
+        return general.roomMapUserId
+      }
     }
   }
 
-  return false
+  return null
 }
 
 function lineSegmentIntersectionT(
@@ -382,12 +384,13 @@ function getDirectViewObjects(team: unitTeam): DirectViewObjectState[] {
         * (attackState.radiusModifier ?? 1)
         * inaccuracyAbility.radiusMult
       const normalizedRadius = Math.max(0, radiusMeters)
-      if (!inaccuracyAreaInTeamGeneralVision(team, attackState.inaccuracyPoint, normalizedRadius)) continue
+      const seenRoomUserId = inaccuracyAreaInTeamGeneralVision(team, attackState.inaccuracyPoint, normalizedRadius)
+      if (seenRoomUserId == null) continue
 
       result.push({
         type: 'inaccuracy',
         team: unit.team,
-        seenRoomUserIds: unit.seenRoomUserIds,
+        seenRoomUserIds: [seenRoomUserId],
         data: {
           point: attackState.inaccuracyPoint,
           radiusMeters: normalizedRadius,

@@ -297,11 +297,16 @@ export class threeRenderer {
   }
 
   private async rebuildScene() {
-    if (!this.mapImage || !this.assets?.objectMapImage || !this.assets?.objectMapMeta) return
+    if (!this.mapImage) return
 
     this.clearObjects()
     this.waterUpdater = null
     await this.yieldToMainThread()
+
+    if (!this.assets?.objectMapImage || !this.assets?.objectMapMeta) {
+      this.buildFallbackSceneFromMap()
+      return
+    }
 
     const bitmap = this.assets.objectMapImage
     const sourceCanvas = document.createElement('canvas')
@@ -600,6 +605,50 @@ export class threeRenderer {
     this.renderer.shadowMap.needsUpdate = true
   }
 
+  private buildFallbackSceneFromMap() {
+    if (!this.mapImage) return
+    const mapSize = this.resolveImageSize(this.mapImage)
+    const worldInfo = {
+      width: mapSize.width,
+      height: mapSize.height,
+      cellSize: this.metersPerPixel,
+      objectSize: this.metersPerPixel,
+      sampledToSourceScale: 1,
+    }
+    this.lastMapWidth = worldInfo.width
+    this.lastMapHeight = worldInfo.height
+    const worldWidth = worldInfo.width * worldInfo.cellSize
+    const worldHeight = worldInfo.height * worldInfo.cellSize
+    this.camera.position.set(0, worldInfo.objectSize * 20, Math.max(worldWidth, worldHeight) * 0.18)
+    this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ')
+
+    const largestMapSideMeters = Math.max(worldInfo.width, worldInfo.height) * worldInfo.cellSize
+    this.viewDistance = THREE.MathUtils.clamp(
+      largestMapSideMeters * threeRenderer.VIEW_DISTANCE_MAP_FACTOR,
+      threeRenderer.MIN_VIEW_DISTANCE,
+      threeRenderer.MAX_VIEW_DISTANCE
+    )
+    this.updateVisibilityRanges()
+
+    const halfW = () => worldInfo.width / 2
+    const halfH = () => worldInfo.height / 2
+    const context = {
+      scene: this.objectsGroup,
+      renderer: this.renderer,
+      world: worldInfo,
+      pixelToWorld: (px: number, py: number) => ({
+        x: (px + 0.5 - halfW()) * worldInfo.cellSize,
+        z: (py + 0.5 - halfH()) * worldInfo.cellSize,
+      }),
+      hash2D,
+    }
+
+    this.unitsLayer = createUnitsLayer(context)
+    this.addMapTexturePlane(worldInfo.width, worldInfo.height)
+    this.applyRadialFogToSceneMaterials()
+    this.renderer.shadowMap.needsUpdate = true
+  }
+
   private clearObjects() {
     this.unitsLayer?.dispose()
     this.unitsLayer = null
@@ -624,6 +673,50 @@ export class threeRenderer {
     if (!ctx) return null
     ctx.drawImage(img, 0, 0, c.width, c.height)
     return c
+  }
+
+  private resolveImageSize(img: CanvasImageSource) {
+    const bitmapLike = img as { width?: unknown; height?: unknown }
+    const width = Math.max(1, Number(bitmapLike.width) || this.lastMapWidth || 1)
+    const height = Math.max(1, Number(bitmapLike.height) || this.lastMapHeight || 1)
+    return {
+      width,
+      height,
+    }
+  }
+
+  private addMapTexturePlane(mapWidthPx: number, mapHeightPx: number) {
+    if (!this.mapImage) return
+    const maxWorldSideCells = Math.max(mapWidthPx, mapHeightPx)
+    const planeSegments = Math.max(16, Math.min(220, Math.round(maxWorldSideCells / 28)))
+    const mapTexture = new THREE.Texture(this.mapImage)
+    mapTexture.colorSpace = THREE.SRGBColorSpace
+    mapTexture.wrapS = THREE.ClampToEdgeWrapping
+    mapTexture.wrapT = THREE.ClampToEdgeWrapping
+    mapTexture.minFilter = THREE.LinearMipmapLinearFilter
+    mapTexture.magFilter = THREE.LinearFilter
+    mapTexture.generateMipmaps = true
+    mapTexture.anisotropy = Math.min(16, this.renderer.capabilities.getMaxAnisotropy())
+    mapTexture.needsUpdate = true
+
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        mapWidthPx * this.metersPerPixel,
+        mapHeightPx * this.metersPerPixel,
+        planeSegments,
+        planeSegments
+      ),
+      new THREE.MeshStandardMaterial({
+        map: mapTexture,
+        color: 0xffffff,
+        roughness: 0.98,
+        metalness: 0.0,
+      })
+    )
+    plane.rotation.x = -Math.PI / 2
+    plane.position.y = 0
+    plane.receiveShadow = true
+    this.objectsGroup.add(plane)
   }
 
   private getVisibilityRadiusMeters() {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, ref, type UnwrapRef} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch, type UnwrapRef} from 'vue'
 import {BaseUnit} from '@/engine/units/baseUnit'
 import type {OverlayItem} from '@/engine/types/overlayTypes'
 import type {vec2} from '@/engine/types'
@@ -168,6 +168,11 @@ function fmtMeters(meters: number) {
 }
 
 function loadSmartPathPreference(units: Array<{ type: unitType }>) {
+  if (!hasObjectMap.value) {
+    smartPathEnabled.value = false
+    return
+  }
+
   const isSingleMessenger =
     units.length === 1
     && units[0]!.type === unitType.MESSENGER
@@ -181,9 +186,16 @@ function loadSmartPathPreference(units: Array<{ type: unitType }>) {
 }
 
 function onSmartPathToggle(nextValue: boolean) {
-  if (moveMode.value === 'formation') return
+  if (moveMode.value === 'formation' || !hasObjectMap.value) return
   smartPathEnabled.value = nextValue
   window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.MOVE_SMART_PATH] = nextValue
+  rebuildRouteBySmartPathMode()
+}
+
+function enforceSmartPathAvailability() {
+  if (hasObjectMap.value) return
+  if (!smartPathEnabled.value) return
+  smartPathEnabled.value = false
   rebuildRouteBySmartPathMode()
 }
 
@@ -1316,6 +1328,7 @@ let unsubscribe: unsub
 onMounted(() => {
   movingUnits.value = [...props.units]
   loadSmartPathPreference(movingUnits.value)
+  enforceSmartPathAvailability()
 
   window.addEventListener('pointerdown', onPointerDown)
 
@@ -1327,6 +1340,7 @@ onMounted(() => {
         loadSmartPathPreference(movingUnits.value)
       }
     }
+    enforceSmartPathAvailability()
     rebuildMoveOverlay()
   })
 
@@ -1341,6 +1355,10 @@ onUnmounted(() => {
   window.ROOM_WORLD.clearOverlay()
   window.INPUT.IGNORE_DRAG = false;
   stopEnvMenuTracking()
+})
+
+watch(hasObjectMap, () => {
+  enforceSmartPathAvailability()
 })
 
 defineExpose({
@@ -1394,8 +1412,8 @@ defineExpose({
         <input
           type="checkbox"
           class="smart-path-toggle-input"
-          :checked="smartPathEnabled && moveMode !== 'formation'"
-          :disabled="moveMode === 'formation'"
+          :checked="smartPathEnabled && hasObjectMap && moveMode !== 'formation'"
+          :disabled="moveMode === 'formation' || !hasObjectMap"
           @change="onSmartPathToggle(($event.target as HTMLInputElement).checked)"
         >
         <span class="smart-path-toggle-switch" aria-hidden="true"></span>

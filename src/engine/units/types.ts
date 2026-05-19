@@ -47,6 +47,7 @@ export interface unitstate {
   commands?: commandstate[]
 
   envState?: string[]
+  manualEnvironment?: string | null
 
   formation?: FormationType;
   activeAbilityType?: UnitAbilityType | null;

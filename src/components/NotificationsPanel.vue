@@ -6,6 +6,7 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
 import { unitType } from "@/engine";
 import { ROOM_SETTING_KEYS } from "@/enums/roomSettingsKeys";
+import { buildVisionPolygon, pointInPolygon } from "@/engine/2d/render";
 
 const { t } = useI18n()
 const props = withDefaults(
@@ -84,6 +85,38 @@ function refreshNotifications() {
     })
   const messengersWithoutOrder = unitsWithoutOrder
     .filter(u => u.type === unitType.MESSENGER)
+  const enemyUnitsByTeam = new Map<string, BaseUnit[]>()
+  for (const team of new Set(units.map((u) => u.team))) {
+    enemyUnitsByTeam.set(
+      team,
+      units.filter((u) => u.alive && u.team !== team && u.stats.visionRange > 0)
+    )
+  }
+  const enemyVisionPolygons = new Map<string, { x: number; y: number }[]>()
+  const mapMetersPerPixel = window.ROOM_WORLD.map.metersPerPixel
+  const messengersSeenByEnemy = units.filter((messenger) => {
+    if (messenger.type !== unitType.MESSENGER) return false
+    if (!messenger.alive) return false
+
+    const enemyUnits = enemyUnitsByTeam.get(messenger.team) ?? []
+    for (const enemy of enemyUnits) {
+      const maxVisionDistPx = enemy.visionRange / mapMetersPerPixel
+      const dx = messenger.pos.x - enemy.pos.x
+      const dy = messenger.pos.y - enemy.pos.y
+      if ((dx * dx + dy * dy) > (maxVisionDistPx * maxVisionDistPx)) continue
+
+      let polygon = enemyVisionPolygons.get(enemy.id)
+      if (!polygon) {
+        polygon = buildVisionPolygon(enemy, window.ROOM_WORLD)
+        enemyVisionPolygons.set(enemy.id, polygon)
+      }
+      if (pointInPolygon(messenger.pos, polygon)) {
+        return true
+      }
+    }
+
+    return false
+  })
   const unitsWithoutAmmo = units
     .filter(u => u.ammo <= 0 && !u.isRetreat)
 
@@ -101,16 +134,16 @@ function refreshNotifications() {
     })
   }
 
-  if (unitsWithoutOrder.length > 0) {
-    result.push({
-      id: 'without-order',
-      text: t('notifications.units_without_order'),
-      count: unitsWithoutOrder.length,
-      onClick: () => {
-        focusUnits(unitsWithoutOrder)
-      }
-    })
-  }
+  // if (unitsWithoutOrder.length > 0) {
+  //   result.push({
+  //     id: 'without-order',
+  //     text: t('notifications.units_without_order'),
+  //     count: unitsWithoutOrder.length,
+  //     onClick: () => {
+  //       focusUnits(unitsWithoutOrder)
+  //     }
+  //   })
+  // }
 
   if (unitsWithoutAmmo.length > 0 && window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]) {
     result.push({
@@ -130,6 +163,16 @@ function refreshNotifications() {
       count: messengersWithoutOrder.length,
       onClick: () => {
         focusUnits(messengersWithoutOrder)
+      }
+    })
+  }
+  if (messengersSeenByEnemy.length > 0) {
+    result.push({
+      id: 'messengers-seen-by-enemy',
+      text: t('notifications.messengers_seen_by_enemy'),
+      count: messengersSeenByEnemy.length,
+      onClick: () => {
+        focusUnits(messengersSeenByEnemy)
       }
     })
   }
@@ -292,6 +335,15 @@ onUnmounted(() => {
 }
 
 .notification[data-type="without-ammo"] .badge {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.notification[data-type="messengers-seen-by-enemy"] {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.notification[data-type="messengers-seen-by-enemy"] .badge {
   background: rgba(239, 68, 68, 0.25);
   color: #fca5a5;
 }

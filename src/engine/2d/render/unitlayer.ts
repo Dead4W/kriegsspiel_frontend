@@ -18,6 +18,8 @@ import {getEnvironmentIcon} from "@/engine/resourcePack/environment.ts";
 import {getFormationIcon} from "@/engine/resourcePack/formations.ts";
 import {getUnitNumberParam, getUnitStringParam} from "@/engine/resourcePack/units.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
+import {Team} from "@/enums/teamKeys.ts";
+import {RoomGameStage} from "@/enums/roomStage.ts";
 
 type MoveOrderRange = {
   min: number
@@ -132,6 +134,7 @@ export class unitlayer {
 
       const p = cam.worldToScreen(unit.pos)
       const futureP = unit.futurePos ? cam.worldToScreen(unit.futurePos) : null
+      const futureAngle = futureP ? this.getFutureAngle(unit) : unit.angle
 
       const { r, g, b } = getTeamColor(unit.team)
       ctx.fillStyle = `rgba(${r},${g},${b},${unitOpacity})`
@@ -143,14 +146,14 @@ export class unitlayer {
 
       debugPerformance('drawUnitBody', () => {
         ctx.save()
-        this.drawUnitBody(ctx, cam, unit, p, wUnit, hUnit, unitOpacity)
+        this.drawUnitBody(ctx, cam, unit, p, wUnit, hUnit, unitOpacity, unit.angle)
         ctx.restore()
         ctx.closePath()
       })
       if (unit.isSelected() && !unit.isFutureSelected()) {
         debugPerformance('drawSelection', () => {
           ctx.save()
-          this.drawSelection(ctx, cam, unit, p, wUnit, hUnit)
+          this.drawSelection(ctx, cam, unit, p, wUnit, hUnit, unit.angle)
           ctx.restore()
           ctx.closePath()
         })
@@ -158,14 +161,14 @@ export class unitlayer {
       if (futureP) {
         debugPerformance('drawFutureUnitBody', () => {
           ctx.save()
-          this.drawUnitBody(ctx, cam, unit, futureP, wUnit, hUnit, unitOpacity * 0.5)
+          this.drawUnitBody(ctx, cam, unit, futureP, wUnit, hUnit, unitOpacity * 0.5, futureAngle)
           ctx.restore()
           ctx.closePath()
         })
         if (unit.isSelected() && unit.isFutureSelected()) {
           debugPerformance('drawSelection', () => {
             ctx.save()
-            this.drawSelection(ctx, cam, unit, futureP, wUnit, hUnit)
+            this.drawSelection(ctx, cam, unit, futureP, wUnit, hUnit, futureAngle)
             ctx.restore()
             ctx.closePath()
           })
@@ -203,12 +206,13 @@ export class unitlayer {
     p: vec2,
     w: number,
     h: number,
-    opacity: number
+    opacity: number,
+    angle: number
   ) {
     ctx.globalAlpha = opacity
 
     ctx.translate(p.x, p.y)
-    ctx.rotate(unit.angle)
+    ctx.rotate(angle)
     ctx.translate(-w / 2, -h / 2)
 
     if (unit.type === unitType.MESSENGER) {
@@ -592,7 +596,8 @@ export class unitlayer {
     unit: BaseUnit,
     p: { x: number; y: number },
     w: number,
-    h: number
+    h: number,
+    angle: number
   ) {
     if (!unit.isSelected()) return
 
@@ -602,7 +607,7 @@ export class unitlayer {
     ctx.lineWidth = 3 * cam.zoom
 
     ctx.translate(p.x, p.y)
-    ctx.rotate(unit.angle)
+    ctx.rotate(angle)
     ctx.translate(-w / 2, -h / 2)
 
     if (unit.type === unitType.MESSENGER) {
@@ -614,5 +619,32 @@ export class unitlayer {
     } else {
       ctx.strokeRect(-pad, -pad, w + pad * 2, h + pad * 2)
     }
+  }
+
+  private getFutureAngle(unit: BaseUnit): number {
+    const isUmpireWarView =
+      window.PLAYER.team === Team.ADMIN
+      && window.ROOM_WORLD.stage === RoomGameStage.WAR
+    if (!isUmpireWarView) return unit.angle
+
+    let from = unit.pos
+    let to: vec2 | null = null
+
+    for (const cmd of unit.getCommands()) {
+      if (cmd.type !== UnitCommandTypes.Move) continue
+      const state = cmd.getState().state as MoveCommandState
+      if (to) from = to
+      to = state.target
+    }
+
+    if (!to) return unit.angle
+
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    if (dx === 0 && dy === 0) return unit.angle
+
+    const tau = Math.PI * 2
+    const angle = Math.atan2(dy, dx) + Math.PI / 2
+    return ((angle % tau) + tau) % tau
   }
 }

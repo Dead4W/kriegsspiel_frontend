@@ -183,10 +183,12 @@ export class overlaylayer {
     const a = cam.worldToScreen(item.from)
     const b = cam.worldToScreen(item.to)
 
-    const x = Math.min(a.x, b.x)
-    const y = Math.min(a.y, b.y)
     const w = Math.abs(a.x - b.x)
     const h = Math.abs(a.y - b.y)
+    const centerX = (a.x + b.x) / 2
+    const centerY = (a.y + b.y) / 2
+    const x = centerX - w / 2
+    const y = centerY - h / 2
 
     if (
       x + w < 0 ||
@@ -195,14 +197,21 @@ export class overlaylayer {
       y > canvas.height
     ) return
 
+    ctx.save()
+    ctx.translate(centerX, centerY)
+    if (item.angle) {
+      ctx.rotate(item.angle)
+    }
+
     if (item.fillColor) {
       ctx.fillStyle = item.fillColor
-      ctx.fillRect(x, y, w, h)
+      ctx.fillRect(-w / 2, -h / 2, w, h)
     }
 
     ctx.strokeStyle = item.color ?? '#3cff00'
     ctx.lineWidth = (item.width ?? 1) * cam.zoom
-    ctx.strokeRect(x, y, w, h)
+    ctx.strokeRect(-w / 2, -h / 2, w, h)
+    ctx.restore()
   }
 
   // ============================================================

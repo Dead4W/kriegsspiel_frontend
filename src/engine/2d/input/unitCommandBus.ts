@@ -11,6 +11,9 @@ export type UnitCommandMoveRequest = {
   /** Optional override for drag-based commands */
   moveMode?: 'column' | 'formation'
 
+  /** If false, move UI should not open env picker for this point */
+  openEnvMenu?: boolean
+
   /** If true, UI should instantly confirm after applying target */
   autoConfirm?: boolean
 }

@@ -27,6 +27,9 @@ export function bindUnitInteraction(
   // drag
   const dragOrigin = new Map<string, vec2>()
   let commandDragPrepared = false
+  let commandDragLastRouteAnchor: vec2 | null = null
+  let commandDragHasInitialEmit = false
+  const COMMAND_DRAG_ROUTE_STEP_METERS = 45
 
   // screen coords
   let screenX = 0
@@ -58,6 +61,22 @@ export function bindUnitInteraction(
     return window.PLAYER.team === Team.ADMIN
       && window.ROOM_WORLD.stage === RoomGameStage.WAR
       && !isHardModeEnabled()
+  }
+
+  function resolveHouseMagnetTarget(pos: vec2): vec2 {
+    const metersPerPixel = Math.max(0.01, Number(w.map.metersPerPixel) || 1)
+    const houseSearchRadiusPx = Math.max(1, Math.round(50 / metersPerPixel))
+    const nearestHouse = w.findNearestObjectComponentCenter(
+      pos,
+      ['building', 'red_building'],
+      houseSearchRadiusPx
+    )
+    return nearestHouse?.center ?? pos
+  }
+
+  function getCommandDragRouteStepPx() {
+    const metersPerPixel = Math.max(0.0001, Number(w.map.metersPerPixel) || 1)
+    return COMMAND_DRAG_ROUTE_STEP_METERS / metersPerPixel
   }
 
   function tick() {
@@ -120,14 +139,41 @@ export function bindUnitInteraction(
         }
       }
       const center = { x: cx / selected.length, y: cy / selected.length }
-      const target = { x: center.x + dx, y: center.y + dy }
+      const rawTarget = { x: center.x + dx, y: center.y + dy }
+      const magneticTarget = selected.length === 1
+        ? resolveHouseMagnetTarget(rawTarget)
+        : rawTarget
+      const target = magneticTarget
+
+      let appendPoint = false
+      let shouldEmit = false
+      if (!commandDragLastRouteAnchor) {
+        commandDragLastRouteAnchor = { ...target }
+        shouldEmit = true
+      } else {
+        const toLast = Math.hypot(
+          target.x - commandDragLastRouteAnchor.x,
+          target.y - commandDragLastRouteAnchor.y
+        )
+        if (toLast >= getCommandDragRouteStepPx()) {
+          appendPoint = true
+          commandDragLastRouteAnchor = { ...target }
+          shouldEmit = true
+        } else if (!commandDragHasInitialEmit) {
+          shouldEmit = true
+        }
+      }
+
+      if (!shouldEmit) return
+      commandDragHasInitialEmit = true
 
       emitUnitCommandRequest({
         command: UnitCommandTypes.Move,
         move: {
           pos: target,
-          append: false,
+          append: appendPoint,
           moveMode: 'formation',
+          openEnvMenu: false,
         },
       })
       return
@@ -260,6 +306,8 @@ export function bindUnitInteraction(
       startWorld = worldPos
       dragOrigin.clear()
       commandDragPrepared = false
+      commandDragLastRouteAnchor = null
+      commandDragHasInitialEmit = false
 
       for (const u of w.units.getSelected()) {
         const origin = isCommandDrag
@@ -333,7 +381,11 @@ export function bindUnitInteraction(
           cy += origin.y
         }
         const center = { x: cx / selected.length, y: cy / selected.length }
-        const target = { x: center.x + dx, y: center.y + dy }
+        const rawTarget = { x: center.x + dx, y: center.y + dy }
+        const magneticTarget = selected.length === 1
+          ? resolveHouseMagnetTarget(rawTarget)
+          : rawTarget
+        const target = magneticTarget
 
         emitUnitCommandRequest({
           command: UnitCommandTypes.Move,
@@ -341,6 +393,7 @@ export function bindUnitInteraction(
             pos: target,
             append: false,
             moveMode: 'formation',
+            openEnvMenu: false,
             autoConfirm: true,
           },
         })
@@ -476,6 +529,8 @@ export function bindUnitInteraction(
      previewBaseFutureSelection.clear()
      dragOrigin.clear()
      commandDragPrepared = false
+     commandDragLastRouteAnchor = null
+     commandDragHasInitialEmit = false
      startWorld = null
      currentWorld = null
      dirty = false

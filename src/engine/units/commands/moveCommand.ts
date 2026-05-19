@@ -4,10 +4,12 @@ import {BaseCommand, CommandStatus} from "./baseCommand.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {unitType, type uuid} from "@/engine";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import { applyAutoEnvironment } from "@/engine/units/autoEnvironment.ts";
 
 export interface MoveCommandState {
   target: vec2
   modifier: string | null
+  comment?: string
   abilities: UnitAbilityType[]
   orderIndex: number
   uniqueId: uuid
@@ -25,7 +27,35 @@ export class MoveCommand extends BaseCommand<
     super()
   }
 
+  private applyStateToUnit(unit: BaseUnit) {
+    if (unit.manualEnvironment) {
+      unit.envState = [unit.manualEnvironment]
+      unit.activateAbility(null)
+      for (const ability of this.state.abilities) {
+        if (unit.abilities.includes(ability)) {
+          unit.activateAbility(ability)
+        }
+      }
+      return
+    }
+
+    if (!applyAutoEnvironment(unit, "moving")) {
+      if (this.state.modifier) {
+        unit.envState = [this.state.modifier]
+      }
+    }
+
+    unit.activateAbility(null)
+    for (const ability of this.state.abilities) {
+      if (unit.abilities.includes(ability)) {
+        unit.activateAbility(ability)
+      }
+    }
+  }
+
   update(unit: BaseUnit, dt: number) {
+    this.applyStateToUnit(unit)
+
     if (this.isFinished(unit)) return
     if (!this.canMove(unit)) return
 
@@ -33,20 +63,6 @@ export class MoveCommand extends BaseCommand<
     const dy = this.state.target.y - unit.pos.y
     const dist = Math.hypot(dx, dy)
     if (dist === 0) return
-
-    // Activate env
-    unit.envState = []
-    if (this.state.modifier) {
-      unit.envState = [this.state.modifier]
-    }
-
-    // Activate ability
-    unit.activateAbility(null)
-    for (const ability of this.state.abilities) {
-      if (unit.abilities.includes(ability)) {
-        unit.activateAbility(ability)
-      }
-    }
 
     const speed = unit.speed / 60 * dt / window.ROOM_WORLD.map.metersPerPixel
     if (this.estimate(unit) <= dt) {
@@ -121,8 +137,9 @@ export class MoveCommand extends BaseCommand<
     const saveEnv = [...unit.envState]
     const saveAbilityType = unit.activeAbilityType
 
-    unit.envState = []
-    if (this.state.modifier) {
+    if (unit.manualEnvironment) {
+      unit.envState = [unit.manualEnvironment]
+    } else if (this.state.modifier) {
       unit.envState = [this.state.modifier]
     }
     unit.activeAbilityType = null

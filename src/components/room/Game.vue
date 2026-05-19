@@ -693,21 +693,18 @@ async function initWorld(room: RoomData) {
   const configuredObjectMapMetaUrl = String(room.options[ROOM_SETTING_KEYS.OBJECT_MAP_META_URL] || '').trim()
 
   const canUse3D = allow3DRender()
-  const selectedObjectMapUrl = canUse3D
-    ? configuredObjectMapUrl || (isDefaultMapSelected ? defaultObjectMapUrl : '')
-    : ''
-  const selectedObjectMapMetaUrl = canUse3D
-    ? configuredObjectMapMetaUrl || (isDefaultMapSelected ? defaultObjectMapMetaUrl : '')
-    : ''
-  const hasObjectMap = canUse3D && Boolean(selectedObjectMapUrl && selectedObjectMapMetaUrl)
+  const selectedObjectMapUrl = configuredObjectMapUrl || (isDefaultMapSelected ? defaultObjectMapUrl : '')
+  const selectedObjectMapMetaUrl =
+    configuredObjectMapMetaUrl || (isDefaultMapSelected ? defaultObjectMapMetaUrl : '')
+  const hasObjectMap = Boolean(selectedObjectMapUrl && selectedObjectMapMetaUrl)
 
   initLoading([
     { key: 'resourcePack', labelKey: 'loadingStages.resourcePack' },
     { key: 'mapImage', labelKey: 'loadingStages.mapImage' },
     { key: 'heightMapImage', labelKey: 'loadingStages.heightMapImage' },
     { key: 'forestMap', labelKey: 'loadingStages.forestMap' },
-    ...(canUse3D ? [{ key: 'objectMapImage', labelKey: 'loadingStages.objectMapImage' }] : []),
-    ...(canUse3D ? [{ key: 'objectMapMeta', labelKey: 'loadingStages.objectMapMeta' }] : []),
+    { key: 'objectMapImage', labelKey: 'loadingStages.objectMapImage' },
+    { key: 'objectMapMeta', labelKey: 'loadingStages.objectMapMeta' },
     { key: 'heightMapProcessing', labelKey: 'loadingStages.heightMapProcessing' },
     { key: 'rendererInit', labelKey: 'loadingStages.rendererInit' },
   ])
@@ -826,7 +823,7 @@ async function initWorld(room: RoomData) {
       }
     )
     markStageDone('objectMapMeta')
-  } else if (canUse3D) {
+  } else {
     markStageDone('objectMapImage')
     markStageDone('objectMapMeta')
   }
@@ -863,6 +860,10 @@ async function initWorld(room: RoomData) {
     objectMapImage: objectMapBitmap,
     objectMapMeta,
     metersPerPixel: map.metersPerPixel || defaultMetersPerPixel,
+  }
+
+  if (objectMapBitmap && objectMapMeta) {
+    w.setObjectMap(objectMapBitmap, objectMapMeta)
   }
 
   resizeHandler = () => {

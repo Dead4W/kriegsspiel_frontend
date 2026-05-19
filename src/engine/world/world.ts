@@ -52,6 +52,11 @@ export class world {
   forestCtx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
   forestImageData?: ImageData
 
+  objectMapCanvas?: OffscreenCanvas | HTMLCanvasElement
+  objectMapCtx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+  objectMapImageData?: ImageData
+  objectMapColorToEntity: Map<string, string> = new Map()
+
   heightMap?: HeightSampler
   heightMapCanvas?: OffscreenCanvas | HTMLCanvasElement
   heightMapCtx?: OffscreenCanvasRenderingContext2D | RenderingContext
@@ -167,6 +172,249 @@ export class world {
       this.forestCanvas.height
     )
     this.events.emit('changed', { reason: 'forestMap' })
+  }
+
+  setObjectMap(
+    map: ImageBitmap | OffscreenCanvas | HTMLCanvasElement,
+    meta: Record<string, unknown>
+  ) {
+    const canvas =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(this.map.width, this.map.height)
+        : Object.assign(document.createElement('canvas'), { width: this.map.width, height: this.map.height })
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null
+    if (!ctx) return
+    // Align object-map coordinates with world coordinates.
+    // @ts-ignore
+    ctx.drawImage(map, 0, 0, this.map.width, this.map.height)
+    const imageData = ctx.getImageData(0, 0, this.map.width, this.map.height)
+
+    const nextMap = new Map<string, string>()
+    const entityToColorRaw =
+      meta && typeof meta === 'object' ? (meta.entity_to_color as Record<string, unknown>) : null
+    if (entityToColorRaw && typeof entityToColorRaw === 'object') {
+      for (const entity of Object.keys(entityToColorRaw)) {
+        const rawColor = entityToColorRaw[entity]
+        if (!Array.isArray(rawColor) || rawColor.length < 3) continue
+        const r = Number(rawColor[0])
+        const g = Number(rawColor[1])
+        const b = Number(rawColor[2])
+        if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) continue
+        nextMap.set(
+          `${Math.max(0, Math.min(255, Math.round(r)))},${Math.max(0, Math.min(255, Math.round(g)))},${Math.max(0, Math.min(255, Math.round(b)))}`,
+          String(entity)
+        )
+      }
+    }
+
+    this.objectMapCanvas = canvas
+    this.objectMapCtx = ctx
+    this.objectMapImageData = imageData
+    this.objectMapColorToEntity = nextMap
+    this.events.emit('changed', { reason: 'objectMap' })
+  }
+
+  getObjectMapEntityAt(pos: vec2): string | null {
+    if (!this.objectMapImageData || !this.objectMapColorToEntity.size) return null
+    const x = Math.round(pos.x)
+    const y = Math.round(pos.y)
+    if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) return null
+    const idx = (y * this.map.width + x) * 4
+    const pixels = this.objectMapImageData.data
+    const key = `${pixels[idx]},${pixels[idx + 1]},${pixels[idx + 2]}`
+    return this.objectMapColorToEntity.get(key) ?? null
+  }
+
+  isObjectEntityAt(pos: vec2, entity: string): boolean {
+    return this.getObjectMapEntityAt(pos) === entity
+  }
+
+  findNearestObjectPoint(
+    pos: vec2,
+    entities: string[],
+    maxRadiusPx: number = 12
+  ): vec2 | null {
+    if (!this.objectMapImageData || !this.objectMapColorToEntity.size || !entities.length) return null
+    const targets = new Set(entities.map((item) => String(item)))
+    const startX = Math.round(pos.x)
+    const startY = Math.round(pos.y)
+    if (startX < 0 || startY < 0 || startX >= this.map.width || startY >= this.map.height) return null
+
+    const data = this.objectMapImageData.data
+    const radius = Math.max(0, Math.round(maxRadiusPx))
+    let bestDistSq = Infinity
+    let bestX = -1
+    let bestY = -1
+
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      const y = startY + dy
+      if (y < 0 || y >= this.map.height) continue
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        const x = startX + dx
+        if (x < 0 || x >= this.map.width) continue
+        const distSq = dx * dx + dy * dy
+        if (distSq > radius * radius || distSq >= bestDistSq) continue
+        const idx = (y * this.map.width + x) * 4
+        const key = `${data[idx]},${data[idx + 1]},${data[idx + 2]}`
+        const entity = this.objectMapColorToEntity.get(key)
+        if (!entity || !targets.has(entity)) continue
+        bestDistSq = distSq
+        bestX = x
+        bestY = y
+      }
+    }
+
+    if (bestX < 0 || bestY < 0) return null
+    return { x: bestX, y: bestY }
+  }
+
+  hasObjectEntityOnSegment(from: vec2, to: vec2, entity: string, sampleStepPx: number = 2): boolean {
+    if (!this.objectMapImageData || !this.objectMapColorToEntity.size) return false
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const length = Math.hypot(dx, dy)
+    if (length === 0) return this.isObjectEntityAt(from, entity)
+    const step = Math.max(1, sampleStepPx)
+    const samples = Math.max(1, Math.ceil(length / step))
+    for (let i = 0; i <= samples; i += 1) {
+      const t = i / samples
+      if (
+        this.isObjectEntityAt(
+          {
+            x: from.x + dx * t,
+            y: from.y + dy * t,
+          },
+          entity
+        )
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private getObjectMapEntityAtPixel(x: number, y: number): string | null {
+    if (!this.objectMapImageData || !this.objectMapColorToEntity.size) return null
+    if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) return null
+    const idx = (y * this.map.width + x) * 4
+    const pixels = this.objectMapImageData.data
+    const key = `${pixels[idx]},${pixels[idx + 1]},${pixels[idx + 2]}`
+    return this.objectMapColorToEntity.get(key) ?? null
+  }
+
+  findNearestObjectComponentCenter(
+    pos: vec2,
+    entities: string[],
+    maxRadiusPx: number = 24
+  ): { center: vec2; entity: string } | null {
+    const seed = this.findNearestObjectPoint(pos, entities, maxRadiusPx)
+    if (!seed) return null
+
+    const seedX = Math.round(seed.x)
+    const seedY = Math.round(seed.y)
+    const seedEntity = this.getObjectMapEntityAtPixel(seedX, seedY)
+    if (!seedEntity) return null
+
+    const allowedEntities = new Set(entities.map((item) => String(item)))
+    if (!allowedEntities.has(seedEntity)) return null
+
+    const width = this.map.width
+    const height = this.map.height
+    const queue: Array<[number, number]> = [[seedX, seedY]]
+    const visited = new Set<number>([seedY * width + seedX])
+
+    let sumX = 0
+    let sumY = 0
+    let count = 0
+
+    const dirs = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ]
+
+    while (queue.length) {
+      const [x, y] = queue.pop()!
+      const entity = this.getObjectMapEntityAtPixel(x, y)
+      if (entity !== seedEntity) continue
+
+      sumX += x
+      sumY += y
+      count += 1
+
+      for (let i = 0; i < dirs.length; i += 1) {
+        const nx = x + dirs[i]![0]!
+        const ny = y + dirs[i]![1]!
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue
+        const nIndex = ny * width + nx
+        if (visited.has(nIndex)) continue
+        visited.add(nIndex)
+        queue.push([nx, ny])
+      }
+    }
+
+    if (count === 0) return null
+
+    return {
+      center: {
+        x: sumX / count,
+        y: sumY / count,
+      },
+      entity: seedEntity,
+    }
+  }
+
+  findNearestObjectLocalCenter(
+    pos: vec2,
+    entities: string[],
+    maxRadiusPx: number = 24,
+    localRadiusPx: number = 10
+  ): { center: vec2; entity: string } | null {
+    const seed = this.findNearestObjectPoint(pos, entities, maxRadiusPx)
+    if (!seed) return null
+
+    const seedEntity = this.getObjectMapEntityAt(seed)
+    if (!seedEntity) return null
+    const allowedEntities = new Set(entities.map((item) => String(item)))
+    if (!allowedEntities.has(seedEntity)) return null
+
+    const radius = Math.max(1, Math.round(localRadiusPx))
+    const seedX = Math.round(seed.x)
+    const seedY = Math.round(seed.y)
+
+    let sumX = 0
+    let sumY = 0
+    let count = 0
+
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      const y = seedY + dy
+      if (y < 0 || y >= this.map.height) continue
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        const x = seedX + dx
+        if (x < 0 || x >= this.map.width) continue
+        if (dx * dx + dy * dy > radius * radius) continue
+
+        const entity = this.getObjectMapEntityAt({ x, y })
+        if (entity !== seedEntity) continue
+        sumX += x
+        sumY += y
+        count += 1
+      }
+    }
+
+    if (count === 0) return null
+    return {
+      center: {
+        x: sumX / count,
+        y: sumY / count,
+      },
+      entity: seedEntity,
+    }
   }
 
   async setHeightMap(bitmap: ImageBitmap) {

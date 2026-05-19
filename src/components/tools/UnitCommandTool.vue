@@ -233,8 +233,12 @@ async function onCommandRequest(req: UnitCommandRequest) {
     }
     moveRef.value?.applyContextTarget?.(req.move.pos, req.move.append)
     const shouldAutoConfirm = !!req.move.autoConfirm
-    // Always ask ENV modifier for each picked point.
-    moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
+    const shouldOpenEnvMenu = req.move.openEnvMenu ?? true
+    if (shouldOpenEnvMenu) {
+      moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
+    } else if (shouldAutoConfirm) {
+      moveRef.value?.confirm?.()
+    }
     if (shouldAutoConfirm) return
     return
   }
@@ -250,8 +254,12 @@ async function onCommandRequest(req: UnitCommandRequest) {
     }
     moveRef.value?.applyContextTarget?.(req.move.pos, req.move.append)
     const shouldAutoConfirm = !!req.move.autoConfirm
-    // Always ask ENV modifier for each picked point.
-    moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
+    const shouldOpenEnvMenu = req.move.openEnvMenu ?? true
+    if (shouldOpenEnvMenu) {
+      moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
+    } else if (shouldAutoConfirm) {
+      moveRef.value?.confirm?.()
+    }
     if (shouldAutoConfirm) return
     return
   }

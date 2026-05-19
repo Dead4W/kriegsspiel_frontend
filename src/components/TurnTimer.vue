@@ -12,10 +12,12 @@ import {useI18n} from 'vue-i18n'
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {type commandstate, unitType} from "@/engine/units/types.ts";
-import type {vec2} from "@/engine/types.ts";
+import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {getInaccuracyAbility} from "@/engine/resourcePack/abilities.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
+import { applyAutoEnvironment } from "@/engine/units/autoEnvironment.ts";
+import {BaseUnit} from "@/engine/units/baseUnit.ts";
 
 const { t } = useI18n()
 
@@ -83,10 +85,71 @@ function onWheelNumber(
   }
 }
 
+function setUnitAngleFromMoveVector(unit: { angle: number }, from: vec2, to: vec2) {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  if (dx === 0 && dy === 0) return
+
+  const tau = Math.PI * 2
+  // Unit textures are oriented "forward = up", so shift +PI/2 from +X.
+  const angle = Math.atan2(dy, dx) + Math.PI / 2
+  unit.angle = ((angle % tau) + tau) % tau
+}
+
+type UnitMoveSortKey = {
+  uniqueId: string
+  orderIndex: number
+}
+
+function getFirstMoveSortKey(unit: ReturnType<typeof window.ROOM_WORLD.units.list>[number]): UnitMoveSortKey | null {
+  const firstMoveCommand = unit
+    .getCommands()
+    .find((cmd) => cmd.type === UnitCommandTypes.Move && !cmd.isFinished(unit))
+
+  if (!firstMoveCommand) return null
+
+  const moveState = firstMoveCommand.getState().state as MoveCommandState
+  return {
+    uniqueId: moveState.uniqueId ?? '',
+    orderIndex: Number.isFinite(moveState.orderIndex) ? moveState.orderIndex : Number.MAX_SAFE_INTEGER,
+  }
+}
+
+function sortUnitsForTurnStep(units: ReturnType<typeof window.ROOM_WORLD.units.list>) {
+  units.sort((a, b) => {
+    const aMove = getFirstMoveSortKey(a)
+    const bMove = getFirstMoveSortKey(b)
+
+    if (aMove && !bMove) return -1
+    if (!aMove && bMove) return 1
+
+    if (aMove && bMove) {
+      if (aMove.uniqueId !== bMove.uniqueId) {
+        return aMove.uniqueId.localeCompare(bMove.uniqueId)
+      }
+      if (aMove.orderIndex !== bMove.orderIndex) {
+        return aMove.orderIndex - bMove.orderIndex
+      }
+    }
+
+    return a.id.localeCompare(b.id)
+  })
+}
+
 /* ===== Commands ==== */
 
 function processUnitCommands(dt: number) {
   const units = window.ROOM_WORLD.units.list()
+  sortUnitsForTurnStep(units)
+  for (const unit of units) {
+    if (!unit.alive) continue
+
+    const commands = unit.getCommands()
+    const firstActiveCommand = commands.find((cmd) => !cmd.isFinished(unit))
+    const isMovingNow = firstActiveCommand?.type === UnitCommandTypes.Move
+    applyAutoEnvironment(unit, isMovingNow ? 'moving' : 'standing')
+  }
+  syncFormationMoveSpeedByOrder(units)
 
   for (const unit of units) {
     if (!unit.alive) continue
@@ -108,6 +171,7 @@ function processUnitCommands(dt: number) {
         commands.push(attackCommand)
       }
     }
+
     if (commands.length === 0) continue;
 
     let left_dt = dt;
@@ -116,6 +180,10 @@ function processUnitCommands(dt: number) {
     const postGoodCommands = [];
     for (let i = 0; i < commands.length; i++) {
       const cmd = commands[i]!
+      const moveStartPos =
+        cmd.type === UnitCommandTypes.Move
+          ? { x: unit.pos.x, y: unit.pos.y }
+          : null
 
       let isRepeat = false;
       if (cmd.type === UnitCommandTypes.Move) {
@@ -130,9 +198,14 @@ function processUnitCommands(dt: number) {
         continue;
       }
 
-      if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat].includes(cmd.type)) {
+      if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat, UnitCommandTypes.Delivery].includes(cmd.type)) {
         cmd.start(unit)
         cmd.update(unit, dt)
+        if (cmd.type === UnitCommandTypes.Delivery) {
+          // Delivery command can rebuild unit command queue (append A* move segments).
+          // Keep processing the actual queue, otherwise goodCommands will overwrite it.
+          commands = unit.getCommands()
+        }
       } else {
         if (left_dt > 0) {
           const estimate = cmd.estimate(unit);
@@ -150,7 +223,13 @@ function processUnitCommands(dt: number) {
         }
       }
 
-      if (!cmd.isFinished(unit)) {
+      const isFinishedAfterUpdate = cmd.isFinished(unit)
+      if (isFinishedAfterUpdate && cmd.type === UnitCommandTypes.Move && moveStartPos) {
+        const moveState = cmd.getState().state as MoveCommandState
+        setUnitAngleFromMoveVector(unit, moveStartPos, moveState.target)
+      }
+
+      if (!isFinishedAfterUpdate) {
         goodCommands.push(cmd);
       } else if (isRepeat) {
         postGoodCommands.push(cmd);
@@ -163,7 +242,103 @@ function processUnitCommands(dt: number) {
 
     // если список изменился — синхронизируем
     unit.setCommands(goodCommands)
+
+    const nextActiveCommand = goodCommands.find((cmd) => !cmd.isFinished(unit))
+    const isMovingAfterStep = nextActiveCommand?.type === UnitCommandTypes.Move
+    applyAutoEnvironment(unit, isMovingAfterStep ? 'moving' : 'standing')
+
     unit.setDirty()
+  }
+
+  syncFormationMoveSpeedByOrder(units)
+}
+
+function syncFormationMoveSpeedByOrder(units: ReturnType<typeof window.ROOM_WORLD.units.list>) {
+  type GroupUnit = {
+    unit: ReturnType<typeof window.ROOM_WORLD.units.list>[number]
+    moveState: MoveCommandState
+  }
+
+  const moveGroups = new Map<string, GroupUnit[]>()
+  const getWaitingColumnSpeedMultiplier = (distancePx: number): number => {
+    if (distancePx <= BaseUnit.COLLISION_RANGE) return 1
+    const metersPerPixel = Math.max(0.0001, Number(window.ROOM_WORLD.map.metersPerPixel) || 1)
+    const distanceMeters = distancePx * metersPerPixel
+    const collisionRangeMeters = BaseUnit.COLLISION_RANGE * metersPerPixel
+    const multiplier = 1 - (distanceMeters - collisionRangeMeters) * 0.001
+    return Math.max(0.1, Math.min(1, multiplier))
+  }
+
+  for (const unit of units) {
+    if (!unit.alive) continue
+    unit.setFormationMoveMinSpeed(null)
+    unit.setColumnLagSpeedMultiplier(1)
+
+    const firstActiveCommand = unit.getCommands().find((cmd) => !cmd.isFinished(unit))
+    if (!firstActiveCommand || firstActiveCommand.type !== UnitCommandTypes.Move) continue
+
+    const moveState = firstActiveCommand.getState().state as MoveCommandState
+    if (!moveState.uniqueId) continue
+
+    const groupUnits = moveGroups.get(moveState.uniqueId)
+    if (groupUnits) {
+      groupUnits.push({
+        unit,
+        moveState,
+      })
+    } else {
+      moveGroups.set(moveState.uniqueId, [{
+        unit,
+        moveState,
+      }])
+    }
+  }
+
+  for (const groupUnits of moveGroups.values()) {
+    if (groupUnits.length < 2) continue
+
+    const minSpeed = Math.min(...groupUnits.map(({ unit }) => unit.speed))
+    const unitByOrderIndex = new Map<number, GroupUnit>()
+
+    for (const groupUnit of groupUnits) {
+      const orderIndex = Number.isFinite(groupUnit.moveState.orderIndex)
+        ? groupUnit.moveState.orderIndex
+        : Number.MAX_SAFE_INTEGER
+      if (!unitByOrderIndex.has(orderIndex)) {
+        unitByOrderIndex.set(orderIndex, groupUnit)
+      }
+    }
+
+    for (const groupUnit of groupUnits) {
+      let laggingMultiplier = 1
+      const currentOrderIndex = Number.isFinite(groupUnit.moveState.orderIndex)
+        ? groupUnit.moveState.orderIndex
+        : Number.MAX_SAFE_INTEGER
+
+      const prevUnit = unitByOrderIndex.get(currentOrderIndex - 1)
+      if (prevUnit) {
+        const distanceToPrevPx = Math.hypot(
+          prevUnit.unit.pos.x - groupUnit.unit.pos.x,
+          prevUnit.unit.pos.y - groupUnit.unit.pos.y
+        )
+        if (distanceToPrevPx > BaseUnit.COLLISION_RANGE) {
+          // Lagging behind previous unit in column: speed up to catch up.
+          laggingMultiplier = 1.1
+        }
+      }
+
+      const nextUnit = unitByOrderIndex.get(currentOrderIndex + 1)
+      if (nextUnit && laggingMultiplier === 1) {
+        const distancePx = Math.hypot(
+          nextUnit.unit.pos.x - groupUnit.unit.pos.x,
+          nextUnit.unit.pos.y - groupUnit.unit.pos.y
+        )
+        laggingMultiplier = getWaitingColumnSpeedMultiplier(distancePx)
+      }
+
+      groupUnit.unit.setFormationMoveMinSpeed(minSpeed)
+      groupUnit.unit.setColumnLagSpeedMultiplier(laggingMultiplier)
+    }
   }
 }
 
@@ -413,6 +588,86 @@ function getDirectViewObjects(team: unitTeam): DirectViewObjectState[] {
   return Array.from(objectsByPoint.values())
 }
 
+function captureUnitPositionsById() {
+  const map = new Map<string, vec2>()
+  for (const unit of window.ROOM_WORLD.units.list()) {
+    map.set(unit.id, { x: unit.pos.x, y: unit.pos.y })
+  }
+  return map
+}
+
+function buildTickMoveFrames(from: vec2, to: vec2, durationMs: number): MoveFrame[] | null {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  if (Math.hypot(dx, dy) < 0.01) return null
+
+  return [
+    {
+      t: 0,
+      pos: { x: from.x, y: from.y },
+    },
+    {
+      t: durationMs,
+      pos: { x: to.x, y: to.y },
+    },
+  ]
+}
+
+function getTickAnimationDurationMs(stepSeconds: number) {
+  const fullTickSeconds = 60
+  const minDuration = 180
+  const fullTickDuration = 100
+  const ratio = Math.max(0, Math.min(1, stepSeconds / fullTickSeconds))
+  return Math.max(minDuration, Math.round(fullTickDuration * ratio))
+}
+
+async function flushTickUnitsWithAnimation(
+  unitPositionsBeforeTick: Map<string, vec2>,
+  animationDurationMs: number
+) {
+  const dirtyUnits = window.ROOM_WORLD.units.getDirty()
+  const removedUnits = window.ROOM_WORLD.units.getDirtyRemove()
+  let hasAnimation = false
+
+  for (const dirty of dirtyUnits) {
+    const unit = window.ROOM_WORLD.units.get(dirty.unit.id)
+    const startPos = unitPositionsBeforeTick.get(dirty.unit.id)
+    const endPos = dirty.unit.pos
+    const frames = unit && startPos
+      ? buildTickMoveFrames(startPos, endPos, animationDurationMs)
+      : null
+
+    window.ROOM_WORLD.events.emit('api', {
+      type: 'unit',
+      data: dirty.unit,
+      frames: frames ?? undefined,
+    })
+
+    if (!unit || !startPos || !frames) continue
+
+    hasAnimation = true
+    unit.pos = {
+      x: startPos.x,
+      y: startPos.y,
+    }
+    unit.applyRemoteFrames(frames)
+  }
+
+  if (removedUnits.length) {
+    window.ROOM_WORLD.events.emit('api', {
+      type: 'unit-remove',
+      data: removedUnits,
+    })
+  }
+
+  if (!hasAnimation) return
+
+  window.ROOM_WORLD.events.emit('changed', { reason: 'animation' })
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, animationDurationMs + 40)
+  })
+}
+
 /* ===== timer ===== */
 
 async function startTurn() {
@@ -422,26 +677,34 @@ async function startTurn() {
   totalSeconds.value = value
   running.value = true
 
-  const MAX_STEP = 60 // cекунд
+  const MAX_STEP = 60 // 1 тик = 1 минута
 
   window.ROOM_WORLD.units.withNewCommandsTmp.clear()
   window.ROOM_WORLD.socketLock = true
   let runningSteps = 0
 
   while (totalSeconds.value > 0 && running.value) {
-    if (!running.value) return;
+    if (!running.value) break
     const step = Math.min(MAX_STEP, totalSeconds.value)
+    const unitPositionsBeforeTick = captureUnitPositionsById()
+    const animationDurationMs = getTickAnimationDurationMs(step)
+
     processUnitCommands(step)
+    await flushTickUnitsWithAnimation(unitPositionsBeforeTick, animationDurationMs)
 
     totalSeconds.value -= step
 
-    window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
+    window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
 
     runningSteps++
 
     window.ROOM_WORLD.skipTime(step, false)
+    window.ROOM_WORLD.events.emit('api', { type: 'skip_time', data: window.ROOM_WORLD.time })
     displayWorldTime.value = window.ROOM_WORLD.time
     timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
+    window.ROOM_WORLD.socketLock = false
+    await window.ROOM_WORLD.events.emit('force_api', {})
+    window.ROOM_WORLD.socketLock = true
 
     if (runningSteps % 10 === 0) {
       // отдаём управление браузеру

@@ -498,6 +498,8 @@
       "route": "Route",
       "pickRouteHint": "RMB — edit last point,\nShift + RMB — add",
       "routeModifiers": "Route modifiers",
+      "smartPath": "Build road path",
+      "smartPathNeedObjectMap": "Object map required",
       "moveModeFormation": "Keep formation",
       "moveModeColumn": "Column",
       "patrol": "Patrol",
@@ -794,6 +796,11 @@
     "forceWalking": "Forced march",
     "onHorse": "Mounted"
   },
+  "formationMove": {
+    "minimal_speed_column_or_formation": "Minimal speed column/formation",
+    "waiting_for_lagging_in_column": "Waiting for lagging units in column",
+    "catching_up_with_column": "Catching up with column"
+  },
 
   "time": {
     "morning": "Morning",
@@ -814,7 +821,8 @@
     "units_with_new_order": "Units with new command",
     "units_without_order": "Units without command",
     "units_without_ammo": "Units without ammo",
-    "messengers_without_order": "Messengers without order"
+    "messengers_without_order": "Messengers without order",
+    "messengers_seen_by_enemy": "Messengers spotted by enemy"
   },
 
   "ability": {

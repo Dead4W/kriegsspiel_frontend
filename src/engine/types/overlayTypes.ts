@@ -38,6 +38,7 @@ export type OverlayRect = {
   type: 'rect'
   from: { x: number; y: number }
   to: { x: number; y: number }
+  angle?: number
 
   color?: string        // обводка
   width?: number        // толщина линии

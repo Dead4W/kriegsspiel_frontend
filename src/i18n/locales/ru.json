@@ -501,6 +501,8 @@
       "route": "Маршрут",
       "pickRouteHint": "ПКМ — изменить последнюю точку,\nShift + ПКМ — добавить",
       "routeModifiers": "Модификаторы маршрута",
+      "smartPath": "Постройка пути по дорогам",
+      "smartPathNeedObjectMap": "Нужна object map",
       "moveModeFormation": "Сохраняя формацию",
       "moveModeColumn": "Колонной",
       "patrol": "Патруль",
@@ -799,6 +801,11 @@
     "forceWalking": "Форсированный марш",
     "onHorse": "На лошади"
   },
+  "formationMove": {
+    "minimal_speed_column_or_formation": "Минимальная скорость колонны/формации",
+    "waiting_for_lagging_in_column": "Ожидание отстающих в колонне",
+    "catching_up_with_column": "Догоняет колонну"
+  },
 
   "time": {
     "morning": "Утро",
@@ -819,7 +826,8 @@
     "units_with_new_order": "Юнитов с новым приказом",
     "units_without_order": "Юнитов без приказа",
     "units_without_ammo": "Юнитов без боеприпасов",
-    "messengers_without_order": "Посыльных без приказа"
+    "messengers_without_order": "Посыльных без приказа",
+    "messengers_seen_by_enemy": "Посыльных заметил враг"
   },
 
   "ability": {

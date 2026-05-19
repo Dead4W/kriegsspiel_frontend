@@ -3,13 +3,14 @@ import {computed, nextTick, onMounted, onUnmounted, ref, type UnwrapRef} from 'v
 import {BaseUnit} from '@/engine/units/baseUnit'
 import type {OverlayItem} from '@/engine/types/overlayTypes'
 import type {vec2} from '@/engine/types'
-import {MoveCommand} from '@/engine/units/commands/moveCommand'
+import {MoveCommand, type MoveCommandState} from '@/engine/units/commands/moveCommand'
 import {useI18n} from 'vue-i18n'
 import {getTeamColor} from '@/engine/2d/render'
 import {type commandstate, type unitTeam, unitType, type uuid} from '@/engine'
 import type {unsub} from '@/engine/events'
 import {unitlayer} from "@/engine/2d/render";
 import {normalize, sub} from "@/engine/math.ts";
+import { CLIENT_SETTING_KEYS } from "@/enums/clientSettingsKeys.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import { hasAbilityInaccuracyRadius } from "@/engine/resourcePack/abilities.ts";
@@ -22,6 +23,7 @@ import {
   getRouteEnvironmentStates,
   type EnvironmentStateId,
 } from "@/engine/resourcePack/environment.ts";
+import { buildRoadTurnRoutePoints } from "@/engine/world/roadPath.ts";
 
 const { t } = useI18n()
 
@@ -81,12 +83,57 @@ export type RoutePoint = {
 const movingUnits = ref<BaseUnit[]>([])
 const targets = ref<RoutePoint[]>([])
 const isPatrol = ref(false)
+const smartPathEnabled = ref(false)
 const routeListRef = ref<HTMLElement | null>(null)
+const MIN_ROUTE_SEGMENT_METERS = 20
 
 /* ================= DISTANCE (meters) ================= */
 
 function distPx(a: vec2, b: vec2) {
   return Math.hypot(b.x - a.x, b.y - a.y)
+}
+
+function pruneTinyRouteSegments(start: vec2, points: vec2[], minSegmentMeters = MIN_ROUTE_SEGMENT_METERS): vec2[] {
+  if (points.length <= 1) return [...points]
+
+  const mpp = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
+  const out: vec2[] = []
+  let prev = start
+
+  for (const point of points) {
+    const segMeters = distPx(prev, point) * mpp
+    if (segMeters >= minSegmentMeters) {
+      out.push(point)
+      prev = point
+      continue
+    }
+
+    // Last point is always kept: for short residual tail
+    // we overwrite previous waypoint with final destination.
+    if (point === points[points.length - 1]) {
+      if (out.length) {
+        out[out.length - 1] = point
+      } else {
+        out.push(point)
+      }
+      prev = point
+    }
+  }
+
+  if (!out.length) {
+    return [{ x: points[points.length - 1]!.x, y: points[points.length - 1]!.y }]
+  }
+  return out
+}
+
+function getFacingAngleFromSegment(from: vec2, to: vec2, fallback: number): number {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  if (dx === 0 && dy === 0) return fallback
+
+  const tau = Math.PI * 2
+  const angle = Math.atan2(dy, dx) + Math.PI / 2
+  return ((angle % tau) + tau) % tau
 }
 
 const routeStartPos = computed<vec2 | null>(() => {
@@ -109,8 +156,141 @@ const routeDistancesMeters = computed<number[]>(() => {
   })
 })
 
+const hasObjectMap = computed(() => {
+  return Boolean(
+    window.ROOM_WORLD.objectMapImageData
+    && window.ROOM_WORLD.objectMapColorToEntity.size > 0
+  )
+})
+
 function fmtMeters(meters: number) {
   return `${Math.round(meters)} m`
+}
+
+function loadSmartPathPreference(units: Array<{ type: unitType }>) {
+  const isSingleMessenger =
+    units.length === 1
+    && units[0]!.type === unitType.MESSENGER
+  if (isSingleMessenger) {
+    smartPathEnabled.value = true
+    return
+  }
+  smartPathEnabled.value = Boolean(
+    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.MOVE_SMART_PATH]
+  )
+}
+
+function onSmartPathToggle(nextValue: boolean) {
+  if (moveMode.value === 'formation') return
+  smartPathEnabled.value = nextValue
+  window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.MOVE_SMART_PATH] = nextValue
+  rebuildRouteBySmartPathMode()
+}
+
+function getSegmentRoutePoints(from: vec2, to: vec2): vec2[] {
+  if (moveMode.value === 'formation') {
+    return [{ x: to.x, y: to.y }]
+  }
+  if (!smartPathEnabled.value || !hasObjectMap.value) {
+    return [{ x: to.x, y: to.y }]
+  }
+  return buildRoadTurnRoutePoints(window.ROOM_WORLD, from, to)
+}
+
+function rebuildRouteBySmartPathMode() {
+  if (!targets.value.length) {
+    rebuildMoveOverlay()
+    return
+  }
+
+  const lastTarget = targets.value[targets.value.length - 1]!
+  const start = routeStartPos.value
+    ?? getNearestSelectedUnitPlannedPos(lastTarget.pos)
+    ?? lastTarget.pos
+  const rebuiltPoints = getSegmentRoutePoints(start, lastTarget.pos)
+
+  targets.value = rebuiltPoints.map((point) => ({
+    pos: point,
+    modifier: lastTarget.modifier ?? null,
+  }))
+  rebuildMoveOverlay()
+}
+
+function minDistanceToSelectedUnits(point: vec2, unitPositions: vec2[]): number {
+  if (!unitPositions.length) return Infinity
+  let minDist = Infinity
+  for (const unitPos of unitPositions) {
+    const dist = Math.hypot(point.x - unitPos.x, point.y - unitPos.y)
+    if (dist < minDist) minDist = dist
+  }
+  return minDist
+}
+
+function trimRouteHeadByNearestUnitDistance(routePoints: vec2[], unitPositions: vec2[]): vec2[] {
+  if (routePoints.length <= 1 || !unitPositions.length) return [...routePoints]
+  let headIndex = 0
+  while (headIndex < routePoints.length - 1) {
+    const currentDist = minDistanceToSelectedUnits(routePoints[headIndex]!, unitPositions)
+    const nextDist = minDistanceToSelectedUnits(routePoints[headIndex + 1]!, unitPositions)
+    // Если следующая точка не дальше ближайшего юнита, текущую стартовую точку убираем.
+    if (nextDist <= currentDist) {
+      headIndex += 1
+      continue
+    }
+    break
+  }
+  return routePoints.slice(headIndex)
+}
+
+function normalizeInitialRoutePoints(routePoints: vec2[]): vec2[] {
+  if (!routePoints.length || !movingUnits.value.length) return routePoints
+  const unitPositions = movingUnits.value.map((u) => getUnitPlannedPos(u as BaseUnit))
+
+  // Обрезаем старт не по всем выбранным юнитам, а только по локальному "стартовому"
+  // кластеру у начала маршрута. Иначе длинная колонна (два хвоста) может протолкнуть
+  // первую A* точку слишком далеко вперед, мимо ближайшего перекрестка/поворота.
+  const routeHead = routePoints[0]!
+  const anchor = unitPositions.reduce((best, p) => {
+    if (!best) return p
+    const bestDist = Math.hypot(best.x - routeHead.x, best.y - routeHead.y)
+    const pDist = Math.hypot(p.x - routeHead.x, p.y - routeHead.y)
+    return pDist < bestDist ? p : best
+  }, null as vec2 | null)
+  const localClusterRadius = Math.max(BaseUnit.COLLISION_RANGE * 2, 20)
+  const localUnitPositions = anchor
+    ? unitPositions.filter((p) =>
+      Math.hypot(p.x - anchor.x, p.y - anchor.y) <= localClusterRadius
+    )
+    : unitPositions
+  const normalizeByPositions = localUnitPositions.length ? localUnitPositions : unitPositions
+
+  const trimmed = trimRouteHeadByNearestUnitDistance(routePoints, normalizeByPositions)
+  if (trimmed.length <= 1) return trimmed
+
+  // Убираем стартовые точки только пока они внутри локальной стартовой группы.
+  const minClearance = Math.max(8, BaseUnit.COLLISION_RANGE * 0.45)
+  let keepFrom = 0
+  while (keepFrom < trimmed.length - 1) {
+    const dist = minDistanceToSelectedUnits(trimmed[keepFrom]!, normalizeByPositions)
+    if (dist > minClearance) break
+    keepFrom += 1
+  }
+  return trimmed.slice(keepFrom)
+}
+
+function getNearestSelectedUnitPlannedPos(point: vec2): vec2 | null {
+  if (!movingUnits.value.length) return null
+  let bestPos: vec2 | null = null
+  let bestDist = Infinity
+  for (const unit of movingUnits.value) {
+    const pos = getUnitPlannedPos(unit as BaseUnit)
+    const dist = Math.hypot(pos.x - point.x, pos.y - point.y)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestPos = pos
+    }
+  }
+  return bestPos ? { x: bestPos.x, y: bestPos.y } : null
 }
 
 /* ================= ENV MENU (radial) ================= */
@@ -250,6 +430,7 @@ type MoveMode = 'column' | 'formation'
 const moveMode = ref<MoveMode>('column')
 
 function setMoveMode(mode: MoveMode) {
+  if (moveMode.value === mode) return
   moveMode.value = mode
   rebuildMoveOverlay()
 }
@@ -272,6 +453,222 @@ function getUnitPlannedPos(u: BaseUnit): vec2 {
 
 type MovePlanItem = { unit: UnwrapRef<BaseUnit>; orderIndex: number; startPos: vec2 }
 
+const DEBUG_COLUMN_ROUTE = true
+const DEBUG_FORMATION_ROUTE = true
+
+let lastFormationDebugTs = 0
+let lastFormationSkipDebugTs = 0
+
+type ColumnRouteDebugUnitLog = {
+  unitId: uuid
+  orderIndex: number
+  startPos: vec2
+  existingMoveState: Pick<MoveCommandState, 'uniqueId' | 'orderIndex' | 'segIndex' | 'target'> | null
+  segments: Array<{
+    segIndex: number
+    routeTarget: vec2
+    toPoints: vec2[]
+  }>
+}
+
+function logColumnRouteDebug(
+  uniqueId: uuid,
+  routeTargets: RoutePoint[],
+  plan: MovePlanItem[],
+  unitLogs: ColumnRouteDebugUnitLog[],
+) {
+  if (!DEBUG_COLUMN_ROUTE) return
+
+  const routeSummary = routeTargets.map((target, index) => ({
+    segIndex: index,
+    target: target.pos,
+    modifier: target.modifier ?? null,
+  }))
+  const planSummary = plan.map((item) => ({
+    unitId: item.unit.id,
+    orderIndex: item.orderIndex,
+    startPos: item.startPos,
+  }))
+
+  console.groupCollapsed(`[COLUMN_DEBUG] moveUniqueId=${uniqueId} units=${plan.length} segments=${routeTargets.length}`)
+  console.log('[COLUMN_DEBUG] routeTargets', routeSummary)
+  console.log('[COLUMN_DEBUG] movePlan', planSummary)
+  console.log('[COLUMN_DEBUG] perUnit', unitLogs)
+  console.groupEnd()
+}
+
+function normalizeAngleDeltaRad(next: number, prev: number): number {
+  let d = next - prev
+  while (d > Math.PI) d -= Math.PI * 2
+  while (d < -Math.PI) d += Math.PI * 2
+  return d
+}
+
+function toDeg(rad: number | null): number | null {
+  if (rad == null) return null
+  return Math.round((rad * 180) / Math.PI)
+}
+
+function logFormationRouteDebug(
+  source: 'overlay' | 'confirm',
+  routeTargets: RoutePoint[],
+  segmentAngles: Array<number | null>,
+) {
+  if (!DEBUG_FORMATION_ROUTE) return
+
+  const now = performance.now()
+  if (moveMode.value !== 'formation') {
+    if (now - lastFormationSkipDebugTs > 700) {
+      lastFormationSkipDebugTs = now
+      console.warn(`[FORMATION_DEBUG][${source}] skipped: moveMode=${moveMode.value}`)
+    }
+    return
+  }
+
+  if (now - lastFormationDebugTs < 120) return
+  lastFormationDebugTs = now
+
+  const mpp = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
+  const segSummary = routeTargets.map((target, index) => {
+    const prev = index === 0 ? formationCenter.value : routeTargets[index - 1]!.pos
+    const segMeters = prev
+      ? Math.hypot(target.pos.x - prev.x, target.pos.y - prev.y) * mpp
+      : 0
+    const prevAngle = index > 0 ? segmentAngles[index - 1] : null
+    const angle = segmentAngles[index] ?? null
+    const deltaDeg = (angle != null && prevAngle != null)
+      ? Math.round((normalizeAngleDeltaRad(angle, prevAngle) * 180) / Math.PI)
+      : null
+
+    return {
+      segIndex: index,
+      targetX: Math.round(target.pos.x),
+      targetY: Math.round(target.pos.y),
+      segMeters: Math.round(segMeters),
+      angleDeg: toDeg(angle),
+      deltaDeg,
+    }
+  })
+
+  console.warn(
+    `[FORMATION_DEBUG][${source}] units=${movingUnits.value.length} targets=${routeTargets.length}`
+  )
+  console.table(segSummary)
+  console.groupCollapsed(`[FORMATION_DEBUG][${source}] details`)
+  console.log('[FORMATION_DEBUG] center', formationCenter.value)
+  console.log('[FORMATION_DEBUG] offsets', formationOffsets.value)
+  console.groupEnd()
+}
+
+function getFirstActiveMoveState(unit: BaseUnit): MoveCommandState | null {
+  const activeMove = unit.getCommands().find(
+    (cmd) => cmd.type === UnitCommandTypes.Move && !cmd.isFinished(unit)
+  )
+  if (!activeMove) return null
+  return (activeMove as MoveCommand).getState().state
+}
+
+function resolveColumnDirection(routeTargets: RoutePoint[], unitStartPositions: vec2[]): vec2 {
+  const minLen = Math.max(1e-3, BaseUnit.COLLISION_RANGE * 0.15)
+
+  // 1) Основной источник: первый достаточно длинный сегмент маршрута.
+  for (let i = 1; i < routeTargets.length; i++) {
+    const from = routeTargets[i - 1]!.pos
+    const to = routeTargets[i]!.pos
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const len = Math.hypot(dx, dy)
+    if (len >= minLen) {
+      return { x: dx / len, y: dy / len }
+    }
+  }
+
+  // 2) Для случая "одна точка" (часто в smart path после нормализации):
+  // направление от центра группы к первой цели.
+  const firstTarget = routeTargets[0]?.pos
+  if (firstTarget && unitStartPositions.length) {
+    let cx = 0
+    let cy = 0
+    for (const p of unitStartPositions) {
+      cx += p.x
+      cy += p.y
+    }
+    cx /= unitStartPositions.length
+    cy /= unitStartPositions.length
+
+    const dx = firstTarget.x - cx
+    const dy = firstTarget.y - cy
+    const len = Math.hypot(dx, dy)
+    if (len >= 1e-6) {
+      return { x: dx / len, y: dy / len }
+    }
+  }
+
+  return { x: 1, y: 0 }
+}
+
+function buildColumnPlanByNearestChain(
+  unitsLeft: Array<{ unit: UnwrapRef<BaseUnit>; startPos: vec2 }>,
+  direction: vec2,
+  firstTarget: vec2
+): MovePlanItem[] {
+  if (!unitsLeft.length) return []
+  const nx = direction.x
+  const ny = direction.y
+  const px = -ny
+  const py = nx
+
+  const remaining = [...unitsLeft]
+  remaining.sort((a, b) => {
+    // Голова должна быть "с одного края" — берем самый передний юнит по оси движения.
+    const alongA = a.startPos.x * nx + a.startPos.y * ny
+    const alongB = b.startPos.x * nx + b.startPos.y * ny
+    if (Math.abs(alongA - alongB) > 0.001) return alongB - alongA
+
+    // Tie-breakers для стабильности.
+    const distToTargetA = Math.hypot(a.startPos.x - firstTarget.x, a.startPos.y - firstTarget.y)
+    const distToTargetB = Math.hypot(b.startPos.x - firstTarget.x, b.startPos.y - firstTarget.y)
+    if (Math.abs(distToTargetA - distToTargetB) > 0.001) return distToTargetA - distToTargetB
+
+    const lateralA = a.startPos.x * px + a.startPos.y * py
+    const lateralB = b.startPos.x * px + b.startPos.y * py
+    if (Math.abs(lateralA - lateralB) > 0.001) return lateralA - lateralB
+
+    return String(a.unit.id).localeCompare(String(b.unit.id))
+  })
+
+  const ordered: Array<{ unit: UnwrapRef<BaseUnit>; startPos: vec2 }> = [remaining.shift()!]
+  let prev = ordered[0]!.startPos
+
+  // Остальные индексы строим цепочкой: ближайший к предыдущему.
+  while (remaining.length) {
+    let bestIdx = 0
+    let bestDist = Infinity
+    for (let i = 0; i < remaining.length; i++) {
+      const p = remaining[i]!.startPos
+      const dist = Math.hypot(p.x - prev.x, p.y - prev.y)
+      if (dist + 0.001 < bestDist) {
+        bestDist = dist
+        bestIdx = i
+        continue
+      }
+      if (Math.abs(dist - bestDist) <= 0.001) {
+        const candidateAlong = p.x * nx + p.y * ny
+        const currentBest = remaining[bestIdx]!.startPos
+        const bestAlong = currentBest.x * nx + currentBest.y * ny
+        if (candidateAlong > bestAlong) {
+          bestIdx = i
+        }
+      }
+    }
+    const [next] = remaining.splice(bestIdx, 1)
+    ordered.push(next!)
+    prev = next!.startPos
+  }
+
+  return ordered.map(({ unit, startPos }, orderIndex) => ({ unit, startPos, orderIndex }))
+}
+
 /** План (порядок) колонны считается по первой точке маршрута */
 const movePlan = computed<MovePlanItem[]>(() => {
   if (!movingUnits.value.length || !targets.value.length) return []
@@ -279,50 +676,59 @@ const movePlan = computed<MovePlanItem[]>(() => {
   const firstTarget = targets.value[0]!
 
   // заранее считаем "эффективные позиции" (конец цепочки Move)
-  const unitsLeft = movingUnits.value.map(unit => ({
+  const unitsLeft = movingUnits.value.map((unit) => ({
     unit,
     startPos: getUnitPlannedPos(unit as BaseUnit),
   }))
 
-  const result: typeof unitsLeft = []
+  // Если все выбранные юниты уже идут в одной колонне, сохраняем текущий порядок.
+  // Это предотвращает "переламывание" колонны при постановке приказа из середины.
+  const orderByExistingColumn = (() => {
+    const groupedByMove = new Map<string, Array<{ unit: BaseUnit; orderIndex: number }>>()
+    for (const unit of movingUnits.value) {
+      const moveState = getFirstActiveMoveState(unit as BaseUnit)
+      if (!moveState || !moveState.uniqueId || !Number.isFinite(moveState.orderIndex)) continue
+      const existing = groupedByMove.get(moveState.uniqueId)
+      const item = { unit: unit as BaseUnit, orderIndex: moveState.orderIndex }
+      if (existing) {
+        existing.push(item)
+      } else {
+        groupedByMove.set(moveState.uniqueId, [item])
+      }
+    }
 
-  // 1) ближайший к первой точке маршрута — по startPos
-  let current = unitsLeft.reduce((closest, item) => {
-    const d1 = Math.hypot(
-      item.startPos.x - firstTarget.pos.x,
-      item.startPos.y - firstTarget.pos.y
+    for (const group of groupedByMove.values()) {
+      if (group.length !== movingUnits.value.length) continue
+      const uniqOrder = new Set(group.map((item) => item.orderIndex))
+      if (uniqOrder.size !== group.length) continue
+      return group
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((item) => item.unit.id)
+    }
+    return null
+  })()
+
+  if (orderByExistingColumn) {
+    const startPosByUnitId = new Map(
+      unitsLeft.map(({ unit, startPos }) => [unit.id, startPos] as const)
     )
-    const d2 = Math.hypot(
-      closest.startPos.x - firstTarget.pos.x,
-      closest.startPos.y - firstTarget.pos.y
-    )
-    return d1 < d2 ? item : closest
-  })
-
-  result.push(current)
-  unitsLeft.splice(unitsLeft.indexOf(current), 1)
-
-  // 2) остальных — по близости к предыдущему startPos
-  while (unitsLeft.length) {
-    const last = current
-
-    current = unitsLeft.reduce((closest, item) => {
-      const d1 = Math.hypot(
-        item.startPos.x - last.startPos.x,
-        item.startPos.y - last.startPos.y
-      )
-      const d2 = Math.hypot(
-        closest.startPos.x - last.startPos.x,
-        closest.startPos.y - last.startPos.y
-      )
-      return d1 < d2 ? item : closest
-    })
-
-    result.push(current)
-    unitsLeft.splice(unitsLeft.indexOf(current), 1)
+    return orderByExistingColumn
+      .map((unitId) => {
+        const unit = movingUnits.value.find((item) => item.id === unitId)
+        if (!unit) return null
+        const startPos = startPosByUnitId.get(unitId)
+        if (!startPos) return null
+        return { unit, startPos }
+      })
+      .filter((item): item is { unit: UnwrapRef<BaseUnit>; startPos: vec2 } => Boolean(item))
+      .map(({ unit, startPos }, orderIndex) => ({ unit, startPos, orderIndex }))
   }
 
-  return result.map(({ unit, startPos }, orderIndex) => ({ unit, startPos, orderIndex }))
+  const dir = resolveColumnDirection(
+    targets.value,
+    unitsLeft.map(({ startPos }) => startPos)
+  )
+  return buildColumnPlanByNearestChain(unitsLeft, dir, firstTarget.pos)
 })
 
 const formationCenter = computed<vec2 | null>(() => {
@@ -360,6 +766,87 @@ const formationOffsets = computed<Record<uuid, vec2>>(() => {
     })
   )
 })
+
+function getRouteSegmentAngle(from: vec2, to: vec2): number | null {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  if (dx === 0 && dy === 0) return null
+  return Math.atan2(dy, dx)
+}
+
+function isSegmentLongEnoughMeters(from: vec2, to: vec2, minMeters = 30): boolean {
+  const metersPerPixel = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
+  const distMeters = Math.hypot(to.x - from.x, to.y - from.y) * metersPerPixel
+  return distMeters >= minMeters
+}
+
+function rotateVector(v: vec2, angle: number): vec2 {
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  return {
+    x: v.x * c - v.y * s,
+    y: v.x * s + v.y * c,
+  }
+}
+
+function getFormationSegmentAngles(
+  routeTargets: RoutePoint[],
+  source: 'overlay' | 'confirm',
+): Array<number | null> {
+  const result: Array<number | null> = []
+  if (!formationCenter.value || !routeTargets.length) return result
+  const minSegmentMeters = 8
+  let lastAngle: number | null = null
+  for (let i = 0; i < routeTargets.length; i++) {
+    const segFrom = i === 0 ? formationCenter.value : routeTargets[i - 1]!.pos
+    const segTo = routeTargets[i]!.pos
+    const nextAngle = getRouteSegmentAngle(segFrom!, segTo)
+    if (nextAngle != null && isSegmentLongEnoughMeters(segFrom!, segTo, minSegmentMeters)) {
+      lastAngle = nextAngle
+    }
+    result.push(lastAngle)
+  }
+
+  logFormationRouteDebug(source, routeTargets, result)
+  return result
+}
+
+function getFormationReferenceAngle(segmentAngles: Array<number | null>): number | null {
+  return segmentAngles[0] ?? null
+}
+
+function getFormationTargetPoint(
+  segIndex: number,
+  unitId: uuid,
+  target: vec2,
+  routeTargets: RoutePoint[],
+  segmentAngles: Array<number | null>,
+  refAngle: number | null
+): vec2 {
+  const offset = formationOffsets.value[unitId]
+  if (!offset) return target
+
+  if (refAngle == null) {
+    return {
+      x: target.x + offset.x,
+      y: target.y + offset.y,
+    }
+  }
+
+  const segAngle = segmentAngles[segIndex] ?? refAngle
+  if (segAngle == null) {
+    return {
+      x: target.x + offset.x,
+      y: target.y + offset.y,
+    }
+  }
+
+  const rotatedOffset = rotateVector(offset, segAngle - refAngle)
+  return {
+    x: target.x + rotatedOffset.x,
+    y: target.y + rotatedOffset.y,
+  }
+}
 
 function getColumnPosition(
   segIndex: number,
@@ -494,23 +981,49 @@ const unitsGrouped = computed(() => group(movingUnits.value))
 /* ================= TARGET PICK ================= */
 
 function applyContextTarget(pos: vec2, append: boolean) {
-  let modifier = null;
-  if (targets.value.length) {
-    modifier = targets.value[targets.value.length - 1]!.modifier ?? null;
-  }
+  const snappedPos =
+    moveMode.value === 'column'
+      ? (
+        window.ROOM_WORLD.findNearestObjectLocalCenter(pos, ['good_road', 'road'], 30, 12)?.center
+        ?? window.ROOM_WORLD.findNearestObjectPoint(pos, ['good_road', 'road'], 30)
+        ?? pos
+      )
+      : pos
+  const modifier = targets.value[targets.value.length - 1]?.modifier ?? null
 
   if (append) {
-    // добавить точку
-    targets.value.push({pos, modifier: modifier})
+    const start = targets.value[targets.value.length - 1]?.pos ?? routeStartPos.value ?? snappedPos
+    const rawRoutePoints = getSegmentRoutePoints(start, snappedPos)
+    const normalizedRoutePoints = targets.value.length
+      ? rawRoutePoints
+      : normalizeInitialRoutePoints(rawRoutePoints)
+    const routePoints = pruneTinyRouteSegments(start, normalizedRoutePoints)
+    for (const point of routePoints) {
+      targets.value.push({ pos: point, modifier })
+    }
     nextTick(() => {
       routeListRef.value?.scrollTo({ top: routeListRef.value.scrollHeight, behavior: 'smooth' })
     })
   } else {
-    // редактировать последнюю
-    if (!targets.value.length) {
-      targets.value.push({pos, modifier: modifier})
+    const hasTargets = targets.value.length > 0
+    const nearestSelectedStart = getNearestSelectedUnitPlannedPos(snappedPos)
+    const start = hasTargets
+      ? (targets.value.length > 1
+        ? targets.value[targets.value.length - 2]!.pos
+        : routeStartPos.value ?? targets.value[0]!.pos)
+      : (nearestSelectedStart ?? routeStartPos.value ?? snappedPos)
+    const rawRoutePoints = getSegmentRoutePoints(start, snappedPos)
+    const normalizedRoutePoints = ((!hasTargets)
+      ? normalizeInitialRoutePoints(rawRoutePoints)
+      : rawRoutePoints
+    )
+    const routePoints = pruneTinyRouteSegments(start, normalizedRoutePoints)
+      .map((point) => ({ pos: point, modifier }))
+
+    if (!hasTargets) {
+      targets.value = routePoints
     } else {
-      targets.value[targets.value.length - 1] = {pos, modifier: targets.value[targets.value.length - 1]!.modifier ?? null}
+      targets.value.splice(targets.value.length - 1, 1, ...routePoints)
     }
   }
 
@@ -532,7 +1045,7 @@ function onPointerDown(e: PointerEvent) {
   })
 
   applyContextTarget(pos, true)
-  openEnvMenu(pos, false)
+  openEnvMenu(undefined, false)
 }
 
 
@@ -548,26 +1061,31 @@ function rebuildMoveOverlay() {
 
   // используем план, чтобы порядок был стабильный
   const plan = movePlan.value
+  const formationSegmentAngles = getFormationSegmentAngles(targets.value, 'overlay')
+  const formationRefAngle = getFormationReferenceAngle(formationSegmentAngles)
 
   plan.forEach(({ unit: u, orderIndex }, planIdx) => {
     let from = u.pos
+    let lastMoveSegment: { from: vec2; to: vec2 } | null = null
 
     // Paint previous commands
     const unitCommands = u.getCommands()
     for (const cmd of unitCommands) {
       if (cmd.type !== UnitCommandTypes.Move) continue;
       const moveCmd = cmd as MoveCommand
+      const target = moveCmd.getState().state.target
 
       items.push({
         type: 'line',
         from,
-        to: moveCmd.getState().state.target,
+        to: target,
         color: 'rgba(34,197,94,0.65)',
         width: 6,
         dash: [6, 6],
         dashOffset: -1,
       })
-      from = moveCmd.getState().state.target
+      lastMoveSegment = { from, to: target }
+      from = target
     }
 
     for (let segIndex = 0; segIndex < targets.value.length; segIndex++) {
@@ -576,10 +1094,14 @@ function rebuildMoveOverlay() {
       let to_points: vec2[] = [];
 
       if (moveMode.value === 'formation' && formationOffsets.value[u.id]) {
-        to_points = [{
-          x: t.pos.x + formationOffsets.value[u.id]!.x,
-          y: t.pos.y + formationOffsets.value[u.id]!.y,
-        }]
+        to_points = [getFormationTargetPoint(
+          segIndex,
+          u.id,
+          t.pos,
+          targets.value,
+          formationSegmentAngles,
+          formationRefAngle
+        )]
       } else if (moveMode.value === 'column') {
         to_points = getColumnPosition(segIndex, orderIndex, targets.value, plan)
       } else {
@@ -587,6 +1109,7 @@ function rebuildMoveOverlay() {
       }
 
       for (const to of to_points) {
+        const isLongEnough = isSegmentLongEnoughMeters(from, to, 30)
           items.push({
             type: 'line',
             from,
@@ -596,11 +1119,17 @@ function rebuildMoveOverlay() {
             dash: [6, 6],
             dashOffset: -1,
           })
+        if (isLongEnough) {
+          lastMoveSegment = { from, to }
+        }
         from = to;
       }
 
       if (segIndex === targets.value.length-1) {
         const to = to_points.length ? to_points[to_points.length-1]! : u.pos;
+        const previewAngle = lastMoveSegment
+          ? getFacingAngleFromSegment(lastMoveSegment.from, lastMoveSegment.to, u.angle)
+          : u.angle
         const { r, g, b } = getTeamColor(u.team)
         if (u.type === unitType.MESSENGER) {
           items.push({
@@ -615,6 +1144,7 @@ function rebuildMoveOverlay() {
             type: 'rect',
             from: { x: to.x - unitlayer.BASE_UNIT_W / 2, y: to.y - unitlayer.BASE_UNIT_H / 2 },
             to: { x: to.x + unitlayer.BASE_UNIT_W / 2, y: to.y + unitlayer.BASE_UNIT_H / 2 },
+            angle: previewAngle,
             fillColor: `rgba(${r},${g},${b},0.25)`,
             color: 'black',
           })
@@ -665,33 +1195,67 @@ function confirm() {
   const plan = movePlan.value
 
   const new_commands: Map<uuid, BaseCommand<any, any>[]> = new Map()
+  const columnDebugLogs: ColumnRouteDebugUnitLog[] = []
+  const routeTargets = [...targets.value]
+  const formationSegmentAngles = getFormationSegmentAngles(routeTargets, 'confirm')
+  const formationRefAngle = getFormationReferenceAngle(formationSegmentAngles)
 
-  plan.forEach(({ unit: u, orderIndex }, planIdx) => {
-    let from = u.pos
-    new_commands.set(u.id, [])
+  plan.forEach(({ unit: u, orderIndex }) => {
+    const unit = u as BaseUnit
+    let from = unit.pos
+    new_commands.set(unit.id, [])
+    const existingMoveState = getFirstActiveMoveState(unit)
+    const unitDebugLog: ColumnRouteDebugUnitLog | null = (moveMode.value === 'column')
+      ? {
+        unitId: unit.id,
+        orderIndex,
+        startPos: { x: unit.pos.x, y: unit.pos.y },
+        existingMoveState: existingMoveState
+          ? {
+            uniqueId: existingMoveState.uniqueId,
+            orderIndex: existingMoveState.orderIndex,
+            segIndex: existingMoveState.segIndex,
+            target: existingMoveState.target,
+          }
+          : null,
+        segments: [],
+      }
+      : null
 
     // Compute previous commands
-    const unitCommands = u.getCommands()
+    const unitCommands = unit.getCommands()
     for (const cmd of unitCommands) {
       if (cmd.type !== UnitCommandTypes.Move) continue;
       const moveCmd = cmd as MoveCommand
       from = moveCmd.getState().state.target
     }
 
-    for (let segIndex = 0; segIndex < targets.value.length; segIndex++) {
-      const t = targets.value[segIndex]!
+    for (let segIndex = 0; segIndex < routeTargets.length; segIndex++) {
+      const t = routeTargets[segIndex]!
 
       let to_points: vec2[] = [];
 
       if (moveMode.value === 'formation' && formationOffsets.value[u.id]) {
-        to_points = [{
-          x: t.pos.x + formationOffsets.value[u.id]!.x,
-          y: t.pos.y + formationOffsets.value[u.id]!.y,
-        }]
+        to_points = [getFormationTargetPoint(
+          segIndex,
+          u.id,
+          t.pos,
+          routeTargets,
+          formationSegmentAngles,
+          formationRefAngle
+        )]
       } else if (moveMode.value === 'column') {
-        to_points = getColumnPosition(segIndex, orderIndex, targets.value, plan)
+        to_points = getColumnPosition(segIndex, orderIndex, routeTargets, plan)
       } else {
         to_points = [t.pos]
+      }
+
+      if (unitDebugLog) {
+        unitDebugLog.segments.push({
+          segIndex,
+          routeTarget: { x: t.pos.x, y: t.pos.y },
+          toPoints: to_points.map((point) => ({ x: point.x, y: point.y })),
+        })
       }
 
       for (const to of to_points) {
@@ -712,10 +1276,18 @@ function confirm() {
       }
       if (to_points.length) from = to_points[to_points.length-1]!
     }
+    if (unitDebugLog) {
+      columnDebugLogs.push(unitDebugLog)
+    }
   })
+
+  if (moveMode.value === 'column') {
+    logColumnRouteDebug(uniqueId, routeTargets, plan, columnDebugLogs)
+  }
 
   for (const u of movingUnits.value) {
     const cmds = new_commands.get(u.id)!
+    u.manualEnvironment = null
     for (const cmd of cmds) {
       u.addCommand(cmd.getState())
     }
@@ -743,6 +1315,7 @@ let unsubscribe: unsub
 
 onMounted(() => {
   movingUnits.value = [...props.units]
+  loadSmartPathPreference(movingUnits.value)
 
   window.addEventListener('pointerdown', onPointerDown)
 
@@ -750,6 +1323,9 @@ onMounted(() => {
     if (reason === 'overlay' || reason === 'animation' || reason === 'camera') return
     if (reason === 'select') {
       movingUnits.value = window.ROOM_WORLD.units.list().filter(u => u.selected)
+      if (!targets.value.length) {
+        loadSmartPathPreference(movingUnits.value)
+      }
     }
     rebuildMoveOverlay()
   })
@@ -813,6 +1389,18 @@ defineExpose({
           <span v-if="t.modifier">{{ envIcon(t.modifier) }}</span>
         </div>
       </div>
+
+      <label class="smart-path-toggle">
+        <input
+          type="checkbox"
+          class="smart-path-toggle-input"
+          :checked="smartPathEnabled && moveMode !== 'formation'"
+          :disabled="moveMode === 'formation'"
+          @change="onSmartPathToggle(($event.target as HTMLInputElement).checked)"
+        >
+        <span class="smart-path-toggle-switch" aria-hidden="true"></span>
+        <span class="smart-path-toggle-label">{{ t('tools.command.smartPath') }}</span>
+      </label>
     </div>
 
     <!-- ===== ABILITIES ===== -->
@@ -918,6 +1506,64 @@ defineExpose({
 .target-pos.route-list {
   max-height: 120px;
   overflow-y: auto;
+}
+
+.smart-path-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #cbd5e1;
+  user-select: none;
+  cursor: pointer;
+}
+
+.smart-path-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.smart-path-toggle-switch {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.smart-path-toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #94a3b8;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.smart-path-toggle-input:checked + .smart-path-toggle-switch {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: #38bdf8;
+}
+
+.smart-path-toggle-input:checked + .smart-path-toggle-switch::after {
+  transform: translateX(12px);
+  background: #38bdf8;
+}
+
+.smart-path-toggle-input:focus-visible + .smart-path-toggle-switch {
+  outline: 2px solid rgba(56, 189, 248, 0.35);
+  outline-offset: 2px;
+}
+
+.smart-path-toggle-label {
+  color: #cbd5e1;
 }
 
 .cards {

@@ -82,6 +82,9 @@ export const CLIENT_SETTING_KEYS = {
   LAST_CAMERA_POS_Y: 'lastCameraPosY',
   LAST_CAMERA_ZOOM: 'lastCameraZoom',
 
+  // Smart route building along roads
+  MOVE_SMART_PATH: 'moveSmartPath',
+
 } as const
 
 export type ClientSettingKey =
@@ -164,6 +167,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.LAST_CAMERA_POS_X]: null,
     [CLIENT_SETTING_KEYS.LAST_CAMERA_POS_Y]: null,
     [CLIENT_SETTING_KEYS.LAST_CAMERA_ZOOM]: null,
+    [CLIENT_SETTING_KEYS.MOVE_SMART_PATH]: false,
   };
 }
 

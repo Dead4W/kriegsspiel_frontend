@@ -41,23 +41,29 @@ function envIcon(state: EnvironmentStateId) {
 function toggleState(state: EnvironmentStateId) {
   const setState = !hasState(state);
   for (const u of props.units) {
-    if (u.envState.includes(state) !== setState) {
-      if (setState) {
-        if (!u.envState.includes(state)) {
-          u.envState.push(state);
-        }
-      } else {
-        u.envState = u.envState.filter(s => s !== state);
-      }
+    if (setState) {
+      if (u.envState.length === 1 && u.envState[0] === state) continue
+      u.manualEnvironment = state
+      u.envState = [state];
       window.ROOM_WORLD.units.addUnitDirty(u.id);
+      continue
     }
+
+    if (!u.envState.includes(state)) continue
+    if (u.manualEnvironment === state) {
+      u.manualEnvironment = null
+    }
+    u.envState = u.envState.filter(s => s !== state);
+    window.ROOM_WORLD.units.addUnitDirty(u.id);
   }
   emit('edit');
 }
 
 function clearEnvStates() {
   for (const u of props.units) {
+    u.manualEnvironment = null
     u.envState = []
+    window.ROOM_WORLD.units.addUnitDirty(u.id);
   }
 
   emit('edit')

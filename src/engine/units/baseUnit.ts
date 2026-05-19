@@ -43,8 +43,16 @@ export interface StatModifierInfo {
   totalMultiplier: number
   percent: number
   sources: {
-    type: 'env' | 'formation' | 'ability' | 'time' | 'weather',
-    state: EnvironmentStateId | FormationType | UnitAbilityType | TimeOfDay | Weather,
+    type: 'env' | 'formation' | 'ability' | 'time' | 'weather' | 'formationMove',
+    state:
+      | EnvironmentStateId
+      | FormationType
+      | UnitAbilityType
+      | TimeOfDay
+      | Weather
+      | 'minimal_speed_column_or_formation'
+      | 'waiting_for_lagging_in_column'
+      | 'catching_up_with_column',
     multiplier: number
   }[]
 }
@@ -99,6 +107,9 @@ export abstract class BaseUnit {
   public activeAbilityType: UnitAbilityType | null = null
 
   envState: EnvironmentStateId[] = []
+  manualEnvironment: EnvironmentStateId | null = null
+  private formationMoveMinSpeed: number | null = null
+  private columnLagSpeedMultiplier: number = 1
 
   protected dirtyMoveStartAt = 0;
   protected lastDirtyMoveAt = 0
@@ -139,6 +150,7 @@ export abstract class BaseUnit {
     this.activeAbilityType = s.activeAbilityType ?? null;
 
     this.envState = s.envState ?? [];
+    this.manualEnvironment = (s.manualEnvironment as EnvironmentStateId | null | undefined) ?? null
     this.messagesLinked = s.messagesLinked ?? [];
     this.directView = s.directView ?? false
     this.refreshAngleFromCommands();
@@ -368,6 +380,7 @@ export abstract class BaseUnit {
       commands: this.commands,
 
       envState: this.envState,
+      manualEnvironment: this.manualEnvironment,
 
       formation: this.formation,
 
@@ -476,6 +489,30 @@ export abstract class BaseUnit {
         total *= weatherMul
         sources.push({ type: 'weather', state: weather, multiplier: weatherMul })
       }
+    }
+
+    if (key === 'speed' && this.formationMoveMinSpeed != null) {
+      const computedSpeedWithoutCap = this.stats.speed * total
+      if (computedSpeedWithoutCap > 0 && this.formationMoveMinSpeed < computedSpeedWithoutCap) {
+        const formationMoveMultiplier = this.formationMoveMinSpeed / computedSpeedWithoutCap
+        total *= formationMoveMultiplier
+        sources.push({
+          type: 'formationMove',
+          state: 'minimal_speed_column_or_formation',
+          multiplier: formationMoveMultiplier,
+        })
+      }
+    }
+
+    if (key === 'speed' && this.columnLagSpeedMultiplier !== 1) {
+      total *= this.columnLagSpeedMultiplier
+      sources.push({
+        type: 'formationMove',
+        state: this.columnLagSpeedMultiplier < 1
+          ? 'waiting_for_lagging_in_column'
+          : 'catching_up_with_column',
+        multiplier: this.columnLagSpeedMultiplier,
+      })
     }
 
     return {
@@ -794,6 +831,30 @@ export abstract class BaseUnit {
   setAutoAttack(autoAttack: boolean) {
     this.autoAttack = autoAttack;
     this.setDirty();
+  }
+
+  setFormationMoveMinSpeed(speed: number | null) {
+    const next = (typeof speed === 'number' && Number.isFinite(speed) && speed > 0) ? speed : null
+    if (this.formationMoveMinSpeed === next) return
+    this.formationMoveMinSpeed = next
+    this.setDirty()
+  }
+
+  setColumnLagSpeedMultiplier(multiplier: number | null) {
+    const next = (
+      typeof multiplier === 'number'
+      && Number.isFinite(multiplier)
+      && multiplier > 0
+      && multiplier <= 2
+    ) ? multiplier : 1
+    if (this.columnLagSpeedMultiplier === next) return
+    this.columnLagSpeedMultiplier = next
+    this.setDirty()
+  }
+
+  // Backward-compatible alias for old calls.
+  setFormationMoveSpeedOverride(speed: number | null) {
+    this.setFormationMoveMinSpeed(speed)
   }
 
   get isRetreat() {

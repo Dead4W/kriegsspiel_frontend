@@ -1,3 +1,6 @@
+[2026-05-19]
+- Massive control update
+
 [2026-05-10]
 - Debug - Add copy/paste unit data
 - Chat - Umpire receive orders only for next tick

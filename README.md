@@ -43,10 +43,10 @@ A **resource pack** is a JSON file that defines unit stats, formations, abilitie
 
 | Task                                 | Status | Comment                                                |
 |--------------------------------------|----|--------------------------------------------------------|
-| Rewrite column positions logic       | 📋 |                                                        |
+| Rewrite column positions logic       | ✅ |                                                        |
 | Add mods support (external js link)  | 📋 |                                                        |
 | Improve orders controls              | 📋 |                                                        |
-| Improve forestmap control for Umpire | 📋 |                                                        |
+| Improve forestmap control for Umpire | ✅ |                                                        |
 | Rewrite weather shaders & optimize   | 📋 |                                                        |
 | Fix and enable spectator mode        | 📋 | Many things works for spectator like a admin. Need fix |
 

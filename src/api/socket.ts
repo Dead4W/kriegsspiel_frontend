@@ -97,7 +97,6 @@ export class GameSocket {
     this.ws = new WebSocket(import.meta.env.VITE_SOCKET_URL + `?${query}`)
 
     this.ws.onopen = () => {
-      console.log('[WS] connected')
       this.startSync()
     }
 

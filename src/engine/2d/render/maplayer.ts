@@ -104,8 +104,6 @@ export class maplayer {
 
     const range = Math.max(1, maxH - minH)
 
-    console.log("Height range:", minH, maxH)
-
     // -------------------------
     // 2. создаём debug canvas
     // -------------------------

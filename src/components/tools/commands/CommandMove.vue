@@ -465,113 +465,6 @@ function getUnitPlannedPos(u: BaseUnit): vec2 {
 
 type MovePlanItem = { unit: UnwrapRef<BaseUnit>; orderIndex: number; startPos: vec2 }
 
-const DEBUG_COLUMN_ROUTE = true
-const DEBUG_FORMATION_ROUTE = true
-
-let lastFormationDebugTs = 0
-let lastFormationSkipDebugTs = 0
-
-type ColumnRouteDebugUnitLog = {
-  unitId: uuid
-  orderIndex: number
-  startPos: vec2
-  existingMoveState: Pick<MoveCommandState, 'uniqueId' | 'orderIndex' | 'segIndex' | 'target'> | null
-  segments: Array<{
-    segIndex: number
-    routeTarget: vec2
-    toPoints: vec2[]
-  }>
-}
-
-function logColumnRouteDebug(
-  uniqueId: uuid,
-  routeTargets: RoutePoint[],
-  plan: MovePlanItem[],
-  unitLogs: ColumnRouteDebugUnitLog[],
-) {
-  if (!DEBUG_COLUMN_ROUTE) return
-
-  const routeSummary = routeTargets.map((target, index) => ({
-    segIndex: index,
-    target: target.pos,
-    modifier: target.modifier ?? null,
-  }))
-  const planSummary = plan.map((item) => ({
-    unitId: item.unit.id,
-    orderIndex: item.orderIndex,
-    startPos: item.startPos,
-  }))
-
-  console.groupCollapsed(`[COLUMN_DEBUG] moveUniqueId=${uniqueId} units=${plan.length} segments=${routeTargets.length}`)
-  console.log('[COLUMN_DEBUG] routeTargets', routeSummary)
-  console.log('[COLUMN_DEBUG] movePlan', planSummary)
-  console.log('[COLUMN_DEBUG] perUnit', unitLogs)
-  console.groupEnd()
-}
-
-function normalizeAngleDeltaRad(next: number, prev: number): number {
-  let d = next - prev
-  while (d > Math.PI) d -= Math.PI * 2
-  while (d < -Math.PI) d += Math.PI * 2
-  return d
-}
-
-function toDeg(rad: number | null): number | null {
-  if (rad == null) return null
-  return Math.round((rad * 180) / Math.PI)
-}
-
-function logFormationRouteDebug(
-  source: 'overlay' | 'confirm',
-  routeTargets: RoutePoint[],
-  segmentAngles: Array<number | null>,
-) {
-  if (!DEBUG_FORMATION_ROUTE) return
-
-  const now = performance.now()
-  if (moveMode.value !== 'formation') {
-    if (now - lastFormationSkipDebugTs > 700) {
-      lastFormationSkipDebugTs = now
-      console.warn(`[FORMATION_DEBUG][${source}] skipped: moveMode=${moveMode.value}`)
-    }
-    return
-  }
-
-  if (now - lastFormationDebugTs < 120) return
-  lastFormationDebugTs = now
-
-  const mpp = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
-  const segSummary = routeTargets.map((target, index) => {
-    const prev = index === 0 ? formationCenter.value : routeTargets[index - 1]!.pos
-    const segMeters = prev
-      ? Math.hypot(target.pos.x - prev.x, target.pos.y - prev.y) * mpp
-      : 0
-    const prevAngle = index > 0 ? segmentAngles[index - 1] : null
-    const angle = segmentAngles[index] ?? null
-    const deltaDeg = (angle != null && prevAngle != null)
-      ? Math.round((normalizeAngleDeltaRad(angle, prevAngle) * 180) / Math.PI)
-      : null
-
-    return {
-      segIndex: index,
-      targetX: Math.round(target.pos.x),
-      targetY: Math.round(target.pos.y),
-      segMeters: Math.round(segMeters),
-      angleDeg: toDeg(angle),
-      deltaDeg,
-    }
-  })
-
-  console.warn(
-    `[FORMATION_DEBUG][${source}] units=${movingUnits.value.length} targets=${routeTargets.length}`
-  )
-  console.table(segSummary)
-  console.groupCollapsed(`[FORMATION_DEBUG][${source}] details`)
-  console.log('[FORMATION_DEBUG] center', formationCenter.value)
-  console.log('[FORMATION_DEBUG] offsets', formationOffsets.value)
-  console.groupEnd()
-}
-
 function getFirstActiveMoveState(unit: BaseUnit): MoveCommandState | null {
   const activeMove = unit.getCommands().find(
     (cmd) => cmd.type === UnitCommandTypes.Move && !cmd.isFinished(unit)
@@ -803,7 +696,7 @@ function rotateVector(v: vec2, angle: number): vec2 {
 
 function getFormationSegmentAngles(
   routeTargets: RoutePoint[],
-  source: 'overlay' | 'confirm',
+  _source: 'overlay' | 'confirm',
 ): Array<number | null> {
   const result: Array<number | null> = []
   if (!formationCenter.value || !routeTargets.length) return result
@@ -819,7 +712,6 @@ function getFormationSegmentAngles(
     result.push(lastAngle)
   }
 
-  logFormationRouteDebug(source, routeTargets, result)
   return result
 }
 
@@ -1207,7 +1099,6 @@ function confirm() {
   const plan = movePlan.value
 
   const new_commands: Map<uuid, BaseCommand<any, any>[]> = new Map()
-  const columnDebugLogs: ColumnRouteDebugUnitLog[] = []
   const routeTargets = [...targets.value]
   const formationSegmentAngles = getFormationSegmentAngles(routeTargets, 'confirm')
   const formationRefAngle = getFormationReferenceAngle(formationSegmentAngles)
@@ -1216,23 +1107,6 @@ function confirm() {
     const unit = u as BaseUnit
     let from = unit.pos
     new_commands.set(unit.id, [])
-    const existingMoveState = getFirstActiveMoveState(unit)
-    const unitDebugLog: ColumnRouteDebugUnitLog | null = (moveMode.value === 'column')
-      ? {
-        unitId: unit.id,
-        orderIndex,
-        startPos: { x: unit.pos.x, y: unit.pos.y },
-        existingMoveState: existingMoveState
-          ? {
-            uniqueId: existingMoveState.uniqueId,
-            orderIndex: existingMoveState.orderIndex,
-            segIndex: existingMoveState.segIndex,
-            target: existingMoveState.target,
-          }
-          : null,
-        segments: [],
-      }
-      : null
 
     // Compute previous commands
     const unitCommands = unit.getCommands()
@@ -1262,14 +1136,6 @@ function confirm() {
         to_points = [t.pos]
       }
 
-      if (unitDebugLog) {
-        unitDebugLog.segments.push({
-          segIndex,
-          routeTarget: { x: t.pos.x, y: t.pos.y },
-          toPoints: to_points.map((point) => ({ x: point.x, y: point.y })),
-        })
-      }
-
       for (const to of to_points) {
         const cmd = new MoveCommand({
           target: {
@@ -1288,14 +1154,7 @@ function confirm() {
       }
       if (to_points.length) from = to_points[to_points.length-1]!
     }
-    if (unitDebugLog) {
-      columnDebugLogs.push(unitDebugLog)
-    }
   })
-
-  if (moveMode.value === 'column') {
-    logColumnRouteDebug(uniqueId, routeTargets, plan, columnDebugLogs)
-  }
 
   for (const u of movingUnits.value) {
     const cmds = new_commands.get(u.id)!
@@ -1408,7 +1267,7 @@ defineExpose({
         </div>
       </div>
 
-      <label class="smart-path-toggle">
+      <label v-if="hasObjectMap" class="smart-path-toggle">
         <input
           type="checkbox"
           class="smart-path-toggle-input"

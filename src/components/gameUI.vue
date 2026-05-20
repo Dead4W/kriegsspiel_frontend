@@ -209,7 +209,7 @@ onUnmounted(() => {
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.ADMIN)"
       >
-        🛡️ {{ t('team.admin') }}
+        🛡️
       </button>
 
       <button
@@ -218,7 +218,7 @@ onUnmounted(() => {
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.SPAWN)"
       >
-        ➕ {{ t('tools.add_unit') }}
+        ➕
       </button>
 
       <button
@@ -228,7 +228,7 @@ onUnmounted(() => {
         @click="toggle($event, Tools.RULER)"
         :title="`${t('hotkey')}: V`"
       >
-        📏 {{ t('tools.ruler') }}
+        📏
         <HotkeyTag key-label="V" />
       </button>
 
@@ -238,7 +238,7 @@ onUnmounted(() => {
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.PAINT)"
       >
-        🖌️ {{ t('tools.paint.title') }}
+        🖌️
       </button>
 
       <button
@@ -246,7 +246,7 @@ onUnmounted(() => {
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.HELP)"
       >
-        ❓ {{ t('tools.modifiers.button') }}
+        ❓
       </button>
 
       <button
@@ -255,7 +255,7 @@ onUnmounted(() => {
         @pointerdown.stop.prevent
         @click="toggleHideUnitsLayer"
       >
-        👁️‍🗨️ {{ t('tools.hide_units_layer') }}
+        👁️‍🗨️
       </button>
     </div>
 

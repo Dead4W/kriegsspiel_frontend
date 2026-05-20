@@ -12,13 +12,14 @@ const FINAL_ROUTE_STRAIGHT_DEVIATION_DEG = 4;
 const FINAL_ROUTE_STRAIGHT_LATERAL_PX = 2.5;
 const ROAD_COST_FACTOR_BY_ENTITY = new Map<string, number>([
   ["good_road", 0.1],
+  ["bridge", 0.1],
   ["road", 0.25],
   ["forest", 1.8],
 ]);
 const EMPTY_CELL_COST_FACTOR = 1.5;
 const UNKNOWN_ENTITY_COST_FACTOR = 2.0;
 const EMPTY_CELL_SPEED_FACTOR = 1.25;
-const ROAD_ENTITIES = new Set(["good_road", "road"]);
+const ROAD_ENTITIES = new Set(["good_road", "bridge", "road"]);
 const ROAD_EXIT_PENALTY = 8;
 const ROAD_ROUTE_NON_ROAD_FACTOR = 3.2;
 const ROAD_CENTER_SEARCH_RADIUS_PX = 18;
@@ -26,6 +27,7 @@ const ROAD_CENTER_LOCAL_RADIUS_PX = 12;
 const MAX_ASTAR_POINT_STEP_METERS = 800;
 const ENV_BY_ENTITY_CANDIDATES: Array<{ entities: string[]; envIds: string[] }> = [
   { entities: ["good_road"], envIds: ["on_good_road", "in_good_road"] },
+  { entities: ["bridge"], envIds: ["on_good_road", "in_good_road"] },
   { entities: ["road"], envIds: ["on_road", "in_road"] },
   { entities: ["forest"], envIds: ["in_forest"] },
   { entities: ["water", "river"], envIds: ["in_water", "on_water", "in_river"] },
@@ -362,7 +364,7 @@ function isRoadIntersectionPoint(w: world, point: GridPoint): boolean {
 function resolveNearestRoadGridPoint(w: world, point: vec2): GridPoint | null {
   const nearestRoad = w.findNearestObjectPoint(
     point,
-    ["good_road", "road"],
+    ["good_road", "bridge", "road"],
     Math.max(2, ROAD_CENTER_LOCAL_RADIUS_PX)
   );
   if (!nearestRoad) return null;
@@ -530,7 +532,7 @@ function snapPointsToRoadCenters(w: world, points: vec2[]): vec2[] {
   return points.map((p) => {
     const nearestRoad = w.findNearestObjectPoint(
       p,
-      ["good_road", "road"],
+      ["good_road", "bridge", "road"],
       ROAD_CENTER_SEARCH_RADIUS_PX
     );
     if (!nearestRoad) return p;
@@ -539,7 +541,7 @@ function snapPointsToRoadCenters(w: world, points: vec2[]): vec2[] {
 
     const localCenter = w.findNearestObjectLocalCenter(
       p,
-      ["good_road", "road"],
+      ["good_road", "bridge", "road"],
       ROAD_CENTER_SEARCH_RADIUS_PX,
       ROAD_CENTER_LOCAL_RADIUS_PX
     )?.center;

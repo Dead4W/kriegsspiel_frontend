@@ -14,6 +14,11 @@ import type {Weather} from "@/engine/resourcePack/weather.ts";
 import type {ConnectionInfo} from "@/engine/types/connectionTypes.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 
+export type DirectViewUnitPacket = {
+  unit: unitstate
+  frames?: MoveFrame[]
+}
+
 export type OutMessage =
   | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: Weather} }
   | { type: 'unit'; data: unitstate; frames?: MoveFrame[] }
@@ -29,7 +34,7 @@ export type OutMessage =
   | { type: 'skip_time_success'; data: true }
   | { type: 'set_stage'; data: RoomGameStage }
   | { type: 'messenger_delivery'; data: {id: uuid, roomUserIds: number[], time: string} }
-  | { type: 'direct_view'; team: Team; data: unitstate[] }
+  | { type: 'direct_view'; team: Team; data: DirectViewUnitPacket[] }
   | { type: 'direct_view_objects'; team: Team; data: DirectViewObjectState[] }
   | { type: 'weather'; data: Weather }
   | { type: 'log'; data: BattleLogEntry }
@@ -297,15 +302,23 @@ export class GameSocket {
             }
           }
 
-          for (const unitDirectView of m.data) {
-            const u = window.ROOM_WORLD.units.get(unitDirectView.id);
+          for (const packet of m.data) {
+            const nextUnitState = {...packet.unit}
+            const u = window.ROOM_WORLD.units.get(nextUnitState.id);
+            if (packet.frames && packet.frames.length > 0) {
+              nextUnitState.pos = u?.pos ?? packet.frames[0]!.pos
+            }
             if (!u) {
-              unitDirectView.directView = true
-              window.ROOM_WORLD.units.upsert(unitDirectView, 'remote');
+              nextUnitState.directView = true
+              window.ROOM_WORLD.units.upsert(nextUnitState, 'remote');
             } else {
               // Update only some fields
-              Object.assign(u, unitDirectView)
+              Object.assign(u, nextUnitState)
               u.directView = true;
+            }
+            if (packet.frames && packet.frames.length > 0) {
+              const targetUnit = window.ROOM_WORLD.units.get(nextUnitState.id)
+              targetUnit?.applyRemoteFrames(packet.frames)
             }
           }
         } else if (m.type === 'direct_view_objects') {

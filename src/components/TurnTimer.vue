@@ -11,7 +11,7 @@ import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {useI18n} from 'vue-i18n'
 import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
-import {type commandstate, unitType} from "@/engine/units/types.ts";
+import {type commandstate, type unitstate, unitType} from "@/engine/units/types.ts";
 import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {getInaccuracyAbility} from "@/engine/resourcePack/abilities.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
@@ -527,6 +527,7 @@ function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
   const rawCommands = unit.getCommands().map((command) => command.getState() as commandstate)
   const isEnemyUnit = unit.team !== team
   let firstMoveIncluded = false
+  let moveChainHiddenByFog = false
 
   return rawCommands
     .filter((command) => {
@@ -545,7 +546,17 @@ function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
         return true
       }
 
-      return pointInTeamGeneralVision(team, command.state.target)
+      if (moveChainHiddenByFog) {
+        return false
+      }
+
+      const isVisible = pointInTeamGeneralVision(team, command.state.target)
+      if (!isVisible) {
+        moveChainHiddenByFog = true
+        return false
+      }
+
+      return true
     })
     .map((command) => mapAttackCommandForDirectView(command, unitId, team))
 }
@@ -630,6 +641,26 @@ function getTickAnimationDurationMs(stepSeconds: number) {
   return 50
 }
 
+function buildMoveFramesByUnitId(
+  unitPositionsBeforeTick: Map<string, vec2>,
+  durationMs: number
+) {
+  const framesByUnitId = new Map<string, MoveFrame[]>()
+  if (durationMs <= 0) return framesByUnitId
+
+  for (const unit of window.ROOM_WORLD.units.list()) {
+    const startPos = unitPositionsBeforeTick.get(unit.id)
+    if (!startPos) continue
+
+    const frames = buildTickMoveFrames(startPos, unit.pos, durationMs)
+    if (!frames) continue
+
+    framesByUnitId.set(unit.id, frames)
+  }
+
+  return framesByUnitId
+}
+
 async function flushTickUnitsWithAnimation(
   unitPositionsBeforeTick: Map<string, vec2>,
   animationDurationMs: number
@@ -681,16 +712,17 @@ async function flushTickUnitsWithAnimation(
 
 const MAX_STEP_SECONDS = 60 // 1 тик = 1 минута
 
-function emitTurnStatePackets() {
+function emitTurnStatePackets(directViewFramesByUnitId?: Map<string, MoveFrame[]>) {
   // DirectView general
   if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.GENERAL_VISION_UPDATE]) {
     const directViewByTeam = window.ROOM_WORLD.units.getDirectViewByGenerals();
     for (const team of [Team.RED, Team.BLUE]) {
       window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team as unitTeam)!.map(({id, isDirect}) => {
         const u = window.ROOM_WORLD.units.get(id)!
+        let unitState: unitstate
         if (!isDirect) {
           // For chained (non-direct) visibility update only position data.
-          return {
+          unitState = {
             id: u.id,
             type: u.type,
             team: u.team,
@@ -698,24 +730,31 @@ function emitTurnStatePackets() {
             angle: u.angle,
             seenRoomUserIds: u.seenRoomUserIds,
           }
+        } else {
+          unitState = {
+            id: u.id,
+            type: u.type,
+            team: u.team,
+            pos: u.pos,
+            angle: u.angle,
+            seenRoomUserIds: u.seenRoomUserIds,
+
+            isRetreatState: u.isRetreat,
+
+            hp: u.hp,
+            ammo: u.ammo,
+
+            envState: u.envState,
+            formation: u.getFormation(),
+            activeAbilityType: u.activeAbilityType,
+            commands: getDirectViewCommands(u.id, team as unitTeam),
+          }
         }
+
+        const frames = directViewFramesByUnitId?.get(u.id)
         return {
-          id: u.id,
-          type: u.type,
-          team: u.team,
-          pos: u.pos,
-          angle: u.angle,
-          seenRoomUserIds: u.seenRoomUserIds,
-
-          isRetreatState: u.isRetreat,
-
-          hp: u.hp,
-          ammo: u.ammo,
-
-          envState: u.envState,
-          formation: u.getFormation(),
-          activeAbilityType: u.activeAbilityType,
-          commands: getDirectViewCommands(u.id, team as unitTeam),
+          unit: unitState,
+          frames: frames && frames.length > 0 ? frames : undefined,
         }
       })})
       window.ROOM_WORLD.events.emit('api', {
@@ -755,6 +794,7 @@ async function runTurnStep(
 ) {
   if (secondsToSkip <= 0) return
 
+  const turnStartUnitPositions = captureUnitPositionsById()
   window.ROOM_WORLD.units.withNewCommandsTmp.clear()
   window.ROOM_WORLD.socketLock = true
 
@@ -791,7 +831,9 @@ async function runTurnStep(
       await new Promise(requestAnimationFrame)
     }
 
-    emitTurnStatePackets()
+    const directViewAnimationDurationMs = isLive ? LIVE_TICK_MS : getTickAnimationDurationMs(secondsToSkip)
+    const directViewFramesByUnitId = buildMoveFramesByUnitId(turnStartUnitPositions, directViewAnimationDurationMs)
+    emitTurnStatePackets(directViewFramesByUnitId)
 
     if (!isLive && runningSteps > 0) {
       window.ROOM_WORLD.events.emit('api', {

@@ -552,6 +552,7 @@ export abstract class BaseUnit {
       this.remoteMoveFrames[0]!.t <= now - this.remoteMoveFrameStart
       ) {
       const frame = this.remoteMoveFrames.shift()!
+      this.rotateTowardsPoint(frame.pos)
       this.pos = frame.pos;
     }
 

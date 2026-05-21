@@ -5,6 +5,8 @@
 - Move - improve smart path integration for column first segment
 - Move Overlay - optimize columns order render
 - Unit editor - Fix bug, edit hp/ammo not save if select next unit
+- DirectView orders - fix some strange move points
+- DirectView LIVE - add animation
 
 [2026-05-19]
 - Massive control update

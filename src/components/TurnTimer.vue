@@ -369,6 +369,12 @@ function pointInTeamGeneralVision(team: unitTeam, point: vec2): boolean {
   return false
 }
 
+function getTeamGeneralVisionPolygons(team: unitTeam): vec2[][] {
+  return window.ROOM_WORLD.units.list()
+    .filter((unit) => unit.team === team && unit.type === unitType.GENERAL && unit.alive)
+    .map((general) => buildVisionPolygon(general, window.ROOM_WORLD))
+}
+
 function distancePointToSegment(point: vec2, segStart: vec2, segEnd: vec2): number {
   const vx = segEnd.x - segStart.x
   const vy = segEnd.y - segStart.y
@@ -437,6 +443,96 @@ function lineSegmentIntersectionT(
   const u = (qp.x * r.y - qp.y * r.x) / denominator
   if (t < 0 || t > 1 || u < 0 || u > 1) return null
   return t
+}
+
+function getFirstSegmentVisibilityEntry(from: vec2, to: vec2, polygons: vec2[][]): { point: vec2; t: number } | null {
+  const isVisibleAtT = (t: number) => {
+    const point = {
+      x: from.x + (to.x - from.x) * t,
+      y: from.y + (to.y - from.y) * t,
+    }
+    return polygons.some((polygon) => pointInPolygon(point, polygon))
+  }
+
+  if (isVisibleAtT(0)) {
+    return { point: { x: from.x, y: from.y }, t: 0 }
+  }
+
+  const rawTs: number[] = [0, 1]
+  for (const polygon of polygons) {
+    if (polygon.length < 2) continue
+    for (let i = 0; i < polygon.length; i++) {
+      const p1 = polygon[i]!
+      const p2 = polygon[(i + 1) % polygon.length]!
+      const t = lineSegmentIntersectionT(from, to, p1, p2)
+      if (t == null) continue
+      rawTs.push(t)
+    }
+  }
+
+  rawTs.sort((a, b) => a - b)
+  const uniqueTs: number[] = []
+  for (const t of rawTs) {
+    if (uniqueTs.length === 0 || Math.abs(t - uniqueTs[uniqueTs.length - 1]!) > 1e-6) {
+      uniqueTs.push(t)
+    }
+  }
+
+  for (let i = 0; i < uniqueTs.length - 1; i++) {
+    const t0 = uniqueTs[i]!
+    const t1 = uniqueTs[i + 1]!
+    const middleT = (t0 + t1) / 2
+    if (!isVisibleAtT(middleT)) continue
+    return {
+      point: {
+        x: from.x + (to.x - from.x) * t0,
+        y: from.y + (to.y - from.y) * t0,
+      },
+      t: t0,
+    }
+  }
+
+  if (isVisibleAtT(1)) {
+    return { point: { x: to.x, y: to.y }, t: 1 }
+  }
+
+  return null
+}
+
+function clipFramesForDirectViewTeam(
+  frames: MoveFrame[] | undefined,
+  unitTeam: unitTeam,
+  team: unitTeam
+): MoveFrame[] | undefined {
+  if (!frames || frames.length < 2) return frames
+  if (unitTeam === team) return frames
+
+  const start = frames[0]!.pos
+  const end = frames[frames.length - 1]!.pos
+  const startTime = frames[0]!.t
+  const endTime = frames[frames.length - 1]!.t
+  const duration = endTime - startTime
+  const polygons = getTeamGeneralVisionPolygons(team)
+  if (!polygons.length) return undefined
+
+  const entry = getFirstSegmentVisibilityEntry(start, end, polygons)
+  if (!entry) return undefined
+  if (Math.hypot(end.x - entry.point.x, end.y - entry.point.y) < 0.01) return undefined
+
+  const entryTime = duration > 0
+    ? startTime + duration * entry.t
+    : startTime
+
+  return [
+    {
+      t: entryTime,
+      pos: entry.point,
+    },
+    {
+      t: endTime,
+      pos: end,
+    },
+  ]
 }
 
 function getLineExitPointFromVisionPolygon(from: vec2, to: vec2, polygon: vec2[]): vec2 | null {
@@ -751,7 +847,11 @@ function emitTurnStatePackets(directViewFramesByUnitId?: Map<string, MoveFrame[]
           }
         }
 
-        const frames = directViewFramesByUnitId?.get(u.id)
+        const frames = clipFramesForDirectViewTeam(
+          directViewFramesByUnitId?.get(u.id),
+          u.team,
+          team as unitTeam
+        )
         return {
           unit: unitState,
           frames: frames && frames.length > 0 ? frames : undefined,

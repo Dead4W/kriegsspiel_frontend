@@ -26,6 +26,16 @@ type MoveOrderRange = {
   max: number
 }
 
+function shouldRenderMoveLine(
+  segIndex: number | undefined,
+  orderIndex: number | undefined,
+  lastOrderIndex?: number
+) {
+  const normalizedOrderIndex = orderIndex ?? 0
+  const isLastOrder = lastOrderIndex != null && normalizedOrderIndex === lastOrderIndex
+  return (segIndex ?? 0) === 0 || normalizedOrderIndex === 0 || isLastOrder
+}
+
 function hpGradientColor(hpRatio: number) {
   const clamped = Math.max(0, Math.min(1, hpRatio))
   const percent = Math.round(clamped * 100)
@@ -280,6 +290,13 @@ export class unitlayer {
       switch (cmd.type) {
         case UnitCommandTypes.Move: {
           const state = cmd.getState().state as MoveCommandState
+          const lastOrderIndex = state.uniqueId != null
+            ? this.move_orders[state.uniqueId]?.max
+            : undefined
+          if (!shouldRenderMoveLine(state.segIndex, state.orderIndex, lastOrderIndex)) {
+            from = state.target
+            break
+          }
           const a = cam.worldToScreen(from)
           const b = cam.worldToScreen(state.target)
 

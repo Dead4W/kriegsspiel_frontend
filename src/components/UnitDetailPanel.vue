@@ -25,9 +25,15 @@ const isStatsOpen = ref(false)
 
 /* Logic */
 
-const onEdit = () => {
-  window.ROOM_WORLD.units.addUnitDirty(unit.id);
-  emit('edit');
+const onEdit = (emitChanged = true) => {
+  window.ROOM_WORLD.units.addUnitDirty(unit.id)
+  if (emitChanged) {
+    emit('edit')
+  }
+}
+
+function onEditChange() {
+  onEdit(true)
 }
 
 function barStyle(value: number, min: number, max: number) {
@@ -75,19 +81,42 @@ function syncInputValues() {
   ammoProxy.value = formatStatInput(unit.ammo)
 }
 
-function commitInput() {
+function commitInput(normalizeInput = true) {
+  let changed = false
+
   const hp = Number(hpProxy.value.replace(',', '.'))
   if (!Number.isNaN(hp)) {
-    unit.hp = clamp(hp, 0, unit.stats.maxHp!)
+    const nextHp = clamp(hp, 0, unit.stats.maxHp!)
+    if (unit.hp !== nextHp) {
+      unit.hp = nextHp
+      changed = true
+    }
   }
 
   const ammo = Number(ammoProxy.value.replace(',', '.'))
   if (!Number.isNaN(ammo) && unit.stats.ammoMax != null) {
-    unit.ammo = clamp(ammo, 0, unit.stats.ammoMax)
+    const nextAmmo = clamp(ammo, 0, unit.stats.ammoMax)
+    if (unit.ammo !== nextAmmo) {
+      unit.ammo = nextAmmo
+      changed = true
+    }
   }
 
-  syncInputValues()
-  onEdit();
+  if (normalizeInput) {
+    syncInputValues()
+  }
+
+  if (changed) {
+    onEdit(normalizeInput)
+  }
+}
+
+function commitInputOnInput() {
+  commitInput(false)
+}
+
+function commitInputOnChange() {
+  commitInput(true)
 }
 
 const ammoProxy = ref('0')
@@ -140,7 +169,7 @@ onUnmounted(() => {
         v-model="unit.label"
         :placeholder="t('stat.name')"
         @keydown.stop
-        @change="onEdit"
+        @change="onEditChange"
       />
 
       <div v-if="isDebug()" class="debug-actions">
@@ -163,7 +192,8 @@ onUnmounted(() => {
             min="0"
             :max="unit.stats.maxHp"
             @keydown.stop
-            @change="commitInput"
+            @input="commitInputOnInput"
+            @change="commitInputOnChange"
           />
           <span>/ {{ unit.stats.maxHp }}</span>
 
@@ -185,7 +215,8 @@ onUnmounted(() => {
             min="0"
             :max="unit.stats.ammoMax"
             @keydown.stop
-            @change="commitInput"
+            @input="commitInputOnInput"
+            @change="commitInputOnChange"
           />
           <span>/ {{ unit.stats.ammoMax }}</span>
 
@@ -204,7 +235,7 @@ onUnmounted(() => {
             type="number"
             v-model="unit.morale"
             @keydown.stop
-            @change="onEdit"
+            @change="onEditChange"
           />
         </div>
 

@@ -9,13 +9,11 @@ import {getTeamColor} from '@/engine/2d/render'
 import {type commandstate, type unitTeam, unitType, type uuid} from '@/engine'
 import type {unsub} from '@/engine/events'
 import {unitlayer} from "@/engine/2d/render";
-import {normalize, sub} from "@/engine/math.ts";
 import { CLIENT_SETTING_KEYS } from "@/enums/clientSettingsKeys.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import { hasAbilityInaccuracyRadius } from "@/engine/resourcePack/abilities.ts";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
-import {WaitCommand} from "@/engine/units/commands/waitCommand.ts";
 import RadialMenu, { type RadialMenuItem } from '@/components/ui/RadialMenu.vue'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {
@@ -23,7 +21,20 @@ import {
   getRouteEnvironmentStates,
   type EnvironmentStateId,
 } from "@/engine/resourcePack/environment.ts";
-import { buildRoadTurnRoutePoints } from "@/engine/world/roadPath.ts";
+import {
+  buildColumnPlanByFirstTargetDistance,
+  getColumnPosition,
+  getColumnSegmentRoutePoints,
+  mergeColumnFirstSegmentWithSmartPath,
+  type ColumnPlanItem as ColumnAlgoPlanItem,
+} from "@/engine/units/formationMoveAlgorithms/columnAlgorithms.ts";
+import {
+  buildFormationCenter,
+  buildFormationOffsets,
+  getFormationSegmentAngles,
+  getFormationReferenceAngle,
+  getFormationTargetPoint,
+} from "@/engine/units/formationMoveAlgorithms/formationAlgorithms.ts";
 
 const { t } = useI18n()
 
@@ -38,27 +49,20 @@ function envIcon(state: EnvironmentStateId) {
   return getEnvironmentIcon(state)
 }
 
+function shouldRenderMoveLine(
+  segIndex: number | undefined,
+  orderIndex: number | undefined,
+  lastOrderIndex?: number
+) {
+  const normalizedOrderIndex = orderIndex ?? 0
+  const isLastOrder = lastOrderIndex != null && normalizedOrderIndex === lastOrderIndex
+  return (segIndex ?? 0) === 0 || normalizedOrderIndex === 0 || isLastOrder
+}
+
 function setRouteModifier(mod: EnvironmentStateId | null) {
   if (!targets.value.length) return
   targets.value[targets.value.length - 1]!.modifier = mod
   rebuildMoveOverlay()
-}
-
-function pointOnSegmentFromEnd(
-  start: vec2,
-  end: vec2,
-  distFromEnd: number
-): vec2 {
-  const dx = start.x - end.x
-  const dy = start.y - end.y
-  const len = Math.hypot(dx, dy)
-
-  const t = distFromEnd / len
-
-  return {
-    x: end.x + dx * t,
-    y: end.y + dy * t,
-  }
 }
 
 /* ================= props / emits ================= */
@@ -85,45 +89,11 @@ const targets = ref<RoutePoint[]>([])
 const isPatrol = ref(false)
 const smartPathEnabled = ref(false)
 const routeListRef = ref<HTMLElement | null>(null)
-const MIN_ROUTE_SEGMENT_METERS = 20
 
 /* ================= DISTANCE (meters) ================= */
 
 function distPx(a: vec2, b: vec2) {
   return Math.hypot(b.x - a.x, b.y - a.y)
-}
-
-function pruneTinyRouteSegments(start: vec2, points: vec2[], minSegmentMeters = MIN_ROUTE_SEGMENT_METERS): vec2[] {
-  if (points.length <= 1) return [...points]
-
-  const mpp = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
-  const out: vec2[] = []
-  let prev = start
-
-  for (const point of points) {
-    const segMeters = distPx(prev, point) * mpp
-    if (segMeters >= minSegmentMeters) {
-      out.push(point)
-      prev = point
-      continue
-    }
-
-    // Last point is always kept: for short residual tail
-    // we overwrite previous waypoint with final destination.
-    if (point === points[points.length - 1]) {
-      if (out.length) {
-        out[out.length - 1] = point
-      } else {
-        out.push(point)
-      }
-      prev = point
-    }
-  }
-
-  if (!out.length) {
-    return [{ x: points[points.length - 1]!.x, y: points[points.length - 1]!.y }]
-  }
-  return out
 }
 
 function getFacingAngleFromSegment(from: vec2, to: vec2, fallback: number): number {
@@ -203,10 +173,13 @@ function getSegmentRoutePoints(from: vec2, to: vec2): vec2[] {
   if (moveMode.value === 'formation') {
     return [{ x: to.x, y: to.y }]
   }
-  if (!smartPathEnabled.value || !hasObjectMap.value) {
-    return [{ x: to.x, y: to.y }]
-  }
-  return buildRoadTurnRoutePoints(window.ROOM_WORLD, from, to)
+  return getColumnSegmentRoutePoints(
+    window.ROOM_WORLD,
+    from,
+    to,
+    smartPathEnabled.value,
+    hasObjectMap.value
+  )
 }
 
 function rebuildRouteBySmartPathMode() {
@@ -473,107 +446,6 @@ function getFirstActiveMoveState(unit: BaseUnit): MoveCommandState | null {
   return (activeMove as MoveCommand).getState().state
 }
 
-function resolveColumnDirection(routeTargets: RoutePoint[], unitStartPositions: vec2[]): vec2 {
-  const minLen = Math.max(1e-3, BaseUnit.COLLISION_RANGE * 0.15)
-
-  // 1) Основной источник: первый достаточно длинный сегмент маршрута.
-  for (let i = 1; i < routeTargets.length; i++) {
-    const from = routeTargets[i - 1]!.pos
-    const to = routeTargets[i]!.pos
-    const dx = to.x - from.x
-    const dy = to.y - from.y
-    const len = Math.hypot(dx, dy)
-    if (len >= minLen) {
-      return { x: dx / len, y: dy / len }
-    }
-  }
-
-  // 2) Для случая "одна точка" (часто в smart path после нормализации):
-  // направление от центра группы к первой цели.
-  const firstTarget = routeTargets[0]?.pos
-  if (firstTarget && unitStartPositions.length) {
-    let cx = 0
-    let cy = 0
-    for (const p of unitStartPositions) {
-      cx += p.x
-      cy += p.y
-    }
-    cx /= unitStartPositions.length
-    cy /= unitStartPositions.length
-
-    const dx = firstTarget.x - cx
-    const dy = firstTarget.y - cy
-    const len = Math.hypot(dx, dy)
-    if (len >= 1e-6) {
-      return { x: dx / len, y: dy / len }
-    }
-  }
-
-  return { x: 1, y: 0 }
-}
-
-function buildColumnPlanByNearestChain(
-  unitsLeft: Array<{ unit: UnwrapRef<BaseUnit>; startPos: vec2 }>,
-  direction: vec2,
-  firstTarget: vec2
-): MovePlanItem[] {
-  if (!unitsLeft.length) return []
-  const nx = direction.x
-  const ny = direction.y
-  const px = -ny
-  const py = nx
-
-  const remaining = [...unitsLeft]
-  remaining.sort((a, b) => {
-    // Голова должна быть "с одного края" — берем самый передний юнит по оси движения.
-    const alongA = a.startPos.x * nx + a.startPos.y * ny
-    const alongB = b.startPos.x * nx + b.startPos.y * ny
-    if (Math.abs(alongA - alongB) > 0.001) return alongB - alongA
-
-    // Tie-breakers для стабильности.
-    const distToTargetA = Math.hypot(a.startPos.x - firstTarget.x, a.startPos.y - firstTarget.y)
-    const distToTargetB = Math.hypot(b.startPos.x - firstTarget.x, b.startPos.y - firstTarget.y)
-    if (Math.abs(distToTargetA - distToTargetB) > 0.001) return distToTargetA - distToTargetB
-
-    const lateralA = a.startPos.x * px + a.startPos.y * py
-    const lateralB = b.startPos.x * px + b.startPos.y * py
-    if (Math.abs(lateralA - lateralB) > 0.001) return lateralA - lateralB
-
-    return String(a.unit.id).localeCompare(String(b.unit.id))
-  })
-
-  const ordered: Array<{ unit: UnwrapRef<BaseUnit>; startPos: vec2 }> = [remaining.shift()!]
-  let prev = ordered[0]!.startPos
-
-  // Остальные индексы строим цепочкой: ближайший к предыдущему.
-  while (remaining.length) {
-    let bestIdx = 0
-    let bestDist = Infinity
-    for (let i = 0; i < remaining.length; i++) {
-      const p = remaining[i]!.startPos
-      const dist = Math.hypot(p.x - prev.x, p.y - prev.y)
-      if (dist + 0.001 < bestDist) {
-        bestDist = dist
-        bestIdx = i
-        continue
-      }
-      if (Math.abs(dist - bestDist) <= 0.001) {
-        const candidateAlong = p.x * nx + p.y * ny
-        const currentBest = remaining[bestIdx]!.startPos
-        const bestAlong = currentBest.x * nx + currentBest.y * ny
-        if (candidateAlong > bestAlong) {
-          bestIdx = i
-        }
-      }
-    }
-    const [next] = remaining.splice(bestIdx, 1)
-    ordered.push(next!)
-    prev = next!.startPos
-  }
-
-  return ordered.map(({ unit, startPos }, orderIndex) => ({ unit, startPos, orderIndex }))
-}
-
 /** План (порядок) колонны считается по первой точке маршрута */
 const movePlan = computed<MovePlanItem[]>(() => {
   if (!movingUnits.value.length || !targets.value.length) return []
@@ -629,239 +501,44 @@ const movePlan = computed<MovePlanItem[]>(() => {
       .map(({ unit, startPos }, orderIndex) => ({ unit, startPos, orderIndex }))
   }
 
-  const dir = resolveColumnDirection(
-    targets.value,
-    unitsLeft.map(({ startPos }) => startPos)
-  )
-  return buildColumnPlanByNearestChain(unitsLeft, dir, firstTarget.pos)
-})
-
-const formationCenter = computed<vec2 | null>(() => {
-  if (!movingUnits.value.length) return null
-
-  const sum = movingUnits.value.reduce(
-    (a, u) => {
-      const uPlanPos = getUnitPlannedPos(u as BaseUnit)
-      a.x += uPlanPos.x
-      a.y += uPlanPos.y
-      return a
-    },
-    { x: 0, y: 0 }
+  const algoPlan = buildColumnPlanByFirstTargetDistance(
+    unitsLeft.map(({ unit, startPos }) => ({ unitId: unit.id, startPos })),
+    firstTarget.pos
   )
 
-  return {
-    x: sum.x / movingUnits.value.length,
-    y: sum.y / movingUnits.value.length,
-  }
+  const unitById = new Map(unitsLeft.map((item) => [item.unit.id, item.unit] as const))
+  return algoPlan
+    .map((item) => {
+      const unit = unitById.get(item.unitId)
+      if (!unit) return null
+      return { unit, startPos: item.startPos, orderIndex: item.orderIndex }
+    })
+    .filter((item): item is MovePlanItem => Boolean(item))
 })
+
+const formationCenter = computed<vec2 | null>(() => buildFormationCenter(
+  movingUnits.value.map((unit) => ({
+    unitId: unit.id,
+    startPos: getUnitPlannedPos(unit as BaseUnit),
+  }))
+))
 
 const formationOffsets = computed<Record<uuid, vec2>>(() => {
-  if (!formationCenter.value) return {}
-
-  return Object.fromEntries(
-    movingUnits.value.map(u => {
-      const uPlanPos = getUnitPlannedPos(u as BaseUnit)
-      return [
-        u.id,
-        {
-          x: uPlanPos.x - formationCenter.value!.x,
-          y: uPlanPos.y - formationCenter.value!.y,
-        },
-      ]
-    })
+  const offsets = buildFormationOffsets(
+    movingUnits.value.map((unit) => ({
+      unitId: unit.id,
+      startPos: getUnitPlannedPos(unit as BaseUnit),
+    })),
+    formationCenter.value
   )
+  return offsets as Record<uuid, vec2>
 })
-
-function getRouteSegmentAngle(from: vec2, to: vec2): number | null {
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  if (dx === 0 && dy === 0) return null
-  return Math.atan2(dy, dx)
-}
 
 function isSegmentLongEnoughMeters(from: vec2, to: vec2, minMeters = 30): boolean {
   const metersPerPixel = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
   const distMeters = Math.hypot(to.x - from.x, to.y - from.y) * metersPerPixel
   return distMeters >= minMeters
 }
-
-function rotateVector(v: vec2, angle: number): vec2 {
-  const c = Math.cos(angle)
-  const s = Math.sin(angle)
-  return {
-    x: v.x * c - v.y * s,
-    y: v.x * s + v.y * c,
-  }
-}
-
-function getFormationSegmentAngles(
-  routeTargets: RoutePoint[],
-  _source: 'overlay' | 'confirm',
-): Array<number | null> {
-  const result: Array<number | null> = []
-  if (!formationCenter.value || !routeTargets.length) return result
-  const minSegmentMeters = 8
-  let lastAngle: number | null = null
-  for (let i = 0; i < routeTargets.length; i++) {
-    const segFrom = i === 0 ? formationCenter.value : routeTargets[i - 1]!.pos
-    const segTo = routeTargets[i]!.pos
-    const nextAngle = getRouteSegmentAngle(segFrom!, segTo)
-    if (nextAngle != null && isSegmentLongEnoughMeters(segFrom!, segTo, minSegmentMeters)) {
-      lastAngle = nextAngle
-    }
-    result.push(lastAngle)
-  }
-
-  return result
-}
-
-function getFormationReferenceAngle(segmentAngles: Array<number | null>): number | null {
-  return segmentAngles[0] ?? null
-}
-
-function getFormationTargetPoint(
-  segIndex: number,
-  unitId: uuid,
-  target: vec2,
-  routeTargets: RoutePoint[],
-  segmentAngles: Array<number | null>,
-  refAngle: number | null
-): vec2 {
-  const offset = formationOffsets.value[unitId]
-  if (!offset) return target
-
-  if (refAngle == null) {
-    return {
-      x: target.x + offset.x,
-      y: target.y + offset.y,
-    }
-  }
-
-  const segAngle = segmentAngles[segIndex] ?? refAngle
-  if (segAngle == null) {
-    return {
-      x: target.x + offset.x,
-      y: target.y + offset.y,
-    }
-  }
-
-  const rotatedOffset = rotateVector(offset, segAngle - refAngle)
-  return {
-    x: target.x + rotatedOffset.x,
-    y: target.y + rotatedOffset.y,
-  }
-}
-
-function getColumnPosition(
-  segIndex: number,
-  orderIndex: number,
-  targets: RoutePoint[],
-  plan: MovePlanItem[],
-): vec2[] {
-  // лидер всегда на точке маршрута
-  if (orderIndex === 0) {
-    return [targets[segIndex]!.pos]
-  }
-
-  let remaining = orderIndex * BaseUnit.COLLISION_RANGE
-  let leftSegmentDistance = 0;
-  let currentSegmentIndex = 0;
-
-  const result = [];
-  // Считаем последнюю позицию
-  for (let j = targets.length-1; j >= -orderIndex; j--) {
-    // 0-N - segments
-    // -1,-2,-3 - prev units include current unit
-    const prev = j > 0 ? targets[j-1]!.pos : plan[Math.abs(j)]!.startPos
-    const next = j >= 0 ? targets[j]!.pos : plan[Math.abs(j+1)]!.startPos
-    const segment = sub(prev, next)
-    const segLen = Math.hypot(segment.x, segment.y)
-
-    if (segLen > remaining) {
-      leftSegmentDistance = segLen - remaining;
-      currentSegmentIndex = j;
-      if (segIndex === targets.length-1) {
-        const point = pointOnSegmentFromEnd(
-          prev,
-          next,
-          remaining
-        )
-        result.push(point)
-      }
-      remaining = 0;
-
-      break
-    }
-
-    remaining -= segLen
-  }
-
-  // Нет места
-  if (remaining > 0) {
-    return [];
-  }
-
-  for (let i = currentSegmentIndex; i >= segIndex; i--) {
-    const iterationSegPrev = i > 0 ? targets[i-1]!.pos : plan[Math.abs(i)]!.startPos;
-    const iterationSegNext = targets[i]!.pos;
-    const iterationSegment = sub(iterationSegPrev, iterationSegNext);
-    let iterationLen = Math.hypot(iterationSegment.x, iterationSegment.y)
-
-    // Считаем точки для пройденного сегмента
-    for (let j = currentSegmentIndex; j >= -orderIndex+1; j--) {
-      // 0-N - segments
-      // -1,-2,-3 - prev units include current unit
-      const prev = j > 0 ? targets[j-1]!.pos : plan[Math.abs(j)]!.startPos;
-      const next = j >= 0 ? targets[j]!.pos : plan[Math.abs(j+1)]!.startPos;
-      const segment = sub(prev, next);
-
-      if (leftSegmentDistance === 0) {
-        leftSegmentDistance = Math.hypot(segment.x, segment.y)
-      }
-
-      if(segIndex === 0 && currentSegmentIndex === 0) {
-        //Вставляем промежуточную точку
-        result.push({x: prev.x, y: prev.y})
-        continue;
-      }
-
-      if (leftSegmentDistance > iterationLen) {
-        leftSegmentDistance -= iterationLen;
-        currentSegmentIndex = j;
-        if (segIndex === i) {
-          const point = pointOnSegmentFromEnd(
-            prev,
-            next,
-            leftSegmentDistance
-          )
-
-          result.push(point)
-          result.reverse()
-          return result;
-        }
-        iterationLen = 0;
-        break
-      }
-      iterationLen -= leftSegmentDistance;
-      leftSegmentDistance = 0
-
-      if (segIndex === i && j > 0) {
-        //Вставляем промежуточную точку
-        result.push({x: prev.x, y: prev.y})
-      }
-    }
-
-    // Нет места
-    if (iterationLen > 0) {
-      result.reverse();
-      return result;
-    }
-  }
-
-  result.reverse();
-  return result;
-}
-
 
 /* ================= GROUPING ================= */
 
@@ -901,7 +578,7 @@ function applyContextTarget(pos: vec2, append: boolean) {
     const normalizedRoutePoints = targets.value.length
       ? rawRoutePoints
       : normalizeInitialRoutePoints(rawRoutePoints)
-    const routePoints = pruneTinyRouteSegments(start, normalizedRoutePoints)
+    const routePoints = normalizedRoutePoints
     for (const point of routePoints) {
       targets.value.push({ pos: point, modifier })
     }
@@ -921,7 +598,7 @@ function applyContextTarget(pos: vec2, append: boolean) {
       ? normalizeInitialRoutePoints(rawRoutePoints)
       : rawRoutePoints
     )
-    const routePoints = pruneTinyRouteSegments(start, normalizedRoutePoints)
+    const routePoints = normalizedRoutePoints
       .map((point) => ({ pos: point, modifier }))
 
     if (!hasTargets) {
@@ -965,10 +642,22 @@ function rebuildMoveOverlay() {
 
   // используем план, чтобы порядок был стабильный
   const plan = movePlan.value
-  const formationSegmentAngles = getFormationSegmentAngles(targets.value, 'overlay')
+  const routePoints = targets.value.map((item) => item.pos)
+  const columnAlgoPlan: ColumnAlgoPlanItem[] = plan.map((item) => ({
+    unitId: item.unit.id,
+    startPos: item.startPos,
+    orderIndex: item.orderIndex,
+  }))
+  const formationSegmentAngles = getFormationSegmentAngles(
+    formationCenter.value,
+    routePoints,
+    window.ROOM_WORLD?.map?.metersPerPixel ?? 1,
+    8
+  )
   const formationRefAngle = getFormationReferenceAngle(formationSegmentAngles)
 
   plan.forEach(({ unit: u, orderIndex }, planIdx) => {
+    const lastPlanOrderIndex = plan.length - 1
     let from = u.pos
     let lastMoveSegment: { from: vec2; to: vec2 } | null = null
 
@@ -977,17 +666,20 @@ function rebuildMoveOverlay() {
     for (const cmd of unitCommands) {
       if (cmd.type !== UnitCommandTypes.Move) continue;
       const moveCmd = cmd as MoveCommand
-      const target = moveCmd.getState().state.target
+      const moveState = moveCmd.getState().state as MoveCommandState
+      const target = moveState.target
 
-      items.push({
-        type: 'line',
-        from,
-        to: target,
-        color: 'rgba(34,197,94,0.65)',
-        width: 6,
-        dash: [6, 6],
-        dashOffset: -1,
-      })
+      if (shouldRenderMoveLine(moveState.segIndex, moveState.orderIndex, lastPlanOrderIndex)) {
+        items.push({
+          type: 'line',
+          from,
+          to: target,
+          color: 'rgba(34,197,94,0.65)',
+          width: 6,
+          dash: [6, 6],
+          dashOffset: -1,
+        })
+      }
       lastMoveSegment = { from, to: target }
       from = target
     }
@@ -1000,20 +692,35 @@ function rebuildMoveOverlay() {
       if (moveMode.value === 'formation' && formationOffsets.value[u.id]) {
         to_points = [getFormationTargetPoint(
           segIndex,
-          u.id,
           t.pos,
-          targets.value,
+          formationOffsets.value[u.id],
           formationSegmentAngles,
           formationRefAngle
         )]
       } else if (moveMode.value === 'column') {
-        to_points = getColumnPosition(segIndex, orderIndex, targets.value, plan)
+        to_points = getColumnPosition(
+          segIndex,
+          orderIndex,
+          routePoints,
+          columnAlgoPlan,
+          BaseUnit.COLLISION_RANGE
+        )
+        if (segIndex === 0) {
+          to_points = mergeColumnFirstSegmentWithSmartPath(
+            window.ROOM_WORLD,
+            from,
+            to_points,
+            smartPathEnabled.value,
+            hasObjectMap.value
+          )
+        }
       } else {
         to_points = [t.pos]
       }
 
       for (const to of to_points) {
         const isLongEnough = isSegmentLongEnoughMeters(from, to, 30)
+        if (shouldRenderMoveLine(segIndex, orderIndex, lastPlanOrderIndex)) {
           items.push({
             type: 'line',
             from,
@@ -1023,6 +730,7 @@ function rebuildMoveOverlay() {
             dash: [6, 6],
             dashOffset: -1,
           })
+        }
         if (isLongEnough) {
           lastMoveSegment = { from, to }
         }
@@ -1064,25 +772,6 @@ function rebuildMoveOverlay() {
 
 /* ================= ACTION ================= */
 
-function calcUnitCommandsEstimate(u: BaseUnit): { est: number, lastPos: vec2 } {
-  let result = 0;
-  const cmds = u.getCommands();
-  let lastPos = u.pos
-  for (const cmd of cmds) {
-    const cmdEstimate = cmd instanceof MoveCommand ? cmd.estimate(u as BaseUnit, lastPos) : cmd.estimate(u as BaseUnit)
-    if (cmdEstimate > 0 && cmdEstimate < Infinity) {
-      result += cmdEstimate;
-    }
-    if (cmd instanceof MoveCommand) {
-      lastPos = cmd.getState().state.target
-    }
-  }
-  return {
-    est: result,
-    lastPos: lastPos,
-  }
-}
-
 function confirm() {
   if (!movingUnits.value.length || !targets.value.length) {
     return
@@ -1100,7 +789,18 @@ function confirm() {
 
   const new_commands: Map<uuid, BaseCommand<any, any>[]> = new Map()
   const routeTargets = [...targets.value]
-  const formationSegmentAngles = getFormationSegmentAngles(routeTargets, 'confirm')
+  const routePoints = routeTargets.map((item) => item.pos)
+  const columnAlgoPlan: ColumnAlgoPlanItem[] = plan.map((item) => ({
+    unitId: item.unit.id,
+    startPos: item.startPos,
+    orderIndex: item.orderIndex,
+  }))
+  const formationSegmentAngles = getFormationSegmentAngles(
+    formationCenter.value,
+    routePoints,
+    window.ROOM_WORLD?.map?.metersPerPixel ?? 1,
+    8
+  )
   const formationRefAngle = getFormationReferenceAngle(formationSegmentAngles)
 
   plan.forEach(({ unit: u, orderIndex }) => {
@@ -1124,14 +824,28 @@ function confirm() {
       if (moveMode.value === 'formation' && formationOffsets.value[u.id]) {
         to_points = [getFormationTargetPoint(
           segIndex,
-          u.id,
           t.pos,
-          routeTargets,
+          formationOffsets.value[u.id],
           formationSegmentAngles,
           formationRefAngle
         )]
       } else if (moveMode.value === 'column') {
-        to_points = getColumnPosition(segIndex, orderIndex, routeTargets, plan)
+        to_points = getColumnPosition(
+          segIndex,
+          orderIndex,
+          routePoints,
+          columnAlgoPlan,
+          BaseUnit.COLLISION_RANGE
+        )
+        if (segIndex === 0) {
+          to_points = mergeColumnFirstSegmentWithSmartPath(
+            window.ROOM_WORLD,
+            from,
+            to_points,
+            smartPathEnabled.value,
+            hasObjectMap.value
+          )
+        }
       } else {
         to_points = [t.pos]
       }

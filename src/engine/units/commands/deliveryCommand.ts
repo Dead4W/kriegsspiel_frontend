@@ -9,6 +9,7 @@ import type {MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 
 export interface DeliveryCommandState {
   targets: uuid[],
+  instantDelivery?: boolean,
   delivered?: boolean,
   route?: vec2[],
   routeIndex?: number,
@@ -169,6 +170,10 @@ export class DeliveryCommand extends BaseCommand<
   update(unit: BaseUnit, dt: number) {
     void dt;
     if (this.state.delivered) return;
+    if (this.state.instantDelivery) {
+      this.deliver(unit);
+      return;
+    }
 
     const deliveryTarget = this.resolveDeliveryTarget(unit);
     if (!deliveryTarget) {

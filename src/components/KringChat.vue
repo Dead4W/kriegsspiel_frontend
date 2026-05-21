@@ -616,6 +616,7 @@ function send() {
     const messenger = new Messenger(messengerState);
     const cmd = new DeliveryCommand({
       targets: selected.map(u => u.id),
+      instantDelivery: true,
     })
     messenger.addCommand(cmd.getState())
     window.ROOM_WORLD.addUnits([messenger.toState()]);

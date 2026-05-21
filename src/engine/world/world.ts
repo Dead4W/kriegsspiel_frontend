@@ -33,8 +33,15 @@ type worldevents = {
 }
 
 export class world {
+  private static readonly LIVE_TIME_TICK_MS = 100
+
   id: uuid = '';
   time: string = '1882-06-12 09:00:00';
+  skipTimeLive: Ref<boolean> = ref(false);
+  private liveSecondTickIntervalId: ReturnType<typeof window.setInterval> | null = null
+  private liveHeartbeatTimeoutId: ReturnType<typeof window.setTimeout> | null = null
+  private liveGameSecondsPerMinute = 60
+  private liveSecondFractionalCarry = 0
 
   // Блокировка сокета на отправку/приёмку событий
   socketLock: boolean = false;
@@ -451,13 +458,88 @@ export class world {
     if (update) this.events.emit('api', { type: 'skip_time', data: this.time});
   }
 
-  updateTime(time: string) {
+  private stopLiveSecondTimer() {
+    if (this.liveSecondTickIntervalId != null) {
+      window.clearInterval(this.liveSecondTickIntervalId)
+      this.liveSecondTickIntervalId = null
+    }
+  }
+
+  private clearLiveHeartbeatTimeout() {
+    if (this.liveHeartbeatTimeoutId != null) {
+      window.clearTimeout(this.liveHeartbeatTimeoutId)
+      this.liveHeartbeatTimeoutId = null
+    }
+  }
+
+  private stopLiveMode() {
+    this.skipTimeLive.value = false
+    this.stopLiveSecondTimer()
+    this.clearLiveHeartbeatTimeout()
+    this.liveSecondFractionalCarry = 0
+  }
+
+  private ensureLiveSecondTimer() {
+    if (this.liveSecondTickIntervalId != null) return
+    this.liveSecondTickIntervalId = window.setInterval(() => {
+      if (!this.skipTimeLive.value) {
+        this.stopLiveSecondTimer()
+        return
+      }
+      const perTick = Math.max(0, this.liveGameSecondsPerMinute) * (world.LIVE_TIME_TICK_MS / 60_000)
+      this.liveSecondFractionalCarry += perTick
+      const secondsToSkip = Math.floor(this.liveSecondFractionalCarry)
+      if (secondsToSkip > 0) {
+        this.liveSecondFractionalCarry -= secondsToSkip
+        this.skipTime(secondsToSkip, false)
+      }
+      this.events.emit('changed', { reason: 'live_second' })
+    }, world.LIVE_TIME_TICK_MS)
+  }
+
+  private scheduleLiveHeartbeatTimeout(liveIntervalMs?: number) {
+    const baseIntervalMs = Number.isFinite(liveIntervalMs) && (liveIntervalMs as number) > 0
+      ? Number(liveIntervalMs)
+      : 10_000
+    const timeoutMs = Math.max(2500, Math.floor(baseIntervalMs * 1.8))
+
+    this.clearLiveHeartbeatTimeout()
+    this.liveHeartbeatTimeoutId = window.setTimeout(() => {
+      this.stopLiveMode()
+      this.events.emit('changed', { reason: 'live_timeout' })
+    }, timeoutMs)
+  }
+
+  updateTime(
+    time: string,
+    options?: { live?: boolean; liveIntervalMs?: number; liveGameSecondsPerMinute?: number; allowSound?: boolean }
+  ): boolean {
+    const prevTime = this.time
     this.time = time;
-    if (this.stage !== RoomGameStage.END) {
+    const isLive = options?.live === true
+    if (isLive) {
+      if (
+        Number.isFinite(options?.liveGameSecondsPerMinute)
+        && (options?.liveGameSecondsPerMinute as number) >= 0
+      ) {
+        this.liveGameSecondsPerMinute = Number(options?.liveGameSecondsPerMinute)
+      } else {
+        this.liveGameSecondsPerMinute = 60
+      }
+      this.skipTimeLive.value = true
+      this.ensureLiveSecondTimer()
+      this.scheduleLiveHeartbeatTimeout(options?.liveIntervalMs)
+    } else {
+      this.stopLiveMode()
+    }
+    const allowSound = options?.allowSound !== false
+    if (this.stage !== RoomGameStage.END && !isLive && prevTime !== time && allowSound) {
       const messageSound = new Audio('/assets/sounds/message.wav')
       messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME] ?? 0.3
       messageSound.play().catch(() => {})
+      return true
     }
+    return false
   }
 
   setStage(stage: RoomGameStage) {

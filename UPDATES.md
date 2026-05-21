@@ -1,3 +1,11 @@
+[2026-05-21]
+- Turn Timer - add LIVE per minute mode with start/pause control and LIVE badge for players
+- Time sync - add live skip-time synchronization for clients with smoother timer updates
+- Move - rework column and formation movement algorithms for more stable positioning on route turns
+- Move - improve smart path integration for column first segment
+- Move Overlay - optimize columns order render
+- Unit editor - Fix bug, edit hp/ammo not save if select next unit
+
 [2026-05-19]
 - Massive control update
 

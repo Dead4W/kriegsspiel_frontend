@@ -25,7 +25,7 @@ export type OutMessage =
   | { type: 'chat_edit'; data: { id: uuid; text: string } }
   | { type: 'chat_read'; data: uuid[] }
   | { type: 'cursor'; data: CursorObject }
-  | { type: 'skip_time'; data: string }
+  | { type: 'skip_time'; data: string; live?: boolean; liveIntervalMs?: number; liveGameSecondsPerMinute?: number }
   | { type: 'skip_time_success'; data: true }
   | { type: 'set_stage'; data: RoomGameStage }
   | { type: 'messenger_delivery'; data: {id: uuid, roomUserIds: number[], time: string} }
@@ -152,8 +152,6 @@ export class GameSocket {
   }
 
   private sync() {
-    if (window.ROOM_WORLD.socketLock) return
-
     const dirtyUnitObjects = this.world.units.getDirty()
     const dirtyUnitRemove = this.world.units.getDirtyRemove()
     const dirtyChatMessages = this.world.messages.getDirty()
@@ -223,8 +221,8 @@ export class GameSocket {
 
   private handleMessage(msg: InMessage) {
     if (msg.type === 'messages') {
+      let skipTimeSoundPlayed = false
       for (const m of msg.messages) {
-        if (this.world.socketLock) return
         if (isDemoReadonlyMode && DEMO_BLOCKED_INCOMING_TYPES.has(m.type)) {
           continue
         }
@@ -266,7 +264,15 @@ export class GameSocket {
         } else if (m.type === 'cursor') {
           this.world.cursor.upsertRemoteCursor(m.data);
         } else if (m.type === 'skip_time') {
-          this.world.updateTime(m.data);
+          const played = this.world.updateTime(m.data, {
+            live: m.live === true,
+            liveIntervalMs: m.liveIntervalMs,
+            liveGameSecondsPerMinute: m.liveGameSecondsPerMinute,
+            allowSound: !skipTimeSoundPlayed,
+          });
+          if (played) {
+            skipTimeSoundPlayed = true
+          }
         } else if (m.type === 'room') {
           this.world.time = m.data.ingame_time;
           this.world.stage = m.data.stage;

@@ -27,16 +27,28 @@ const weather = window.ROOM_WORLD.weather
 
 const minutes = ref(1)
 const seconds = ref(0)
+const livePerMinute = ref(false)
 
 const totalSeconds = ref(0)
 const running = ref(false)
+const isLiveRunning = ref(false)
+const LIVE_TICK_MS = 10_000
+let liveLoopToken = 0
+let liveWaitTimeoutId: ReturnType<typeof window.setTimeout> | null = null
 
 /* ===== helpers ===== */
 
 const displayTurnTime = computed(() => {
+  if (isLiveRunning.value) return 'LIVE'
   const m = Math.floor(totalSeconds.value / 60)
   const s = totalSeconds.value % 60
   return `${m}:${s.toString().padStart(2, '0')}`
+})
+
+const isLiveDurationLocked = computed(() => running.value && isLiveRunning.value)
+
+const showRemoteLiveBadge = computed(() => {
+  return !isAdmin() && window.ROOM_WORLD.skipTimeLive.value
 })
 
 function isAdmin() {
@@ -73,6 +85,7 @@ function onWheelNumber(
   min = -Infinity,
   max = Infinity
 ) {
+  if (isLiveDurationLocked.value) return
   e.preventDefault()
 
   const delta = e.deltaY < 0 ? 1 : -1
@@ -614,11 +627,7 @@ function buildTickMoveFrames(from: vec2, to: vec2, durationMs: number): MoveFram
 }
 
 function getTickAnimationDurationMs(stepSeconds: number) {
-  const fullTickSeconds = 60
-  const minDuration = 180
-  const fullTickDuration = 100
-  const ratio = Math.max(0, Math.min(1, stepSeconds / fullTickSeconds))
-  return Math.max(minDuration, Math.round(fullTickDuration * ratio))
+  return 50
 }
 
 async function flushTickUnitsWithAnimation(
@@ -664,56 +673,15 @@ async function flushTickUnitsWithAnimation(
 
   window.ROOM_WORLD.events.emit('changed', { reason: 'animation' })
   await new Promise<void>((resolve) => {
-    window.setTimeout(resolve, animationDurationMs + 40)
+    window.setTimeout(resolve, animationDurationMs + 10)
   })
 }
 
 /* ===== timer ===== */
 
-async function startTurn() {
-  const value = minutes.value * 60 + seconds.value
-  if (value <= 0 || running.value) return
+const MAX_STEP_SECONDS = 60 // 1 тик = 1 минута
 
-  totalSeconds.value = value
-  running.value = true
-
-  const MAX_STEP = 60 // 1 тик = 1 минута
-
-  window.ROOM_WORLD.units.withNewCommandsTmp.clear()
-  window.ROOM_WORLD.socketLock = true
-  let runningSteps = 0
-
-  while (totalSeconds.value > 0 && running.value) {
-    if (!running.value) break
-    const step = Math.min(MAX_STEP, totalSeconds.value)
-    const unitPositionsBeforeTick = captureUnitPositionsById()
-    const animationDurationMs = getTickAnimationDurationMs(step)
-
-    processUnitCommands(step)
-    await flushTickUnitsWithAnimation(unitPositionsBeforeTick, animationDurationMs)
-
-    totalSeconds.value -= step
-
-    window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
-
-    runningSteps++
-
-    window.ROOM_WORLD.skipTime(step, false)
-    window.ROOM_WORLD.events.emit('api', { type: 'skip_time', data: window.ROOM_WORLD.time })
-    displayWorldTime.value = window.ROOM_WORLD.time
-    timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
-    window.ROOM_WORLD.socketLock = false
-    await window.ROOM_WORLD.events.emit('force_api', {})
-    window.ROOM_WORLD.socketLock = true
-
-    if (runningSteps % 10 === 0) {
-      // отдаём управление браузеру
-      await new Promise(requestAnimationFrame)
-    }
-  }
-
-  window.ROOM_WORLD.events.emit('changed', { reason: 'timer' });
-
+function emitTurnStatePackets() {
   // DirectView general
   if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.GENERAL_VISION_UPDATE]) {
     const directViewByTeam = window.ROOM_WORLD.units.getDirectViewByGenerals();
@@ -762,23 +730,154 @@ async function startTurn() {
     window.ROOM_WORLD.events.emit('api', {type: 'weather', data: window.ROOM_WORLD.newWeather.value});
     window.ROOM_WORLD.weather.value = window.ROOM_WORLD.newWeather.value;
   }
-
-  // units with new commands
-  for (const unitId of window.ROOM_WORLD.units.withNewCommandsTmp) {
-    window.ROOM_WORLD.units.withNewCommands.add(unitId)
-  }
-
-  // ВСЕГДА В КОНЦЕ
-  window.ROOM_WORLD.skipTime(0)
-  window.ROOM_WORLD.socketLock = false
-  window.ROOM_WORLD.events.emit('force_api', {}).then();
-
-  displayWorldTime.value = window.ROOM_WORLD.time
-  timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
 }
 
-function stopTurn() {
+function clearLiveWaitTimer() {
+  if (liveWaitTimeoutId != null) {
+    window.clearTimeout(liveWaitTimeoutId)
+    liveWaitTimeoutId = null
+  }
+}
+
+function stopLiveTurn() {
   running.value = false
+  isLiveRunning.value = false
+  liveLoopToken += 1
+  clearLiveWaitTimer()
+  window.ROOM_WORLD.skipTime(0)
+}
+
+async function runTurnStep(
+  secondsToSkip: number,
+  isLive: boolean,
+  onStep?: (leftSeconds: number) => void,
+  liveGameSecondsPerMinute?: number
+) {
+  if (secondsToSkip <= 0) return
+
+  window.ROOM_WORLD.units.withNewCommandsTmp.clear()
+  window.ROOM_WORLD.socketLock = true
+
+  try {
+    let leftSeconds = secondsToSkip
+    let runningSteps = 0
+
+    while (leftSeconds > 0 && running.value) {
+      const step = Math.min(MAX_STEP_SECONDS, leftSeconds)
+      const unitPositionsBeforeTick = captureUnitPositionsById()
+      const animationDurationMs = getTickAnimationDurationMs(step)
+
+      processUnitCommands(step)
+      await flushTickUnitsWithAnimation(unitPositionsBeforeTick, animationDurationMs)
+
+      leftSeconds -= step
+      runningSteps++
+      onStep?.(leftSeconds)
+
+      window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
+      window.ROOM_WORLD.skipTime(step, false)
+      if (isLive) {
+        window.ROOM_WORLD.events.emit('api', {
+          type: 'skip_time',
+          data: window.ROOM_WORLD.time,
+          live: true,
+          liveIntervalMs: LIVE_TICK_MS,
+          liveGameSecondsPerMinute,
+        })
+      }
+      displayWorldTime.value = window.ROOM_WORLD.time
+      timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
+
+      await new Promise(requestAnimationFrame)
+    }
+
+    emitTurnStatePackets()
+
+    if (!isLive && runningSteps > 0) {
+      window.ROOM_WORLD.events.emit('api', {
+        type: 'skip_time',
+        data: window.ROOM_WORLD.time,
+      })
+    }
+
+    for (const unitId of window.ROOM_WORLD.units.withNewCommandsTmp) {
+      window.ROOM_WORLD.units.withNewCommands.add(unitId)
+    }
+
+    // Do not broadcast no-op skip_time: it drops live flag on remote clients.
+    window.ROOM_WORLD.skipTime(0, false)
+    window.ROOM_WORLD.socketLock = false
+    window.ROOM_WORLD.events.emit('force_api', {}).then();
+
+    displayWorldTime.value = window.ROOM_WORLD.time
+    timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
+  } finally {
+    window.ROOM_WORLD.units.withNewCommandsTmp.clear()
+  }
+}
+
+async function finalizeTurn() {
+  window.ROOM_WORLD.events.emit('changed', { reason: 'timer' });
+}
+
+async function startTurn() {
+  if (running.value) return
+
+  const initialSeconds = minutes.value * 60 + seconds.value
+  if (initialSeconds <= 0) return
+
+  const runToken = ++liveLoopToken
+  running.value = true
+  isLiveRunning.value = livePerMinute.value
+  totalSeconds.value = livePerMinute.value ? 0 : initialSeconds
+
+  try {
+    if (livePerMinute.value) {
+      let liveFractionalCarry = 0
+      while (running.value && runToken === liveLoopToken) {
+        const tickStartMs = Date.now()
+        const perMinuteSeconds = Math.max(0, minutes.value * 60 + seconds.value)
+        liveFractionalCarry += perMinuteSeconds / 6
+        const skipSeconds = Math.floor(liveFractionalCarry)
+        if (skipSeconds > 0 && running.value && runToken === liveLoopToken) {
+          liveFractionalCarry -= skipSeconds
+          await runTurnStep(skipSeconds, true, undefined, perMinuteSeconds)
+        }
+        if (!running.value || runToken !== liveLoopToken) break
+
+        const elapsedMs = Date.now() - tickStartMs
+        const waitMs = Math.max(0, LIVE_TICK_MS - elapsedMs)
+        if (waitMs > 0) {
+          await new Promise<void>((resolve) => {
+            liveWaitTimeoutId = window.setTimeout(() => {
+              liveWaitTimeoutId = null
+              resolve()
+            }, waitMs)
+          })
+        }
+      }
+    } else {
+      await runTurnStep(initialSeconds, false, (leftSeconds) => {
+        totalSeconds.value = leftSeconds
+      })
+    }
+  } finally {
+    clearLiveWaitTimer()
+    running.value = false
+    isLiveRunning.value = false
+    totalSeconds.value = 0
+    await finalizeTurn()
+  }
+}
+
+function onPlayClick() {
+  if (running.value) {
+    if (isLiveRunning.value) {
+      stopLiveTurn()
+    }
+    return
+  }
+  startTurn()
 }
 
 const readyStats = computed(() => window.ROOM_WORLD.getPlayerReadyStats())
@@ -823,8 +922,9 @@ function sync(data: {reason: string}) {
     displayWorldTime.value = window.ROOM_WORLD.time
     timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
 
-    if (data.reason === 'skip_time_success') {
+    if (data.reason === 'skip_time_success' && !running.value) {
       running.value = false
+      isLiveRunning.value = false
     }
   })
 }
@@ -842,6 +942,7 @@ onUnmounted(() => {
   <div class="turn-timer" :key="refreshKey">
     <div class="world-time">
       {{ displayWorldTime }}
+      <span v-if="showRemoteLiveBadge" class="live-badge">LIVE</span>
     </div>
 
     <div class="turn-row">
@@ -864,24 +965,33 @@ onUnmounted(() => {
           ⏱ {{ displayTurnTime }}
         </div>
 
-        <input
-          type="number"
-          min="0"
-          v-model.number="minutes"
-          @wheel="e => onWheelNumber(e, 'minutes', 0)"
-        />
-        <span>:</span>
-        <input
-          type="number"
-          min="0"
-          max="59"
-          v-model.number="seconds"
-          @wheel="e => onWheelNumber(e, 'seconds', 0)"
-        />
+        <label class="live-toggle">
+          <input type="checkbox" v-model="livePerMinute" :disabled="running" />
+          LIVE per minute
+        </label>
 
-        <button @pointerdown="startTurn" :class="{disabled: running}">
-          ▶
-        </button>
+        <div class="admin-controls-row">
+          <input
+            type="number"
+            min="0"
+            v-model.number="minutes"
+            :disabled="isLiveDurationLocked"
+            @wheel="e => onWheelNumber(e, 'minutes', 0)"
+          />
+          <span>:</span>
+          <input
+            type="number"
+            min="0"
+            max="59"
+            v-model.number="seconds"
+            :disabled="isLiveDurationLocked"
+            @wheel="e => onWheelNumber(e, 'seconds', 0)"
+          />
+
+          <button @pointerdown="onPlayClick" :disabled="running && !isLiveRunning">
+            {{ running && isLiveRunning ? '⏸' : '▶' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -926,6 +1036,20 @@ onUnmounted(() => {
   opacity: 0.85;
 }
 
+.live-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #dbeafe;
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  vertical-align: middle;
+}
+
 .turn-row {
   display: flex;
   align-items: center;
@@ -965,11 +1089,30 @@ onUnmounted(() => {
 
 .admin-controls {
   display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.live-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.live-toggle input {
+  width: auto;
+}
+
+.admin-controls-row {
+  display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.admin-controls input {
+.admin-controls-row input {
   width: 50px;
   padding: 2px 4px;
   text-align: center;
@@ -980,7 +1123,7 @@ onUnmounted(() => {
   border-radius: 6px;
 }
 
-.admin-controls button {
+.admin-controls-row button {
   padding: 2px 8px;
   border-radius: 6px;
   border: 1px solid #334155;
@@ -989,7 +1132,7 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.admin-controls button:disabled {
+.admin-controls-row button:disabled {
   background: #020617;
   border-color: #334155;
   color: #64748b;

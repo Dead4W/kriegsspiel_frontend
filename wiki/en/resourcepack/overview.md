@@ -13,6 +13,12 @@ A **ResourcePack** is a JSON file that controls game balance and behavior:
 
 ## Quick start
 
-1. Copy [default_resourcepack.json](https://dead4w.github.io/kriegsspiel_frontend/public/assets/default_resourcepack.json).
-2. Edit values in your own JSON file.
-3. Upload your JSON file to a public host (for example, Pastebin or any similar service) and copy the direct file URL.
+You can now choose and customize ResourcePack templates directly from room creation:
+
+1. Open **Create room**.
+2. Click **Customize** to open the Resource Pack editor.
+3. Save your changes as a template and return to room setup.
+
+You also can use other ResourcePack by their id.
+
+The room will use the template you selected in this flow.

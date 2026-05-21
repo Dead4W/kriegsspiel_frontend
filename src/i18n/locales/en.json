@@ -34,12 +34,29 @@
       "backHome": "Back to home",
       "reset": "Reset to default",
       "download": "Download JSON",
+      "clone": "Clone as new",
       "fileName": "File name",
+      "topLeft": "Room setup",
+      "openPublic": "Open public URL",
+      "readonlyHint": "This template is read-only. Clone it as a new template to edit sections below.",
+      "viewJson": "View / paste JSON",
+      "jsonHint": "Paste full JSON here and apply it to the current draft.",
+      "formatJson": "Format JSON",
+      "applyJson": "Apply JSON",
+      "editorDocs": "Wiki docs:",
+      "resourcePackWiki": "ResourcePack overview",
+      "badges": {
+        "default": "default",
+        "custom": "custom",
+        "editable": "editable",
+        "readonly": "read-only"
+      },
       "openEditor": "Open editor",
       "closeEditor": "Close editor"
     },
     "errors": {
-      "loadDefault": "Failed to load default resource pack."
+      "loadDefault": "Failed to load default resource pack.",
+      "invalidJson": "Invalid JSON format."
     },
     "timeOfDayEditor": {
       "title": "Time of day",
@@ -403,6 +420,34 @@
 
     "errors": {
       "createFailed": "Failed to create room"
+    },
+    "customize": {
+      "button": "Customize",
+      "template": "Template",
+      "newTemplate": "New template",
+      "name": "Template name",
+      "namePlaceholder": "For example: Rainy battle",
+      "json": "Template JSON",
+      "jsonPlaceholder": "{\n  \"timeOfDay\": {\n    \"segments\": []\n  }\n}",
+      "confirmDelete": "Delete this template?",
+      "actions": {
+        "new": "New",
+        "save": "Save",
+        "saving": "Saving…",
+        "delete": "Delete",
+        "deleting": "Deleting…",
+        "useForRoom": "Use for room"
+      },
+      "errors": {
+        "loadFailed": "Failed to load templates.",
+        "nameRequired": "Template name is required.",
+        "invalidJson": "Invalid JSON.",
+        "saveFailed": "Failed to save template.",
+        "deleteFailed": "Failed to delete template.",
+        "saveFirst": "Save the template first.",
+        "publicIdRequired": "Enter resource pack public_id.",
+        "publicIdNotFound": "Resource pack with this public_id was not found."
+      }
     }
   },
 
@@ -769,7 +814,10 @@
     },
     "resourcePack": {
       "title": "Resource pack",
+      "select": "Resource pack template",
       "url": "ResourcePack URL",
+      "publicId": "Resource pack public_id",
+      "publicIdPlaceholder": "e.g. b74b80e7-1b89-4a20-a7c5-...",
       "placeholder": "https://example.com/resourcepack.json",
       "description": "JSON file with balance / multipliers (time, weather, units, etc.)"
     },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createEnvironmentState } from '@/components/resourcePack/factories'
 import type { EnvironmentState, EnvironmentStatKey } from '@/components/resourcePack/types'
@@ -14,7 +14,7 @@ const props = defineProps<{
   unitTypeOptions: UnitTypeOption[]
 }>()
 
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const stateCardsRef = ref<HTMLElement[]>([])
 const stateRenderKeys = new WeakMap<EnvironmentState, string>()
 let nextStateRenderKey = 0
@@ -26,6 +26,11 @@ const statKeys: EnvironmentStatKey[] = [
   'attackRange',
   'visionRange',
 ]
+const wikiLink = computed(() => ({
+  name: 'wiki',
+  params: { locale: locale.value },
+  query: { section: 'resourcepack', tab: 'environment' },
+}))
 
 function createState(): EnvironmentState {
   const nextIndex = props.states.length + 1
@@ -314,12 +319,15 @@ function getStateRenderKey(state: EnvironmentState, index: number): string {
 <template>
   <section class="panel">
     <div class="panel-header">
-      <div>
+      <div class="panel-header-copy">
         <h2>{{ t('resourcePackCreator.environmentEditor.title') }}</h2>
         <p>{{ t('resourcePackCreator.environmentEditor.subtitle') }}</p>
+        <router-link class="panel-wiki-link" :to="wikiLink">
+          {{ t('wiki') }}
+        </router-link>
       </div>
 
-      <button type="button" class="primary" @click="addState">
+      <button type="button" class="primary panel-add-btn" @click="addState">
         {{ t('resourcePackCreator.environmentEditor.addState') }}
       </button>
     </div>
@@ -553,6 +561,29 @@ function getStateRenderKey(state: EnvironmentState, index: number): string {
 .section-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.panel-header-copy {
+  display: grid;
+  gap: 0.25rem;
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.panel-wiki-link {
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel-wiki-link:hover {
+  text-decoration: underline;
+}
+
+.panel-add-btn {
+  align-self: flex-start;
+  margin-left: auto;
 }
 
 .state-list {

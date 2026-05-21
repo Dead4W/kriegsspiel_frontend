@@ -1,3 +1,6 @@
+[2026-05-22]
+- Create room - Add Customize button for edit/use ResourcePack
+
 [2026-05-21]
 - Turn Timer - add LIVE per minute mode with start/pause control and LIVE badge for players
 - Time sync - add live skip-time synchronization for clients with smoother timer updates

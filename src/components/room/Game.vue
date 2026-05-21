@@ -665,17 +665,6 @@ async function initWorld(room: RoomData) {
   const defaultObjectMapUrl = `${location.origin}/assets/default_map_objects.png`
   const defaultObjectMapMetaUrl = `${location.origin}/assets/default_map_objects_meta.json`
 
-  if (window.location.hostname === 'localhost') {
-    room.options.mapUrl = ''
-    defaultMapUrl = '/assets/default_map.jpeg'
-    defaultHeightMapUrl = '/assets/default_height_map.png'
-    defaultResourcePackUrl = '/assets/default_resourcepack.json'
-    room.options[ROOM_SETTING_KEYS.OBJECT_MAP_URL] = '/assets/default_map_objects.png'
-    room.options[ROOM_SETTING_KEYS.OBJECT_MAP_META_URL] =
-      '/assets/default_map_objects_meta.json'
-    room.options[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] = defaultResourcePackUrl
-  }
-
   if (!room.options.mapUrl) {
     room.options.mapUrl = defaultMapUrl
     room.options.heightMapUrl = defaultHeightMapUrl
@@ -710,7 +699,7 @@ async function initWorld(room: RoomData) {
   ])
 
   const selectedResourcePackUrl =
-    (room.options?.[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] as string | undefined) ||
+    (room.resource_pack_url as string | undefined) ||
     defaultResourcePackUrl
   try {
     setStageProgress('resourcePack', 10)

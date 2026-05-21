@@ -34,12 +34,29 @@
       "backHome": "На главную",
       "reset": "Сбросить к дефолту",
       "download": "Скачать JSON",
+      "clone": "Клонировать как новый",
       "fileName": "Имя файла",
+      "topLeft": "К настройке комнаты",
+      "openPublic": "Открыть публичный URL",
+      "readonlyHint": "Этот шаблон только для чтения. Клонируйте его как новый, чтобы редактировать секции ниже.",
+      "viewJson": "Посмотреть / вставить JSON",
+      "jsonHint": "Вставьте сюда полный JSON и примените к текущему черновику.",
+      "formatJson": "Форматировать JSON",
+      "applyJson": "Применить JSON",
+      "editorDocs": "Документация wiki:",
+      "resourcePackWiki": "Обзор ResourcePack",
+      "badges": {
+        "default": "дефолт",
+        "custom": "кастом",
+        "editable": "редактируемый",
+        "readonly": "только чтение"
+      },
       "openEditor": "Открыть редактор",
       "closeEditor": "Закрыть редактор"
     },
     "errors": {
-      "loadDefault": "Не удалось загрузить дефолтный ресурс-пак."
+      "loadDefault": "Не удалось загрузить дефолтный ресурс-пак.",
+      "invalidJson": "Некорректный JSON."
     },
     "timeOfDayEditor": {
       "title": "Время суток",
@@ -405,6 +422,34 @@
 
     "errors": {
       "createFailed": "Не удалось создать комнату"
+    },
+    "customize": {
+      "button": "Customize",
+      "template": "Шаблон",
+      "newTemplate": "Новый шаблон",
+      "name": "Название шаблона",
+      "namePlaceholder": "Например: Дождливый бой",
+      "json": "JSON шаблона",
+      "jsonPlaceholder": "{\n  \"timeOfDay\": {\n    \"segments\": []\n  }\n}",
+      "confirmDelete": "Удалить этот шаблон?",
+      "actions": {
+        "new": "Новый",
+        "save": "Сохранить",
+        "saving": "Сохранение…",
+        "delete": "Удалить",
+        "deleting": "Удаление…",
+        "useForRoom": "Применить к комнате"
+      },
+      "errors": {
+        "loadFailed": "Не удалось загрузить шаблоны.",
+        "nameRequired": "Введите название шаблона.",
+        "invalidJson": "Некорректный JSON.",
+        "saveFailed": "Не удалось сохранить шаблон.",
+        "deleteFailed": "Не удалось удалить шаблон.",
+        "saveFirst": "Сначала сохраните шаблон.",
+        "publicIdRequired": "Введите public_id ресурс-пака.",
+        "publicIdNotFound": "Ресурс-пак с таким public_id не найден."
+      }
     }
   },
 
@@ -774,7 +819,10 @@
     },
     "resourcePack": {
       "title": "Ресурс-пак",
+      "select": "Шаблон ресурс-пака",
       "url": "URL ресурс-пака",
+      "publicId": "public_id ресурс-пака",
+      "publicIdPlaceholder": "Например: b74b80e7-1b89-4a20-a7c5-...",
       "placeholder": "https://example.com/resourcepack.json",
       "description": "JSON-файл с балансом / модификаторами (время, погода, юниты и т.д.)"
     },

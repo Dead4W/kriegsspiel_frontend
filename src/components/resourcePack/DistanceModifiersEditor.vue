@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createDistanceModifierPoint } from '@/components/resourcePack/factories'
 import type { ResourcePackDistanceModifierPoint, ResourcePackDistanceModifiers } from '@/components/resourcePack/types'
@@ -8,8 +8,13 @@ const props = defineProps<{
   tables: ResourcePackDistanceModifiers
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const tableCardsRef = ref<HTMLElement[]>([])
+const wikiLink = computed(() => ({
+  name: 'wiki',
+  params: { locale: locale.value },
+  query: { section: 'resourcepack', tab: 'distance-modifiers' },
+}))
 
 function getTableKeys(): string[] {
   return Object.keys(props.tables)
@@ -100,9 +105,12 @@ function getEventValue(event: Event): string {
 <template>
   <section class="panel">
     <div class="panel-header">
-      <div>
+      <div class="panel-header-copy">
         <h2>{{ t('resourcePackCreator.distanceModifiersEditor.title') }}</h2>
         <p>{{ t('resourcePackCreator.distanceModifiersEditor.subtitle') }}</p>
+        <router-link class="panel-wiki-link" :to="wikiLink">
+          {{ t('wiki') }}
+        </router-link>
       </div>
 
       <button type="button" class="primary" @click="addTable">
@@ -219,6 +227,22 @@ function getEventValue(event: Event): string {
 .panel-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.panel-header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.panel-wiki-link {
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel-wiki-link:hover {
+  text-decoration: underline;
 }
 
 .table-list {

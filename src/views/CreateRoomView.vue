@@ -1,50 +1,23 @@
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue'
-import {useRoute, useRouter} from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ROOM_SETTINGS } from '@/game/roomSettings'
 import api from '@/api/client'
-import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
+import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys.ts'
 
-const route = useRoute()
-const router = useRouter()
-const { t } = useI18n()
-
-const DEFAULT_RESOURCE_PACK_URL =
-  `${location.origin}/assets/default_resourcepack.json`
-
-const roomName = ref('')
-const isCreating = ref(false)
-const showAdvanced = ref(true)
-const selectedMapId = ref<string>('essex')
-
-const customMapUrl = ref('')
-const customHeightMapUrl = ref('')
-const customObjectMapUrl = ref('')
-const customObjectMapMetaUrl = ref('')
-const customMetersPerPixel = ref('')
-const gameDate = ref('1882-06-12 09:00:00')
-const resourcePackUrl = ref(DEFAULT_RESOURCE_PACK_URL)
-
-const isCustomMapSelected = computed(() => selectedMapId.value === 'custom')
-const hasCustomObjectMapUrl = computed(() => customObjectMapUrl.value.trim().length > 0)
-const hasCustomObjectMapMetaUrl = computed(() => customObjectMapMetaUrl.value.trim().length > 0)
-const isObjectMapPairValid = computed(() => {
-  if (!isCustomMapSelected.value) return true
-  return hasCustomObjectMapUrl.value === hasCustomObjectMapMetaUrl.value
-})
+type SavedResourcePack = {
+  id: number
+  public_id: string
+  public_url: string
+  name: string
+  is_public: boolean
+  is_default: boolean
+  is_editable: boolean
+}
 
 type RoomSettingsState = Record<string, boolean | string | number>
-/** состояние настроек комнаты */
-const settings = ref<RoomSettingsState>(
-  Object.fromEntries(
-    ROOM_SETTINGS.map(s => [s.key, s.default])
-  )
-)
 
-settings.value[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] = resourcePackUrl.value
-
-/* MAPS */
 type GameMap = {
   id: string
   name: string
@@ -57,6 +30,34 @@ type GameMap = {
   custom?: boolean
 }
 
+const route = useRoute()
+const router = useRouter()
+const { t } = useI18n()
+
+const roomName = ref('')
+const isCreating = ref(false)
+const showAdvanced = ref(true)
+const selectedMapId = ref<string>('essex')
+
+const customMapUrl = ref('')
+const customHeightMapUrl = ref('')
+const customObjectMapUrl = ref('')
+const customObjectMapMetaUrl = ref('')
+const customMetersPerPixel = ref('')
+const gameDate = ref('1882-06-12 09:00:00')
+
+const isTemplatesLoading = ref(false)
+const templateError = ref('')
+const savedTemplates = ref<SavedResourcePack[]>([])
+const selectedTemplateId = ref<number | null>(null)
+const selectedTemplatePublicId = ref('')
+const resourcePackUrl = ref('')
+
+const settings = ref<RoomSettingsState>(
+  Object.fromEntries(
+    ROOM_SETTINGS.map(s => [s.key, s.default])
+  )
+)
 
 const GAME_MAPS: GameMap[] = [
   {
@@ -85,10 +86,18 @@ const GAME_MAPS: GameMap[] = [
   },
 ]
 
-// Map selector
-watch(selectedMapId, () => {
-  applyMapSettings()
+const isCustomMapSelected = computed(() => selectedMapId.value === 'custom')
+const hasCustomObjectMapUrl = computed(() => customObjectMapUrl.value.trim().length > 0)
+const hasCustomObjectMapMetaUrl = computed(() => customObjectMapMetaUrl.value.trim().length > 0)
+const isObjectMapPairValid = computed(() => {
+  if (!isCustomMapSelected.value) return true
+  return hasCustomObjectMapUrl.value === hasCustomObjectMapMetaUrl.value
 })
+
+const selectedTemplate = computed(() => {
+  return savedTemplates.value.find(template => template.id === selectedTemplateId.value) || null
+})
+
 function applyMapSettings() {
   const map = GAME_MAPS.find(m => m.id === selectedMapId.value)
   if (!map) return
@@ -99,28 +108,87 @@ function applyMapSettings() {
     settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_URL] = customObjectMapUrl.value || ''
     settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_META_URL] = customObjectMapMetaUrl.value || ''
     settings.value[ROOM_SETTING_KEYS.MAP_METERS_PER_PIXEL] = +(customMetersPerPixel.value || 1)
-  } else {
-    settings.value[ROOM_SETTING_KEYS.MAP_URL] = map.mapUrl!
-    settings.value[ROOM_SETTING_KEYS.HEIGHT_MAP_URL] = map.heightMapUrl!
-    settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_URL] = map.objectMapUrl || ''
-    settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_META_URL] = map.objectMapMetaUrl || ''
-    settings.value[ROOM_SETTING_KEYS.MAP_METERS_PER_PIXEL] = +(map.metersPerPixel || 1)
+    return
   }
-}
-applyMapSettings()
 
-function applyResourcePackSettings() {
-  settings.value[ROOM_SETTING_KEYS.RESOURCE_PACK_URL] = resourcePackUrl.value || ''
+  settings.value[ROOM_SETTING_KEYS.MAP_URL] = map.mapUrl!
+  settings.value[ROOM_SETTING_KEYS.HEIGHT_MAP_URL] = map.heightMapUrl!
+  settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_URL] = map.objectMapUrl || ''
+  settings.value[ROOM_SETTING_KEYS.OBJECT_MAP_META_URL] = map.objectMapMetaUrl || ''
+  settings.value[ROOM_SETTING_KEYS.MAP_METERS_PER_PIXEL] = +(map.metersPerPixel || 1)
+}
+
+function applySelectedTemplate() {
+  const template = selectedTemplate.value
+  selectedTemplatePublicId.value = template?.public_id || ''
+  resourcePackUrl.value = template?.public_url || ''
+}
+
+function openCustomize() {
+  const query: Record<string, string> = {
+    return_to: 'create-room',
+  }
+  if (selectedTemplatePublicId.value.trim()) {
+    query.resource_pack_public_id = selectedTemplatePublicId.value.trim()
+  }
+
+  router.push({
+    name: 'resource-pack-creator',
+    params: { locale: route.params.locale },
+    query,
+  })
+}
+
+async function loadTemplates() {
+  isTemplatesLoading.value = true
+  templateError.value = ''
+
+  try {
+    const { data } = await api.get('/resource-pack')
+    const templates = Array.isArray(data) ? (data as SavedResourcePack[]) : []
+    savedTemplates.value = templates
+
+    const routeResourcePackPublicId = String(route.query.resource_pack_public_id || '').trim()
+    const selectedFromRoute = routeResourcePackPublicId
+      ? templates.find(template => template.public_id === routeResourcePackPublicId)
+      : null
+    const fallbackTemplate = templates.find(template => template.is_default) || templates[0] || null
+    const nextTemplate = selectedFromRoute || fallbackTemplate
+
+    selectedTemplateId.value = nextTemplate?.id ?? null
+    applySelectedTemplate()
+  } catch (error) {
+    console.error('LOAD RESOURCE PACK TEMPLATES ERROR:', error)
+    templateError.value = t('createRoom.customize.errors.loadFailed')
+  } finally {
+    isTemplatesLoading.value = false
+  }
 }
 
 async function createRoom() {
   if (!roomName.value.trim() || isCreating.value || !isObjectMapPairValid.value) return
 
+  const nextPublicId = selectedTemplatePublicId.value.trim()
+  if (!nextPublicId) {
+    templateError.value = t('createRoom.customize.errors.publicIdRequired')
+    return
+  }
+
+  try {
+    await api.get(`/resource-pack/${encodeURIComponent(nextPublicId)}`)
+  } catch (error) {
+    console.error('RESOURCE PACK EXISTS CHECK ERROR:', error)
+    templateError.value = t('createRoom.customize.errors.publicIdNotFound')
+    return
+  }
+
   isCreating.value = true
+  templateError.value = ''
   const payload = {
     name: roomName.value.trim(),
     options: settings.value,
     time: gameDate.value,
+    resource_pack_public_id: nextPublicId,
   }
 
   try {
@@ -129,17 +197,24 @@ async function createRoom() {
     localStorage.setItem(`room_key_${data.uuid}`, data.admin_key)
     localStorage.setItem(`room_admin_key_${data.uuid}`, data.admin_key)
 
-    // 👉 редирект в комнату по uuid
     await router.push({
       name: 'room',
-      params: {locale: route.params.locale, uuid: data.uuid}
+      params: { locale: route.params.locale, uuid: data.uuid },
     })
-  } catch (e) {
-    console.error('CREATE ROOM ERROR:', e)
+  } catch (error) {
+    console.error('CREATE ROOM ERROR:', error)
   } finally {
     isCreating.value = false
   }
 }
+
+watch(selectedMapId, applyMapSettings)
+watch(selectedTemplateId, applySelectedTemplate)
+
+onMounted(async () => {
+  applyMapSettings()
+  await loadTemplates()
+})
 </script>
 
 <template>
@@ -182,7 +257,7 @@ async function createRoom() {
             <h3>{{ t('settings.resourcePack.title') }}</h3>
 
             <div class="field">
-              <label>{{ t('settings.resourcePack.url') }}</label>
+              <label>{{ t('settings.resourcePack.select') }}</label>
               <RouterLink
                 class="help-link"
                 :to="{
@@ -193,12 +268,38 @@ async function createRoom() {
               >
                 Resource pack docs
               </RouterLink>
+              <select
+                v-model.number="selectedTemplateId"
+                :disabled="isTemplatesLoading || !savedTemplates.length"
+              >
+                <option
+                  v-for="template in savedTemplates"
+                  :key="template.id"
+                  :value="template.id"
+                >
+                  {{ template.name }}{{ template.is_default ? ' (Default)' : '' }}
+                </option>
+              </select>
+              <label class="resource-pack-public-id-label">
+                {{ t('settings.resourcePack.publicId') }}
+              </label>
               <input
-                v-model="resourcePackUrl"
-                :placeholder="t('settings.resourcePack.placeholder')"
-                @input="applyResourcePackSettings"
+                v-model.trim="selectedTemplatePublicId"
+                :placeholder="t('settings.resourcePack.publicIdPlaceholder')"
+                :disabled="isTemplatesLoading"
               />
               <small>{{ t('settings.resourcePack.description') }}</small>
+              <small v-if="templateError" class="template-error">
+                {{ templateError }}
+              </small>
+
+              <button
+                class="secondary customize-trigger"
+                type="button"
+                @click="openCustomize"
+              >
+                {{ t('createRoom.customize.button') }}
+              </button>
             </div>
           </div>
 
@@ -369,7 +470,7 @@ async function createRoom() {
 
         <!-- Действия -->
         <div class="actions">
-          <button class="primary" type="submit" :disabled="isCreating || !isObjectMapPairValid">
+          <button class="primary" type="submit" :disabled="isCreating || !isObjectMapPairValid || !selectedTemplatePublicId.trim()">
             {{ isCreating ? t('createRoom.actions.creating') : t('createRoom.actions.create') }}
           </button>
 
@@ -468,6 +569,56 @@ label {
 .help-link__icon {
   opacity: 0.85;
   font-size: 0.95em;
+}
+
+.customize-trigger {
+  margin-top: 0.6rem;
+}
+
+.resource-pack-public-id-label {
+  margin-top: 0.7rem;
+}
+
+.customize-panel {
+  margin-top: 0.9rem;
+  padding: 0.9rem;
+  border: 1px dashed var(--panel-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.customize-panel select,
+.customize-panel textarea {
+  width: 100%;
+}
+
+.customize-panel textarea {
+  resize: vertical;
+  min-height: 220px;
+  font-family: monospace;
+}
+
+.customize-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+
+.customize-actions button {
+  flex: 1;
+  min-width: 120px;
+}
+
+.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.template-error {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--danger);
 }
 
 .advanced-toggle {

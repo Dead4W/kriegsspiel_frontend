@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createWeatherCondition } from '@/components/resourcePack/factories'
 import type { WeatherCondition, WeatherStatKey } from '@/components/resourcePack/types'
@@ -14,7 +14,7 @@ const props = defineProps<{
   conditions: WeatherCondition[]
 }>()
 
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const conditionCardsRef = ref<HTMLElement[]>([])
 const conditionRenderKeys = new WeakMap<WeatherCondition, string>()
 let nextConditionRenderKey = 0
@@ -30,6 +30,11 @@ const statKeys: WeatherStatKey[] = [
   'attackRange',
   'visionRange',
 ]
+const wikiLink = computed(() => ({
+  name: 'wiki',
+  params: { locale: locale.value },
+  query: { section: 'resourcepack', tab: 'weather' },
+}))
 
 function createCondition(): WeatherCondition {
   const nextIndex = props.conditions.length + 1
@@ -183,9 +188,12 @@ function getConditionRenderKey(condition: WeatherCondition, index: number): stri
 <template>
   <section class="panel">
     <div class="panel-header">
-      <div>
+      <div class="panel-header-copy">
         <h2>{{ t('resourcePackCreator.weatherEditor.title') }}</h2>
         <p>{{ t('resourcePackCreator.weatherEditor.subtitle') }}</p>
+        <router-link class="panel-wiki-link" :to="wikiLink">
+          {{ t('wiki') }}
+        </router-link>
       </div>
 
       <button type="button" class="primary" @click="addCondition">
@@ -337,6 +345,22 @@ function getConditionRenderKey(condition: WeatherCondition, index: number): stri
 .section-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.panel-header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.panel-wiki-link {
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel-wiki-link:hover {
+  text-decoration: underline;
 }
 
 .help-copy {

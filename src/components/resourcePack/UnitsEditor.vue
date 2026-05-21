@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createUnitType } from '@/components/resourcePack/factories'
 import type {
@@ -30,7 +30,7 @@ const props = defineProps<{
   environmentOptions: Option[]
 }>()
 
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const unitCardsRef = ref<HTMLElement[]>([])
 const unitRenderKeys = new WeakMap<ResourcePackUnitType, string>()
 let nextUnitRenderKey = 0
@@ -54,6 +54,11 @@ const statLabelKeys: Record<(typeof statKeys)[number], string> = {
   visionRange: 'stat.visionRange',
   ammoMax: 'stat.ammo',
 }
+const wikiLink = computed(() => ({
+  name: 'wiki',
+  params: { locale: locale.value },
+  query: { section: 'resourcepack', tab: 'unit' },
+}))
 
 function createUnit(): ResourcePackUnitType {
   const nextIndex = props.units.length + 1
@@ -309,9 +314,12 @@ function getStatLabel(statKey: (typeof statKeys)[number]): string {
 <template>
   <section class="panel">
     <div class="panel-header">
-      <div>
+      <div class="panel-header-copy">
         <h2>{{ t('resourcePackCreator.unitsEditor.title') }}</h2>
         <p>{{ t('resourcePackCreator.unitsEditor.subtitle') }}</p>
+        <router-link class="panel-wiki-link" :to="wikiLink">
+          {{ t('wiki') }}
+        </router-link>
       </div>
 
       <button type="button" class="primary" @click="addUnit">
@@ -604,6 +612,22 @@ function getStatLabel(statKey: (typeof statKeys)[number]): string {
 .section-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.panel-header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.panel-wiki-link {
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel-wiki-link:hover {
+  text-decoration: underline;
 }
 
 .unit-list {

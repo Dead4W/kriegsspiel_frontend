@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createAngleModifier } from '@/components/resourcePack/factories'
 import type { ResourcePackAngleModifier } from '@/components/resourcePack/types'
@@ -8,10 +8,15 @@ const props = defineProps<{
   modifiers: ResourcePackAngleModifier[]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const modifierCardsRef = ref<HTMLElement[]>([])
 const renderKeys = new WeakMap<ResourcePackAngleModifier, string>()
 let nextRenderKey = 0
+const wikiLink = computed(() => ({
+  name: 'wiki',
+  params: { locale: locale.value },
+  query: { section: 'resourcepack', tab: 'angle-modifiers' },
+}))
 
 function createPoint(): ResourcePackAngleModifier {
   const lastAngle = props.modifiers[props.modifiers.length - 1]?.angle ?? -1
@@ -60,9 +65,12 @@ function getRenderKey(point: ResourcePackAngleModifier, index: number): string {
 <template>
   <section class="panel">
     <div class="panel-header">
-      <div>
+      <div class="panel-header-copy">
         <h2>{{ t('resourcePackCreator.angleModifiersEditor.title') }}</h2>
         <p>{{ t('resourcePackCreator.angleModifiersEditor.subtitle') }}</p>
+        <router-link class="panel-wiki-link" :to="wikiLink">
+          {{ t('wiki') }}
+        </router-link>
       </div>
 
       <button type="button" class="primary" @click="addPoint">
@@ -145,6 +153,22 @@ function getRenderKey(point: ResourcePackAngleModifier, index: number): string {
 .panel-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.panel-header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.panel-wiki-link {
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel-wiki-link:hover {
+  text-decoration: underline;
 }
 
 .modifier-list {

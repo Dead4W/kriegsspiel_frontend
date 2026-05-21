@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { MoraleCheckConfig, MoraleOutcomeId } from '@/engine/resourcePack/moraleCheck'
 
@@ -9,8 +10,13 @@ const props = defineProps<{
   moraleCheck: MoraleCheckConfig
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const outcomeIds: MoraleOutcomeId[] = ['pass', 'retreat', 'flee', 'disband']
+const wikiLink = computed(() => ({
+  name: 'wiki',
+  params: { locale: locale.value },
+  query: { section: 'resourcepack', tab: 'morale-check' },
+}))
 
 function addLossPenalty() {
   props.moraleCheck.lossPenalties.push(createLossPenalty())
@@ -127,9 +133,12 @@ function clamp(value: number, min: number, max: number): number {
 <template>
   <section class="panel">
     <div class="panel-header">
-      <div>
+      <div class="panel-header-copy">
         <h2>{{ t('resourcePackCreator.moraleCheckEditor.title') }}</h2>
         <p>{{ t('resourcePackCreator.moraleCheckEditor.subtitle') }}</p>
+        <router-link class="panel-wiki-link" :to="wikiLink">
+          {{ t('wiki') }}
+        </router-link>
       </div>
     </div>
 
@@ -372,6 +381,22 @@ function clamp(value: number, min: number, max: number): number {
 .panel-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.panel-header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.panel-wiki-link {
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel-wiki-link:hover {
+  text-decoration: underline;
 }
 
 .section-grid {

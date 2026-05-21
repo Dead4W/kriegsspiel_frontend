@@ -24,6 +24,9 @@ export type RoomData = {
   ingame_time?: string
   admin_id: number
   options: Record<RoomSettingKey, any>
+  resource_pack_id?: number | null
+  resource_pack_public_id?: string | null
+  resource_pack_url?: string | null
   room_maps?: RoomMapInfo[]
 
   // ADMIN VALUES

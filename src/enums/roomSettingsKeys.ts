@@ -18,8 +18,6 @@ export const ROOM_SETTING_KEYS = {
   OBJECT_MAP_URL: 'objectMapUrl',
   OBJECT_MAP_META_URL: 'objectMapMetaUrl',
   MAP_METERS_PER_PIXEL: 'metersPerPixel',
-
-  RESOURCE_PACK_URL: 'resourcePackUrl',
 } as const
 
 export type RoomSettingKey =

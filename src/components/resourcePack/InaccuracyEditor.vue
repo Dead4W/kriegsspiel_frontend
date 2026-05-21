@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ResourcePackInaccuracy } from '@/components/resourcePack/types'
 
@@ -6,7 +7,12 @@ const props = defineProps<{
   inaccuracy: ResourcePackInaccuracy
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const wikiLink = computed(() => ({
+  name: 'wiki',
+  params: { locale: locale.value },
+  query: { section: 'resourcepack', tab: 'inaccuracy' },
+}))
 
 function updateField(key: keyof ResourcePackInaccuracy, rawValue: string) {
   const nextValue = parseOptionalNumber(rawValue)
@@ -33,9 +39,12 @@ function getEventValue(event: Event): string {
 <template>
   <section class="panel">
     <div class="panel-header">
-      <div>
+      <div class="panel-header-copy">
         <h2>{{ t('resourcePackCreator.inaccuracyEditor.title') }}</h2>
         <p>{{ t('resourcePackCreator.inaccuracyEditor.subtitle') }}</p>
+        <router-link class="panel-wiki-link" :to="wikiLink">
+          {{ t('wiki') }}
+        </router-link>
       </div>
     </div>
 
@@ -88,6 +97,22 @@ function getEventValue(event: Event): string {
 .panel-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.panel-header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.panel-wiki-link {
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel-wiki-link:hover {
+  text-decoration: underline;
 }
 
 .help-copy {

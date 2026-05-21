@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createAbilityState } from '@/components/resourcePack/factories'
 import type { AbilityState as AbilityType, AbilityStatKey } from '@/components/resourcePack/types'
@@ -8,7 +8,7 @@ const props = defineProps<{
   abilities: AbilityType[]
 }>()
 
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const abilityCardsRef = ref<HTMLElement[]>([])
 const abilityRenderKeys = new WeakMap<AbilityType, string>()
 let nextAbilityRenderKey = 0
@@ -20,6 +20,11 @@ const statKeys: AbilityStatKey[] = [
   'visionRange',
   'fatigue',
 ]
+const wikiLink = computed(() => ({
+  name: 'wiki',
+  params: { locale: locale.value },
+  query: { section: 'resourcepack', tab: 'abilities' },
+}))
 
 function createAbility(): AbilityType {
   const nextIndex = props.abilities.length + 1
@@ -171,9 +176,12 @@ function getAbilityRenderKey(ability: AbilityType, index: number): string {
 <template>
   <section class="panel">
     <div class="panel-header">
-      <div>
+      <div class="panel-header-copy">
         <h2>{{ t('resourcePackCreator.abilitiesEditor.title') }}</h2>
         <p>{{ t('resourcePackCreator.abilitiesEditor.subtitle') }}</p>
+        <router-link class="panel-wiki-link" :to="wikiLink">
+          {{ t('wiki') }}
+        </router-link>
       </div>
 
       <button type="button" class="primary" @click="addAbility">
@@ -308,6 +316,22 @@ function getAbilityRenderKey(ability: AbilityType, index: number): string {
 .section-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.panel-header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.panel-wiki-link {
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.panel-wiki-link:hover {
+  text-decoration: underline;
 }
 
 .ability-list {

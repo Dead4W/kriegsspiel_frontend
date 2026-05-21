@@ -13,6 +13,14 @@ function isForestPixel(
   x: number,
   y: number
 ): boolean {
+  const objectMap = w.objectMapImageData
+  if (objectMap && w.objectMapColorToEntity.size > 0) {
+    if (x < 0 || y < 0 || x >= objectMap.width || y >= objectMap.height) return false
+    const i = (Math.floor(y) * objectMap.width + Math.floor(x)) * 4
+    const key = `${objectMap.data[i]},${objectMap.data[i + 1]},${objectMap.data[i + 2]}`
+    return w.objectMapColorToEntity.get(key) === 'forest'
+  }
+
   const img = w.forestImageData
   if (!img) return false
 

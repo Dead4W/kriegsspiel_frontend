@@ -1,5 +1,6 @@
 [2026-05-22]
 - Create room - Add Customize button for edit/use ResourcePack
+- Unit Vision - If loaded objectsMap use for forest raycast vision
 
 [2026-05-21]
 - Turn Timer - add LIVE per minute mode with start/pause control and LIVE badge for players

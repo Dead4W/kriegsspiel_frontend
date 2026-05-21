@@ -748,24 +748,6 @@ async function initWorld(room: RoomData) {
     markStageDone('heightMapImage')
   }
 
-  setStageProgress('forestMap', 1)
-  const forestMapBuildStartedAt =
-    typeof performance !== 'undefined' ? performance.now() : Date.now()
-  const forestMap = await buildForestMap(
-    bitmap,
-    map.width,
-    map.height,
-    3,
-    (progress) => setStageProgress('forestMap', progress)
-  )
-  const forestMapBuildEndedAt =
-    typeof performance !== 'undefined' ? performance.now() : Date.now()
-  const forestMapBuildMs = Math.round(forestMapBuildEndedAt - forestMapBuildStartedAt)
-  console.info(
-    `[loading] forest map build completed in ${forestMapBuildMs}ms (${map.width}x${map.height})`
-  )
-  markStageDone('forestMap')
-
   let objectMapBitmap: ImageBitmap | null = null
   let objectMapMeta: Record<string, unknown> | null = null
   if (hasObjectMap) {
@@ -817,6 +799,31 @@ async function initWorld(room: RoomData) {
     markStageDone('objectMapMeta')
   }
 
+  const canUseObjectMapForForestRaycast = Boolean(objectMapBitmap && objectMapMeta)
+  let forestMap: OffscreenCanvas | HTMLCanvasElement | null = null
+  if (canUseObjectMapForForestRaycast) {
+    markStageDone('forestMap')
+    console.info('[loading] forest map build skipped: object map available for forest raycast')
+  } else {
+    setStageProgress('forestMap', 1)
+    const forestMapBuildStartedAt =
+      typeof performance !== 'undefined' ? performance.now() : Date.now()
+    forestMap = await buildForestMap(
+      bitmap,
+      map.width,
+      map.height,
+      3,
+      (progress) => setStageProgress('forestMap', progress)
+    )
+    const forestMapBuildEndedAt =
+      typeof performance !== 'undefined' ? performance.now() : Date.now()
+    const forestMapBuildMs = Math.round(forestMapBuildEndedAt - forestMapBuildStartedAt)
+    console.info(
+      `[loading] forest map build completed in ${forestMapBuildMs}ms (${map.width}x${map.height})`
+    )
+    markStageDone('forestMap')
+  }
+
   map.metersPerPixel = resolveRoomMetersPerPixel(room.options, objectMapMeta, defaultMetersPerPixel)
 
   await nextTick()
@@ -865,7 +872,9 @@ async function initWorld(room: RoomData) {
 
   window.addEventListener('resize', resizeHandler)
 
-  w.setForestMap(forestMap)
+  if (forestMap) {
+    w.setForestMap(forestMap)
+  }
 
   if (bitmapHeightMap) {
     await runStageWithPulse(

@@ -769,6 +769,7 @@
     "show_unit_vision_only_selected": "Only selected units",
     "show_unit_vision_forest_raycast": "Use forest map (raycast)",
     "forest_map": "Show forest map",
+    "object_map": "Show object map",
     "height_map": "Show height map",
     "show_weather_shaders": "Show weather shaders",
     "performance_debug": "Performance debug",

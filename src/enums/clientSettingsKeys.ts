@@ -54,6 +54,9 @@ export const CLIENT_SETTING_KEYS = {
   // Показать карту лесов
   SHOW_FOREST_MAP: 'showForestMap',
 
+  // Показать карту объектов
+  SHOW_OBJECT_MAP: 'showObjectMap',
+
   // Показать карту высот
   SHOW_HEIGHT_MAP: 'showHeightMap',
 
@@ -155,6 +158,7 @@ function getDefaultSettings(): Partial<Record<ClientSettingKey, any>> {
     [CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]: true,
     [CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]: true,
     [CLIENT_SETTING_KEYS.SHOW_FOREST_MAP]: false,
+    [CLIENT_SETTING_KEYS.SHOW_OBJECT_MAP]: false,
     [CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]: false,
     [CLIENT_SETTING_KEYS.SHOW_WEATHER_SHADERS]: false,
     [CLIENT_SETTING_KEYS.CHAT_HEIGHT]: null,

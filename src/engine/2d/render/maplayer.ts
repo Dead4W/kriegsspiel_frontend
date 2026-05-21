@@ -41,7 +41,16 @@ export class maplayer {
     // ===== DEBUG: FOREST MAP =====
     if (
       this.canRenderDebugMaps() &&
-      w.forestCanvas &&
+      w.objectMapCanvas &&
+      window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_OBJECT_MAP]
+    ) {
+      this.drawObjectMap(ctx, w)
+    }
+
+    // ===== DEBUG: HEIGHT MAP =====
+    if (
+      this.canRenderDebugMaps() &&
+      w.heightMapCanvas &&
       window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_HEIGHT_MAP]
     ) {
       this.drawHeightMap(ctx, w)
@@ -62,6 +71,19 @@ export class maplayer {
     // просто рисуем карту леса
     ctx.drawImage(w.forestCanvas, 0, 0)
 
+    ctx.restore()
+  }
+
+  private drawObjectMap(ctx: CanvasRenderingContext2D, w: world) {
+    if (!w.objectMapCanvas) return
+
+    const cam = w.camera
+
+    ctx.save()
+    ctx.scale(cam.zoom, cam.zoom)
+    ctx.translate(-cam.pos.x, -cam.pos.y)
+    ctx.globalAlpha = 0.7
+    ctx.drawImage(w.objectMapCanvas, 0, 0)
     ctx.restore()
   }
 

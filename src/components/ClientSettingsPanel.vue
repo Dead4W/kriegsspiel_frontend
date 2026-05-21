@@ -17,8 +17,20 @@ const route = useRoute()
 const settings = reactive(window.CLIENT_SETTINGS)
 
 const isOpen = ref(false)
+const hasObjectMapRef = ref(false)
+let objectMapPresenceTimer: number | null = null
 
 const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
+
+function hasObjectMap(): boolean {
+  return hasObjectMapRef.value
+}
+
+function syncObjectMapPresence() {
+  hasObjectMapRef.value = Boolean(
+    window.ROOM_WORLD?.objectMapImageData && window.ROOM_WORLD.objectMapColorToEntity.size > 0
+  )
+}
 
 type ClientSettingsUiItem =
   | { kind: 'hr' }
@@ -29,6 +41,7 @@ type ClientSettingsUiItem =
       indent?: boolean
       adminOnly?: boolean
       disabled?: () => boolean
+      visible?: () => boolean
     }
   | {
       kind: 'range'
@@ -171,9 +184,10 @@ const uiDef: ClientSettingsUiItem[] = [
   },
   {
     kind: 'checkbox',
-    key: CLIENT_SETTING_KEYS.SHOW_FOREST_MAP,
-    labelI18nKey: 'client_settings.forest_map',
+    key: CLIENT_SETTING_KEYS.SHOW_OBJECT_MAP,
+    labelI18nKey: 'client_settings.object_map',
     adminOnly: true,
+    visible: () => hasObjectMap(),
   },
   {
     kind: 'checkbox',
@@ -249,10 +263,16 @@ function playTestSound() {
 
 onMounted(() => {
   window.addEventListener('click', close)
+  syncObjectMapPresence()
+  objectMapPresenceTimer = window.setInterval(syncObjectMapPresence, 500)
 })
 
 onUnmounted(() => {
   window.removeEventListener('click', close)
+  if (objectMapPresenceTimer != null) {
+    window.clearInterval(objectMapPresenceTimer)
+    objectMapPresenceTimer = null
+  }
 })
 
 watch(
@@ -308,7 +328,7 @@ watch(
       <hr v-if="item.kind === 'hr'" />
 
       <label
-        v-else-if="item.kind === 'checkbox' && (!item.adminOnly || isAdmin)"
+        v-else-if="item.kind === 'checkbox' && (!item.adminOnly || isAdmin) && (item.visible?.() ?? true)"
         class="setting"
         :class="{ indent: item.indent }"
       >

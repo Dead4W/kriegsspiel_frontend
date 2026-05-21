@@ -775,6 +775,7 @@
     "show_unit_vision_only_selected": "Только выделенные юниты",
     "show_unit_vision_forest_raycast": "Использовать карту леса (raycast)",
     "forest_map": "Показать карту лесов",
+    "object_map": "Показать карту объектов",
     "height_map": "Показать карту высот",
     "show_weather_shaders": "Показывать эффекты погоды",
     "performance_debug": "Дебаг производительности"

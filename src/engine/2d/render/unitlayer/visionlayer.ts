@@ -7,30 +7,68 @@ import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 // Чем дальше участок леса от юнита, тем сильнее он "гасит" луч.
 // 0 = как раньше (лес одинаково "плотный" на любой дистанции).
 const FOREST_DISTANCE_PENALTY = 3;
+const HOUSE_DISTANCE_PENALTY = 20;
+const HOUSE_DISTANCE_PENALTY_WHEN_UNIT_INSIDE = 9;
+const HOUSE_OCCLUDER_ENTITIES = new Set([
+  'house',
+  'building',
+  'red_building',
+  'cover_house',
+  'fortified_house',
+  'fortified_building',
+])
+const FOREST_OCCLUDER_ENTITY = 'forest'
+const HOUSE_ENVIRONMENT_STATES = new Set([
+  'in_house',
+  'in_building',
+  'in_cover_house',
+  'in_fortified_house',
+])
 
-function isForestPixel(
+function getRaycastOccluderPenalty(
+  unit: BaseUnit,
   w: world,
   x: number,
   y: number
-): boolean {
+): { penalty: number; softenedByDistance: boolean } | null {
   const objectMap = w.objectMapImageData
   if (objectMap && w.objectMapColorToEntity.size > 0) {
-    if (x < 0 || y < 0 || x >= objectMap.width || y >= objectMap.height) return false
+    if (x < 0 || y < 0 || x >= objectMap.width || y >= objectMap.height) return null
     const i = (Math.floor(y) * objectMap.width + Math.floor(x)) * 4
     const key = `${objectMap.data[i]},${objectMap.data[i + 1]},${objectMap.data[i + 2]}`
-    return w.objectMapColorToEntity.get(key) === 'forest'
+    const entity = w.objectMapColorToEntity.get(key)
+    if (entity === FOREST_OCCLUDER_ENTITY) {
+      return {
+        penalty: FOREST_DISTANCE_PENALTY,
+        softenedByDistance: true,
+      }
+    }
+    if (entity != null && HOUSE_OCCLUDER_ENTITIES.has(entity)) {
+      const unitInsideHouse = unit.envState.some((state) => HOUSE_ENVIRONMENT_STATES.has(state))
+      return {
+        penalty: unitInsideHouse ? HOUSE_DISTANCE_PENALTY_WHEN_UNIT_INSIDE : HOUSE_DISTANCE_PENALTY,
+        softenedByDistance: unitInsideHouse,
+      }
+    }
+    return null
   }
 
   const img = w.forestImageData
-  if (!img) return false
+  if (!img) return null
 
-  if (x < 0 || y < 0 || x >= img.width || y >= img.height) return false
+  if (x < 0 || y < 0 || x >= img.width || y >= img.height) return null
 
   const i = (Math.floor(y) * img.width + Math.floor(x)) * 4
   return img.data[i + 3]! > 200
+    ? {
+      penalty: FOREST_DISTANCE_PENALTY,
+      softenedByDistance: true,
+    }
+    : null
 }
 
 function castRay(
+  unit: BaseUnit,
   w: world,
   origin: { x: number; y: number },
   angle: number,
@@ -50,11 +88,16 @@ function castRay(
   while (dist < maxDist) {
     let iStep = step;
 
-    if (isForestPixel(w, x, y)) {
+    const occluder = getRaycastOccluderPenalty(unit, w, x, y)
+    if (occluder != null) {
       if (dist * 2 >= maxDist) break;
-      const t = realDist / maxDist // 0..1
-      const t2 = Math.pow(t, 0.3)
-      const distanceMultiplier = 1 + t2 * FOREST_DISTANCE_PENALTY
+      const distanceMultiplier = occluder.softenedByDistance
+        ? (() => {
+          const t = realDist / maxDist // 0..1
+          const t2 = Math.pow(t, 0.3)
+          return 1 + t2 * occluder.penalty
+        })()
+        : 1 + occluder.penalty
       iStep *= distanceMultiplier
     }
 
@@ -76,7 +119,7 @@ export function buildVisionPolygon(u: BaseUnit, w: world) {
 
   for (let i = 0; i < rays; i++) {
     const angle = (i / rays) * Math.PI * 2
-    points.push(castRay(w, origin, angle, maxRange))
+    points.push(castRay(u, w, origin, angle, maxRange))
   }
 
   return points
@@ -88,6 +131,19 @@ type VisionCacheEntry = {
   polygon: vec2[] // результат buildVisionPolygon
 }
 const visionCache = new Map<string, VisionCacheEntry>();
+
+function clearUnitVisionCache(unitId: string) {
+  for (const key of [...visionCache.keys()]) {
+    if (key.startsWith(`${unitId}_`)) {
+      visionCache.delete(key)
+    }
+  }
+}
+
+function getUnitVisionEnvironmentSignature(unit: BaseUnit): string {
+  if (!unit.envState.length) return 'none'
+  return [...unit.envState].sort().join('|')
+}
 
 // Cache Helper
 function samePos(a: { x: number; y: number }, b: { x: number; y: number }) {
@@ -143,7 +199,7 @@ export function drawUnitVision(
 
   for (const u of units) {
     if (!u.alive || !u.stats.visionRange) {
-      visionCache.delete(u.id);
+      clearUnitVisionCache(u.id)
       continue;
     }
 
@@ -175,13 +231,14 @@ export function drawUnitVision(
       vCtx.fillStyle = `rgb(${r},${g},${b})`
       vCtx.fill()
 
-      visionCache.delete(u.id)
+      clearUnitVisionCache(u.id)
       continue
     }
 
     // ===== КЕШ =====
     const unitInForest = u.envState.includes(UnitEnvironmentState.InForest)
-    const cacheKey = `${u.id}_${unitInForest}_${u.visionRange}`
+    const environmentSignature = getUnitVisionEnvironmentSignature(u)
+    const cacheKey = `${u.id}_${unitInForest}_${environmentSignature}_${u.visionRange}`
     const cache = visionCache.get(cacheKey)
 
     let poly: vec2[]

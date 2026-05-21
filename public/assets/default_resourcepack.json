@@ -109,8 +109,8 @@
       { "id": "in_plain_field", "title": "Plowed field", "icon": "🚜", "isRoute": true, "multipliers": { "speed": 0.75 }, "byTypes": { "artillery": { "speed": 0.5 } } },
       { "id": "in_soft_field", "title": "Soft ground", "icon": "🟤", "isRoute": true, "multipliers": { "speed": 0.5 }, "byTypes": { "artillery": { "speed": 0.25 } } },
       { "id": "in_swamp_or_dirty", "title": "Swamp / mud", "icon": "💩", "isRoute": true, "multipliers": { "takeDamageMod": 0.25, "speed": 0.25 }, "byTypes": { "artillery": { "speed": 0.1 } } },
-      { "id": "in_house", "title": "House", "icon": "🏢", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.25 } },
-      { "id": "in_cover_house", "title": "Covered house", "icon": "🧱", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.06 } },
+      { "id": "in_house", "title": "House", "icon": "🏢", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.25, "visionRange": 1.1 } },
+      { "id": "in_cover_house", "title": "Covered house", "icon": "🧱", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.06, "visionRange": 1.1 } },
       { "id": "in_brench", "title": "Behind fence", "icon": "🚧", "multipliers": { "takeDamageMod": 0.9 } },
       { "id": "in_cover_trenches", "title": "Trenches", "icon": "🪜", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.12 } },
       { "id": "in_water", "title": "Water", "icon": "🌊", "multipliers": { "takeDamageMod": 0.4 }, "byTypes": { "artillery": { "speed": 0.1 } } }

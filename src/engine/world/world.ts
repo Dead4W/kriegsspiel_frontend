@@ -479,6 +479,22 @@ export class world {
     this.liveSecondFractionalCarry = 0
   }
 
+  private parseWorldTime(time: string): Date {
+    return new Date(time.replace(' ', 'T'))
+  }
+
+  private formatWorldTime(date: Date): string {
+    const pad = (v: number) => v.toString().padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+      `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  }
+
+  private shiftWorldTime(time: string, seconds: number): string {
+    const date = this.parseWorldTime(time)
+    date.setMilliseconds(date.getMilliseconds() + Math.round(seconds * 1000))
+    return this.formatWorldTime(date)
+  }
+
   private ensureLiveSecondTimer() {
     if (this.liveSecondTickIntervalId != null) return
     this.liveSecondTickIntervalId = window.setInterval(() => {
@@ -515,23 +531,36 @@ export class world {
     options?: { live?: boolean; liveIntervalMs?: number; liveGameSecondsPerMinute?: number; allowSound?: boolean }
   ): boolean {
     const prevTime = this.time
-    this.time = time;
     const isLive = options?.live === true
+    let nextTime = time
     if (isLive) {
+      const rawLiveGameSecondsPerMinute = Number(options?.liveGameSecondsPerMinute)
       if (
-        Number.isFinite(options?.liveGameSecondsPerMinute)
-        && (options?.liveGameSecondsPerMinute as number) >= 0
+        Number.isFinite(rawLiveGameSecondsPerMinute)
+        && rawLiveGameSecondsPerMinute >= 0
       ) {
-        this.liveGameSecondsPerMinute = Number(options?.liveGameSecondsPerMinute)
+        this.liveGameSecondsPerMinute = rawLiveGameSecondsPerMinute
       } else {
         this.liveGameSecondsPerMinute = 60
       }
+      const rawLiveIntervalMs = Number(options?.liveIntervalMs)
+      const liveIntervalMs = Number.isFinite(rawLiveIntervalMs) && rawLiveIntervalMs > 0
+        ? rawLiveIntervalMs
+        : 10_000
+      const intervalGameSeconds = this.liveGameSecondsPerMinute * (liveIntervalMs / 60_000)
+
+      // LIVE packets carry the end of the interval, so start local playback from interval start.
+      if (intervalGameSeconds > 0) {
+        nextTime = this.shiftWorldTime(time, -intervalGameSeconds)
+      }
+      this.liveSecondFractionalCarry = 0
       this.skipTimeLive.value = true
       this.ensureLiveSecondTimer()
       this.scheduleLiveHeartbeatTimeout(options?.liveIntervalMs)
     } else {
       this.stopLiveMode()
     }
+    this.time = nextTime
     const allowSound = options?.allowSound !== false
     if (this.stage !== RoomGameStage.END && !isLive && prevTime !== time && allowSound) {
       const messageSound = new Audio('/assets/sounds/message.wav')

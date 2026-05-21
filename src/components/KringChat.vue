@@ -119,12 +119,146 @@ function canSpawnMessenger(m: ChatMessage): boolean {
   return window.PLAYER.team === Team.ADMIN
 }
 
-function onSpawnMessenger(m: ChatMessage) {
-  if (props.is3dMode) return
-  const pos = window.ROOM_WORLD.camera.screenToWorld({
+function getUnitsApproxCenter(units: Array<{ pos: { x: number; y: number } }>): { x: number; y: number } {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  for (const unit of units) {
+    minX = Math.min(minX, unit.pos.x)
+    minY = Math.min(minY, unit.pos.y)
+    maxX = Math.max(maxX, unit.pos.x)
+    maxY = Math.max(maxY, unit.pos.y)
+  }
+
+  return {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+  }
+}
+
+function getSpawnOriginFromMessage(m: ChatMessage): { x: number; y: number } {
+  const messageUnits = m.unitIds
+    .map((id) => window.ROOM_WORLD.units.get(id))
+    .filter((u): u is BaseUnit => Boolean(u && u.alive && u.type !== unitType.MESSENGER))
+
+  if (messageUnits.length > 0) {
+    return getUnitsApproxCenter(messageUnits)
+  }
+
+  const selectedSameTeam = selectedUnits.value
+    .filter((u) => u.team === m.team && u.alive && u.type !== unitType.MESSENGER)
+  if (selectedSameTeam.length > 0) {
+    return getUnitsApproxCenter(selectedSameTeam)
+  }
+
+  return window.ROOM_WORLD.camera.screenToWorld({
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
   })
+}
+
+function getEnemiesNearPoint(
+  point: { x: number; y: number },
+  friendlyTeam: Team,
+  radiusMeters: number
+): BaseUnit[] {
+  const metersPerPixel = window.ROOM_WORLD.map.metersPerPixel
+  const radiusPx = radiusMeters / metersPerPixel
+  const radiusSq = radiusPx * radiusPx
+
+  const enemyTeam = friendlyTeam === Team.RED
+    ? Team.BLUE
+    : friendlyTeam === Team.BLUE
+      ? Team.RED
+      : null
+  if (!enemyTeam) return []
+
+  return window.ROOM_WORLD.units.list().filter((u) => {
+    if (!u.alive) return false
+    if (u.team !== enemyTeam) return false
+    const dx = u.pos.x - point.x
+    const dy = u.pos.y - point.y
+    return dx * dx + dy * dy <= radiusSq
+  })
+}
+
+function getSpawnDirection(
+  origin: { x: number; y: number },
+  enemies: BaseUnit[]
+): { x: number; y: number } {
+  if (!enemies.length) {
+    return { x: 1, y: 0 }
+  }
+
+  let sumX = 0
+  let sumY = 0
+  for (const enemy of enemies) {
+    sumX += enemy.pos.x
+    sumY += enemy.pos.y
+  }
+
+  const enemyCenter = { x: sumX / enemies.length, y: sumY / enemies.length }
+  let dx = origin.x - enemyCenter.x
+  let dy = origin.y - enemyCenter.y
+  const length = Math.hypot(dx, dy)
+  if (length < 0.0001) {
+    return { x: 1, y: 0 }
+  }
+  dx /= length
+  dy /= length
+
+  return { x: dx, y: dy }
+}
+
+function findFreeMessengerSpawnPosition(
+  origin: { x: number; y: number },
+  direction: { x: number; y: number }
+): { x: number; y: number } {
+  const w = window.ROOM_WORLD
+  const map = w.map
+  const collisionRangeMeters = BaseUnit.COLLISION_RANGE * map.metersPerPixel
+  const stepPx = collisionRangeMeters / map.metersPerPixel
+  const unitRadiusSq = stepPx * stepPx
+
+  const perp = { x: -direction.y, y: direction.x }
+  const sideOffsets = [0, 1, -1, 2, -2, 3, -3]
+
+  const inBounds = (x: number, y: number) =>
+    x >= 0 && y >= 0 && x <= map.width && y <= map.height
+
+  const isFree = (x: number, y: number) =>
+    !w.units.list().some((u) => {
+      if (!u.alive) return false
+      const dx = u.pos.x - x
+      const dy = u.pos.y - y
+      return dx * dx + dy * dy < unitRadiusSq
+    })
+
+  for (let ring = 1; ring <= 12; ring++) {
+    for (const side of sideOffsets) {
+      const x = origin.x + direction.x * ring * stepPx + perp.x * side * stepPx
+      const y = origin.y + direction.y * ring * stepPx + perp.y * side * stepPx
+      if (!inBounds(x, y)) continue
+      if (isFree(x, y)) {
+        return { x, y }
+      }
+    }
+  }
+
+  return {
+    x: Math.max(0, Math.min(map.width, origin.x)),
+    y: Math.max(0, Math.min(map.height, origin.y)),
+  }
+}
+
+function onSpawnMessenger(m: ChatMessage) {
+  if (props.is3dMode) return
+  const origin = getSpawnOriginFromMessage(m)
+  const enemiesNear = getEnemiesNearPoint(origin, m.team, 1000)
+  const direction = getSpawnDirection(origin, enemiesNear)
+  const pos = findFreeMessengerSpawnPosition(origin, direction)
 
   const new_messenger: unitstate = {
     id: crypto.randomUUID(),

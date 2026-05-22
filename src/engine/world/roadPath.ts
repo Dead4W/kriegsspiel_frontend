@@ -21,6 +21,7 @@ const ROAD_COST_FACTOR_BY_ENTITY = new Map<string, number>([
 const EMPTY_CELL_COST_FACTOR = 1.5;
 const UNKNOWN_ENTITY_COST_FACTOR = 2.0;
 const EMPTY_CELL_SPEED_FACTOR = 1.25;
+const EMPTY_NEAR_WATER_DANGER_RADIUS_METERS = 100;
 const ROAD_ENTITIES = new Set(["good_road", "bridge", "road"]);
 const ROAD_EXIT_PENALTY = 8;
 const ROAD_ROUTE_NON_ROAD_FACTOR = 3.2;
@@ -198,14 +199,16 @@ function getTraversableCellCost(
   toEntity: string | null,
   stepDistance: number,
   speedResolver: (entity: string | null) => number,
-  preferRoadRoute: boolean
+  preferRoadRoute: boolean,
+  dangerousEmptyNearWater = false
 ): number {
   if (toEntity && BLOCKED_WATER_ENTITIES.has(toEntity)) return Infinity;
   const speed = speedResolver(toEntity);
   if (!Number.isFinite(speed) || speed <= 0) return Infinity;
 
+  const waterRoadFactor = ROAD_COST_FACTOR_BY_ENTITY.get("water") ?? EMPTY_CELL_COST_FACTOR;
   let roadFactor = !toEntity
-    ? EMPTY_CELL_COST_FACTOR
+    ? (dangerousEmptyNearWater ? waterRoadFactor : EMPTY_CELL_COST_FACTOR)
     : (ROAD_COST_FACTOR_BY_ENTITY.get(toEntity) ?? UNKNOWN_ENTITY_COST_FACTOR);
 
   if (preferRoadRoute && (!toEntity || !ROAD_ENTITIES.has(toEntity))) {
@@ -279,6 +282,44 @@ function findPathAStarWithEnvironmentSpeed(
     return entity;
   };
 
+  const metersPerPixel = Math.max(0.0001, Number(w.map.metersPerPixel) || 1);
+  const dangerousEmptyRadiusPx = EMPTY_NEAR_WATER_DANGER_RADIUS_METERS / metersPerPixel;
+  const dangerousEmptyRadiusSq = dangerousEmptyRadiusPx * dangerousEmptyRadiusPx;
+  const dangerousEmptyCache = new Map<number, boolean>();
+  const isDangerousEmptyNearWater = (idx: number): boolean => {
+    if (dangerousEmptyRadiusPx <= 0) return false;
+    const cached = dangerousEmptyCache.get(idx);
+    if (cached !== undefined) return cached;
+
+    if (getEntityByIndex(idx)) {
+      dangerousEmptyCache.set(idx, false);
+      return false;
+    }
+
+    const point = toPoint(idx, width);
+    const searchRadius = Math.ceil(dangerousEmptyRadiusPx);
+    const minX = Math.max(0, point.x - searchRadius);
+    const maxX = Math.min(width - 1, point.x + searchRadius);
+    const minY = Math.max(0, point.y - searchRadius);
+    const maxY = Math.min(height - 1, point.y + searchRadius);
+
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        const dx = x - point.x;
+        const dy = y - point.y;
+        if ((dx * dx) + (dy * dy) > dangerousEmptyRadiusSq) continue;
+        const entity = getEntityByIndex(toIndex(x, y, width));
+        if (entity && BLOCKED_WATER_ENTITIES.has(entity)) {
+          dangerousEmptyCache.set(idx, true);
+          return true;
+        }
+      }
+    }
+
+    dangerousEmptyCache.set(idx, false);
+    return false;
+  };
+
   const startEntity = getEntityByIndex(startIdx);
   const goalEntity = getEntityByIndex(goalIdx);
   const preferRoadRoute = Boolean(
@@ -347,7 +388,8 @@ function findPathAStarWithEnvironmentSpeed(
         neighborEntity,
         n.cost,
         speedLookup.getCellSpeedMultiplier,
-        preferRoadRoute
+        preferRoadRoute,
+        isDangerousEmptyNearWater(neighborIdx)
       );
       if (!Number.isFinite(stepCost)) continue;
 

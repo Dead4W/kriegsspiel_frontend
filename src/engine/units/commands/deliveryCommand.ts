@@ -156,6 +156,31 @@ export class DeliveryCommand extends BaseCommand<
     }))
   }
 
+  private isPointInThreatZone(
+    point: vec2,
+    threatZones: Array<{ x: number; y: number; radiusPx: number }>
+  ): boolean {
+    for (const zone of threatZones) {
+      const dx = point.x - zone.x
+      const dy = point.y - zone.y
+      if ((dx * dx + dy * dy) <= (zone.radiusPx * zone.radiusPx)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private pruneIntermediateThreatenedWaypoints(waypoints: vec2[]): vec2[] {
+    if (waypoints.length <= 2) return waypoints
+    const threatZones = this.getEnemyThreatZones()
+    if (!threatZones.length) return waypoints
+    const lastIdx = waypoints.length - 1
+    return waypoints.filter((point, idx) => {
+      if (idx === 0 || idx === lastIdx) return true
+      return !this.isPointInThreatZone(point, threatZones)
+    })
+  }
+
   private buildRouteThroughWaypoints(from: vec2, waypoints: vec2[]): vec2[] {
     if (!waypoints.length) return []
     const route: vec2[] = []
@@ -468,9 +493,8 @@ export class DeliveryCommand extends BaseCommand<
     if (!canReroute) return false
 
     if (this.state.returning) {
-      // While returning we first try old route; if it became unsafe, switch to free A*.
-      this.state.returnRoute = []
-      this.state.returnRouteIndex = 0
+      // Keep original return waypoints and rebuild from nearest point with threat zones.
+      this.syncReturnRouteIndexToNearest(unit)
     } else {
       // Umpire reports should not "panic-turn"; just rebuild route with threat zones.
       this.state.manualRoutePoints = []
@@ -589,6 +613,13 @@ export class DeliveryCommand extends BaseCommand<
     this.state.routeIndex = nearestIdx
   }
 
+  private syncReturnRouteIndexToNearest(unit: BaseUnit) {
+    if (!this.state.returnRoute?.length) return
+    const nearestIdx = this.findNearestRouteIndex(unit.pos, this.state.returnRoute)
+    if (nearestIdx < 0) return
+    this.state.returnRouteIndex = nearestIdx
+  }
+
   private markTargetDelivered(id: uuid) {
     if (!this.state.targetsDelivered) {
       this.state.targetsDelivered = []
@@ -691,7 +722,9 @@ export class DeliveryCommand extends BaseCommand<
     let routePoints: vec2[] = []
     if (this.state.returning && this.state.returnRoute?.length) {
       const returnIdx = this.state.returnRouteIndex ?? 0
-      const pendingWaypoints = this.state.returnRoute.slice(returnIdx)
+      const pendingWaypoints = this.pruneIntermediateThreatenedWaypoints(
+        this.state.returnRoute.slice(returnIdx)
+      )
       if (pendingWaypoints.length > 0) {
         routePoints = this.buildRouteThroughWaypoints(unit.pos, pendingWaypoints)
         this.state.returnRouteIndex = this.state.returnRoute.length

@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, type UnwrapRef} from 'vue'
+import {computed, type UnwrapRef} from 'vue'
 import type {BaseUnit} from '@/engine/units/baseUnit'
 import {Team} from '@/enums/teamKeys'
-import UnitEnvModifierTool from "@/components/tools/UnitEnvModifierTool.vue";
-import {useI18n} from 'vue-i18n'
-import UnitCommandTool from "@/components/tools/UnitCommandTool.vue";
-import type {unsub} from "@/engine/events";
 import {unitType} from "@/engine";
-
-const {t} = useI18n()
+import UnitEnvModifierTool from "@/components/tools/UnitEnvModifierTool.vue";
+import UnitCommandTool from "@/components/tools/UnitCommandTool.vue";
+import {canPlayerUseDirectViewOrder} from "@/engine/units/directViewOrderRules.ts";
 
 /* ================= props / emits ================= */
 
@@ -28,6 +25,14 @@ const isAdmin = computed(
 
 const hasUnits = computed(
   () => props.units.length > 0
+)
+
+const canUsePlayerSelectedOrderTool = computed(() => {
+  return canPlayerUseDirectViewOrder(props.units)
+})
+
+const canShowUnitCommandTool = computed(
+  () => isAdmin.value || canUsePlayerSelectedOrderTool.value
 )
 
 function isMessenger() {
@@ -59,7 +64,7 @@ function edit() {
     />
 
     <UnitCommandTool
-      v-if="isAdmin"
+      v-if="canShowUnitCommandTool"
       :units="units as BaseUnit[]"
       @attack="attack"
       @move="edit"

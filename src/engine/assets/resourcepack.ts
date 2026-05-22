@@ -43,6 +43,7 @@ export type ResourcePackUnitType = {
   id: unitType | string
   /** Optional display title (merged into i18n at load). */
   title?: string
+  tags?: string[]
   stats: UnitStats
   abilities?: UnitAbilityType[]
   defaultFormation?: FormationType
@@ -54,10 +55,17 @@ export type ResourcePackEnvironmentState = {
   /** Optional display title (merged into i18n at load). */
   title?: string
   icon?: string
+  tags?: string[]
   isRoute?: boolean
   params?: Record<string, unknown>
   multipliers?: Record<string, unknown>
   byTypes?: Record<string, Record<string, unknown>>
+}
+
+export type ResourcePackMessengerLogic = {
+  spawnHpDelta?: number
+  returnHpDelta?: number
+  enemyKillChancePerTick?: number
 }
 
 export function isObject(v: unknown): v is Record<string, unknown> {
@@ -132,6 +140,7 @@ export type ResourcePack = {
       fleeHpMultiplier?: number
     }
   }
+  messengerLogic?: ResourcePackMessengerLogic
   abilities?: {
     types: ResourcePackAbilityType[]
   }
@@ -180,6 +189,7 @@ function normalizePack(raw: unknown): ResourcePack {
   const conditions = r?.weather?.conditions
   const inaccuracy = r?.inaccuracy
   const moraleCheck = r?.moraleCheck
+  const messengerLogic = r?.messengerLogic
   const abilityTypes = r?.abilities?.types
   const formationTypes = r?.formations?.types
   const unitTypes = r?.units?.types
@@ -205,6 +215,17 @@ function normalizePack(raw: unknown): ResourcePack {
     },
     inaccuracy: normalizedInaccuracy,
     moraleCheck: isObject(moraleCheck) ? (moraleCheck as any) : undefined,
+    messengerLogic: isObject(messengerLogic)
+      ? {
+        spawnHpDelta: toFiniteNumber((messengerLogic as any).spawnHpDelta) ?? -1,
+        returnHpDelta: toFiniteNumber((messengerLogic as any).returnHpDelta) ?? 1,
+        enemyKillChancePerTick: toFiniteNumber((messengerLogic as any).enemyKillChancePerTick) ?? 0.1,
+      }
+      : {
+        spawnHpDelta: -1,
+        returnHpDelta: 1,
+        enemyKillChancePerTick: 0.1,
+      },
     abilities: {
       types: Array.isArray(abilityTypes)
         ? (abilityTypes.filter(isObject) as unknown as ResourcePackAbilityType[])

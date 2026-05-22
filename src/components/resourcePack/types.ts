@@ -42,6 +42,7 @@ export type EnvironmentState = {
   id: string
   title?: string
   icon?: string
+  tags?: string[]
   isRoute?: boolean
   params?: {
     moraleCheckMod?: number
@@ -88,6 +89,12 @@ export type ResourcePackDistanceModifierPoint = {
 
 export type ResourcePackDistanceModifiers = Record<string, ResourcePackDistanceModifierPoint[]>
 
+export type MessengerLogicDraft = {
+  spawnHpDelta?: number
+  returnHpDelta?: number
+  enemyKillChancePerTick?: number
+}
+
 export type ResourcePackUnitStats = UnitStats
 
 export type ResourcePackUnitParams = {
@@ -107,6 +114,7 @@ export type ResourcePackUnitParams = {
 export type ResourcePackUnitType = {
   id: string
   title?: string
+  tags?: string[]
   stats: ResourcePackUnitStats
   abilities?: string[]
   defaultFormation?: string
@@ -131,6 +139,7 @@ export type ResourcePackDraft = {
   }
   inaccuracy?: ResourcePackInaccuracy
   moraleCheck?: MoraleCheckConfig
+  messengerLogic?: MessengerLogicDraft
   angleModifiers?: ResourcePackAngleModifier[]
   distanceModifiers?: ResourcePackDistanceModifiers
   units?: {

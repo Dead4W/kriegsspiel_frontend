@@ -6,6 +6,7 @@ import type {
   ResourcePackAngleModifier,
   ResourcePackDistanceModifierPoint,
   ResourcePackUnitType,
+  MessengerLogicDraft,
   TimeOfDaySegment,
   WeatherCondition,
 } from '@/components/resourcePack/types'
@@ -135,6 +136,14 @@ export function createInitialMoraleCheck(): MoraleCheckConfig {
       fleeDurationMultiplier: 2,
       fleeHpMultiplier: 0.5,
     },
+  }
+}
+
+export function createInitialMessengerLogic(): MessengerLogicDraft {
+  return {
+    spawnHpDelta: -1,
+    returnHpDelta: 1,
+    enemyKillChancePerTick: 0.1,
   }
 }
 

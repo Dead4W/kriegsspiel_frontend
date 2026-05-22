@@ -13,6 +13,7 @@ import CommandWait from "@/components/tools/commands/CommandWait.vue";
 import CommandRetreat from "@/components/tools/commands/CommandRetreat.vue";
 import { onUnitCommandRequest, type UnitCommandRequest } from '@/engine/2d/input'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
+import {Team} from "@/enums/teamKeys.ts";
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -32,6 +33,7 @@ const hotkeys: Record<string, UnitCommandTypes> = {
 }
 
 const activeOrder = ref<UnitCommandTypes | null>(null)
+const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
 
 const attackRef = ref<any>(null)
 const moveRef = ref<any>(null)
@@ -214,6 +216,7 @@ function hotkeyTitle(command: UnitCommandTypes) {
 
 function isCommandDisabled(command: UnitCommandTypes): boolean {
   if (!props.units.length) return true
+  if (!isAdmin.value && command !== UnitCommandTypes.Move) return true
 
   if (command === UnitCommandTypes.Attack && isMessenger()) return true
   if (command === UnitCommandTypes.ChangeFormation && isMessenger()) return true
@@ -223,6 +226,8 @@ function isCommandDisabled(command: UnitCommandTypes): boolean {
 }
 
 async function onCommandRequest(req: UnitCommandRequest) {
+  if (!isAdmin.value && req.command !== UnitCommandTypes.Move) return
+
   // Allow live updates for active Move (drag preview)
   if (activeOrder.value) {
     if (activeOrder.value !== UnitCommandTypes.Move) return
@@ -233,7 +238,7 @@ async function onCommandRequest(req: UnitCommandRequest) {
     }
     moveRef.value?.applyContextTarget?.(req.move.pos, req.move.append)
     const shouldAutoConfirm = !!req.move.autoConfirm
-    const shouldOpenEnvMenu = req.move.openEnvMenu ?? true
+    const shouldOpenEnvMenu = isAdmin.value ? (req.move.openEnvMenu ?? true) : false
     if (shouldOpenEnvMenu) {
       moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
     } else if (shouldAutoConfirm) {
@@ -254,7 +259,7 @@ async function onCommandRequest(req: UnitCommandRequest) {
     }
     moveRef.value?.applyContextTarget?.(req.move.pos, req.move.append)
     const shouldAutoConfirm = !!req.move.autoConfirm
-    const shouldOpenEnvMenu = req.move.openEnvMenu ?? true
+    const shouldOpenEnvMenu = isAdmin.value ? (req.move.openEnvMenu ?? true) : false
     if (shouldOpenEnvMenu) {
       moveRef.value?.openEnvMenu?.(req.move.pos, shouldAutoConfirm)
     } else if (shouldAutoConfirm) {
@@ -291,7 +296,7 @@ onUnmounted(() => {
   <div class="orders-root">
 
     <!-- ===== BUTTONS ===== -->
-    <div v-if="!activeOrder" class="orders-buttons">
+    <div v-if="!activeOrder && isAdmin" class="orders-buttons">
       <div class="order-stack">
         <button
           class="order-btn autoattack"

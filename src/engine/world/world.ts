@@ -47,6 +47,7 @@ export class world {
   socketLock: boolean = false;
 
   stage: RoomGameStage = RoomGameStage.PLANNING;
+  roomMapUserId: number | null = null
 
   events = new emitter<worldevents>()
 

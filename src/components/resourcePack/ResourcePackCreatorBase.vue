@@ -9,6 +9,7 @@ import EnvironmentEditor from '@/components/resourcePack/EnvironmentEditor.vue'
 import FormationsEditor from '@/components/resourcePack/FormationsEditor.vue'
 import InaccuracyEditor from '@/components/resourcePack/InaccuracyEditor.vue'
 import MoraleCheckEditor from '@/components/resourcePack/MoraleCheckEditor.vue'
+import MessengerLogicEditor from '@/components/resourcePack/MessengerLogicEditor.vue'
 import TimeOfDaySegmentEditor from '@/components/resourcePack/TimeOfDaySegmentEditor.vue'
 import UnitsEditor from '@/components/resourcePack/UnitsEditor.vue'
 import WeatherSegmentEditor from '@/components/resourcePack/WeatherSegmentEditor.vue'
@@ -21,6 +22,7 @@ import {
   createInitialEnvironmentState,
   createInitialFormationType,
   createInitialMoraleCheck,
+  createInitialMessengerLogic,
   createInitialTimeSegment,
   createInitialUnitType,
 } from '@/components/resourcePack/factories'
@@ -36,6 +38,7 @@ import type {
   ResourcePackUnitType,
   TimeOfDaySegment,
   WeatherCondition,
+  MessengerLogicDraft,
 } from '@/components/resourcePack/types'
 
 const route = useRoute()
@@ -69,6 +72,7 @@ const isAbilitiesEditorOpen = ref(false)
 const isUnitsEditorOpen = ref(false)
 const isInaccuracyEditorOpen = ref(false)
 const isMoraleCheckEditorOpen = ref(false)
+const isMessengerLogicEditorOpen = ref(false)
 const isAngleModifiersEditorOpen = ref(false)
 const isDistanceModifiersEditorOpen = ref(false)
 const isJsonModalOpen = ref(false)
@@ -233,6 +237,22 @@ const distanceModifierTables = computed<ResourcePackDistanceModifiers>(() => {
   return pack.value.distanceModifiers as ResourcePackDistanceModifiers
 })
 
+const messengerLogicConfig = computed<MessengerLogicDraft>(() => {
+  if (!pack.value) return createInitialMessengerLogic()
+  if (!pack.value.messengerLogic || typeof pack.value.messengerLogic !== 'object') {
+    return createInitialMessengerLogic()
+  }
+  return pack.value.messengerLogic
+})
+
+function onMessengerLogicConfigUpdate(next: MessengerLogicDraft) {
+  if (!pack.value) return
+  pack.value.messengerLogic = {
+    ...createInitialMessengerLogic(),
+    ...next,
+  }
+}
+
 function clonePack(v: ResourcePackDraft): ResourcePackDraft {
   return JSON.parse(JSON.stringify(v))
 }
@@ -266,6 +286,9 @@ function hydratePack(data: ResourcePackDraft, updateDefaultSnapshot = true) {
   }
   if (!Object.keys(distanceModifierTables.value).length) {
     distanceModifierTables.value.default = [createInitialDistanceModifierPoint()]
+  }
+  if (!pack.value.messengerLogic) {
+    pack.value.messengerLogic = createInitialMessengerLogic()
   }
 }
 
@@ -782,6 +805,40 @@ onMounted(loadTemplates)
           <div v-if="isMoraleCheckEditorOpen" class="editor-body">
             <fieldset class="editor-fieldset" :disabled="isEditorReadonly">
               <MoraleCheckEditor :morale-check="moraleCheckConfig" />
+            </fieldset>
+          </div>
+        </section>
+
+        <section class="editor-shell" :class="{ open: isMessengerLogicEditorOpen }">
+          <button
+            type="button"
+            class="editor-toggle"
+            :class="{ open: isMessengerLogicEditorOpen }"
+            :aria-expanded="isMessengerLogicEditorOpen"
+            @click="isMessengerLogicEditorOpen = !isMessengerLogicEditorOpen"
+          >
+            <span class="editor-toggle-copy">
+              <span class="editor-toggle-title">{{ t('resourcePackCreator.messengerLogicEditor.title') }}</span>
+              <span class="editor-toggle-help">
+                {{
+                  t(
+                    isMessengerLogicEditorOpen
+                      ? 'resourcePackCreator.actions.closeEditor'
+                      : 'resourcePackCreator.actions.openEditor',
+                  )
+                }}
+              </span>
+            </span>
+            <span class="editor-toggle-chevron" :class="{ open: isMessengerLogicEditorOpen }" aria-hidden="true">
+              v
+            </span>
+          </button>
+          <div v-if="isMessengerLogicEditorOpen" class="editor-body">
+            <fieldset class="editor-fieldset" :disabled="isEditorReadonly">
+              <MessengerLogicEditor
+                :messenger-logic="messengerLogicConfig"
+                @update:messenger-logic="onMessengerLogicConfigUpdate"
+              />
             </fieldset>
           </div>
         </section>

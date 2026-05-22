@@ -30,6 +30,7 @@ export interface unitstate {
   type: unitType
   team: unitTeam
   pos: vec2
+  hasInWater?: boolean
   fatigue?: number
   autoAttack?: boolean
   angle?: number

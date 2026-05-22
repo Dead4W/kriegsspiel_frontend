@@ -19,6 +19,7 @@ export type ResourcePackEnvironmentState = {
   /** Optional display title (merged into i18n at resourcepack load). */
   title?: string
   icon?: string
+  tags?: string[]
   isRoute?: boolean
   params?: Record<string, unknown>
   multipliers?: Partial<Record<string, unknown>>
@@ -67,6 +68,9 @@ function normalizeEnvironmentState(raw: unknown): ResourcePackEnvironmentState |
     id,
     title: typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined,
     icon: typeof (raw as any).icon === 'string' ? (raw as any).icon : undefined,
+    tags: Array.isArray((raw as any).tags)
+      ? (raw as any).tags.map((tag: unknown) => String(tag).trim()).filter(Boolean)
+      : undefined,
     isRoute: (raw as any).isRoute === true,
     params: isObject((raw as any).params) ? ((raw as any).params as Record<string, unknown>) : undefined,
     multipliers: isObject((raw as any).multipliers) ? (raw as any).multipliers : undefined,
@@ -145,5 +149,25 @@ export function getEnvironmentMoraleCheckMod(
     if (Math.abs(n) > Math.abs(best)) best = n
   }
   return best
+}
+
+export function getEnvironmentStateTags(
+  state: EnvironmentStateId,
+  pack: ResourcePack | null = getResourcePack()
+): string[] {
+  const states = getEnvironmentStates(pack)
+  const entry = states.find((s) => String(s.id) === state)
+  if (!entry?.tags?.length) return []
+  return entry.tags
+}
+
+export function hasEnvironmentStateTag(
+  state: EnvironmentStateId,
+  tag: string,
+  pack: ResourcePack | null = getResourcePack()
+): boolean {
+  const normalizedTag = String(tag).trim()
+  if (!normalizedTag) return false
+  return getEnvironmentStateTags(state, pack).includes(normalizedTag)
 }
 

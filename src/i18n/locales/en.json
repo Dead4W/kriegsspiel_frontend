@@ -121,6 +121,7 @@
       "fields": {
         "title": "Display title",
         "icon": "Icon",
+        "tags": "Tags",
         "isRoute": "Route state",
         "moraleCheckMod": "Morale",
         "unitType": "Unit type"
@@ -184,6 +185,7 @@
       },
       "fields": {
         "title": "Display title",
+        "tags": "Tags",
         "defaultFormation": "Default formation",
         "textureUrl": "Texture URL",
         "renderIcon": "Render icon",
@@ -240,6 +242,12 @@
         "flee": "Flee",
         "disband": "Disband"
       }
+    },
+    "messengerLogicEditor": {
+      "title": "Messenger logic",
+      "spawnHpDelta": "HP delta on spawn",
+      "returnHpDelta": "HP delta on return",
+      "enemyKillChancePerTick": "Enemy kill chance per tick (0..1)"
     },
     "angleModifiersEditor": {
       "title": "Angle modifiers",
@@ -733,7 +741,26 @@
     "mark_as_read": "Mark as read",
     "mark_all_as_read": "Mark all as read",
     "selection_warning": "Message cannot be sent",
+    "quote": "Quote message",
+    "quoting": "Quoting",
+    "quote_link": "Quoted message",
     "spawn_messenger": "Spawn messenger",
+    "messenger": {
+      "enemy_spotted": "Enemy spotted on route, order not delivered.",
+      "intercepted": "Messenger was intercepted by enemy.",
+      "target_not_found": "Target not found, order was not delivered.",
+      "order_delivered": "Order delivered.",
+      "partial_delivered": "Order partially delivered.",
+      "not_found_units": "Units not found:",
+      "units_in_battle": "Units engaged in battle:"
+    },
+    "route": {
+      "start_capture": "Capture route points",
+      "stop_capture": "Stop route capture",
+      "auto_capture_hint": "Route points are captured automatically when chat is open, message text exists, and units are selected.",
+      "clear": "Clear route",
+      "points_count": "Points: {count}"
+    },
     "markdown": {
       "bold": "Bold text",
       "italic": "Italic text",
@@ -745,7 +772,8 @@
     },
     "warning": {
       "selection_hint": "Select at least one unit to send a chat message",
-      "selection_both_team": "Selected units from many teams, please select units from one team"
+      "selection_both_team": "Selected units from many teams, please select units from one team",
+      "selection_vision_chain": "Selected units must form one connected group (distance chain by vision range)"
     }
   },
 

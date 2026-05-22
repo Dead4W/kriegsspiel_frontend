@@ -1,7 +1,22 @@
 [2026-05-22]
-- Create room - Add Customize button for edit/use ResourcePack
+- Maps without objectMap temporary broken because new messenger system
+- Chat - add quote flow with linked preview and jump to quoted message
+- Chat - add route capture for messenger delivery (auto/manual points, clear, counter)
+- Chat - extract message card into separate component and improve message rendering UX
+- Messenger - add auto-spawn in war for incoming orders with auto-route from generals
+- Messenger - add delivery statuses (pending/in transit/delivered/failed/intercepted) and quoted order linking
+- Messenger - improve delivery logic: threat-aware reroute, interception chance, partial/fallback delivery reports
+- ResourcePack - add Messenger Logic config and editor (spawn/return HP delta, enemy kill chance)
+- Environment - add tag-based water rules (`is_water`) with one-time HP penalty for `cant_swim` units
+- ResourcePack Editor/Wiki - add `tags` field support for environment states and unit types
+- DirectView - allow eligible players to issue move orders and sync them via socket
+- DirectView - improve eligibility rules for player-issued orders (ownership/team/retreat checks)
+- Movement - improve road pathfinding (water/river penalties, threat zones, partial path chaining)
 - Unit Vision - If loaded objectsMap use for forest raycast vision
-- Unit Vision - House affect unit vision, also add 10% bonus for vision in house
+- Unit Vision - Add 10% bonus for vision in house
+- Unit Vision - Fix right & bottom screen corners render
+- Notifications - cycle focus unit-by-unit for "new orders" notifications
+- ResourcePack - add cant_swim for unit & is_water for env tags. If unit cant swim and go in is_water env hp = hp / 2 once
 
 [2026-05-21]
 - Turn Timer - add LIVE per minute mode with start/pause control and LIVE badge for players

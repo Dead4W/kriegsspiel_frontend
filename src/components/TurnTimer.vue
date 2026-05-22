@@ -630,8 +630,8 @@ function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
       if (command.type === UnitCommandTypes.Attack) {
         return true
       }
-      if (command.type !== UnitCommandTypes.Move) {
-        return false
+      if (command.type === UnitCommandTypes.Move) {
+        return true
       }
       if (isEnemyUnit) {
         return false
@@ -646,7 +646,8 @@ function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
         return false
       }
 
-      const isVisible = pointInTeamGeneralVision(team, command.state.target)
+      const moveState = command.state as unknown as MoveCommandState
+      const isVisible = pointInTeamGeneralVision(team, moveState.target)
       if (!isVisible) {
         moveChainHiddenByFog = true
         return false

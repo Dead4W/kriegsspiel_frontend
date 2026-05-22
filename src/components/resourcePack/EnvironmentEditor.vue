@@ -72,6 +72,35 @@ function updateIcon(state: EnvironmentState, value: string) {
   delete state.icon
 }
 
+const environmentTagOptions = ['is_water'] as const
+
+function getTagOptions(state: EnvironmentState): string[] {
+  const known = [...environmentTagOptions]
+  const existing = Array.isArray(state.tags) ? state.tags : []
+  return [...new Set([...known, ...existing])]
+}
+
+function hasTag(state: EnvironmentState, tag: string): boolean {
+  return Array.isArray(state.tags) ? state.tags.includes(tag) : false
+}
+
+function updateTag(state: EnvironmentState, tag: string, enabled: boolean) {
+  const current = Array.isArray(state.tags) ? state.tags : []
+  const next = enabled
+    ? Array.from(new Set([...current, tag]))
+    : current.filter((entry) => entry !== tag)
+
+  if (next.length) {
+    state.tags = next
+    return
+  }
+  delete state.tags
+}
+
+function toggleTag(state: EnvironmentState, tag: string) {
+  updateTag(state, tag, !hasTag(state, tag))
+}
+
 function updateIsRoute(state: EnvironmentState, value: boolean) {
   if (value) {
     state.isRoute = true
@@ -439,6 +468,24 @@ function getStateRenderKey(state: EnvironmentState, index: number): string {
           </div>
         </section>
 
+        <section class="section-block tags-section">
+          <div class="section-header">
+            <h4>{{ t('resourcePackCreator.environmentEditor.fields.tags') }}</h4>
+          </div>
+          <div class="tag-options">
+            <button
+              v-for="tag in getTagOptions(state)"
+              :key="`${state.id}-tag-${tag}`"
+              type="button"
+              class="tag-chip"
+              :class="{ active: hasTag(state, tag) }"
+              @click="toggleTag(state, tag)"
+            >
+              {{ tag }}
+            </button>
+          </div>
+        </section>
+
         <section class="section-block type-section">
           <div class="section-header section-header-row">
             <h4>{{ t('resourcePackCreator.environmentEditor.perTypeTitle') }}</h4>
@@ -687,6 +734,41 @@ function getStateRenderKey(state: EnvironmentState, index: number): string {
   min-height: auto;
   margin: 0.35rem 0 0;
   accent-color: var(--accent);
+}
+
+.tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  padding: 0.18rem 0.62rem;
+  background: rgba(15, 23, 42, 0.3);
+  font-size: 0.74rem;
+  color: var(--text-soft);
+  min-height: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.tag-chip:hover {
+  border-color: rgba(59, 130, 246, 0.45);
+  color: var(--text);
+  background: rgba(30, 41, 59, 0.5);
+}
+
+.tag-chip.active {
+  border-color: color-mix(in srgb, var(--accent) 62%, rgba(59, 130, 246, 0.38));
+  background: color-mix(in srgb, var(--accent) 22%, rgba(15, 23, 42, 0.45));
+  color: var(--text);
 }
 
 .multiplier-list,

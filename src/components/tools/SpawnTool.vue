@@ -179,7 +179,7 @@ function createUnitFromDebugJson() {
     const state: unitstate = {
       ...parsed,
       id: parsed.id ?? crypto.randomUUID(),
-      roomMapUserId: parsed.roomMapUserId ?? window.PLAYER.id,
+      roomMapUserId: parsed.roomMapUserId ?? window.ROOM_WORLD.roomMapUserId ?? window.PLAYER.id,
     }
     w.addUnits([state])
     debugCreateSuccess.value = true
@@ -214,7 +214,7 @@ function onClick(e: PointerEvent) {
       id: crypto.randomUUID(),
       type: selectedType.value,
       team: selectedTeam.value,
-      roomMapUserId: window.PLAYER.id,
+      roomMapUserId: window.ROOM_WORLD.roomMapUserId ?? window.PLAYER.id,
       pos,
       label: getNextUnitName(
         w,

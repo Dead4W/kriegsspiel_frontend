@@ -17,6 +17,10 @@ export type ChatMessage = {
   time: string
   created_at?: string
   delivered_at?: string | null
+  quotedMessageId?: uuid | null
+  messengerId?: uuid | null
+  deliveryStatus?: 'pending' | 'in_transit' | 'delivered' | 'failed' | 'intercepted'
+  routePoints?: Array<{ x: number; y: number }>
   unitFallbackTitles?: Record<uuid, string>
   team: Team
   status: ChatMessageStatus

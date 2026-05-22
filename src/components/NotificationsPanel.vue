@@ -2,7 +2,6 @@
 import {onMounted, onUnmounted, type Ref, ref} from "vue";
 import {useI18n} from 'vue-i18n'
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
-import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {RetreatCommand} from "@/engine/units/commands/retreatCommand.ts";
 import { unitType } from "@/engine";
 import { ROOM_SETTING_KEYS } from "@/enums/roomSettingsKeys";
@@ -26,6 +25,7 @@ export type NotificationItem = {
 }
 
 const notifications: Ref<NotificationItem[]> = ref([]);
+const notificationFocusCursor = new Map<string, number>()
 
 function focusUnits(units: BaseUnit[]) {
   if (props.is3dMode) return
@@ -62,6 +62,33 @@ function focusUnits(units: BaseUnit[]) {
 
   cam.clampToWorld()
   // w.events.emit('changed', { reason: 'camera' })
+}
+
+function focusOneUnitFromNotification(units: BaseUnit[], notificationId: string) {
+  if (props.is3dMode) return
+  if (!units.length) return
+
+  const w = window.ROOM_WORLD
+  const cam = w.camera
+
+  const previousIndex = notificationFocusCursor.get(notificationId) ?? -1
+  const nextIndex = (previousIndex + 1) % units.length
+  notificationFocusCursor.set(notificationId, nextIndex)
+
+  const unit = units[nextIndex]
+  if (!unit) return
+
+  for (const u of w.units.list()) {
+    u.selected = false
+  }
+  unit.selected = true
+
+  const halfW = cam.viewport.x / cam.zoom / 2
+  const halfH = cam.viewport.y / cam.zoom / 2
+  cam.pos.x = unit.pos.x - halfW
+  cam.pos.y = unit.pos.y - halfH
+  cam.clampToWorld()
+  w.events.emit('changed', { reason: 'select' })
 }
 
 function refreshNotifications() {
@@ -129,7 +156,7 @@ function refreshNotifications() {
       text: t('notifications.units_with_new_order'),
       count: unitsWithNewOrder.length,
       onClick: () => {
-        focusUnits(unitsWithNewOrder)
+        focusOneUnitFromNotification(unitsWithNewOrder, 'with-order')
       }
     })
   }
@@ -179,7 +206,7 @@ function refreshNotifications() {
   notifications.value = result
 }
 
-function onChanged(data: { reason: string}) {
+function onChanged() {
   refreshNotifications();
 }
 

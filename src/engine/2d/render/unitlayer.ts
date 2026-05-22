@@ -18,8 +18,6 @@ import {getEnvironmentIcon} from "@/engine/resourcePack/environment.ts";
 import {getFormationIcon} from "@/engine/resourcePack/formations.ts";
 import {getUnitNumberParam, getUnitStringParam} from "@/engine/resourcePack/units.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
-import {Team} from "@/enums/teamKeys.ts";
-import {RoomGameStage} from "@/enums/roomStage.ts";
 
 type MoveOrderRange = {
   min: number
@@ -639,11 +637,6 @@ export class unitlayer {
   }
 
   private getFutureAngle(unit: BaseUnit): number {
-    const isUmpireWarView =
-      window.PLAYER.team === Team.ADMIN
-      && window.ROOM_WORLD.stage === RoomGameStage.WAR
-    if (!isUmpireWarView) return unit.angle
-
     let from = unit.pos
     let to: vec2 | null = null
 

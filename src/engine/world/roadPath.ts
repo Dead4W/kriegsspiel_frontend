@@ -15,6 +15,8 @@ const ROAD_COST_FACTOR_BY_ENTITY = new Map<string, number>([
   ["bridge", 0.1],
   ["road", 0.25],
   ["forest", 1.8],
+  ["water", 16],
+  ["river", 16],
 ]);
 const EMPTY_CELL_COST_FACTOR = 1.5;
 const UNKNOWN_ENTITY_COST_FACTOR = 2.0;
@@ -25,6 +27,9 @@ const ROAD_ROUTE_NON_ROAD_FACTOR = 3.2;
 const ROAD_CENTER_SEARCH_RADIUS_PX = 18;
 const ROAD_CENTER_LOCAL_RADIUS_PX = 12;
 const MAX_ASTAR_POINT_STEP_METERS = 800;
+const THREAT_ZONE_COST_FACTOR = 32;
+const PARTIAL_PATH_CHAIN_MAX_ATTEMPTS = 12;
+const PARTIAL_PATH_MIN_PROGRESS_PX = 3;
 const ENV_BY_ENTITY_CANDIDATES: Array<{ entities: string[]; envIds: string[] }> = [
   { entities: ["good_road"], envIds: ["on_good_road", "in_good_road"] },
   { entities: ["bridge"], envIds: ["on_good_road", "in_good_road"] },
@@ -35,6 +40,16 @@ const ENV_BY_ENTITY_CANDIDATES: Array<{ entities: string[]; envIds: string[] }> 
 const FIELD_ENV_FALLBACK_IDS = ["in_field", "in_plain_field", "in_soft_field", "field"];
 
 type GridPoint = { x: number; y: number };
+
+export type RoadPathThreatZone = {
+  x: number
+  y: number
+  radiusPx: number
+}
+
+export type BuildRoadTurnRouteOptions = {
+  threatZones?: RoadPathThreatZone[]
+}
 
 class MinHeap {
   private data: Array<{ node: number; score: number }> = [];
@@ -204,19 +219,56 @@ function getTraversableCellCost(
   return (stepDistance / speed) * roadFactor + exitRoadPenalty;
 }
 
-function findPathAStarWithEnvironmentSpeed(w: world, start: GridPoint, goal: GridPoint): GridPoint[] | null {
+function findPathAStarWithEnvironmentSpeed(
+  w: world,
+  start: GridPoint,
+  goal: GridPoint,
+  options: BuildRoadTurnRouteOptions = {}
+): GridPoint[] | null {
   const width = w.map.width;
   const height = w.map.height;
   const startIdx = toIndex(start.x, start.y, width);
   const goalIdx = toIndex(goal.x, goal.y, width);
   const speedLookup = buildSpeedLookup();
   const minCostPerPx = 1 / speedLookup.getMaxSpeedMultiplier();
+  const threatZones = (options.threatZones ?? [])
+    .filter((zone) => Number.isFinite(zone.radiusPx) && zone.radiusPx > 0)
+    .map((zone) => ({ x: zone.x, y: zone.y, radiusPx: zone.radiusPx }))
+
+  const getThreatCost = (x: number, y: number): number => {
+    if (!threatZones.length) return 0
+    let penalty = 0
+    for (const zone of threatZones) {
+      const dx = x - zone.x
+      const dy = y - zone.y
+      const dist = Math.hypot(dx, dy)
+      if (dist >= zone.radiusPx) continue
+      const ratio = 1 - (dist / zone.radiusPx)
+      penalty += ratio * THREAT_ZONE_COST_FACTOR
+    }
+    return penalty
+  }
 
   const openHeap = new MinHeap();
   const gScore = new Map<number, number>();
   const parent = new Map<number, number>();
   const closed = new Set<number>();
   const entityCache = new Map<number, string | null>();
+  let bestIdx = startIdx;
+  let bestDistanceToGoal = distance(start, goal);
+
+  const reconstructPath = (targetIdx: number): GridPoint[] | null => {
+    const path: GridPoint[] = [];
+    let walk = targetIdx;
+    while (true) {
+      path.push(toPoint(walk, width));
+      const prev = parent.get(walk);
+      if (prev == null) break;
+      walk = prev;
+    }
+    path.reverse();
+    return path.length > 1 ? path : null;
+  };
 
   const getEntityByIndex = (idx: number): string | null => {
     const cached = entityCache.get(idx);
@@ -262,27 +314,23 @@ function findPathAStarWithEnvironmentSpeed(w: world, start: GridPoint, goal: Gri
     if (!current) break;
     const currentIdx = current.node;
     if (closed.has(currentIdx)) continue;
+    const currentPoint = toPoint(currentIdx, width);
+    const currentDistanceToGoal = distance(currentPoint, goal);
+    if (currentDistanceToGoal < bestDistanceToGoal) {
+      bestDistanceToGoal = currentDistanceToGoal;
+      bestIdx = currentIdx;
+    }
 
     if (currentIdx === goalIdx) {
-      const path: GridPoint[] = [];
-      let walk = currentIdx;
-      while (true) {
-        path.push(toPoint(walk, width));
-        const prev = parent.get(walk);
-        if (prev == null) break;
-        walk = prev;
-      }
-      path.reverse();
-      return path;
+      return reconstructPath(currentIdx);
     }
 
     closed.add(currentIdx);
     visited += 1;
     if (visited > MAX_PATH_NODES) {
-      return null;
+      return reconstructPath(bestIdx);
     }
 
-    const currentPoint = toPoint(currentIdx, width);
     const currentG = gScore.get(currentIdx) ?? Infinity;
     const currentEntity = getEntityByIndex(currentIdx);
 
@@ -304,17 +352,19 @@ function findPathAStarWithEnvironmentSpeed(w: world, start: GridPoint, goal: Gri
       if (!Number.isFinite(stepCost)) continue;
 
       const tentative = currentG + stepCost;
-      if (tentative >= (gScore.get(neighborIdx) ?? Infinity)) continue;
+      const threatCost = getThreatCost(nx, ny)
+      const weightedTentative = tentative + threatCost
+      if (weightedTentative >= (gScore.get(neighborIdx) ?? Infinity)) continue;
 
       parent.set(neighborIdx, currentIdx);
-      gScore.set(neighborIdx, tentative);
+      gScore.set(neighborIdx, weightedTentative);
       const heuristic = distance({ x: nx, y: ny }, goal) * minCostPerPx;
-      const f = tentative + heuristic;
+      const f = weightedTentative + heuristic;
       openHeap.push(neighborIdx, f);
     }
   }
 
-  return null;
+  return reconstructPath(bestIdx);
 }
 
 function toTurnPoints(path: GridPoint[]): vec2[] {
@@ -651,14 +701,16 @@ function collapseStraightRuns(
 }
 
 /**
- * Builds move segment points (excluding "from", including "to") by A* pathfinding.
+ * Builds move segment points (excluding "from") by A* pathfinding.
+ * Tries to chain partial A* results when goal cannot be reached in one pass.
  * Uses environment speed multipliers from object-map entities.
  * Water cells are treated as blocked.
  */
 export function buildRoadTurnRoutePoints(
   w: world,
   from: vec2,
-  to: vec2
+  to: vec2,
+  options: BuildRoadTurnRouteOptions = {}
 ): vec2[] {
   if (!w.objectMapImageData || w.objectMapColorToEntity.size === 0) {
     return [{ x: to.x, y: to.y }];
@@ -669,15 +721,36 @@ export function buildRoadTurnRoutePoints(
   const fromPx = clampPoint(roundedPoint(from), width, height);
   const toPx = clampPoint(roundedPoint(to), width, height);
 
-  const path = findPathAStarWithEnvironmentSpeed(
-    w,
-    fromPx,
-    toPx
-  );
-  if (!path || path.length < 2) {
+  const chainedPath: GridPoint[] = [{ x: fromPx.x, y: fromPx.y }];
+  let chainCursor = { x: fromPx.x, y: fromPx.y };
+  let reachedGoal = false;
+
+  for (let attempt = 0; attempt < PARTIAL_PATH_CHAIN_MAX_ATTEMPTS; attempt += 1) {
+    const partial = findPathAStarWithEnvironmentSpeed(w, chainCursor, toPx, options);
+    if (!partial || partial.length < 2) break;
+
+    for (let i = 1; i < partial.length; i += 1) {
+      chainedPath.push(partial[i]!);
+    }
+
+    const tail = partial[partial.length - 1]!;
+    if (tail.x === toPx.x && tail.y === toPx.y) {
+      reachedGoal = true;
+      break;
+    }
+
+    const progress = distance(chainCursor, tail);
+    if (!Number.isFinite(progress) || progress < PARTIAL_PATH_MIN_PROGRESS_PX) {
+      break;
+    }
+    chainCursor = { x: tail.x, y: tail.y };
+  }
+
+  if (chainedPath.length < 2) {
     return [{ x: to.x, y: to.y }];
   }
 
+  const path = dedupeSequential(chainedPath);
   const centeredPath = snapPointsToRoadCenters(
     w,
     path.map((p) => ({ x: p.x, y: p.y }))
@@ -696,13 +769,19 @@ export function buildRoadTurnRoutePoints(
     result.push({ x: p.x, y: p.y });
   }
 
-  result.push({ x: to.x, y: to.y });
+  if (reachedGoal) {
+    result.push({ x: to.x, y: to.y });
+  }
 
   const preprocessed = collapseStraightRuns(dedupeSequential(result));
   const metersPerPixel = Math.max(0.0001, Number(w.map.metersPerPixel) || 1);
   const maxStepPx = MAX_ASTAR_POINT_STEP_METERS / metersPerPixel;
   const withStepLimit = enforceMaxStepDistance(preprocessed, maxStepPx);
   const deduped = dedupeSequential(withStepLimit);
-  if (!deduped.length) return [{ x: to.x, y: to.y }];
+  if (!deduped.length) {
+    if (reachedGoal) return [{ x: to.x, y: to.y }];
+    const tail = path[path.length - 1]!;
+    return [{ x: tail.x, y: tail.y }];
+  }
   return deduped;
 }

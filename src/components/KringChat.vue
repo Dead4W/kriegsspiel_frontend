@@ -8,12 +8,22 @@ import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {type unitstate, unitType, type uuid} from "@/engine";
 import {RoomGameStage} from "@/enums/roomStage.ts";
-import {marked} from 'marked'
-import DOMPurify from 'dompurify'
 import {Messenger} from "@/engine/units/messenger.ts";
 import {DeliveryCommand} from "@/engine/units/commands/deliveryCommand.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
-import IdenticonAvatar from "@/components/ui/IdenticonAvatar.vue";
+import {getTeamColor} from "@/engine/2d/render/util.ts";
+import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
+import KringChatMessage from "@/components/chat/KringChatMessage.vue";
+import {
+  autoSpawnMessengerForIncomingOrder,
+  findHighestHpUnit,
+  findLastNonAdminAuthorTeam,
+  findTeamGeneral,
+  getCurrentMessengerRouteFromGeneral,
+  getCurrentPlayerGeneral,
+  getMessengerSpawnPosition,
+  spawnMessengerForMessage,
+} from "@/engine/units/messengerChatLogic.ts";
 
 const { t } = useI18n()
 const props = withDefaults(
@@ -115,163 +125,13 @@ function isUnreadMessage(m: ChatMessage): boolean {
   }
 }
 
-function canSpawnMessenger(m: ChatMessage): boolean {
+function canSpawnMessenger(): boolean {
   return window.PLAYER.team === Team.ADMIN
-}
-
-function getUnitsApproxCenter(units: Array<{ pos: { x: number; y: number } }>): { x: number; y: number } {
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-
-  for (const unit of units) {
-    minX = Math.min(minX, unit.pos.x)
-    minY = Math.min(minY, unit.pos.y)
-    maxX = Math.max(maxX, unit.pos.x)
-    maxY = Math.max(maxY, unit.pos.y)
-  }
-
-  return {
-    x: (minX + maxX) / 2,
-    y: (minY + maxY) / 2,
-  }
-}
-
-function getSpawnOriginFromMessage(m: ChatMessage): { x: number; y: number } {
-  const messageUnits = m.unitIds
-    .map((id) => window.ROOM_WORLD.units.get(id))
-    .filter((u): u is BaseUnit => Boolean(u && u.alive && u.type !== unitType.MESSENGER))
-
-  if (messageUnits.length > 0) {
-    return getUnitsApproxCenter(messageUnits)
-  }
-
-  const selectedSameTeam = selectedUnits.value
-    .filter((u) => u.team === m.team && u.alive && u.type !== unitType.MESSENGER)
-  if (selectedSameTeam.length > 0) {
-    return getUnitsApproxCenter(selectedSameTeam)
-  }
-
-  return window.ROOM_WORLD.camera.screenToWorld({
-    x: window.innerWidth / 2,
-    y: window.innerHeight / 2,
-  })
-}
-
-function getEnemiesNearPoint(
-  point: { x: number; y: number },
-  friendlyTeam: Team,
-  radiusMeters: number
-): BaseUnit[] {
-  const metersPerPixel = window.ROOM_WORLD.map.metersPerPixel
-  const radiusPx = radiusMeters / metersPerPixel
-  const radiusSq = radiusPx * radiusPx
-
-  const enemyTeam = friendlyTeam === Team.RED
-    ? Team.BLUE
-    : friendlyTeam === Team.BLUE
-      ? Team.RED
-      : null
-  if (!enemyTeam) return []
-
-  return window.ROOM_WORLD.units.list().filter((u) => {
-    if (!u.alive) return false
-    if (u.team !== enemyTeam) return false
-    const dx = u.pos.x - point.x
-    const dy = u.pos.y - point.y
-    return dx * dx + dy * dy <= radiusSq
-  })
-}
-
-function getSpawnDirection(
-  origin: { x: number; y: number },
-  enemies: BaseUnit[]
-): { x: number; y: number } {
-  if (!enemies.length) {
-    return { x: 1, y: 0 }
-  }
-
-  let sumX = 0
-  let sumY = 0
-  for (const enemy of enemies) {
-    sumX += enemy.pos.x
-    sumY += enemy.pos.y
-  }
-
-  const enemyCenter = { x: sumX / enemies.length, y: sumY / enemies.length }
-  let dx = origin.x - enemyCenter.x
-  let dy = origin.y - enemyCenter.y
-  const length = Math.hypot(dx, dy)
-  if (length < 0.0001) {
-    return { x: 1, y: 0 }
-  }
-  dx /= length
-  dy /= length
-
-  return { x: dx, y: dy }
-}
-
-function findFreeMessengerSpawnPosition(
-  origin: { x: number; y: number },
-  direction: { x: number; y: number }
-): { x: number; y: number } {
-  const w = window.ROOM_WORLD
-  const map = w.map
-  const collisionRangeMeters = BaseUnit.COLLISION_RANGE * map.metersPerPixel
-  const stepPx = collisionRangeMeters / map.metersPerPixel
-  const unitRadiusSq = stepPx * stepPx
-
-  const perp = { x: -direction.y, y: direction.x }
-  const sideOffsets = [0, 1, -1, 2, -2, 3, -3]
-
-  const inBounds = (x: number, y: number) =>
-    x >= 0 && y >= 0 && x <= map.width && y <= map.height
-
-  const isFree = (x: number, y: number) =>
-    !w.units.list().some((u) => {
-      if (!u.alive) return false
-      const dx = u.pos.x - x
-      const dy = u.pos.y - y
-      return dx * dx + dy * dy < unitRadiusSq
-    })
-
-  for (let ring = 1; ring <= 12; ring++) {
-    for (const side of sideOffsets) {
-      const x = origin.x + direction.x * ring * stepPx + perp.x * side * stepPx
-      const y = origin.y + direction.y * ring * stepPx + perp.y * side * stepPx
-      if (!inBounds(x, y)) continue
-      if (isFree(x, y)) {
-        return { x, y }
-      }
-    }
-  }
-
-  return {
-    x: Math.max(0, Math.min(map.width, origin.x)),
-    y: Math.max(0, Math.min(map.height, origin.y)),
-  }
 }
 
 function onSpawnMessenger(m: ChatMessage) {
   if (props.is3dMode) return
-  const origin = getSpawnOriginFromMessage(m)
-  const enemiesNear = getEnemiesNearPoint(origin, m.team, 1000)
-  const direction = getSpawnDirection(origin, enemiesNear)
-  const pos = findFreeMessengerSpawnPosition(origin, direction)
-
-  const new_messenger: unitstate = {
-    id: crypto.randomUUID(),
-    type: unitType.MESSENGER,
-    team: m.team === Team.RED ? 'red' : 'blue',
-    pos,
-    label: t(`unit.${unitType.MESSENGER}`),
-    messagesLinked: [{id: m.id, time: window.ROOM_WORLD.time}],
-  }
-  window.ROOM_WORLD.units.upsert(new_messenger);
-  window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
-  window.ROOM_WORLD.units.clearSelection()
-  window.ROOM_WORLD.units.get(new_messenger.id)!.selected = true
+  spawnMessengerForMessage(m, selectedUnits.value, t(`unit.${unitType.MESSENGER}`))
 }
 
 function isAtBottom(container: HTMLElement, threshold = 20) {
@@ -284,6 +144,10 @@ function isAtBottom(container: HTMLElement, threshold = 20) {
 function isPlayer() {
   return window.PLAYER.team === Team.BLUE
     || window.PLAYER.team === Team.RED
+}
+
+function isWarStage(): boolean {
+  return window.ROOM_WORLD.stage === RoomGameStage.WAR
 }
 
 function getSendWarningMessage() {
@@ -301,41 +165,11 @@ function getSendWarningMessage() {
       return t('chat.warning.selection_both_team')
     }
   }
-
   return null;
 }
 
 function isEnd() {
   return window.ROOM_WORLD.stage === RoomGameStage.END
-}
-
-function getMessageUnits(m: ChatMessage): BaseUnit[] | uuid[] {
-  if (!m.unitIds.length) return []
-
-  const w = window.ROOM_WORLD
-  return m.unitIds
-    .map(id => w.units.get(id)! ?? id)
-}
-
-function getMessageUnitTitle(m: ChatMessage, u: BaseUnit | uuid): string {
-  if (u instanceof BaseUnit) {
-    return u.label
-  }
-
-  const fallbackTitle = m.unitFallbackTitles?.[u]
-  if (fallbackTitle) {
-    return fallbackTitle
-  }
-
-  return `#${u}`
-}
-
-function isFallbackUnitTitle(m: ChatMessage, u: BaseUnit | uuid): boolean {
-  if (u instanceof BaseUnit) {
-    return false
-  }
-
-  return !!m.unitFallbackTitles?.[u]
 }
 
 function focusUnits(units: BaseUnit[]) {
@@ -381,41 +215,6 @@ function onUnitsBlockClick(units: BaseUnit[]) {
   w.events.emit('changed', { reason: 'unit-selected' })
 }
 
-function renderMarkdown(text: string): string {
-  const html = marked.parse(text, {
-    breaks: true,
-    gfm: true,
-  }) as string
-
-  const sanitized = DOMPurify.sanitize(html, {
-    ADD_ATTR: ['target', 'rel', 'loading', 'decoding', 'referrerpolicy'],
-    ALLOWED_URI_REGEXP: /^(?:(?:(?:https?|mailto|tel|blob):|data:image\/(?:png|jpeg|jpg|gif|webp|svg\+xml);base64,)|[^a-z]|[a-z+.\-.]+(?:[^a-z+.\-:]|$))/i,
-  })
-
-  const doc = new DOMParser().parseFromString(sanitized, 'text/html')
-
-  doc.querySelectorAll('a').forEach((link) => {
-    link.setAttribute('target', '_blank')
-    link.setAttribute('rel', 'noopener noreferrer nofollow')
-  })
-
-  doc.querySelectorAll('img').forEach((image) => {
-    image.setAttribute('loading', 'lazy')
-    image.setAttribute('decoding', 'async')
-    image.setAttribute('referrerpolicy', 'no-referrer')
-  })
-
-  return doc.body.innerHTML
-}
-
-function getAuthorAvatar(m: ChatMessage): string | null {
-  if (typeof m.author_avatar !== 'string') {
-    return null
-  }
-  const avatar = m.author_avatar.trim()
-  return avatar.length ? avatar : null
-}
-
 function getCurrentPlayerAvatar(): string | null {
   const player = window.PLAYER as unknown as {
     avatar_url?: string | null
@@ -428,22 +227,6 @@ function getCurrentPlayerAvatar(): string | null {
   }
   const avatar = rawAvatar.trim()
   return avatar.length ? avatar : null
-}
-
-const brokenAuthorAvatarMessageIds = ref<Set<string>>(new Set())
-
-function hasVisibleAuthorAvatar(m: ChatMessage): boolean {
-  const avatar = getAuthorAvatar(m)
-  return !!avatar && !brokenAuthorAvatarMessageIds.value.has(m.id)
-}
-
-function onAuthorAvatarError(messageId: string) {
-  if (brokenAuthorAvatarMessageIds.value.has(messageId)) {
-    return
-  }
-  const next = new Set(brokenAuthorAvatarMessageIds.value)
-  next.add(messageId)
-  brokenAuthorAvatarMessageIds.value = next
 }
 
 /* =======================
@@ -486,7 +269,18 @@ function parseTimestamp(value?: string | null): number {
   return Number.isNaN(ts) ? 0 : ts
 }
 
+function isPlayableTeam(team: Team): boolean {
+  return team === Team.RED || team === Team.BLUE
+}
+
+function shouldUseCreatedAtTimestamp(message: ChatMessage): boolean {
+  return isPlayableTeam(activeTeam.value) && message.author_team === activeTeam.value
+}
+
 function getMessageOrderTimestamp(message: ChatMessage): number {
+  if (shouldUseCreatedAtTimestamp(message)) {
+    return parseTimestamp(message.created_at) || parseTimestamp(message.time)
+  }
   return parseTimestamp(message.delivered_at)
     || parseTimestamp(message.created_at)
     || parseTimestamp(message.time)
@@ -561,6 +355,20 @@ const messages = ref<ChatMessage[]>([])
 const input = ref('')
 const editingMessageId = ref<uuid | null>(null)
 const isEditing = computed(() => editingMessageId.value !== null)
+const quotedMessageId = ref<uuid | null>(null)
+const highlightedMessageId = ref<uuid | null>(null)
+let highlightTimeout: ReturnType<typeof setTimeout> | null = null
+const routePoints = ref<Array<{ x: number; y: number }>>([])
+
+function isRouteCaptureActive(): boolean {
+  return (
+    isOpen.value
+    && isPlayer()
+    && isWarStage()
+    && selectedUnits.value.length > 0
+    && input.value.trim().length > 0
+  )
+}
 
 function canEditMessage(message: ChatMessage): boolean {
   return isOwnMessage(message)
@@ -683,6 +491,10 @@ async function onInputPaste(event: ClipboardEvent) {
   insertAtCursor(markdownImages.join('\n'))
 }
 
+function onInputEscape() {
+  textarea.value?.blur()
+}
+
 function send() {
   if (!input.value.trim()) return
 
@@ -712,7 +524,22 @@ function send() {
   const selected = window.ROOM_WORLD.units.getSelected()
     .filter(u => u.type !== unitType.MESSENGER)
 
-  const team = selected[0]!.team as Team;
+  if (!selected.length) return
+
+  const warning = getSendWarningMessage()
+  if (warning) return
+
+  const baseTeam = selected[0]!.team as Team;
+  const inferredReportTeam = (
+    window.PLAYER.team === Team.ADMIN
+    && isWarStage()
+    && !selected.some((u) => u.type === unitType.GENERAL)
+  )
+    ? findLastNonAdminAuthorTeam(selected.map((u) => u.id))
+    : null
+  const team = inferredReportTeam ?? baseTeam
+  const general = selected.find((u) => u.type === unitType.GENERAL) ?? findTeamGeneral(team)
+  const routePayload = getCurrentMessengerRouteFromGeneral(general, selected, routePoints.value)
   const m = {
     id: crypto.randomUUID(),
     author: window.PLAYER.name,
@@ -724,6 +551,9 @@ function send() {
     time: window.ROOM_WORLD.time,
     created_at: new Date().toISOString(),
     delivered_at: null,
+    quotedMessageId: quotedMessageId.value,
+    deliveryStatus: 'pending',
+    routePoints: routePayload.route,
     team: team,
     status: ChatMessageStatus.Sent,
     delivered: false,
@@ -736,32 +566,159 @@ function send() {
     u.setDirty()
   }
 
-  // Instant create messenger for delivery
-  const isGeneralSelected = selected.filter(u => u.type === unitType.GENERAL).length > 0;
-  if (isGeneralSelected && window.PLAYER.team === Team.ADMIN) {
+  const selectedGeneral = selected.find((u) => u.type === unitType.GENERAL) ?? null
+
+  const shouldAutoSpawnAdminWithGeneral = (
+    isWarStage()
+    && window.PLAYER.team === Team.ADMIN
+    && (team === Team.RED || team === Team.BLUE)
+    && selectedGeneral != null
+  )
+
+  const shouldAutoSpawnAdminReport = (
+    isWarStage()
+    && window.PLAYER.team === Team.ADMIN
+    && !selected.some((u) => u.type === unitType.GENERAL)
+    && (team === Team.RED || team === Team.BLUE)
+  )
+  if (shouldAutoSpawnAdminWithGeneral || shouldAutoSpawnAdminReport) {
+    const targetTeam = team
+    const targetGeneral = findTeamGeneral(targetTeam)
+    if (!targetGeneral) {
+      input.value = ''
+      clearQuote()
+      clearRoute()
+      return
+    }
+    const sourceUnit = shouldAutoSpawnAdminWithGeneral
+      ? selectedGeneral
+      : (findHighestHpUnit(selected) ?? targetGeneral)
+    const spawnPos = shouldAutoSpawnAdminWithGeneral
+      ? { x: sourceUnit.pos.x, y: sourceUnit.pos.y }
+      : getMessengerSpawnPosition({ x: sourceUnit.pos.x, y: sourceUnit.pos.y }, m.team, 1000)
+    const messengerTeam = targetTeam === Team.RED ? 'red' : 'blue'
     const messengerState: unitstate = {
       id: crypto.randomUUID(),
       type: unitType.MESSENGER,
-      team: selected[0]!.team,
-      pos: {x: -1000, y: -1000},
+      team: messengerTeam,
+      pos: spawnPos,
       label: 'GENERATED GENERAL MESSENGER',
       messagesLinked: [{id: m.id, time: window.ROOM_WORLD.time}],
     }
     const messenger = new Messenger(messengerState);
+    const selectedGeneralTargets = selected
+      .filter((u) => u.type === unitType.GENERAL)
+      .map((u) => u.id)
     const cmd = new DeliveryCommand({
-      targets: selected.map(u => u.id),
-      instantDelivery: true,
+      targets: shouldAutoSpawnAdminWithGeneral ? selectedGeneralTargets : [targetGeneral.id],
+      instantDelivery: shouldAutoSpawnAdminWithGeneral,
+      messageId: m.id,
+      messengerId: messengerState.id,
+      quotedMessageId: m.quotedMessageId ?? null,
+      sourceUnitId: sourceUnit.id,
+      manualRoutePoints: shouldAutoSpawnAdminWithGeneral ? [] : routePayload.route,
+      manualRouteIsPath: !shouldAutoSpawnAdminWithGeneral,
+      deliveryStatus: 'pending',
     })
     messenger.addCommand(cmd.getState())
     window.ROOM_WORLD.addUnits([messenger.toState()]);
   }
 
   input.value = ''
+  clearQuote()
+  clearRoute()
 
   nextTick(() => {
     autoResizeInput()
     scrollDown()
   })
+}
+
+function clearRoute() {
+  routePoints.value = []
+  window.ROOM_WORLD.clearOverlay()
+}
+
+function setQuote(messageId: uuid | null) {
+  quotedMessageId.value = messageId
+}
+
+function clearQuote() {
+  quotedMessageId.value = null
+}
+
+const quotedMessage = computed(() => {
+  if (!quotedMessageId.value) return null
+  return window.ROOM_WORLD.messages.get(quotedMessageId.value) ?? null
+})
+
+function focusQuotedMessage(messageId?: uuid | null) {
+  if (!messageId) return
+  const messageEl = document.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement | null
+  highlightedMessageId.value = messageId
+  if (highlightTimeout !== null) {
+    clearTimeout(highlightTimeout)
+  }
+  highlightTimeout = setTimeout(() => {
+    if (highlightedMessageId.value === messageId) {
+      highlightedMessageId.value = null
+    }
+    highlightTimeout = null
+  }, 3000)
+  messageEl?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+function redrawRoutePreview() {
+  const general = getCurrentPlayerGeneral()
+  if (!general || !isRouteCaptureActive() || !isWarStage()) {
+    window.ROOM_WORLD.clearOverlay()
+    return
+  }
+
+  const { route: manualRoute } = getCurrentMessengerRouteFromGeneral(general, selectedUnits.value, routePoints.value)
+  const route: Array<{ x: number; y: number }> = [...manualRoute]
+
+  if (!route.length) {
+    window.ROOM_WORLD.clearOverlay()
+    return
+  }
+
+  const opacity = Number(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.OPACITY_COMMANDS] ?? 0.8)
+  const { r, g, b } = getTeamColor(general.team)
+  const color = `rgba(${r},${g},${b},${opacity})`
+  const overlay: OverlayItem[] = []
+  let prev = { x: general.pos.x, y: general.pos.y }
+  for (const point of route) {
+    overlay.push({
+      type: 'line',
+      from: prev,
+      to: point,
+      color,
+      width: 6,
+      dash: [6, 6],
+      dashOffset: -1,
+    })
+    prev = point
+  }
+  window.ROOM_WORLD.setOverlay(overlay)
+}
+
+function onGlobalPointerDown(event: PointerEvent) {
+  if (!isRouteCaptureActive() || !isPlayer() || !isWarStage()) return
+  const target = event.target as HTMLElement | null
+  if (target && target.closest('.krig-chat')) return
+  event.preventDefault()
+  event.stopPropagation()
+  event.stopImmediatePropagation()
+  const worldPos = window.ROOM_WORLD.camera.screenToWorld({
+    x: event.clientX,
+    y: event.clientY,
+  })
+  routePoints.value.push({
+    x: worldPos.x,
+    y: worldPos.y,
+  })
+  redrawRoutePreview()
 }
 
 function scrollDown() {
@@ -826,10 +783,25 @@ function onClickMarkAllAsRead() {
 ======================= */
 
 watch(isOpen, async (open) => {
-  if (!open) return
+  if (!open) {
+    clearRoute()
+    return
+  }
 
   await nextTick()
   scrollToFirstUnread()
+})
+
+watch(routePoints, () => {
+  redrawRoutePreview()
+}, { deep: true })
+
+watch(() => input.value.trim().length > 0, (hasInput) => {
+  if (!hasInput && routePoints.value.length > 0) {
+    clearRoute()
+    return
+  }
+  redrawRoutePreview()
 })
 
 /* =======================
@@ -920,19 +892,16 @@ function onChangedWorld(event: { reason: string }) {
   if (event.reason === 'ws') {
     const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => !isOwnMessage(m));
     if (new_messages.length) {
-      if (window.ROOM_WORLD.id == 'bcb5fcfe-52be-438f-868f-3d3cda532241') {
-        const messageSound = new Audio('/assets/sounds/message_lol.ogg')
-        messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-        messageSound.play().catch(() => {})
-      } else {
-        const messageSound = new Audio('/assets/sounds/new_message.ogg')
-        messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-        messageSound.play().catch(() => {})
+      for (const message of new_messages) {
+        autoSpawnMessengerForIncomingOrder(message)
       }
+      const messageSound = new Audio('/assets/sounds/new_message.ogg')
+      messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
+      messageSound.play().catch(() => {})
     }
   }
 
-  let lastWasAtBottom = wasAtBottom.value;
+  const lastWasAtBottom = wasAtBottom.value;
 
   messages.value = window.ROOM_WORLD.messages.list()
   if (editingMessageId.value) {
@@ -972,12 +941,19 @@ function onChangedWorld(event: { reason: string }) {
 onMounted(() => {
   clampHeightToViewport()
   window.addEventListener('resize', clampHeightToViewport)
+  window.addEventListener('pointerdown', onGlobalPointerDown, true)
   window.ROOM_WORLD.events.on('changed', onChangedWorld)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', clampHeightToViewport)
+  window.removeEventListener('pointerdown', onGlobalPointerDown, true)
   window.ROOM_WORLD.events.off('changed', onChangedWorld)
+  clearRoute()
+  if (highlightTimeout !== null) {
+    clearTimeout(highlightTimeout)
+    highlightTimeout = null
+  }
 })
 
 </script>
@@ -1052,102 +1028,45 @@ onBeforeUnmount(() => {
 
     <!-- messages -->
     <div class="chat-messages" @scroll="onMessagesScroll">
-      <div
+      <KringChatMessage
         v-for="m in visibleMessages"
         :key="m.id"
-        class="chat-message-wrapper"
-        :class="{
-          unread: isUnreadMessage(m),
-          self: isOwnMessage(m),
-        }"
-      >
-        <div
-          class="chat-message"
-        >
-          <div class="meta">
-            <div class="author-block">
-              <div class="author-avatar">
-                <img
-                  v-if="hasVisibleAuthorAvatar(m)"
-                  :src="getAuthorAvatar(m)!"
-                  :alt="m.author"
-                  loading="lazy"
-                  decoding="async"
-                  referrerpolicy="no-referrer"
-                  @error="onAuthorAvatarError(m.id)"
-                >
-                <span
-                  v-else
-                  class="author-avatar-fallback"
-                >
-                  <IdenticonAvatar :value="m.author" :size="28" />
-                </span>
-              </div>
-              <span class="author" :title="m.author">{{ m.author }}</span>
-            </div>
-
-            <div class="meta-right">
-                <span class="datetime" :title="m.time">
-                  {{ m.time.split(' ')[1] }}
-                </span>
-
-              <!-- Spawn Messenger -->
-              <button
-                v-if="canSpawnMessenger(m)"
-                class="spawn-messenger-btn"
-                :title="t('chat.spawn_messenger')"
-                @click.stop="onSpawnMessenger(m)"
-              >
-                📨
-              </button>
-
-              <button
-                v-if="canEditMessage(m)"
-                class="edit-message-btn"
-                :title="t('chat.edit')"
-                @click.stop="startEditMessage(m)"
-              >
-                ✎
-              </button>
-
-              <button
-                v-if="isUnreadMessage(m) && !isPlayer()"
-                class="mark-read-btn"
-                :title="t('chat.mark_as_read')"
-                @click.stop="onClickMarkAsRead(m.id)"
-              >
-                ✓
-              </button>
-            </div>
-
-          </div>
-          <div
-            v-if="getMessageUnits(m).length"
-            class="message-units"
-            @click.stop="onUnitsBlockClick(getMessageUnits(m).filter(u => u instanceof BaseUnit))"
-          >
-            <div
-              v-for="u in getMessageUnits(m)"
-              :key="u instanceof BaseUnit ? u.id : u"
-              class="unit-card"
-            >
-              <div class="unit-name" :class="{ 'unit-name-fallback': isFallbackUnitTitle(m, u) }">
-                {{ getMessageUnitTitle(m, u) }}
-              </div>
-            </div>
-          </div>
-          <div
-            class="text markdown"
-            v-html="renderMarkdown(m.text)"
-          />
-        </div>
-      </div>
+        :message="m"
+        :active-team="activeTeam"
+        :is-own="isOwnMessage(m)"
+        :is-unread="isUnreadMessage(m)"
+        :highlighted="highlightedMessageId === m.id"
+        :can-spawn-messenger="canSpawnMessenger()"
+        :can-edit="canEditMessage(m)"
+        :is-player="isPlayer()"
+        @spawn-messenger="onSpawnMessenger"
+        @edit-message="startEditMessage"
+        @quote-message="setQuote"
+        @mark-as-read="onClickMarkAsRead"
+        @focus-quoted-message="focusQuotedMessage"
+        @focus-units="onUnitsBlockClick"
+      />
     </div>
 
     <!-- input -->
     <template v-if="!isEnd()">
       <template v-if="!getSendWarningMessage()">
         <form class="chat-input" @submit.prevent="send">
+          <div v-if="quotedMessage" class="chat-quote-banner">
+            <span>{{ t('chat.quoting') }}: {{ quotedMessage.author }}</span>
+            <button type="button" @click="clearQuote">{{ t('chat.cancel') }}</button>
+          </div>
+
+          <div v-if="isPlayer() && isWarStage()" class="chat-route-toolbar">
+            <span class="chat-route-toolbar-hint">
+              {{ t('chat.route.auto_capture_hint') }}
+            </span>
+            <button v-if="routePoints.length > 0" type="button" @click="clearRoute">
+              {{ t('chat.route.clear') }}
+            </button>
+            <span>{{ t('chat.route.points_count', { count: routePoints.length }) }}</span>
+          </div>
+
           <div v-if="isEditing" class="chat-editing-banner">
             <span>{{ t('chat.editing') }}</span>
             <button type="button" @click="cancelEditMessage">
@@ -1172,9 +1091,10 @@ onBeforeUnmount(() => {
               :title="t('chat.markdown.input_hint')"
               @keydown.enter.exact.prevent="send"
               @keydown.enter.shift.stop
+              @keydown.esc.stop.prevent="onInputEscape"
               @input="autoResizeInput"
               @paste="onInputPaste"
-              @keydown.stop
+              @keydown.stop.exact
             />
             <button type="submit" :title="isEditing ? t('chat.save') : t('chat.send')">
               {{ isEditing ? '✓' : '➤' }}
@@ -1304,184 +1224,6 @@ onBeforeUnmount(() => {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-}
-
-.chat-message {
-  width: 90%;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: #020617;
-  border: 1px solid #334155;
-}
-
-.chat-message .author {
-  flex: 1;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.chat-message-wrapper {
-  width: 100%;
-  display: flex;
-  padding: 6px 0;
-}
-
-.chat-message-wrapper.unread {
-  position: relative;
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-}
-
-
-.chat-message-wrapper.self {
-  justify-content: flex-end;
-}
-
-.self .chat-message {
-  background: var(--accent-hover);
-  color: #020617;
-}
-
-.meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: #dbe5f3;
-}
-
-.author-block {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  min-width: 0;
-  gap: 8px;
-  overflow: hidden;
-}
-
-.author-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #6b7280;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.author-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.author-avatar-fallback {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.meta-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.text {
-  margin-top: 5px;
-  font-size: var(--chat-text-size, 15px);
-  white-space: normal;
-  word-break: break-word;
-}
-
-/* Markdown */
-
-.markdown {
-  line-height: 1.4;
-  word-break: break-word;
-}
-
-.markdown p {
-  margin: 4px 0;
-}
-
-.markdown strong {
-  font-weight: 700;
-}
-
-.markdown em {
-  font-style: italic;
-}
-
-.markdown code {
-  background: rgba(255,255,255,0.08);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 12px;
-}
-
-.markdown pre {
-  background: #020617;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  padding: 8px;
-  overflow-x: auto;
-  margin: 6px 0;
-}
-
-.markdown pre code {
-  background: none;
-  padding: 0;
-}
-
-.markdown blockquote {
-  border-left: 3px solid var(--accent);
-  padding-left: 8px;
-  margin: 6px 0;
-  opacity: 0.8;
-}
-
-.markdown ul,
-.markdown ol {
-  padding-left: 18px;
-  margin: 4px 0;
-}
-
-.markdown li {
-  line-height: 1.2;
-  margin: 1px 0;
-}
-
-.markdown li p {
-  margin: 0;
-}
-
-.markdown a {
-  color: #38bdf8;
-  text-decoration: underline;
-}
-
-.markdown img {
-  display: block;
-  max-width: min(100%, 360px);
-  width: auto;
-  height: auto;
-  margin: 8px 0;
-  border-radius: 8px;
-  border: 1px solid #334155;
-  background: #020617;
-}
-
-.markdown hr {
-  border: 0;
-  border-top: 1px solid #334155;
-  margin: 8px 0;
 }
 
 /* input */
@@ -1682,15 +1424,6 @@ onBeforeUnmount(() => {
 
 /* UNREAD */
 
-.chat-message.unread {
-  background: #020617;
-  border-left: 3px solid var(--accent);
-}
-
-.chat-message.unread:not(.self) {
-  background: rgba(56, 189, 248, 0.08);
-}
-
 .tab-badge {
   margin-left: auto;
   background: #ef4444;
@@ -1739,41 +1472,34 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-.mark-read-btn {
-  margin-left: 8px;
+
+.chat-quote-banner,
+.chat-route-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   background: #0f172a;
-  border: 1px solid #38bdf8;
-  color: #38bdf8;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 8px;
   font-size: 11px;
-  padding: 2px 6px;
+  color: #cbd5e1;
+}
+
+.chat-route-toolbar button,
+.chat-quote-banner button {
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #e2e8f0;
   border-radius: 6px;
+  padding: 2px 8px;
   cursor: pointer;
-  line-height: 1;
 }
 
-.mark-read-btn:hover {
-  background: var(--accent);
-  color: #020617;
-}
-
-.edit-message-btn {
-  background: #0f172a;
-  border: 1px solid #38bdf8;
-  color: #38bdf8;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.edit-message-btn:hover {
-  background: #38bdf8;
-  color: #020617;
-}
-
-.datetime {
-  white-space: nowrap;
+.chat-route-toolbar-hint {
+  flex: 1;
+  opacity: 0.9;
 }
 
 /* SELECTION WARNING */
@@ -1815,50 +1541,5 @@ onBeforeUnmount(() => {
   font-size: 12px;
   opacity: 0.8;
 }
-
-/* Unit cards */
-.message-units {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-  cursor: pointer;
-}
-
-.unit-card {
-  padding: 2px 4px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid #334155;
-  font-size: 11px;
-  min-width: 50px;
-  color: #dbdbdb;
-}
-
-.unit-name {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.unit-name-fallback {
-  color: #ef4444;
-}
-
-.spawn-messenger-btn {
-  background: #0f172a;
-  border: 1px solid #38bdf8;
-  color: #38bdf8;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.spawn-messenger-btn:hover {
-  background: #38bdf8;
-  color: #020617;
-}
-
 
 </style>

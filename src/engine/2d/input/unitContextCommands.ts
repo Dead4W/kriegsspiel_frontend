@@ -62,9 +62,9 @@ function canAnySelectedUnitAttackTarget(w: world, target: BaseUnit) {
 }
 
 function isAnyOrderOpen() {
-  // UnitCommandTool показывает .orders-buttons ТОЛЬКО когда activeOrder = null.
-  // Когда открыт приказ (CommandMove/Attack/...) — .orders-buttons отсутствует.
-  return !document.querySelector('.orders-buttons')
+  return !!document.querySelector(
+    '.orders-root .order-move, .orders-root .order-attack, .orders-root .order-delivery, .orders-root .order-change-formation, .orders-root .order-wait, .orders-root .order-retreat'
+  )
 }
 
 /**
@@ -146,6 +146,7 @@ export function bindUnitContextCommands(w: world) {
       move: {
         pos,
         append: true,
+        moveMode: 'column',
       },
     })
   }

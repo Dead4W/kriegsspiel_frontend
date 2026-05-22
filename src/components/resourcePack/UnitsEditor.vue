@@ -90,6 +90,35 @@ function updateTitle(unit: ResourcePackUnitType, value: string) {
   delete unit.title
 }
 
+const unitTagOptions = ['cant_swim'] as const
+
+function getTagOptions(unit: ResourcePackUnitType): string[] {
+  const known = [...unitTagOptions]
+  const existing = Array.isArray(unit.tags) ? unit.tags : []
+  return [...new Set([...known, ...existing])]
+}
+
+function hasTag(unit: ResourcePackUnitType, tag: string): boolean {
+  return Array.isArray(unit.tags) ? unit.tags.includes(tag) : false
+}
+
+function updateTag(unit: ResourcePackUnitType, tag: string, enabled: boolean) {
+  const current = Array.isArray(unit.tags) ? unit.tags : []
+  const next = enabled
+    ? Array.from(new Set([...current, tag]))
+    : current.filter((entry) => entry !== tag)
+
+  if (next.length) {
+    unit.tags = next
+    return
+  }
+  delete unit.tags
+}
+
+function toggleTag(unit: ResourcePackUnitType, tag: string) {
+  updateTag(unit, tag, !hasTag(unit, tag))
+}
+
 function updateStat(unit: ResourcePackUnitType, key: (typeof statKeys)[number], rawValue: string) {
   const nextValue = parseOptionalNumber(rawValue)
   if (nextValue == null) return
@@ -383,6 +412,24 @@ function getStatLabel(statKey: (typeof statKeys)[number]): string {
                 @input="updateStat(unit, statKey, getEventValue($event))"
               />
             </label>
+          </div>
+        </section>
+
+        <section class="section-block tags-section">
+          <div class="section-header">
+            <h4>{{ t('resourcePackCreator.unitsEditor.fields.tags') }}</h4>
+          </div>
+          <div class="tag-options">
+            <button
+              v-for="tag in getTagOptions(unit)"
+              :key="`${unit.id}-tag-${tag}`"
+              type="button"
+              class="tag-chip"
+              :class="{ active: hasTag(unit, tag) }"
+              @click="toggleTag(unit, tag)"
+            >
+              {{ tag }}
+            </button>
           </div>
         </section>
 
@@ -782,6 +829,41 @@ function getStatLabel(statKey: (typeof statKeys)[number]): string {
 
 .checkbox-field input {
   margin: 0;
+}
+
+.tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  padding: 0.18rem 0.62rem;
+  background: rgba(15, 23, 42, 0.3);
+  font-size: 0.74rem;
+  color: var(--text-soft);
+  min-height: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.tag-chip:hover {
+  border-color: rgba(59, 130, 246, 0.45);
+  color: var(--text);
+  background: rgba(30, 41, 59, 0.5);
+}
+
+.tag-chip.active {
+  border-color: color-mix(in srgb, var(--accent) 62%, rgba(59, 130, 246, 0.38));
+  background: color-mix(in srgb, var(--accent) 22%, rgba(15, 23, 42, 0.45));
+  color: var(--text);
 }
 
 .empty-inline {

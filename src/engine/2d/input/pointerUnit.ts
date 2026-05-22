@@ -5,6 +5,7 @@ import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import {emitUnitCommandRequest} from "@/engine/2d/input/unitCommandBus";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import {areUnitsEligibleForDirectViewOrder, isPlayerDirectViewOrderContext} from "@/engine/units/directViewOrderRules.ts";
 import { InputLifecycle } from '@/engine/input/lifecycle'
 
 export function bindUnitInteraction(
@@ -57,10 +58,33 @@ export function bindUnitInteraction(
     return shiftKeyActive
   }
 
+  function playerrIsAllowOrder() {
+    return isPlayerDirectViewOrderContext()
+  }
+
+  function playerSelectedIsAllowOrder() {
+    return areUnitsEligibleForDirectViewOrder(w.units.getSelected())
+  }
+
+  function isPlayerToolActive() {
+    const ordersDiv = document.querySelector('.orders-root div')
+    const isOrderPanelOpen = !!ordersDiv && !ordersDiv.classList.contains('orders-buttons')
+    if (!isOrderPanelOpen) return false
+    return playerrIsAllowOrder() && playerSelectedIsAllowOrder()
+  }
+
+  function isCommandToolActive() {
+    return isAdminCommandActive() || isPlayerToolActive()
+  }
+
   function shouldDragAsCommand() {
-    return window.PLAYER.team === Team.ADMIN
+    const isAdminCommandDrag = window.PLAYER.team === Team.ADMIN
       && window.ROOM_WORLD.stage === RoomGameStage.WAR
       && !isHardModeEnabled()
+    if (isAdminCommandDrag) return true
+
+    return playerrIsAllowOrder()
+      && playerSelectedIsAllowOrder()
   }
 
   function resolveHouseMagnetTarget(pos: vec2): vec2 {
@@ -278,7 +302,7 @@ export function bindUnitInteraction(
         } else if (!hit.isFutureSelected()) {
           hit.selected = false;
         }
-      } else if (e.shiftKey || isAdminCommandActive()) {
+      } else if (e.shiftKey || isCommandToolActive()) {
         if (isFutureHit) {
           hit.futureSelected = true;
           hit.selected = true;
@@ -327,7 +351,7 @@ export function bindUnitInteraction(
     previewBaseSelection.clear()
     previewBaseFutureSelection.clear()
 
-    if (e.shiftKey || isAdminCommandActive()) {
+    if (e.shiftKey || isCommandToolActive()) {
       // SHIFT → include (сохраняем базу)
       for (const u of w.units.list()) {
         if (u.selected) previewBaseSelection.add(u.id)
@@ -394,7 +418,7 @@ export function bindUnitInteraction(
             append: false,
             moveMode: 'formation',
             openEnvMenu: false,
-            autoConfirm: true,
+            autoConfirm: !playerrIsAllowOrder(),
           },
         })
       }
@@ -451,7 +475,7 @@ export function bindUnitInteraction(
 
     const u = selected[0]!
     const delta = e.deltaY > 0 ? ROTATE_STEP : -ROTATE_STEP
-    let a = u.angle + delta
+    const a = u.angle + delta
     const tau = Math.PI * 2
     u.angle = ((a % tau) + tau) % tau
     u.setDirty()
@@ -474,7 +498,7 @@ export function bindUnitInteraction(
 
     if (!hit) return
 
-    if (!shiftKeyActive && !isAdminCommandActive()) {
+    if (!shiftKeyActive && !isCommandToolActive()) {
       for (const u of w.units.list()) {
         if (u.id != hit.id) {
           u.selected = false

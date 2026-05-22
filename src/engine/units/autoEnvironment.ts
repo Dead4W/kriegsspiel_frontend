@@ -1,6 +1,7 @@
 import type { BaseUnit } from "@/engine/units/baseUnit.ts";
-import { getEnvironmentStates } from "@/engine/resourcePack/environment.ts";
+import { getEnvironmentStates, hasEnvironmentStateTag } from "@/engine/resourcePack/environment.ts";
 import { getFormationTypes } from "@/engine/resourcePack/formations.ts";
+import { hasUnitTypeTag } from "@/engine/resourcePack/units.ts";
 import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
 import type { MoveCommandState } from "@/engine/units/commands/moveCommand.ts";
 
@@ -77,6 +78,16 @@ function setEnvironmentState(unit: BaseUnit, environment: string | null) {
   unit.setDirty()
 }
 
+function applyWaterEnvironmentPenalty(unit: BaseUnit, environment: string | null) {
+  if (!environment) return
+  if (unit.hasInWater) return
+  if (!hasEnvironmentStateTag(environment, "is_water")) return
+  if (!hasUnitTypeTag(unit.type, "cant_swim")) return
+  unit.hp = unit.hp / 2
+  unit.hasInWater = true
+  unit.setDirty()
+}
+
 function getFirstMoveCommandModifier(unit: BaseUnit): string | null {
   for (const command of unit.getCommands()) {
     if (command.type !== UnitCommandTypes.Move) continue
@@ -123,6 +134,7 @@ function applyBridgeFormation(unit: BaseUnit, isMoving: boolean, radiusPx: numbe
 
 export function applyAutoEnvironment(unit: BaseUnit, mode: EnvMode): boolean {
   if (unit.manualEnvironment) {
+    applyWaterEnvironmentPenalty(unit, unit.manualEnvironment)
     setEnvironmentState(unit, unit.manualEnvironment)
     applyBridgeFormation(unit, mode === "moving", getNearRadiusPx())
     return false
@@ -130,6 +142,7 @@ export function applyAutoEnvironment(unit: BaseUnit, mode: EnvMode): boolean {
 
   const firstMoveModifier = getFirstMoveCommandModifier(unit)
   if (firstMoveModifier) {
+    applyWaterEnvironmentPenalty(unit, firstMoveModifier)
     setEnvironmentState(unit, firstMoveModifier)
     applyBridgeFormation(unit, mode === "moving", getNearRadiusPx())
     return false
@@ -153,6 +166,7 @@ export function applyAutoEnvironment(unit: BaseUnit, mode: EnvMode): boolean {
     nextEnvironment = resolveEnvironmentId(MOVING_DEFAULT_FIELD_ENV_IDS)
   }
 
+  applyWaterEnvironmentPenalty(unit, nextEnvironment)
   setEnvironmentState(unit, nextEnvironment)
   applyBridgeFormation(unit, mode === "moving", radiusPx)
   return true

@@ -14,6 +14,7 @@ Each entry in `units.types[]` supports:
 
 - `id` (required, string) - unique unit type ID (`"infantry"`, `"artillery"`, etc.)
 - `title` (optional, string) - display name of the unit
+- `tags` (optional, string[]) - semantic labels used by gameplay rules, for example `cant_swim`
 - `stats` (required, object) - base numeric stats
 - `abilities` (optional, string[]) - ability IDs available to this unit
 - `defaultFormation` (optional, string) - formation ID from `formations.types[]`
@@ -104,6 +105,7 @@ Spawn UI follows the order in `units.types[]`, then ensures safe defaults exist:
       {
         "id": "infantry",
         "title": "Infantry",
+        "tags": ["cant_swim"],
         "stats": {
           "maxHp": 64,
           "damage": 1,
@@ -131,6 +133,7 @@ Spawn UI follows the order in `units.types[]`, then ensures safe defaults exist:
 ## EXAMPLE EXPLANATION
 
 - `infantry` is the unit type for infantry.
+- `tags: ["cant_swim"]` marks this unit for water-entry penalties in rules that use that tag.
 - `stats` define its base health, damage, speed, attack range, vision, and ammunition.
 - `abilities: ["double_time_move"]` means this unit can use that ability.
 - `defaultFormation: "line"` means the unit spawns or acts in the `line` formation by default.

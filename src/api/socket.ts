@@ -1,4 +1,4 @@
-import {type unitstate, unitType, type uuid} from '@/engine/units/types'
+import {type commandstate, type unitstate, unitType, type uuid} from '@/engine/units/types'
 import {type MoveFrame, world} from '@/engine'
 import {createRafInterval, type RafInterval} from "@/engine/util.ts";
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
@@ -9,10 +9,10 @@ import type {unsub} from "@/engine/events.ts";
 import type {BattleLogEntry} from "@/engine/types/logType.ts";
 import type {PaintStroke} from "@/engine/types/paintTypes.ts";
 import type {vec2} from "@/engine/types.ts";
-import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
 import type {Weather} from "@/engine/resourcePack/weather.ts";
 import type {ConnectionInfo} from "@/engine/types/connectionTypes.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
+import {createUnitCommand} from "@/engine/units/commands";
 
 export type DirectViewUnitPacket = {
   unit: unitstate
@@ -33,9 +33,20 @@ export type OutMessage =
   | { type: 'skip_time'; data: string; live?: boolean; liveIntervalMs?: number; liveGameSecondsPerMinute?: number }
   | { type: 'skip_time_success'; data: true }
   | { type: 'set_stage'; data: RoomGameStage }
-  | { type: 'messenger_delivery'; data: {id: uuid, roomUserIds: number[], time: string} }
+  | {
+    type: 'messenger_delivery';
+    data: {
+      id: uuid
+      roomUserIds: number[]
+      time: string
+      messengerId?: uuid
+      quotedMessageId?: uuid | null
+      deliveryStatus?: 'pending' | 'in_transit' | 'delivered' | 'failed' | 'intercepted'
+    }
+  }
   | { type: 'direct_view'; team: Team; data: DirectViewUnitPacket[] }
   | { type: 'direct_view_objects'; team: Team; data: DirectViewObjectState[] }
+  | { type: 'direct_view_send_order'; team?: Team; data: { unitId: uuid; commands: commandstate[] } }
   | { type: 'weather'; data: Weather }
   | { type: 'log'; data: BattleLogEntry }
   | { type: 'connection_new'; data: ConnectionInfo }
@@ -62,14 +73,29 @@ const DEMO_BLOCKED_INCOMING_TYPES = new Set<OutMessage['type']>([
 
 let isDemoReadonlyMode = false
 
-function isPlayerTeam(team: Team): boolean {
-  return team === Team.RED || team === Team.BLUE
-}
-
 function clearUnitCommandsForDirectView(unit: unknown) {
   const mutableUnit = unit as { commands?: unknown[]; futurePos?: { x: number; y: number } | null }
   mutableUnit.commands = []
   mutableUnit.futurePos = null
+}
+
+function getFuturePosFromMoveCommands(commands: unknown): { x: number; y: number } | null {
+  if (!Array.isArray(commands)) return null
+  for (let i = commands.length - 1; i >= 0; i -= 1) {
+    const command = commands[i] as { type?: unknown; state?: { target?: { x?: unknown; y?: unknown } } }
+    if (command?.type !== 'move') continue
+    const target = command.state?.target
+    if (
+      target
+      && typeof target.x === 'number'
+      && Number.isFinite(target.x)
+      && typeof target.y === 'number'
+      && Number.isFinite(target.y)
+    ) {
+      return { x: target.x, y: target.y }
+    }
+  }
+  return null
 }
 
 export function setDemoReadonlyMode(enabled: boolean) {
@@ -148,7 +174,7 @@ export class GameSocket {
     window.ROOM_WORLD.events.on('api', (message) => {
       this.busMessages.push(message);
     })
-    window.ROOM_WORLD.events.on('force_api', (message) => {
+    window.ROOM_WORLD.events.on('force_api', () => {
       this.sync();
     })
 
@@ -312,8 +338,10 @@ export class GameSocket {
               nextUnitState.directView = true
               window.ROOM_WORLD.units.upsert(nextUnitState, 'remote');
             } else {
+              const nextFuturePos = getFuturePosFromMoveCommands(nextUnitState.commands)
               // Update only some fields
               Object.assign(u, nextUnitState)
+              u.futurePos = nextFuturePos
               u.directView = true;
             }
             if (packet.frames && packet.frames.length > 0) {
@@ -323,6 +351,23 @@ export class GameSocket {
           }
         } else if (m.type === 'direct_view_objects') {
           this.world.setDirectViewObjects(m.data)
+        } else if (m.type === 'direct_view_send_order') {
+          const unitId = (m.data?.unitId ?? '').toString()
+          if (!unitId) continue
+          const unit = this.world.units.get(unitId)
+          if (!unit) continue
+
+          const incomingCommands = Array.isArray(m.data?.commands)
+            ? m.data.commands
+            : []
+          const nonMoveCommands = unit
+            .getCommands()
+            .filter((cmd) => cmd.type !== 'move')
+          const moveCommands = incomingCommands
+            .filter((cmd): cmd is commandstate => cmd?.type === 'move')
+            .map((cmd) => createUnitCommand(cmd))
+          unit.manualEnvironment = null
+          unit.setCommands([...nonMoveCommands, ...moveCommands])
         } else if (m.type === 'weather') {
           window.ROOM_WORLD.weather.value = m.data
           window.ROOM_WORLD.newWeather.value = m.data

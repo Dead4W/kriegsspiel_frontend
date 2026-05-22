@@ -9,6 +9,7 @@ import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 const FOREST_DISTANCE_PENALTY = 3;
 const HOUSE_DISTANCE_PENALTY = 20;
 const HOUSE_DISTANCE_PENALTY_WHEN_UNIT_INSIDE = 9;
+const ENABLE_HOUSE_RAYCAST_MODIFIER = false;
 const HOUSE_OCCLUDER_ENTITIES = new Set([
   'house',
   'building',
@@ -43,7 +44,11 @@ function getRaycastOccluderPenalty(
         softenedByDistance: true,
       }
     }
-    if (entity != null && HOUSE_OCCLUDER_ENTITIES.has(entity)) {
+    if (
+      ENABLE_HOUSE_RAYCAST_MODIFIER &&
+      entity != null &&
+      HOUSE_OCCLUDER_ENTITIES.has(entity)
+    ) {
       const unitInsideHouse = unit.envState.some((state) => HOUSE_ENVIRONMENT_STATES.has(state))
       return {
         penalty: unitInsideHouse ? HOUSE_DISTANCE_PENALTY_WHEN_UNIT_INSIDE : HOUSE_DISTANCE_PENALTY,
@@ -161,6 +166,9 @@ function getTeamVisionCtx(
   width: number,
   height: number
 ): CanvasRenderingContext2D {
+  const dpr = window.devicePixelRatio || 1
+  const targetWidth = Math.floor(width * dpr)
+  const targetHeight = Math.floor(height * dpr)
   let layer = teamVisionLayers.get(teamId)
 
   if (!layer) {
@@ -171,10 +179,11 @@ function getTeamVisionCtx(
     teamVisionLayers.set(teamId, layer)
   }
 
-  if (layer.canvas.width !== width || layer.canvas.height !== height) {
-    layer.canvas.width = width
-    layer.canvas.height = height
+  if (layer.canvas.width !== targetWidth || layer.canvas.height !== targetHeight) {
+    layer.canvas.width = targetWidth
+    layer.canvas.height = targetHeight
   }
+  layer.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
   return layer.ctx
 }
@@ -187,9 +196,12 @@ export function drawUnitVision(
   w: world,
   settings: typeof window.CLIENT_SETTINGS,
 ) {
+  const viewportWidth = w.camera.viewport.x
+  const viewportHeight = w.camera.viewport.y
+
   for (const layer of teamVisionLayers.values()) {
     layer.ctx.setTransform(1, 0, 0, 1, 0, 0)
-    layer.ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+    layer.ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height)
   }
 
   const units = [...w.units.list()].sort((a, b) => {
@@ -207,7 +219,7 @@ export function drawUnitVision(
       continue
     }
 
-    const vCtx = getTeamVisionCtx(u.team, ctx.canvas.width, ctx.canvas.height)
+    const vCtx = getTeamVisionCtx(u.team, viewportWidth, viewportHeight)
 
     let { r, g, b } = getTeamColor(u.team)
     if (u.selected) {
@@ -277,7 +289,7 @@ export function drawUnitVision(
   ctx.save()
   ctx.globalAlpha = 0.5
   for (const layer of teamVisionLayers.values()) {
-    ctx.drawImage(layer.canvas, 0, 0)
+    ctx.drawImage(layer.canvas, 0, 0, viewportWidth, viewportHeight)
   }
   ctx.restore()
 }

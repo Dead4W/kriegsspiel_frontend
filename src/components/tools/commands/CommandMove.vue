@@ -11,9 +11,11 @@ import type {unsub} from '@/engine/events'
 import {unitlayer} from "@/engine/2d/render";
 import { CLIENT_SETTING_KEYS } from "@/enums/clientSettingsKeys.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
+import {Team} from "@/enums/teamKeys.ts";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import { hasAbilityInaccuracyRadius } from "@/engine/resourcePack/abilities.ts";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
+import {canPlayerUseDirectViewOrder} from "@/engine/units/directViewOrderRules.ts";
 import RadialMenu, { type RadialMenuItem } from '@/components/ui/RadialMenu.vue'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {
@@ -132,6 +134,7 @@ const hasObjectMap = computed(() => {
     && window.ROOM_WORLD.objectMapColorToEntity.size > 0
   )
 })
+const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
 
 function fmtMeters(meters: number) {
   return `${Math.round(meters)} m`
@@ -140,6 +143,10 @@ function fmtMeters(meters: number) {
 function loadSmartPathPreference(units: Array<{ type: unitType }>) {
   if (!hasObjectMap.value) {
     smartPathEnabled.value = false
+    return
+  }
+  if (!isAdmin.value) {
+    smartPathEnabled.value = moveMode.value === 'column'
     return
   }
 
@@ -156,6 +163,7 @@ function loadSmartPathPreference(units: Array<{ type: unitType }>) {
 }
 
 function onSmartPathToggle(nextValue: boolean) {
+  if (!isAdmin.value) return
   if (moveMode.value === 'formation' || !hasObjectMap.value) return
   smartPathEnabled.value = nextValue
   window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.MOVE_SMART_PATH] = nextValue
@@ -417,6 +425,11 @@ const moveMode = ref<MoveMode>('column')
 function setMoveMode(mode: MoveMode) {
   if (moveMode.value === mode) return
   moveMode.value = mode
+  if (mode === 'formation') {
+    smartPathEnabled.value = false
+  } else if (!isAdmin.value) {
+    smartPathEnabled.value = hasObjectMap.value
+  }
   rebuildMoveOverlay()
 }
 
@@ -626,7 +639,9 @@ function onPointerDown(e: PointerEvent) {
   })
 
   applyContextTarget(pos, true)
-  openEnvMenu(undefined, false)
+  if (isAdmin.value) {
+    openEnvMenu(undefined, false)
+  }
 }
 
 
@@ -778,6 +793,7 @@ function confirm() {
   }
 
   const uniqueId = crypto.randomUUID();
+  const shouldSendDirectViewOrder = canPlayerUseDirectViewOrder(movingUnits.value)
 
   if (!movingUnits.value.length || !targets.value.length) {
     window.ROOM_WORLD.clearOverlay()
@@ -877,6 +893,23 @@ function confirm() {
       u.addCommand(cmd.getState())
     }
     u.setDirty()
+  }
+
+  if (shouldSendDirectViewOrder) {
+    for (const selectedUnit of movingUnits.value) {
+      const moveCommands = selectedUnit
+        .getCommands()
+        .map((cmd) => cmd.getState() as commandstate)
+        .filter((cmd) => cmd.type === UnitCommandTypes.Move)
+      window.ROOM_WORLD.events.emit('api', {
+        type: 'direct_view_send_order',
+        team: window.PLAYER.team,
+        data: {
+          unitId: selectedUnit.id,
+          commands: moveCommands,
+        },
+      })
+    }
   }
 
   closeEnvMenu()
@@ -981,7 +1014,7 @@ defineExpose({
         </div>
       </div>
 
-      <label v-if="hasObjectMap" class="smart-path-toggle">
+      <label v-if="isAdmin && hasObjectMap" class="smart-path-toggle">
         <input
           type="checkbox"
           class="smart-path-toggle-input"
@@ -996,7 +1029,7 @@ defineExpose({
 
     <!-- ===== ABILITIES ===== -->
     <div
-      v-if="availableAbilities.length"
+      v-if="isAdmin && availableAbilities.length"
       class="column abilities"
     >
       <div class="title">
@@ -1032,6 +1065,7 @@ defineExpose({
     <!-- ===== ACTIONS ===== -->
     <div class="column actions">
       <button
+        v-if="isAdmin"
         class="btn patrol"
         :class="{ active: isPatrol }"
         :disabled="!targets.length"

@@ -226,7 +226,6 @@ export class unitregistry {
     for (const generalUnit of units) {
       if (generalUnit.team !== Team.RED && generalUnit.team !== Team.BLUE) continue;
       if (generalUnit.type !== unitType.GENERAL) continue;
-      generalUnit.directView = true;
       addSeenRoomUserId(generalUnit, generalUnit.roomMapUserId)
 
       const visionUnits = this.getDirectView(generalUnit)
@@ -257,7 +256,15 @@ export class unitregistry {
       directViewByTeam.set(team, entries)
     }
 
-    for (const unit of this.list()) {
+    const allDirectViewUnitIds = new Set<uuid>([
+      ...directViewByTeamSet.get(Team.RED)!,
+      ...directViewByTeamSet.get(Team.BLUE)!,
+    ])
+    for (const unit of units) {
+      unit.directView = allDirectViewUnitIds.has(unit.id)
+    }
+
+    for (const unit of units) {
       const next = Array.from(seenByUnit.get(unit.id) ?? []).sort((a, b) => a - b)
       const prev = unit.seenRoomUserIds
       const isSame = prev.length === next.length && prev.every((id, i) => id === next[i])

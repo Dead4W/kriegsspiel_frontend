@@ -99,6 +99,7 @@ export abstract class BaseUnit {
   hp: number
   ammo: number
   fatigue: number
+  hasInWater: boolean
 
   morale: number
 
@@ -132,6 +133,7 @@ export abstract class BaseUnit {
     this.id = s.id
     this.team = s.team
     this.pos = s.pos;
+    this.hasInWater = s.hasInWater ?? false
     this.fatigue = s.fatigue ?? 0
     this.autoAttack = s.autoAttack ?? false
 
@@ -362,6 +364,7 @@ export abstract class BaseUnit {
       type: this.type,
       team: this.team,
       pos: this.pos,
+      hasInWater: this.hasInWater,
       fatigue: this.fatigue,
       autoAttack: this.autoAttack,
       roomMapUserId: this.roomMapUserId,

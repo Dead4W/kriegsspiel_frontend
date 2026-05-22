@@ -15,6 +15,7 @@ Each item in `environment.states[]` supports:
 - `id` (required, string) - unique environment state ID, for example `in_forest`
 - `title` (optional, string) - display name of the state
 - `icon` (optional, string) - short icon or label for the UI
+- `tags` (optional, string[]) - semantic labels used by engine rules, for example `is_water`
 - `isRoute` (optional, boolean) - marks the state as road-related
 - `params` (optional, object) - extra parameters for specific gameplay systems
 - `multipliers` (optional, object) - general stat modifiers
@@ -109,6 +110,11 @@ If the same stat is defined in both `multipliers` and `byTypes`, the value from 
         "multipliers": {
           "takeDamageMod": 0.4
         }
+      },
+      {
+        "id": "in_water",
+        "title": "Water",
+        "tags": ["is_water"]
       }
     ]
   }
@@ -126,3 +132,4 @@ If the same stat is defined in both `multipliers` and `byTypes`, the value from 
 - `in_house` describes a unit being inside a house or cover.
 - `takeDamageMod: 0.4` means the unit is protected better there and only takes 40% incoming damage.
 - `moraleCheckMod: 2` means the cover helps the unit perform better in morale checks.
+- `in_water` has tag `is_water`, so other engine systems can apply water-specific rules.

@@ -16,6 +16,7 @@ export type ResourcePackUnitType = {
   id: UnitTypeId
   /** Optional display title (merged into i18n at resourcepack load). */
   title?: string
+  tags?: string[]
   stats: UnitStats
   abilities: UnitAbilityType[]
   defaultFormation?: FormationType
@@ -59,6 +60,9 @@ function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {
   if (!id) return null
 
   const title = typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined
+  const tags = Array.isArray((raw as any).tags)
+    ? (raw as any).tags.map((tag: unknown) => String(tag).trim()).filter(Boolean)
+    : undefined
   const stats = normalizeStats((raw as any).stats)
   if (!stats) return null
 
@@ -69,6 +73,7 @@ function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {
   return {
     id,
     title,
+    tags,
     stats,
     abilities,
     defaultFormation,
@@ -134,6 +139,23 @@ export function getUnitStringParam(
 ): string {
   const v = getUnitParams(id, pack)[key]
   return typeof v === 'string' ? v : ''
+}
+
+export function getUnitTypeTags(
+  id: UnitTypeId,
+  pack: ResourcePack | null = getResourcePack()
+): string[] {
+  return getUnitTypeDef(id, pack)?.tags ?? []
+}
+
+export function hasUnitTypeTag(
+  id: UnitTypeId,
+  tag: string,
+  pack: ResourcePack | null = getResourcePack()
+): boolean {
+  const normalizedTag = String(tag).trim()
+  if (!normalizedTag) return false
+  return getUnitTypeTags(id, pack).includes(normalizedTag)
 }
 
 /**

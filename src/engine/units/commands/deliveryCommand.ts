@@ -26,6 +26,9 @@ export interface DeliveryCommandState {
   manualRouteIsPath?: boolean,
   route?: vec2[],
   routeIndex?: number,
+  routeKind?: 'manual' | 'auto',
+  routeTargetId?: uuid | null,
+  routeThreatSignature?: string | null,
   returnRoute?: vec2[],
   returnRouteIndex?: number,
   deliveryTargetId?: uuid | null,
@@ -37,6 +40,8 @@ export interface DeliveryCommandState {
   reportSent?: boolean,
   reachedTarget?: boolean,
   enemySightings?: vec2[],
+  outboundTrace?: vec2[],
+  rerouteEnemySignature?: string | null,
 }
 
 export class DeliveryCommand extends BaseCommand<
@@ -46,6 +51,9 @@ export class DeliveryCommand extends BaseCommand<
   private static readonly DELIVERY_RANGE_MULTIPLIER = 2;
   private static readonly ENEMY_THREAT_RADIUS_METERS = 1000;
   private static readonly MAX_ENEMY_SIGHTINGS = 24;
+  private static readonly OUTBOUND_TRACE_MAX_POINTS = 1200;
+  private static readonly OUTBOUND_TRACE_MIN_STEP_PX = 8;
+  private static readonly PERF_LOG_PREFIX = "[DeliveryRoutePerf]";
   static readonly DELIVERY_MOVE_COMMENT = "#delivery#";
 
   readonly type: UnitCommandTypes.Delivery =
@@ -133,6 +141,7 @@ export class DeliveryCommand extends BaseCommand<
   }
 
   private buildDeliveryRoute(goal: vec2, from: vec2): vec2[] {
+    const startedAt = this.nowMs()
     const threatZones = this.getEnemyThreatZones()
     const points = buildRoadTurnRoutePoints(
       window.ROOM_WORLD,
@@ -140,6 +149,14 @@ export class DeliveryCommand extends BaseCommand<
       goal,
       threatZones.length ? { threatZones } : undefined
     );
+    const durationMs = this.nowMs() - startedAt
+    this.logPerf('build_delivery_route', {
+      durationMs,
+      threatZones: threatZones.length,
+      from: { x: from.x, y: from.y },
+      goal: { x: goal.x, y: goal.y },
+      resultPoints: points.length,
+    })
     if (points.length) return points;
     return [{ x: goal.x, y: goal.y }];
   }
@@ -255,12 +272,96 @@ export class DeliveryCommand extends BaseCommand<
   }
 
   private buildReturnRouteFromCurrentPosition(unit: BaseUnit): vec2[] {
-    if (!this.state.route?.length) return []
-    const nearestIdx = this.findNearestRouteIndex(unit.pos, this.state.route)
+    const sourceRoute = this.state.outboundTrace?.length
+      ? this.state.outboundTrace
+      : (this.state.route ?? [])
+    if (!sourceRoute.length) return []
+    const nearestIdx = this.findNearestRouteIndex(unit.pos, sourceRoute)
     if (nearestIdx < 0) return []
-    const passedRoute = this.state.route.slice(0, nearestIdx + 1)
+    const passedRoute = sourceRoute.slice(0, nearestIdx + 1)
     const simplifiedPassedRoute = this.simplifyRouteWithoutLoops(passedRoute)
-    return simplifiedPassedRoute.reverse()
+    const result = simplifiedPassedRoute.reverse()
+    this.logPerf('build_return_route_from_trace', {
+      source: this.state.outboundTrace?.length ? 'outbound_trace' : 'route',
+      sourcePoints: sourceRoute.length,
+      passedPoints: passedRoute.length,
+      resultPoints: result.length,
+      nearestIdx,
+    })
+    return result
+  }
+
+  private nowMs(): number {
+    if (typeof performance !== "undefined" && typeof performance.now === "function") {
+      return performance.now()
+    }
+    return Date.now()
+  }
+
+  private logPerf(event: string, details: Record<string, unknown> = {}) {
+    console.debug(`${DeliveryCommand.PERF_LOG_PREFIX} ${event}`, {
+      messengerId: this.state.messengerId ?? null,
+      returning: Boolean(this.state.returning),
+      ...details,
+    })
+  }
+
+  private rememberOutboundTracePoint(point: vec2) {
+    if (this.state.returning) return
+    if (!this.state.outboundTrace) {
+      this.state.outboundTrace = []
+    }
+    const trace = this.state.outboundTrace
+    const normalized = { x: point.x, y: point.y }
+    const last = trace[trace.length - 1]
+    if (last) {
+      const dist = Math.hypot(normalized.x - last.x, normalized.y - last.y)
+      if (dist < DeliveryCommand.OUTBOUND_TRACE_MIN_STEP_PX) return
+    }
+    trace.push(normalized)
+    if (trace.length > DeliveryCommand.OUTBOUND_TRACE_MAX_POINTS) {
+      trace.splice(0, trace.length - DeliveryCommand.OUTBOUND_TRACE_MAX_POINTS)
+    }
+  }
+
+  private getThreatSignature(): string {
+    const sightings = this.state.enemySightings ?? []
+    if (!sightings.length) return "none"
+    return sightings
+      .map((point) => `${Math.round(point.x / 25)}:${Math.round(point.y / 25)}`)
+      .sort()
+      .join("|")
+  }
+
+  private getEnemyUnitsSignature(enemies: BaseUnit[]): string {
+    if (!enemies.length) return "none"
+    return enemies
+      .map((enemy) => `${Math.round(enemy.pos.x / 25)}:${Math.round(enemy.pos.y / 25)}`)
+      .sort()
+      .join("|")
+  }
+
+  private clearAutoRouteCache() {
+    if (this.state.routeKind !== 'auto') return
+    this.state.route = []
+    this.state.routeIndex = 0
+    this.state.routeKind = undefined
+    this.state.routeTargetId = null
+    this.state.routeThreatSignature = null
+  }
+
+  private buildDirectRouteFromWaypoints(from: vec2, waypoints: vec2[]): vec2[] {
+    if (!waypoints.length) return []
+    const route: vec2[] = []
+    let previousPoint: vec2 = { x: from.x, y: from.y }
+    for (const point of waypoints) {
+      const normalized = { x: point.x, y: point.y }
+      if (!this.isSamePoint(previousPoint, normalized)) {
+        route.push(normalized)
+        previousPoint = normalized
+      }
+    }
+    return route
   }
 
   private clampHp(unit: BaseUnit, hp: number): number {
@@ -326,8 +427,9 @@ export class DeliveryCommand extends BaseCommand<
     if (this.state.messengerId) {
       payload.messengerId = this.state.messengerId
     }
+    const isFinalStatus = status === 'delivered' || status === 'failed' || status === 'intercepted'
     window.ROOM_WORLD.events.emit('api', {
-      type: 'messenger_delivery',
+      type: isFinalStatus ? 'messenger_delivery' : 'messenger_delivery_update',
       data: payload
     });
   }
@@ -491,6 +593,14 @@ export class DeliveryCommand extends BaseCommand<
     if (!visibleEnemies.length) return false
     const canReroute = this.state.returning || this.isUmpireReportDelivery()
     if (!canReroute) return false
+    const enemySignature = this.getEnemyUnitsSignature(visibleEnemies)
+    const sameThreat = this.state.rerouteEnemySignature === enemySignature
+    if (sameThreat && this.hasPendingDeliveryMove(unit)) {
+      this.logPerf('skip_reroute_same_enemy_signature', {
+        enemySignature,
+      })
+      return false
+    }
 
     if (this.state.returning) {
       // Keep original return waypoints and rebuild from nearest point with threat zones.
@@ -502,6 +612,7 @@ export class DeliveryCommand extends BaseCommand<
       this.state.routeIndex = 0
     }
 
+    this.state.rerouteEnemySignature = enemySignature
     this.removePendingDeliveryMoves(unit)
     this.ensureDeliveryMoveCommands(unit)
     return true
@@ -660,12 +771,21 @@ export class DeliveryCommand extends BaseCommand<
     this.state.returnReason = reason
     this.state.returning = true
     this.state.deliveryStatus = status
+    this.state.rerouteEnemySignature = null
+    this.clearAutoRouteCache()
     const returnTarget = this.resolveReturnTarget(unit)
     if (returnTarget) {
       this.state.deliveryTargetId = returnTarget.id
     }
     this.state.returnRouteIndex = 0
     this.state.returnRoute = this.buildReturnRouteFromCurrentPosition(unit)
+    this.logPerf('start_returning', {
+      reason,
+      status,
+      returnRoutePoints: this.state.returnRoute.length,
+      tracePoints: this.state.outboundTrace?.length ?? 0,
+      hasReturnTarget: Boolean(returnTarget),
+    })
     this.removePendingDeliveryMoves(unit)
   }
 
@@ -722,11 +842,24 @@ export class DeliveryCommand extends BaseCommand<
     let routePoints: vec2[] = []
     if (this.state.returning && this.state.returnRoute?.length) {
       const returnIdx = this.state.returnRouteIndex ?? 0
-      const pendingWaypoints = this.pruneIntermediateThreatenedWaypoints(
-        this.state.returnRoute.slice(returnIdx)
-      )
+      const rawPendingWaypoints = this.state.returnRoute.slice(returnIdx)
+      const pendingWaypoints = this.pruneIntermediateThreatenedWaypoints(rawPendingWaypoints)
+      this.logPerf('prepare_return_route_points', {
+        returnIdx,
+        rawWaypoints: rawPendingWaypoints.length,
+        waypointsAfterPrune: pendingWaypoints.length,
+      })
       if (pendingWaypoints.length > 0) {
-        routePoints = this.buildRouteThroughWaypoints(unit.pos, pendingWaypoints)
+        routePoints = this.buildDirectRouteFromWaypoints(unit.pos, pendingWaypoints)
+        this.logPerf('return_route_direct', {
+          routePoints: routePoints.length,
+        })
+        if (!routePoints.length) {
+          this.logPerf('return_route_direct_empty_fallback_astar', {
+            pendingWaypoints: pendingWaypoints.length,
+          })
+          routePoints = this.buildRouteThroughWaypoints(unit.pos, pendingWaypoints)
+        }
         this.state.returnRouteIndex = this.state.returnRoute.length
       }
     } else if (!visibleTarget && !this.state.returning && this.state.manualRoutePoints?.length) {
@@ -736,6 +869,9 @@ export class DeliveryCommand extends BaseCommand<
         } else {
           this.state.route = buildMessengerRouteByNearestPoints(unit.pos, this.state.manualRoutePoints)
         }
+        this.state.routeKind = 'manual'
+        this.state.routeTargetId = null
+        this.state.routeThreatSignature = null
         this.state.routeIndex = 0
       }
       const idx = this.state.routeIndex ?? 0
@@ -744,9 +880,48 @@ export class DeliveryCommand extends BaseCommand<
         routePoints = this.buildRouteThroughWaypoints(unit.pos, pendingWaypoints)
         this.state.routeIndex = this.state.route.length
       }
+    } else if (!visibleTarget && !this.state.returning && this.state.route?.length && this.state.routeKind === 'auto') {
+      const currentThreatSignature = this.getThreatSignature()
+      const canReuseAutoRoute = this.state.routeTargetId === deliveryTarget.id
+        && this.state.routeThreatSignature === currentThreatSignature
+      if (canReuseAutoRoute) {
+        const nearestIdx = this.findNearestRouteIndex(unit.pos, this.state.route)
+        if (nearestIdx >= 0) {
+          const pendingWaypoints = this.pruneIntermediateThreatenedWaypoints(
+            this.state.route.slice(nearestIdx)
+          )
+          routePoints = this.buildDirectRouteFromWaypoints(unit.pos, pendingWaypoints)
+          this.logPerf('auto_route_reuse', {
+            nearestIdx,
+            pendingWaypoints: pendingWaypoints.length,
+            routePoints: routePoints.length,
+          })
+        }
+      } else {
+        this.logPerf('auto_route_cache_miss', {
+          targetChanged: this.state.routeTargetId !== deliveryTarget.id,
+          threatChanged: this.state.routeThreatSignature !== currentThreatSignature,
+        })
+        this.clearAutoRouteCache()
+      }
     }
     if (!routePoints.length) {
+      this.logPerf('fallback_target_route_astar', {
+        visibleTarget: Boolean(visibleTarget),
+        returning: Boolean(this.state.returning),
+      })
       routePoints = this.buildDeliveryRoute(deliveryTarget.pos, unit.pos);
+      if (!visibleTarget && !this.state.returning && routePoints.length) {
+        this.state.route = routePoints.map((point) => ({ x: point.x, y: point.y }))
+        this.state.routeIndex = 0
+        this.state.routeKind = 'auto'
+        this.state.routeTargetId = deliveryTarget.id
+        this.state.routeThreatSignature = this.getThreatSignature()
+        this.logPerf('auto_route_cached', {
+          routePoints: this.state.route.length,
+          targetId: this.state.routeTargetId,
+        })
+      }
     }
     const uniqueId = crypto.randomUUID();
     const currentCommands = unit.getCommands();
@@ -806,6 +981,7 @@ export class DeliveryCommand extends BaseCommand<
     void dt;
     this.applySpawnHpDeltaIfNeeded()
     if (this.state.delivered) return;
+    this.rememberOutboundTracePoint(unit.pos)
     const visibleEnemies = this.resolveEnemiesThatCanSeeUnit(unit)
     this.rememberEnemySightings(visibleEnemies)
     const immediateVisibleTarget = this.resolveVisibleTarget(unit)
@@ -833,6 +1009,7 @@ export class DeliveryCommand extends BaseCommand<
 
     const visibleTarget = this.resolveVisibleTarget(unit)
     if (visibleTarget && visibleTarget.id !== this.state.deliveryTargetId) {
+      this.clearAutoRouteCache()
       this.syncRouteIndexToNearest(unit)
       this.state.deliveryTargetId = visibleTarget.id
       this.removePendingDeliveryMoves(unit)

@@ -44,6 +44,17 @@ export type OutMessage =
       deliveryStatus?: 'pending' | 'in_transit' | 'delivered' | 'failed' | 'intercepted'
     }
   }
+  | {
+    type: 'messenger_delivery_update';
+    data: {
+      id: uuid
+      roomUserIds: number[]
+      time: string
+      messengerId?: uuid
+      quotedMessageId?: uuid | null
+      deliveryStatus?: 'pending' | 'in_transit' | 'delivered' | 'failed' | 'intercepted'
+    }
+  }
   | { type: 'direct_view'; team: Team; data: DirectViewUnitPacket[] }
   | { type: 'direct_view_objects'; team: Team; data: DirectViewObjectState[] }
   | { type: 'direct_view_send_order'; team?: Team; data: { unitId: uuid; commands: commandstate[] } }

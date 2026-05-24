@@ -754,7 +754,15 @@ export function buildRoadTurnRoutePoints(
   to: vec2,
   options: BuildRoadTurnRouteOptions = {}
 ): vec2[] {
+  const startedAt = (typeof performance !== "undefined" && typeof performance.now === "function")
+    ? performance.now()
+    : Date.now();
+  const threatZonesCount = options.threatZones?.length ?? 0;
   if (!w.objectMapImageData || w.objectMapColorToEntity.size === 0) {
+    console.debug("[RoadPathPerf] object_map_unavailable_fallback", {
+      durationMs: 0,
+      threatZones: threatZonesCount,
+    });
     return [{ x: to.x, y: to.y }];
   }
 
@@ -766,8 +774,10 @@ export function buildRoadTurnRoutePoints(
   const chainedPath: GridPoint[] = [{ x: fromPx.x, y: fromPx.y }];
   let chainCursor = { x: fromPx.x, y: fromPx.y };
   let reachedGoal = false;
+  let attemptsUsed = 0;
 
   for (let attempt = 0; attempt < PARTIAL_PATH_CHAIN_MAX_ATTEMPTS; attempt += 1) {
+    attemptsUsed += 1;
     const partial = findPathAStarWithEnvironmentSpeed(w, chainCursor, toPx, options);
     if (!partial || partial.length < 2) break;
 
@@ -789,6 +799,15 @@ export function buildRoadTurnRoutePoints(
   }
 
   if (chainedPath.length < 2) {
+    const durationMs = ((typeof performance !== "undefined" && typeof performance.now === "function")
+      ? performance.now()
+      : Date.now()) - startedAt;
+    console.debug("[RoadPathPerf] no_path_fallback", {
+      durationMs,
+      attemptsUsed,
+      reachedGoal,
+      threatZones: threatZonesCount,
+    });
     return [{ x: to.x, y: to.y }];
   }
 
@@ -825,5 +844,18 @@ export function buildRoadTurnRoutePoints(
     const tail = path[path.length - 1]!;
     return [{ x: tail.x, y: tail.y }];
   }
+  const durationMs = ((typeof performance !== "undefined" && typeof performance.now === "function")
+    ? performance.now()
+    : Date.now()) - startedAt;
+  console.debug("[RoadPathPerf] build_route", {
+    durationMs,
+    attemptsUsed,
+    reachedGoal,
+    threatZones: threatZonesCount,
+    from: { x: fromPx.x, y: fromPx.y },
+    to: { x: toPx.x, y: toPx.y },
+    chainedPathPoints: chainedPath.length,
+    finalPoints: deduped.length,
+  });
   return deduped;
 }

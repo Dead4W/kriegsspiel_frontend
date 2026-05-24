@@ -32,7 +32,7 @@ const livePerMinute = ref(false)
 const totalSeconds = ref(0)
 const running = ref(false)
 const isLiveRunning = ref(false)
-const LIVE_TICK_MS = 10_000
+const LIVE_TICK_MS = 30_000
 let liveLoopToken = 0
 let liveWaitTimeoutId: ReturnType<typeof window.setTimeout> | null = null
 

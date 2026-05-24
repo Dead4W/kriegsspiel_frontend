@@ -71,6 +71,7 @@ export class maplayer {
 
     const team = window.PLAYER.team
     if (team !== Team.ADMIN && team !== Team.RED && team !== Team.BLUE) return
+    if (team !== Team.ADMIN && window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]) return
 
     if (team === Team.ADMIN) {
       const zones = this.getAdminSpawnZones()
@@ -154,7 +155,7 @@ export class maplayer {
     }
 
     // Fill only outside spawn zones, so map remains visible inside zones.
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.36)'
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.2)'
     ctx.fill(fogPath, 'evenodd')
 
     ctx.fillStyle = spawnTint

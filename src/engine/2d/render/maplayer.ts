@@ -1,6 +1,13 @@
 import type { world } from '@/engine/world/world'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { Team } from '@/enums/teamKeys.ts'
+import { RoomGameStage } from '@/enums/roomStage.ts'
+import { getTeamSpawnRects, type SpawnRect } from '@/game/planningSpawns'
+
+type TeamSpawnZone = {
+  team: Team.RED | Team.BLUE
+  rect: SpawnRect
+}
 
 export class maplayer {
   private img: CanvasImageSource | null = null
@@ -29,6 +36,8 @@ export class maplayer {
       0, 0, cam.viewport.x, cam.viewport.y
     )
 
+    this.drawPlanningSpawnZones(ctx, w)
+
     // ===== DEBUG: FOREST MAP =====
     if (
       this.canRenderDebugMaps() &&
@@ -55,6 +64,107 @@ export class maplayer {
     ) {
       this.drawHeightMap(ctx, w)
     }
+  }
+
+  private drawPlanningSpawnZones(ctx: CanvasRenderingContext2D, w: world) {
+    if (w.stage !== RoomGameStage.PLANNING) return
+
+    const team = window.PLAYER.team
+    if (team !== Team.ADMIN && team !== Team.RED && team !== Team.BLUE) return
+
+    if (team === Team.ADMIN) {
+      const zones = this.getAdminSpawnZones()
+      if (!zones.length) return
+      this.drawAdminSpawnZones(ctx, w, zones)
+      return
+    }
+
+    const zones = this.getVisibleSpawnZones(team)
+    this.drawPlayerSpawnFog(ctx, w, zones, team)
+  }
+
+  private getAdminSpawnZones(): TeamSpawnZone[] {
+    const redZones = getTeamSpawnRects(Team.RED).map((rect) => ({ team: Team.RED as const, rect }))
+    const blueZones = getTeamSpawnRects(Team.BLUE).map((rect) => ({ team: Team.BLUE as const, rect }))
+    return [...redZones, ...blueZones]
+  }
+
+  private getVisibleSpawnZones(team: Team): SpawnRect[] {
+    if (team === Team.RED || team === Team.BLUE) {
+      return getTeamSpawnRects(team)
+    }
+    return []
+  }
+
+  private drawAdminSpawnZones(
+    ctx: CanvasRenderingContext2D,
+    w: world,
+    zones: TeamSpawnZone[],
+  ) {
+    const cam = w.camera
+    ctx.save()
+    ctx.scale(cam.zoom, cam.zoom)
+    ctx.translate(-cam.pos.x, -cam.pos.y)
+    ctx.lineWidth = 1 / Math.max(cam.zoom, 0.0001)
+
+    for (const zone of zones) {
+      const width = Math.max(0, zone.rect.to.x - zone.rect.from.x)
+      const height = Math.max(0, zone.rect.to.y - zone.rect.from.y)
+      if (width <= 0 || height <= 0) continue
+      ctx.fillStyle = zone.team === Team.RED
+        ? 'rgba(239, 68, 68, 0.28)'
+        : 'rgba(59, 130, 246, 0.28)'
+      ctx.strokeStyle = zone.team === Team.RED
+        ? 'rgba(248, 113, 113, 0.75)'
+        : 'rgba(96, 165, 250, 0.75)'
+      ctx.fillRect(zone.rect.from.x, zone.rect.from.y, width, height)
+      ctx.strokeRect(zone.rect.from.x, zone.rect.from.y, width, height)
+    }
+
+    ctx.restore()
+  }
+
+  private drawPlayerSpawnFog(
+    ctx: CanvasRenderingContext2D,
+    w: world,
+    zones: SpawnRect[],
+    team: Team.RED | Team.BLUE,
+  ) {
+    const cam = w.camera
+    const spawnTint = team === Team.RED
+      ? 'rgba(248, 113, 113, 0.08)'
+      : 'rgba(96, 165, 250, 0.08)'
+
+    ctx.save()
+    ctx.scale(cam.zoom, cam.zoom)
+    ctx.translate(-cam.pos.x, -cam.pos.y)
+
+    const viewportWorldX = cam.pos.x
+    const viewportWorldY = cam.pos.y
+    const viewportWorldW = cam.viewport.x / cam.zoom
+    const viewportWorldH = cam.viewport.y / cam.zoom
+
+    const fogPath = new Path2D()
+    fogPath.rect(viewportWorldX, viewportWorldY, viewportWorldW, viewportWorldH)
+    for (const zone of zones) {
+      const width = Math.max(0, zone.to.x - zone.from.x)
+      const height = Math.max(0, zone.to.y - zone.from.y)
+      if (width <= 0 || height <= 0) continue
+      fogPath.rect(zone.from.x, zone.from.y, width, height)
+    }
+
+    // Fill only outside spawn zones, so map remains visible inside zones.
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.36)'
+    ctx.fill(fogPath, 'evenodd')
+
+    ctx.fillStyle = spawnTint
+    for (const zone of zones) {
+      const width = Math.max(0, zone.to.x - zone.from.x)
+      const height = Math.max(0, zone.to.y - zone.from.y)
+      if (width <= 0 || height <= 0) continue
+      ctx.fillRect(zone.from.x, zone.from.y, width, height)
+    }
+    ctx.restore()
   }
 
   private drawForestMap(ctx: CanvasRenderingContext2D, w: world) {

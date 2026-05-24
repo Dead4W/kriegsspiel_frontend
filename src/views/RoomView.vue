@@ -162,17 +162,50 @@ function goHome() {
   })
 }
 
-function applyRoomSettings(id: uuid, options?: Record<string, any>) {
+function applyRoomSettings(id: uuid, options?: Record<string, any>, params?: Record<string, any>) {
   window.ROOM_SETTINGS ??= {}
+  window.ROOM_PARAMS ??= {}
   window.INPUT = {
     IGNORE_DRAG: false,
     IGNORE_UNIT_INTERACTION: false,
   }
-  if (!options) return
+  if (params && typeof params === 'object') {
+    Object.assign(window.ROOM_PARAMS, params)
+    const perTeamSettings = params.perTeamSettings as Record<string, { briefing?: string }> | undefined
+    if (perTeamSettings && typeof perTeamSettings === 'object') {
+      window.ROOM_SETTINGS.teamBriefing = {
+        [Team.RED]: perTeamSettings[Team.RED]?.briefing ?? '',
+        [Team.BLUE]: perTeamSettings[Team.BLUE]?.briefing ?? '',
+      }
+      window.ROOM_SETTINGS.perTeamSettings = {
+        ...(window.ROOM_SETTINGS.perTeamSettings || {}),
+        ...perTeamSettings,
+      }
+    }
+  }
+  if (!options) {
+    window.ROOM_SETTINGS.uuid = id
+    return
+  }
 
   for (const key of Object.values(ROOM_SETTING_KEYS)) {
     if (key in options) {
       window.ROOM_SETTINGS[key] = options[key]
+    }
+  }
+  const perTeamSettingsFromOptions = options.perTeamSettings as Record<string, { briefing?: string }> | undefined
+  if (perTeamSettingsFromOptions && typeof perTeamSettingsFromOptions === 'object') {
+    window.ROOM_SETTINGS.perTeamSettings = {
+      ...(window.ROOM_SETTINGS.perTeamSettings || {}),
+      ...perTeamSettingsFromOptions,
+    }
+    window.ROOM_SETTINGS.teamBriefing = {
+      [Team.RED]: perTeamSettingsFromOptions[Team.RED]?.briefing ?? '',
+      [Team.BLUE]: perTeamSettingsFromOptions[Team.BLUE]?.briefing ?? '',
+    }
+    window.ROOM_PARAMS.perTeamSettings = {
+      ...(window.ROOM_PARAMS.perTeamSettings || {}),
+      ...perTeamSettingsFromOptions,
     }
   }
   window.ROOM_SETTINGS.uuid = id;
@@ -203,7 +236,7 @@ async function loadRoom() {
   try {
     const data = (await apiLoadRoom(uuid, key)) as RoomData
     roomData.value = data
-    applyRoomSettings(uuid, data.options)
+    applyRoomSettings(uuid, data.options, data.params)
 
     if (roomData.value!.team === Team.ADMIN) {
       stage.value = RoomStage.TEAM_SELECT

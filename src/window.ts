@@ -3,9 +3,15 @@ import {world} from "@/engine";
 import type {ClientSettingKey} from "@/enums/clientSettingsKeys.ts";
 import type {PlayerInfo} from "@/enums/playerInfo.ts";
 
+type RoomSettingsWindowState = Partial<Record<RoomSettingKey, any>> & {
+  teamBriefing?: Record<string, string>
+  perTeamSettings?: Record<string, Record<string, unknown>>
+}
+
 declare global {
   interface Window {
-    ROOM_SETTINGS: Partial<Record<RoomSettingKey, any>>
+    ROOM_SETTINGS: RoomSettingsWindowState
+    ROOM_PARAMS: Record<string, any>
     CLIENT_SETTINGS: Partial<Record<ClientSettingKey, any>>
     CLIENT_ID: string
     ROOM_WORLD: world,

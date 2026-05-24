@@ -6,6 +6,7 @@ import {computed, onMounted, onUnmounted, ref} from "vue";
 import ConnectionsList from '@/components/ConnectionsList.vue'
 import ChartTool from '@/components/tools/ChartTool.vue'
 import BattleLog from '@/components/BattleLog.vue'
+import AdminSettingsModal from '@/components/tools/adminSettings/AdminSettingsModal.vue'
 
 const { t } = useI18n()
 
@@ -14,6 +15,7 @@ const copiedTeam = ref<Team | null>(null)
 const connections = window.ROOM_WORLD.connections
 const isChartOpen = ref(false)
 const isLogsOpen = ref(false)
+const isSettingsOpen = ref(false)
 const readyStats = computed(() => window.ROOM_WORLD.getPlayerReadyStats())
 const offlinePlayersCount = computed(() => {
   const onlineKeys = new Set(
@@ -120,6 +122,14 @@ function toggleLogs() {
   isLogsOpen.value = !isLogsOpen.value
 }
 
+function openSettings() {
+  isSettingsOpen.value = true
+}
+
+function closeSettings() {
+  isSettingsOpen.value = false
+}
+
 /* LIFE CYCLE */
 
 onMounted(() => {
@@ -135,6 +145,10 @@ onUnmounted(() => {
 <template>
   <div class="admin-panel">
     <h3>{{ t('tools.admin.title') }}</h3>
+
+    <button @click="openSettings">
+      ⚙️ {{ t('tools.admin.settings_open') }}
+    </button>
 
     <button
       class="danger"
@@ -198,6 +212,7 @@ onUnmounted(() => {
 
     <BattleLog v-if="isLogsOpen" />
     <ChartTool v-if="isChartOpen" @close="closeChart" />
+    <AdminSettingsModal v-if="isSettingsOpen" @close="closeSettings" />
   </div>
 </template>
 

@@ -35,6 +35,7 @@ import {
   getEnvironmentMoraleCheckMod
 } from "@/engine/resourcePack/environment.ts";
 import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/moraleCheck.ts";
+import { isPlanningTeamSpawnPointAllowed } from '@/game/planningSpawns'
 
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
@@ -166,6 +167,7 @@ export abstract class BaseUnit {
 
     to.x = clamp(to.x, 0, window.ROOM_WORLD.map.width);
     to.y = clamp(to.y, 0, window.ROOM_WORLD.map.height);
+    if (!isPlanningTeamSpawnPointAllowed(this.team, to)) return
 
     this.pos = to;
 

@@ -511,6 +511,7 @@
     "chart": "График",
     "admin": {
       "title": "Администрирование",
+      "settings_open": "Настройки",
       "start_war": "Начать войну",
       "start_war_warning_not_ready": "Готовы не все игроки: {ready} / {total}.",
       "start_war_warning_offline": "Некоторые игроки OFFLINE: {offline}.",
@@ -518,7 +519,39 @@
       "start_war_warning_hint": "Часть игроков еще готовит приказы и может не успеть закончить планирование.",
       "start_war_warning_confirm": "Начать войну с предупреждением? Готовы: {ready}/{total}, OFFLINE: {offline}.",
       "end_war": "Закончить войну",
-      "copy_team_link": "Ссылка команды"
+      "copy_team_link": "Ссылка команды",
+      "settings_modal": {
+        "title": "Настройки",
+        "tabs": {
+          "room": "Настройки комнаты",
+          "spawn": "Зоны спавна",
+          "briefing": "Брифинг"
+        },
+        "room": {
+          "rules_group": "Игровые правила",
+          "not_set": "Не задано",
+          "bool_on": "ВКЛ",
+          "bool_off": "ВЫКЛ"
+        },
+        "briefing": {
+          "group_title": "Брифинг команд",
+          "group_hint": "Поддерживается Markdown. Сообщение показывается игрокам в модалке планирования.",
+          "red_label": "Брифинг красных",
+          "blue_label": "Брифинг синих",
+          "placeholder": "Напишите брифинг в markdown...",
+          "save": "Сохранить брифинг",
+          "show_preview": "Предпросмотр markdown",
+          "hide_preview": "Скрыть предпросмотр",
+          "preview_empty": "<em>Пока нечего предпросматривать.</em>"
+        },
+        "spawn": {
+          "group_title": "Зоны спавна для планирования",
+          "group_hint": "Нажмите \"Задать спавн\", затем зажмите ЛКМ для первой точки и отпустите для второй.",
+          "add": "Задать спавн",
+          "remove": "Удалить",
+          "empty": "Спавны не заданы. Команда может ставить и двигать юниты везде."
+        }
+      }
     },
     "demo": {
       "prev": "Назад",

@@ -20,7 +20,7 @@ export type DirectViewUnitPacket = {
 }
 
 export type OutMessage =
-  | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: Weather} }
+  | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: Weather, options?: Record<string, unknown>, params?: Record<string, unknown>} }
   | { type: 'unit'; data: unitstate; frames?: MoveFrame[] }
   | { type: 'unit-remove'; data: uuid[] }
   | { type: 'paint_add'; data: PaintStroke }
@@ -63,6 +63,8 @@ export type OutMessage =
   | { type: 'connection_new'; data: ConnectionInfo }
   | { type: 'connection_close'; data: { id: number } }
   | { type: 'room_user_ready'; data: { is_ready: boolean } | { user_id: number; user?: string; team: Team; is_ready: boolean } }
+  | { type: 'room_params_update'; data: Record<string, unknown> }
+  | { type: 'room_per_team_settings_update'; data: Record<string, unknown> }
 
 export type InMessage =
   | { type: 'messages'; messages: OutMessage[] }
@@ -107,6 +109,49 @@ function getFuturePosFromMoveCommands(commands: unknown): { x: number; y: number
     }
   }
   return null
+}
+
+function applyRoomParams(params: unknown) {
+  if (!params || typeof params !== 'object') return
+  window.ROOM_PARAMS ??= {}
+  Object.assign(window.ROOM_PARAMS, params as Record<string, unknown>)
+}
+
+function extractPerTeamSettings(value: unknown): Record<string, Record<string, unknown>> | null {
+  if (!value || typeof value !== 'object') return null
+  const perTeamSettings = (value as Record<string, unknown>).perTeamSettings
+  if (!perTeamSettings || typeof perTeamSettings !== 'object') return null
+  return perTeamSettings as Record<string, Record<string, unknown>>
+}
+
+function syncRoomBriefingFromPerTeamSettings(perTeamSettings: Record<string, Record<string, unknown>> | null) {
+  if (!perTeamSettings) return
+  const redSettings = perTeamSettings[Team.RED]
+  const blueSettings = perTeamSettings[Team.BLUE]
+  const redBriefing = redSettings && typeof redSettings === 'object'
+    ? (redSettings as Record<string, unknown>).briefing
+    : undefined
+  const blueBriefing = blueSettings && typeof blueSettings === 'object'
+    ? (blueSettings as Record<string, unknown>).briefing
+    : undefined
+  window.ROOM_SETTINGS.teamBriefing = {
+    [Team.RED]: typeof redBriefing === 'string' ? redBriefing : '',
+    [Team.BLUE]: typeof blueBriefing === 'string' ? blueBriefing : '',
+  }
+  window.ROOM_SETTINGS.perTeamSettings = {
+    ...(window.ROOM_SETTINGS.perTeamSettings || {}),
+    ...perTeamSettings,
+  }
+}
+
+function syncRoomSettingsFromParams(params: unknown) {
+  if (!params || typeof params !== 'object') return
+  syncRoomBriefingFromPerTeamSettings(extractPerTeamSettings(params))
+}
+
+function syncRoomSettingsFromOptions(options: unknown) {
+  if (!options || typeof options !== 'object') return
+  syncRoomBriefingFromPerTeamSettings(extractPerTeamSettings(options))
 }
 
 export function setDemoReadonlyMode(enabled: boolean) {
@@ -320,6 +365,22 @@ export class GameSocket {
           this.world.stage = m.data.stage;
           this.world.weather.value = m.data.weather;
           this.world.newWeather.value = m.data.weather;
+          if (m.data.options && typeof m.data.options === 'object') {
+            Object.assign(window.ROOM_SETTINGS, m.data.options)
+            syncRoomSettingsFromOptions(m.data.options)
+          }
+          applyRoomParams(m.data.params)
+          syncRoomSettingsFromParams(m.data.params)
+        } else if (m.type === 'room_params_update') {
+          applyRoomParams(m.data)
+          syncRoomSettingsFromParams(m.data)
+        } else if (m.type === 'room_per_team_settings_update') {
+          syncRoomBriefingFromPerTeamSettings(m.data as Record<string, Record<string, unknown>>)
+          window.ROOM_PARAMS ??= {}
+          window.ROOM_PARAMS.perTeamSettings = {
+            ...(window.ROOM_PARAMS.perTeamSettings || {}),
+            ...(m.data || {}),
+          }
         } else if (m.type === 'set_stage') {
           if (this.world.stage === RoomGameStage.PLANNING) {
             this.world.stage = m.data;

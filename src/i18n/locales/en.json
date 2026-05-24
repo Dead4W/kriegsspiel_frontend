@@ -506,6 +506,7 @@
     "chart": "Chart",
     "admin": {
       "title": "Administration",
+      "settings_open": "Settings",
       "start_war": "Start war",
       "start_war_warning_not_ready": "Not all players are ready: {ready} / {total}.",
       "start_war_warning_offline": "Some players are OFFLINE: {offline}.",
@@ -514,7 +515,39 @@
       "start_war_warning_confirm": "Start war with warning? Ready: {ready}/{total}, OFFLINE: {offline}.",
       "end_war": "End war",
       "clear_commands": "Clear commands",
-      "copy_team_link": "Copy link team"
+      "copy_team_link": "Copy link team",
+      "settings_modal": {
+        "title": "Settings",
+        "tabs": {
+          "room": "Room settings",
+          "spawn": "Spawn zones",
+          "briefing": "Briefing"
+        },
+        "room": {
+          "rules_group": "Game rules",
+          "not_set": "Not set",
+          "bool_on": "ON",
+          "bool_off": "OFF"
+        },
+        "briefing": {
+          "group_title": "Team briefing",
+          "group_hint": "Markdown supported. This message is shown to players in planning modal.",
+          "red_label": "Red team briefing",
+          "blue_label": "Blue team briefing",
+          "placeholder": "Write briefing in markdown...",
+          "save": "Save briefing",
+          "show_preview": "Preview markdown",
+          "hide_preview": "Hide preview",
+          "preview_empty": "<em>Nothing to preview yet.</em>"
+        },
+        "spawn": {
+          "group_title": "Planning spawn zones",
+          "group_hint": "Click \"Set spawn\" then hold LMB for first corner and release for second corner.",
+          "add": "Set spawn",
+          "remove": "Remove",
+          "empty": "No spawns set. Team can place/move units anywhere."
+        }
+      }
     },
     "demo": {
       "prev": "Previous",

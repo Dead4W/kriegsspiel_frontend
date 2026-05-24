@@ -1,4 +1,4 @@
-[2026-05-22]
+[2026-05-24]
 - Maps without objectMap temporary broken because new messenger system
 - Chat - add quote flow with linked preview and jump to quoted message
 - Chat - add route capture for messenger delivery (auto/manual points, clear, counter)
@@ -17,6 +17,9 @@
 - Unit Vision - Fix right & bottom screen corners render
 - Notifications - cycle focus unit-by-unit for "new orders" notifications
 - ResourcePack - add cant_swim for unit & is_water for env tags. If unit cant swim and go in is_water env hp = hp / 2 once
+- Admin Options - Add Admin Options menu
+- Admin Options - Add briefing
+- Admin Options - Add spawn zones for planning stage
 
 [2026-05-21]
 - Turn Timer - add LIVE per minute mode with start/pause control and LIVE badge for players

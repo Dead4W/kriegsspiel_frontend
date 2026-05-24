@@ -37,6 +37,9 @@ import {
 import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/moraleCheck.ts";
 import { isPlanningTeamSpawnPointAllowed } from '@/game/planningSpawns'
 
+const REMOTE_MOVE_INTERPOLATION_STEP_MS = 24
+const REMOTE_MOVE_PLAYBACK_TICK_MS = 20
+
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
 
@@ -528,7 +531,7 @@ export abstract class BaseUnit {
   }
 
   applyRemoteFrames(frames: MoveFrame[]) {
-    this.remoteMoveFrames = interpolateMoveFrames(frames, 3);
+    this.remoteMoveFrames = interpolateMoveFrames(frames, REMOTE_MOVE_INTERPOLATION_STEP_MS);
 
     // если уже проигрывается — выходим
     if (this.remoteMoveFrameTimer) {
@@ -538,7 +541,7 @@ export abstract class BaseUnit {
 
     this.remoteMoveFrameStart = performance.now();
 
-    this.remoteMoveFrameTimer = createRafInterval(20, () => {
+    this.remoteMoveFrameTimer = createRafInterval(REMOTE_MOVE_PLAYBACK_TICK_MS, () => {
       this.playNextRemoteFrame()
     });
     this.remoteMoveFrameTimer.start();
@@ -551,6 +554,7 @@ export abstract class BaseUnit {
       return
     }
 
+    let hasPositionUpdate = false
     const now = performance.now();
     while (
       this.remoteMoveFrames.length &&
@@ -559,9 +563,12 @@ export abstract class BaseUnit {
       const frame = this.remoteMoveFrames.shift()!
       this.rotateTowardsPoint(frame.pos)
       this.pos = frame.pos;
+      hasPositionUpdate = true
     }
 
-    window.ROOM_WORLD.events.emit('changed', { reason: 'remoteMoveFrame' });
+    if (hasPositionUpdate) {
+      window.ROOM_WORLD.events.emit('changed', { reason: 'remoteMoveFrame' });
+    }
   }
 
   addCommand(c: commandstate, replace = false) {

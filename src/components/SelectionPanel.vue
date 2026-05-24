@@ -30,7 +30,7 @@ const isUnitDetailOpen = ref(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_UNI
 
 function syncSelection(data: {reason: string}) {
   debugPerformance('SelectionPanel.syncSelection', () => {
-    if (['camera', 'drag'].includes(data.reason)) return;
+    if (['camera', 'drag', 'remoteMoveFrame'].includes(data.reason)) return;
 
     const next = window.ROOM_WORLD.units.list().filter((u: BaseUnit) => u.selected)
     selectedUnits.value = next

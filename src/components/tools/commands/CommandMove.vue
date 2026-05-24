@@ -1029,7 +1029,7 @@ defineExpose({
 
     <!-- ===== ABILITIES ===== -->
     <div
-      v-if="isAdmin && availableAbilities.length"
+      v-if="availableAbilities.length"
       class="column abilities"
     >
       <div class="title">

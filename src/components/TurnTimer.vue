@@ -1060,7 +1060,7 @@ function setReady(isReady: boolean) {
 const refreshKey = ref(0)
 function sync(data: {reason: string}) {
   debugPerformance('TurnTimer.sync', () => {
-    if (['camera', 'drag'].includes(data.reason)) return;
+    if (['camera', 'drag', 'remoteMoveFrame'].includes(data.reason)) return;
     refreshKey.value++
     displayWorldTime.value = window.ROOM_WORLD.time
     timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()

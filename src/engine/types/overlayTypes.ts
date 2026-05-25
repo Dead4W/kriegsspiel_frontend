@@ -16,6 +16,7 @@ export type OverlayCircle = {
   radius: number
   color?: string
   strokeColor?: string
+  strokeWidth?: number
   fill?: boolean
 }
 

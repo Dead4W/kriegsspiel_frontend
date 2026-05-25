@@ -24,6 +24,12 @@ type MoveOrderRange = {
   max: number
 }
 
+type InaccuracyCircle = {
+  x: number
+  y: number
+  radius: number
+}
+
 function hpGradientColor(hpRatio: number) {
   const clamped = Math.max(0, Math.min(1, hpRatio))
   const percent = Math.round(clamped * 100)
@@ -52,7 +58,7 @@ export class unitlayer {
 
   private unitScale: number = 1
 
-  private inaccuracyRenderedPoints: string[] = [];
+  private inaccuracyCirclesByPoint: Map<string, InaccuracyCircle[]> = new Map();
 
   constructor() {
     for (const type of Object.values(unitType)) {
@@ -69,7 +75,7 @@ export class unitlayer {
       return
     }
 
-    this.inaccuracyRenderedPoints = [];
+    this.inaccuracyCirclesByPoint.clear();
 
     const cam = w.camera
     const settings = window.CLIENT_SETTINGS
@@ -91,6 +97,8 @@ export class unitlayer {
         ctx.closePath()
       })
     }
+
+    this.drawInaccuracyCircles(ctx, cam, settings)
 
     for (const unit of units) {
       this.drawUnit(ctx, cam, unit, settings)
@@ -332,25 +340,17 @@ export class unitlayer {
             )
 
             const inaccuracyPointKey = `${cmdState.inaccuracyPoint.x.toFixed(1)}_${cmdState.inaccuracyPoint.y.toFixed(1)}`
-            if (!this.inaccuracyRenderedPoints.includes(inaccuracyPointKey)) {
-              ctx.fillStyle = 'rgba(168,85,247,0.45)'
-              ctx.strokeStyle = 'black'
-              ctx.lineWidth = 1 * cam.zoom
-
-              const radiusMeters =
-                computeInaccuracyRadius(unit, cmdState.inaccuracyPoint)
-                * (cmdState.radiusModifier ?? 1)
-                * inaccuracyAbility.radiusMult;
-              const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel;
-
-              const {x,y} = cam.worldToScreen(cmdState.inaccuracyPoint)
-
-              ctx.beginPath()
-              ctx.arc(x, y, radiusPixels * cam.zoom, 0, Math.PI * 2)
-              ctx.fill()
-              ctx.stroke()
-              this.inaccuracyRenderedPoints.push(inaccuracyPointKey);
-            }
+            const radiusMeters =
+              computeInaccuracyRadius(unit, cmdState.inaccuracyPoint)
+              * (cmdState.radiusModifier ?? 1)
+              * inaccuracyAbility.radiusMult;
+            const radiusPixels = radiusMeters / window.ROOM_WORLD.map.metersPerPixel;
+            const {x, y} = cam.worldToScreen(cmdState.inaccuracyPoint)
+            this.collectInaccuracyCircle(inaccuracyPointKey, {
+              x,
+              y,
+              radius: radiusPixels * cam.zoom,
+            })
           } else {
             const targets = command.getPriorityTargets(unit)
             if (targets.length === 0 && cmdState.directViewTargetPoint) {
@@ -398,26 +398,61 @@ export class unitlayer {
       if (object.type !== 'inaccuracy') continue
 
       const inaccuracyPointKey =
-        `${object.data.point.x.toFixed(1)}_${object.data.point.y.toFixed(1)}_${object.data.radiusMeters.toFixed(1)}`
-      if (this.inaccuracyRenderedPoints.includes(inaccuracyPointKey)) continue
+        `${object.data.point.x.toFixed(1)}_${object.data.point.y.toFixed(1)}`
 
       const radiusPixels = object.data.radiusMeters / window.ROOM_WORLD.map.metersPerPixel
       const {x, y} = cam.worldToScreen(object.data.point)
 
-      ctx.save()
-      ctx.globalAlpha = settings[CLIENT_SETTING_KEYS.OPACITY_COMMANDS] ?? 0.8
-      ctx.fillStyle = 'rgba(168,85,247,0.45)'
-      ctx.strokeStyle = 'black'
-      ctx.lineWidth = 1 * cam.zoom
+      this.collectInaccuracyCircle(inaccuracyPointKey, {
+        x,
+        y,
+        radius: radiusPixels * cam.zoom,
+      })
+    }
+  }
 
+  private collectInaccuracyCircle(pointKey: string, circle: InaccuracyCircle) {
+    const circles = this.inaccuracyCirclesByPoint.get(pointKey)
+    if (circles) {
+      circles.push(circle)
+      return
+    }
+    this.inaccuracyCirclesByPoint.set(pointKey, [circle])
+  }
+
+  private drawInaccuracyCircles(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    settings: typeof window.CLIENT_SETTINGS
+  ) {
+    if (this.inaccuracyCirclesByPoint.size === 0) return
+
+    ctx.save()
+    ctx.globalAlpha = settings[CLIENT_SETTING_KEYS.OPACITY_COMMANDS] ?? 0.8
+    ctx.strokeStyle = 'black'
+    ctx.lineWidth = 1 * cam.zoom
+
+    for (const circlesAtPoint of this.inaccuracyCirclesByPoint.values()) {
+      if (!circlesAtPoint.length) continue
+
+      const sorted = [...circlesAtPoint].sort((a, b) => b.radius - a.radius)
+      const [largestCircle, ...otherCircles] = sorted
+      if (!largestCircle) continue
+
+      ctx.fillStyle = 'rgba(168,85,247,0.45)'
       ctx.beginPath()
-      ctx.arc(x, y, radiusPixels * cam.zoom, 0, Math.PI * 2)
+      ctx.arc(largestCircle.x, largestCircle.y, largestCircle.radius, 0, Math.PI * 2)
       ctx.fill()
       ctx.stroke()
-      ctx.restore()
 
-      this.inaccuracyRenderedPoints.push(inaccuracyPointKey)
+      for (const circle of otherCircles) {
+        ctx.beginPath()
+        ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2)
+        ctx.stroke()
+      }
     }
+
+    ctx.restore()
   }
 
   // =============================

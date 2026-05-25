@@ -36,7 +36,6 @@ const attackers = ref<BaseUnit[]>([])
 /** Цели — считаются по текущему выделению */
 const targets = ref<BaseUnit[]>([])
 
-const inaccuracyRadius = ref(0)
 const inaccuracyPoint = ref<{ pos: { x: number; y: number } } | null>(null)
 
 const selectedAbilities = ref<UnitAbilityType[]>([])
@@ -99,7 +98,6 @@ watch(selectedAbilities, (list) => {
     inaccuracyPoint.value = null
   }
 })
-watch(inaccuracyRadius, rebuildAttackOverlay)
 watch(selectedAbilities, rebuildAttackOverlay)
 watch(inaccuracyPoint, rebuildAttackOverlay)
 
@@ -165,19 +163,38 @@ function rebuildAttackOverlay() {
   ) {
     if (inaccuracyPoint.value) {
       const radiusMult = inaccuracyAbility.value?.radiusMult ?? 1
-      items.push(
-        {
-          type: 'circle',
-          center: inaccuracyPoint.value.pos,
-          radius:
-            inaccuracyRadius.value
-            / window.ROOM_WORLD.map.metersPerPixel
+      const circles: OverlayCircle[] = attackers.value
+        .map((a) => {
+          const radiusMeters =
+            computeInaccuracyRadius(a as BaseUnit, inaccuracyPoint.value!.pos)
             * radiusModifier.value
-            * radiusMult,
+            * radiusMult
+          return {
+            type: 'circle',
+            center: inaccuracyPoint.value!.pos,
+            radius: radiusMeters / window.ROOM_WORLD.map.metersPerPixel,
+            strokeColor: 'black',
+            strokeWidth: 1,
+          } satisfies OverlayCircle
+        })
+        .sort((a, b) => b.radius - a.radius)
+
+      const [largestCircle, ...otherCircles] = circles
+      if (largestCircle) {
+        items.push({
+          ...largestCircle,
           color: 'rgba(168,85,247,0.45)',
           fill: true,
-        } satisfies OverlayCircle
-      )
+        } satisfies OverlayCircle)
+      }
+      for (const circle of otherCircles) {
+        items.push({
+          ...circle,
+          color: 'rgba(0,0,0,0)',
+          fill: false,
+        } satisfies OverlayCircle)
+      }
+
       for (const a of attackers.value) {
         items.push({
           type: 'line',
@@ -248,16 +265,6 @@ function onPointerDown(e: PointerEvent) {
   if (hasInaccuracyFire.value) {
     // ПКМ — задать / переместить точку атаки
     inaccuracyPoint.value = { pos }
-
-    let sumDist = 0;
-    for (const a of attackers.value) {
-      sumDist += computeInaccuracyRadius(
-        a as BaseUnit,
-        pos,
-      )
-    }
-    inaccuracyRadius.value = sumDist / attackers.value.length;
-
     rebuildAttackOverlay()
     return
   }

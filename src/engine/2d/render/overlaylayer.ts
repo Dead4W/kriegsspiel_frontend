@@ -162,7 +162,7 @@ export class overlaylayer {
 
     ctx.fillStyle = item.color ?? '#a855f7'
     ctx.strokeStyle = item.strokeColor ?? 'black'
-    ctx.lineWidth = 2 * cam.zoom
+    ctx.lineWidth = (item.strokeWidth ?? 2) * cam.zoom
 
     ctx.beginPath()
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2)

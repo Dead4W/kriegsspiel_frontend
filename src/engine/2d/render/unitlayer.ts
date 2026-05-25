@@ -24,16 +24,6 @@ type MoveOrderRange = {
   max: number
 }
 
-function shouldRenderMoveLine(
-  segIndex: number | undefined,
-  orderIndex: number | undefined,
-  lastOrderIndex?: number
-) {
-  const normalizedOrderIndex = orderIndex ?? 0
-  const isLastOrder = lastOrderIndex != null && normalizedOrderIndex === lastOrderIndex
-  return (segIndex ?? 0) === 0 || normalizedOrderIndex === 0 || isLastOrder
-}
-
 function hpGradientColor(hpRatio: number) {
   const clamped = Math.max(0, Math.min(1, hpRatio))
   const percent = Math.round(clamped * 100)
@@ -283,36 +273,42 @@ export class unitlayer {
     const color = `rgba(${r},${g},${b},1)`
 
     let from = unit.pos
+    let hasPendingMovePath = false
+
+    const flushMovePath = () => {
+      if (!hasPendingMovePath) return
+
+      debugPerformance('drawMoveLine', () => {
+        ctx.save()
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        ctx.strokeStyle = color
+        ctx.lineWidth = 6 * cam.zoom
+        ctx.setLineDash([6 * cam.zoom, 6 * cam.zoom])
+        ctx.lineDashOffset = -(performance.now() * cam.zoom * 0.01)
+        ctx.stroke()
+        ctx.restore()
+      })
+
+      hasPendingMovePath = false
+    }
 
     for (const cmd of commands) {
+      if (cmd.type !== UnitCommandTypes.Move) {
+        flushMovePath()
+      }
+      
       switch (cmd.type) {
         case UnitCommandTypes.Move: {
           const state = cmd.getState().state as MoveCommandState
-          const lastOrderIndex = state.uniqueId != null
-            ? this.move_orders[state.uniqueId]?.max
-            : undefined
-          if (!shouldRenderMoveLine(state.segIndex, state.orderIndex, lastOrderIndex)) {
-            from = state.target
-            break
-          }
           const a = cam.worldToScreen(from)
           const b = cam.worldToScreen(state.target)
-
-          debugPerformance('drawMoveLine', () => {
-            ctx.save()
-            ctx.lineCap = 'round'
-            ctx.lineJoin = 'round'
-            ctx.strokeStyle = color
-            ctx.lineWidth = 6 * cam.zoom
-            ctx.setLineDash([6 * cam.zoom, 6 * cam.zoom])
-            ctx.lineDashOffset = -(performance.now() * cam.zoom * 0.01)
-
+          if (!hasPendingMovePath) {
             ctx.beginPath()
             ctx.moveTo(a.x, a.y)
-            ctx.lineTo(b.x, b.y)
-            ctx.stroke()
-            ctx.restore()
-          })
+            hasPendingMovePath = true
+          }
+          ctx.lineTo(b.x, b.y)
 
           from = state.target
           break
@@ -384,6 +380,7 @@ export class unitlayer {
         }
       }
     }
+    flushMovePath()
 
     ctx.globalAlpha = 1
   }

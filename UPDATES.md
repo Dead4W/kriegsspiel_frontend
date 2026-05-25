@@ -3,6 +3,7 @@
 - Unit Orders - optimize render
 - Unit Orders - fix render for inaccuracy
 - Live Timer - fixes
+- Optimization - Optimize directView render
 
 [2026-05-24]
 - Maps without objectMap temporary broken because new messenger system

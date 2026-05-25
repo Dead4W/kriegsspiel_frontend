@@ -917,15 +917,6 @@ async function runTurnStep(
 
       window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
       window.ROOM_WORLD.skipTime(step, false)
-      if (isLive) {
-        window.ROOM_WORLD.events.emit('api', {
-          type: 'skip_time',
-          data: window.ROOM_WORLD.time,
-          live: true,
-          liveIntervalMs: LIVE_TICK_MS,
-          liveGameSecondsPerMinute,
-        })
-      }
       displayWorldTime.value = window.ROOM_WORLD.time
       timeOfDay.value = window.ROOM_WORLD.getTimeOfDay()
 
@@ -940,6 +931,14 @@ async function runTurnStep(
       window.ROOM_WORLD.events.emit('api', {
         type: 'skip_time',
         data: window.ROOM_WORLD.time,
+      })
+    } else if (isLive && runningSteps > 0) {
+      window.ROOM_WORLD.events.emit('api', {
+        type: 'skip_time',
+        data: window.ROOM_WORLD.time,
+        live: true,
+        liveIntervalMs: LIVE_TICK_MS,
+        liveGameSecondsPerMinute,
       })
     }
 
@@ -977,10 +976,11 @@ async function startTurn() {
   try {
     if (livePerMinute.value) {
       let liveFractionalCarry = 0
+      const liveTicksPerMinute = Math.max(1, 60_000 / LIVE_TICK_MS)
       while (running.value && runToken === liveLoopToken) {
         const tickStartMs = Date.now()
         const perMinuteSeconds = Math.max(0, minutes.value * 60 + seconds.value)
-        liveFractionalCarry += perMinuteSeconds / 6
+        liveFractionalCarry += perMinuteSeconds / liveTicksPerMinute
         const skipSeconds = Math.floor(liveFractionalCarry)
         if (skipSeconds > 0 && running.value && runToken === liveLoopToken) {
           liveFractionalCarry -= skipSeconds

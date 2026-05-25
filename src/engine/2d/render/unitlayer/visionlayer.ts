@@ -3,6 +3,7 @@ import {type unitTeam, type vec2, world} from "@/engine";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
+import {debugPerformance} from "@/engine/debugPerformance.ts";
 
 // Чем дальше участок леса от юнита, тем сильнее он "гасит" луч.
 // 0 = как раньше (лес одинаково "плотный" на любой дистанции).
@@ -134,6 +135,7 @@ export function buildVisionPolygon(u: BaseUnit, w: world) {
 type VisionCacheEntry = {
   pos: { x: number; y: number }
   polygon: vec2[] // результат buildVisionPolygon
+  createdAtMs: number
 }
 const visionCache = new Map<string, VisionCacheEntry>();
 
@@ -153,6 +155,10 @@ function getUnitVisionEnvironmentSignature(unit: BaseUnit): string {
 // Cache Helper
 function samePos(a: { x: number; y: number }, b: { x: number; y: number }) {
   return a.x === b.x && a.y === b.y
+}
+
+function sameRoundedPos(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.round(a.x / 10) === Math.round(b.x / 10) && Math.round(a.y / 10) === Math.round(b.y / 10)
 }
 
 type TeamVisionLayer = {
@@ -199,99 +205,131 @@ export function drawUnitVision(
   const viewportWidth = w.camera.viewport.x
   const viewportHeight = w.camera.viewport.y
 
-  for (const layer of teamVisionLayers.values()) {
-    layer.ctx.setTransform(1, 0, 0, 1, 0, 0)
-    layer.ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height)
-  }
+  debugPerformance('drawUnitVision.clearTeamLayers', () => {
+    for (const layer of teamVisionLayers.values()) {
+      layer.ctx.setTransform(1, 0, 0, 1, 0, 0)
+      layer.ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height)
+    }
+  })
 
-  const units = [...w.units.list()].sort((a, b) => {
-    if (a.selected === b.selected) return 0
-    return a.selected ? 1 : -1
+  let units: BaseUnit[] = []
+  debugPerformance('drawUnitVision.sortUnits', () => {
+    units = [...w.units.list()].sort((a, b) => {
+      if (a.selected === b.selected) return 0
+      return a.selected ? 1 : -1
+    })
   })
 
   for (const u of units) {
-    if (!u.alive || !u.stats.visionRange) {
-      clearUnitVisionCache(u.id)
-      continue;
-    }
+    debugPerformance('drawUnitVision.unit', () => {
+      if (!u.alive || !u.stats.visionRange) {
+        clearUnitVisionCache(u.id)
+        return
+      }
 
-    if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED] && !u.selected) {
-      continue
-    }
+      if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED] && !u.selected) {
+        return
+      }
 
-    const vCtx = getTeamVisionCtx(u.team, viewportWidth, viewportHeight)
+      const vCtx = getTeamVisionCtx(u.team, viewportWidth, viewportHeight)
 
-    let { r, g, b } = getTeamColor(u.team)
-    if (u.selected) {
-      r = Math.min(r * 1.5, 255);
-      g = Math.min(g * 1.5, 255);
-      b = Math.min(b * 1.5, 255);
-    }
-
-    // ===== ПРОСТОЙ КРУГ =====
-    if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]) {
-      const p = w.camera.worldToScreen(u.pos)
-      const rPx = (u.visionRange / w.map.metersPerPixel) * w.camera.zoom
-
-      vCtx.beginPath()
-      vCtx.arc(p.x, p.y, rPx, 0, Math.PI * 2)
-
-      vCtx.strokeStyle = `rgb(${r},${g},${b})`
-      vCtx.lineWidth = 1 * w.camera.zoom
-      vCtx.stroke()
-
-      vCtx.fillStyle = `rgb(${r},${g},${b})`
-      vCtx.fill()
-
-      clearUnitVisionCache(u.id)
-      continue
-    }
-
-    // ===== КЕШ =====
-    const unitInForest = u.envState.includes(UnitEnvironmentState.InForest)
-    const environmentSignature = getUnitVisionEnvironmentSignature(u)
-    const cacheKey = `${u.id}_${unitInForest}_${environmentSignature}_${u.visionRange}`
-    const cache = visionCache.get(cacheKey)
-
-    let poly: vec2[]
-
-    if (!cache || !samePos(cache.pos, u.pos)) {
-      poly = buildVisionPolygon(u, w)
-      visionCache.set(cacheKey, {
-        pos: { ...u.pos },
-        polygon: poly,
+      let r = 0
+      let g = 0
+      let b = 0
+      debugPerformance('drawUnitVision.resolveColor', () => {
+        const teamColor = getTeamColor(u.team)
+        r = teamColor.r
+        g = teamColor.g
+        b = teamColor.b
       })
-    } else {
-      poly = cache.polygon
-    }
+      if (u.selected) {
+        r = Math.min(r * 1.5, 255);
+        g = Math.min(g * 1.5, 255);
+        b = Math.min(b * 1.5, 255);
+      }
 
-    // ===== ПОЛИГОН =====
-    vCtx.beginPath()
-    const start = w.camera.worldToScreen(poly[0]!)
-    vCtx.moveTo(start.x, start.y)
+      // ===== ПРОСТОЙ КРУГ =====
+      if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]) {
+        debugPerformance('drawUnitVision.circle', () => {
+          const p = w.camera.worldToScreen(u.pos)
+          const rPx = (u.visionRange / w.map.metersPerPixel) * w.camera.zoom
 
-    for (let i = 1; i < poly.length; i++) {
-      const p = w.camera.worldToScreen(poly[i]!)
-      vCtx.lineTo(p.x, p.y)
-    }
+          vCtx.beginPath()
+          vCtx.arc(p.x, p.y, rPx, 0, Math.PI * 2)
 
-    vCtx.closePath()
+          vCtx.strokeStyle = `rgb(${r},${g},${b})`
+          vCtx.lineWidth = 1 * w.camera.zoom
+          vCtx.stroke()
 
-    vCtx.strokeStyle = `rgb(${r},${g},${b})`
-    vCtx.lineWidth = w.camera.zoom
-    vCtx.stroke()
+          vCtx.fillStyle = `rgb(${r},${g},${b})`
+          vCtx.fill()
+        })
+        clearUnitVisionCache(u.id)
+        return
+      }
 
-    vCtx.fillStyle = `rgb(${r},${g},${b})`
-    vCtx.fill()
+      let poly: vec2[] = []
+      debugPerformance('drawUnitVision.cacheAndPolygon', () => {
+        const unitInForest = u.envState.includes(UnitEnvironmentState.InForest)
+        const environmentSignature = getUnitVisionEnvironmentSignature(u)
+        const cacheKey = `${u.id}_${unitInForest}_${environmentSignature}_${u.visionRange}`
+        const cache = visionCache.get(cacheKey)
+
+        const now = Date.now()
+        const cacheExpired = cache != null && (now - cache.createdAtMs) > 1_000
+        const shouldRebuildCache = (
+          cache == null ||
+          !sameRoundedPos(cache.pos, u.pos) ||
+          (cacheExpired && !samePos(cache.pos, u.pos))
+        )
+
+        if (shouldRebuildCache) {
+          debugPerformance('drawUnitVision.buildVisionPolygon', () => {
+            poly = buildVisionPolygon(u, w)
+          })
+          visionCache.set(cacheKey, {
+            pos: { ...u.pos },
+            polygon: poly,
+            createdAtMs: now,
+          })
+          return
+        }
+
+        poly = cache.polygon
+      })
+
+      // ===== ПОЛИГОН =====
+      debugPerformance('drawUnitVision.drawPolygon', () => {
+        vCtx.beginPath()
+        const start = w.camera.worldToScreen(poly[0]!)
+        vCtx.moveTo(start.x, start.y)
+
+        for (let i = 1; i < poly.length; i++) {
+          const p = w.camera.worldToScreen(poly[i]!)
+          vCtx.lineTo(p.x, p.y)
+        }
+
+        vCtx.closePath()
+
+        vCtx.strokeStyle = `rgb(${r},${g},${b})`
+        vCtx.lineWidth = w.camera.zoom
+        vCtx.stroke()
+
+        vCtx.fillStyle = `rgb(${r},${g},${b})`
+        vCtx.fill()
+      })
+    })
   }
 
   // === НАКЛАДЫВАЕМ НА ОСНОВНОЙ CANVAS ===
-  ctx.save()
-  ctx.globalAlpha = 0.5
-  for (const layer of teamVisionLayers.values()) {
-    ctx.drawImage(layer.canvas, 0, 0, viewportWidth, viewportHeight)
-  }
-  ctx.restore()
+  debugPerformance('drawUnitVision.composite', () => {
+    ctx.save()
+    ctx.globalAlpha = 0.5
+    for (const layer of teamVisionLayers.values()) {
+      ctx.drawImage(layer.canvas, 0, 0, viewportWidth, viewportHeight)
+    }
+    ctx.restore()
+  })
 }
 
 export function pointInPolygon(point: vec2, polygon: vec2[]): boolean {

@@ -102,6 +102,16 @@ export class unitregistry {
     return [...this.map.values()]
   }
 
+  syncRemoteMoveFrames(now = performance.now()): boolean {
+    let hasAnyUpdate = false
+    for (const unit of this.map.values()) {
+      if (unit.syncRemoteMoveFrames(now)) {
+        hasAnyUpdate = true
+      }
+    }
+    return hasAnyUpdate
+  }
+
   get(id: uuid): BaseUnit | null {
     return this.map.get(id) ?? null
   }

@@ -1,5 +1,6 @@
 import type { vec2 } from "@/engine/types.ts";
 import type { world } from "@/engine/world/world.ts";
+import { debugPerformance } from "@/engine/debugPerformance.ts";
 import { getEnvMultipliers } from "@/engine/units/modifiers/UnitEnvModifiers.ts";
 
 const SQRT2 = Math.SQRT2;
@@ -41,6 +42,10 @@ const ENV_BY_ENTITY_CANDIDATES: Array<{ entities: string[]; envIds: string[] }> 
 const FIELD_ENV_FALLBACK_IDS = ["in_field", "in_plain_field", "in_soft_field", "field"];
 
 type GridPoint = { x: number; y: number };
+
+function debugRoadPathPerformance<T>(name: string, fn: () => T): T {
+  return debugPerformance(`roadPath.${name}`, fn) as T;
+}
 
 export type RoadPathThreatZone = {
   x: number
@@ -754,108 +759,82 @@ export function buildRoadTurnRoutePoints(
   to: vec2,
   options: BuildRoadTurnRouteOptions = {}
 ): vec2[] {
-  const startedAt = (typeof performance !== "undefined" && typeof performance.now === "function")
-    ? performance.now()
-    : Date.now();
-  const threatZonesCount = options.threatZones?.length ?? 0;
-  if (!w.objectMapImageData || w.objectMapColorToEntity.size === 0) {
-    console.debug("[RoadPathPerf] object_map_unavailable_fallback", {
-      durationMs: 0,
-      threatZones: threatZonesCount,
+  return debugRoadPathPerformance("buildRoadTurnRoutePoints", () => {
+    if (!w.objectMapImageData || w.objectMapColorToEntity.size === 0) {
+      return [{ x: to.x, y: to.y }];
+    }
+
+    const width = w.map.width;
+    const height = w.map.height;
+    const fromPx = clampPoint(roundedPoint(from), width, height);
+    const toPx = clampPoint(roundedPoint(to), width, height);
+
+    const chainedPath: GridPoint[] = [{ x: fromPx.x, y: fromPx.y }];
+    let chainCursor = { x: fromPx.x, y: fromPx.y };
+    let reachedGoal = false;
+
+    debugRoadPathPerformance("chainPartialAStar", () => {
+      for (let attempt = 0; attempt < PARTIAL_PATH_CHAIN_MAX_ATTEMPTS; attempt += 1) {
+        const partial = findPathAStarWithEnvironmentSpeed(w, chainCursor, toPx, options);
+        if (!partial || partial.length < 2) break;
+
+        for (let i = 1; i < partial.length; i += 1) {
+          chainedPath.push(partial[i]!);
+        }
+
+        const tail = partial[partial.length - 1]!;
+        if (tail.x === toPx.x && tail.y === toPx.y) {
+          reachedGoal = true;
+          break;
+        }
+
+        const progress = distance(chainCursor, tail);
+        if (!Number.isFinite(progress) || progress < PARTIAL_PATH_MIN_PROGRESS_PX) {
+          break;
+        }
+        chainCursor = { x: tail.x, y: tail.y };
+      }
     });
-    return [{ x: to.x, y: to.y }];
-  }
 
-  const width = w.map.width;
-  const height = w.map.height;
-  const fromPx = clampPoint(roundedPoint(from), width, height);
-  const toPx = clampPoint(roundedPoint(to), width, height);
-
-  const chainedPath: GridPoint[] = [{ x: fromPx.x, y: fromPx.y }];
-  let chainCursor = { x: fromPx.x, y: fromPx.y };
-  let reachedGoal = false;
-  let attemptsUsed = 0;
-
-  for (let attempt = 0; attempt < PARTIAL_PATH_CHAIN_MAX_ATTEMPTS; attempt += 1) {
-    attemptsUsed += 1;
-    const partial = findPathAStarWithEnvironmentSpeed(w, chainCursor, toPx, options);
-    if (!partial || partial.length < 2) break;
-
-    for (let i = 1; i < partial.length; i += 1) {
-      chainedPath.push(partial[i]!);
+    if (chainedPath.length < 2) {
+      return [{ x: to.x, y: to.y }];
     }
 
-    const tail = partial[partial.length - 1]!;
-    if (tail.x === toPx.x && tail.y === toPx.y) {
-      reachedGoal = true;
-      break;
-    }
+    const path = dedupeSequential(chainedPath);
+    const deduped = debugRoadPathPerformance("postprocessRoute", () => {
+      const centeredPath = snapPointsToRoadCenters(
+        w,
+        path.map((p) => ({ x: p.x, y: p.y }))
+      );
+      const turnPoints = simplifyTurnPoints(w, toTurnPoints(path));
+      const mandatoryAnchors = collectRoadIntersectionAnchors(w, centeredPath);
+      const orderedTurnPoints = mandatoryAnchors.length
+        ? mergePointsByPathProgress(centeredPath, [...turnPoints, ...mandatoryAnchors])
+        : turnPoints;
+      const centeredTurnPoints = enforceMinPointDistance(
+        snapPointsToRoadCenters(w, orderedTurnPoints),
+        MIN_POINT_DISTANCE_PX
+      );
+      const result: vec2[] = [];
+      for (const p of centeredTurnPoints) {
+        result.push({ x: p.x, y: p.y });
+      }
 
-    const progress = distance(chainCursor, tail);
-    if (!Number.isFinite(progress) || progress < PARTIAL_PATH_MIN_PROGRESS_PX) {
-      break;
-    }
-    chainCursor = { x: tail.x, y: tail.y };
-  }
+      if (reachedGoal) {
+        result.push({ x: to.x, y: to.y });
+      }
 
-  if (chainedPath.length < 2) {
-    const durationMs = ((typeof performance !== "undefined" && typeof performance.now === "function")
-      ? performance.now()
-      : Date.now()) - startedAt;
-    console.debug("[RoadPathPerf] no_path_fallback", {
-      durationMs,
-      attemptsUsed,
-      reachedGoal,
-      threatZones: threatZonesCount,
+      const preprocessed = collapseStraightRuns(dedupeSequential(result));
+      const metersPerPixel = Math.max(0.0001, Number(w.map.metersPerPixel) || 1);
+      const maxStepPx = MAX_ASTAR_POINT_STEP_METERS / metersPerPixel;
+      const withStepLimit = enforceMaxStepDistance(preprocessed, maxStepPx);
+      return dedupeSequential(withStepLimit);
     });
-    return [{ x: to.x, y: to.y }];
-  }
-
-  const path = dedupeSequential(chainedPath);
-  const centeredPath = snapPointsToRoadCenters(
-    w,
-    path.map((p) => ({ x: p.x, y: p.y }))
-  );
-  const turnPoints = simplifyTurnPoints(w, toTurnPoints(path));
-  const mandatoryAnchors = collectRoadIntersectionAnchors(w, centeredPath);
-  const orderedTurnPoints = mandatoryAnchors.length
-    ? mergePointsByPathProgress(centeredPath, [...turnPoints, ...mandatoryAnchors])
-    : turnPoints;
-  const centeredTurnPoints = enforceMinPointDistance(
-    snapPointsToRoadCenters(w, orderedTurnPoints),
-    MIN_POINT_DISTANCE_PX
-  );
-  const result: vec2[] = [];
-  for (const p of centeredTurnPoints) {
-    result.push({ x: p.x, y: p.y });
-  }
-
-  if (reachedGoal) {
-    result.push({ x: to.x, y: to.y });
-  }
-
-  const preprocessed = collapseStraightRuns(dedupeSequential(result));
-  const metersPerPixel = Math.max(0.0001, Number(w.map.metersPerPixel) || 1);
-  const maxStepPx = MAX_ASTAR_POINT_STEP_METERS / metersPerPixel;
-  const withStepLimit = enforceMaxStepDistance(preprocessed, maxStepPx);
-  const deduped = dedupeSequential(withStepLimit);
-  if (!deduped.length) {
-    if (reachedGoal) return [{ x: to.x, y: to.y }];
-    const tail = path[path.length - 1]!;
-    return [{ x: tail.x, y: tail.y }];
-  }
-  const durationMs = ((typeof performance !== "undefined" && typeof performance.now === "function")
-    ? performance.now()
-    : Date.now()) - startedAt;
-  console.debug("[RoadPathPerf] build_route", {
-    durationMs,
-    attemptsUsed,
-    reachedGoal,
-    threatZones: threatZonesCount,
-    from: { x: fromPx.x, y: fromPx.y },
-    to: { x: toPx.x, y: toPx.y },
-    chainedPathPoints: chainedPath.length,
-    finalPoints: deduped.length,
+    if (!deduped.length) {
+      if (reachedGoal) return [{ x: to.x, y: to.y }];
+      const tail = path[path.length - 1]!;
+      return [{ x: tail.x, y: tail.y }];
+    }
+    return deduped;
   });
-  return deduped;
 }

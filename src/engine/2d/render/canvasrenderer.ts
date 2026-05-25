@@ -63,6 +63,9 @@ export class canvasrenderer {
 
   render(w: world) {
     debugPerformance('render', () => {
+      debugPerformance('syncRemoteMoveFrames', () => {
+        w.units.syncRemoteMoveFrames()
+      })
       debugPerformance('clearRect', () => {
         this.ctx.clearRect(0, 0, w.camera.viewport.x, w.camera.viewport.y)
       })

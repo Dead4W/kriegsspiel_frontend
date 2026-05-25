@@ -172,6 +172,7 @@ export class threeRenderer {
     this.lastMapHeight = w.map.height
     this.ensureSceneReadySync()
     const nowMs = performance.now()
+    w.units.syncRemoteMoveFrames(nowMs)
     const delta = Math.min((nowMs - this.lastFrameAtMs) / 1000, 0.05)
     const elapsed = (nowMs - this.frameStartedAtMs) / 1000
     this.lastFrameAtMs = nowMs

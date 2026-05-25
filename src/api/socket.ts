@@ -309,7 +309,16 @@ export class GameSocket {
   private handleMessage(msg: InMessage) {
     if (msg.type === 'messages') {
       let skipTimeSoundPlayed = false
-      for (const m of msg.messages) {
+      let lastLiveSkipTimeIndex = -1
+      for (let i = msg.messages.length - 1; i >= 0; i -= 1) {
+        const message = msg.messages[i]
+        if (message?.type === 'skip_time' && message.live === true) {
+          lastLiveSkipTimeIndex = i
+          break
+        }
+      }
+      for (let messageIndex = 0; messageIndex < msg.messages.length; messageIndex += 1) {
+        const m = msg.messages[messageIndex]!
         if (isDemoReadonlyMode && DEMO_BLOCKED_INCOMING_TYPES.has(m.type)) {
           continue
         }
@@ -351,6 +360,13 @@ export class GameSocket {
         } else if (m.type === 'cursor') {
           this.world.cursor.upsertRemoteCursor(m.data);
         } else if (m.type === 'skip_time') {
+          if (
+            m.live === true
+            && lastLiveSkipTimeIndex >= 0
+            && messageIndex !== lastLiveSkipTimeIndex
+          ) {
+            continue
+          }
           const played = this.world.updateTime(m.data, {
             live: m.live === true,
             liveIntervalMs: m.liveIntervalMs,

@@ -8,7 +8,7 @@ import {
 } from './types'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {getEnvMultipliers} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
-import {createRafInterval, interpolateMoveFrames, type RafInterval} from "@/engine/util.ts";
+import {interpolateMoveFrames} from "@/engine/util.ts";
 import {getFormationMultipliers} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
 import {createUnitCommand} from "@/engine/units/commands";
 import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
@@ -38,7 +38,6 @@ import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/
 import { isPlanningTeamSpawnPointAllowed } from '@/game/planningSpawns'
 
 const REMOTE_MOVE_INTERPOLATION_STEP_MS = 24
-const REMOTE_MOVE_PLAYBACK_TICK_MS = 20
 
 
 export type StatKey = 'damage' | 'takeDamageMod' | 'speed' | 'attackRange' | 'visionRange'
@@ -120,7 +119,6 @@ export abstract class BaseUnit {
   protected lastDirtyMoveAt = 0
 
   protected remoteMoveFrames: MoveFrame[] = []
-  protected remoteMoveFrameTimer: RafInterval | null = null
   protected remoteMoveFrameStart = 0;
 
   protected commands: commandstate[] = []
@@ -532,30 +530,15 @@ export abstract class BaseUnit {
 
   applyRemoteFrames(frames: MoveFrame[]) {
     this.remoteMoveFrames = interpolateMoveFrames(frames, REMOTE_MOVE_INTERPOLATION_STEP_MS);
-
-    // если уже проигрывается — выходим
-    if (this.remoteMoveFrameTimer) {
-      this.remoteMoveFrameTimer.stop();
-      this.remoteMoveFrameTimer = null;
-    }
-
     this.remoteMoveFrameStart = performance.now();
-
-    this.remoteMoveFrameTimer = createRafInterval(REMOTE_MOVE_PLAYBACK_TICK_MS, () => {
-      this.playNextRemoteFrame()
-    });
-    this.remoteMoveFrameTimer.start();
   }
 
-  protected playNextRemoteFrame() {
+  syncRemoteMoveFrames(now = performance.now()): boolean {
     if (!this.remoteMoveFrames.length) {
-      this.remoteMoveFrameTimer?.stop();
-      this.remoteMoveFrameTimer = null
-      return
+      return false
     }
 
     let hasPositionUpdate = false
-    const now = performance.now();
     while (
       this.remoteMoveFrames.length &&
       this.remoteMoveFrames[0]!.t <= now - this.remoteMoveFrameStart
@@ -566,9 +549,7 @@ export abstract class BaseUnit {
       hasPositionUpdate = true
     }
 
-    if (hasPositionUpdate) {
-      window.ROOM_WORLD.events.emit('changed', { reason: 'remoteMoveFrame' });
-    }
+    return hasPositionUpdate
   }
 
   addCommand(c: commandstate, replace = false) {

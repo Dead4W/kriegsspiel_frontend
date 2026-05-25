@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, type UnwrapRef, watch} from 'vue'
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import type {BaseUnit} from '@/engine/units/baseUnit'
 import {useI18n} from 'vue-i18n'
-import type {OverlayCircle, OverlayItem, OverlayLine} from "@/engine/types/overlayTypes.ts";
-import {AttackCommand} from "@/engine/units/commands/attackCommand.ts";
 import {getTeamColor} from "@/engine/2d/render";
-import {type unitTeam, unitType} from "@/engine";
+import {type unitTeam} from "@/engine";
 import type {unsub} from "@/engine/events";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
-import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { getInaccuracyAbility } from "@/engine/resourcePack/abilities.ts";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
+import { groupUnitsByTypeAndTeam } from "@/game/commands/shared/groupUnitsByTypeAndTeam";
+import {
+  applyAttackOrder,
+  buildAttackOverlayItems,
+  buildAttackSelectionSnapshot,
+  getUnitPickRadiusPx,
+  isTargetInRangeOfAnyAttacker,
+  toAttackPoint,
+  type AttackInaccuracyPoint,
+} from "@/game/commands/attack";
 
 const {t} = useI18n()
 
@@ -36,7 +43,7 @@ const attackers = ref<BaseUnit[]>([])
 /** Цели — считаются по текущему выделению */
 const targets = ref<BaseUnit[]>([])
 
-const inaccuracyPoint = ref<{ pos: { x: number; y: number } } | null>(null)
+const inaccuracyPoint = ref<AttackInaccuracyPoint | null>(null)
 
 const selectedAbilities = ref<UnitAbilityType[]>([])
 function toggleAbility(a: UnitAbilityType) {
@@ -61,29 +68,8 @@ const availableAbilities = computed<UnitAbilityType[]>(() => {
 
 /* ================= GROUPING ================= */
 
-interface UnitGroup {
-  type: unitType
-  team: unitTeam
-  count: number
-}
-
-function group(units: UnwrapRef<BaseUnit[]>): UnitGroup[] {
-  const map = new Map<string, UnitGroup>()
-
-  for (const u of units) {
-    const key = `${u.type}:${u.team}`
-    map.set(key, {
-      type: u.type,
-      team: u.team,
-      count: (map.get(key)?.count ?? 0) + 1,
-    })
-  }
-
-  return [...map.values()]
-}
-
-const attackersGrouped = computed(() => group(attackers.value))
-const targetsGrouped = computed(() => group(targets.value))
+const attackersGrouped = computed(() => groupUnitsByTypeAndTeam(attackers.value))
+const targetsGrouped = computed(() => groupUnitsByTypeAndTeam(targets.value))
 
 /* ================= DAMAGE ================= */
 
@@ -104,19 +90,14 @@ watch(inaccuracyPoint, rebuildAttackOverlay)
 /* ================= SELECTION SYNC ================= */
 
 function syncTargets() {
-  targets.value = window.ROOM_WORLD.units
-    .list()
-    .filter(u => u.selected && u.team !== attackers.value[0]?.team)
-  attackers.value = window.ROOM_WORLD.units
-    .list()
-    .filter(u => u.selected && u.team === attackers.value[0]?.team)
-  if (hasInaccuracyFire.value) {
-    const requiredAbility = inaccuracyAbility.value?.ability
-    if (requiredAbility) {
-      attackers.value = attackers.value.filter(u => u.abilities.includes(requiredAbility))
-    }
-    targets.value = [];
-  }
+  const selection = buildAttackSelectionSnapshot({
+    allUnits: window.ROOM_WORLD.units.list(),
+    attackerTeam: attackers.value[0]?.team,
+    inaccuracyEnabled: hasInaccuracyFire.value,
+    inaccuracyAbility: inaccuracyAbility.value?.ability,
+  })
+  attackers.value = selection.attackers
+  targets.value = selection.targets
 }
 
 /* ================= ACTION ================= */
@@ -124,17 +105,14 @@ function syncTargets() {
 function confirm() {
   if (!targets.value.length && !inaccuracyPoint.value) return
 
-  for (const u of attackers.value) {
-    const cmd = new AttackCommand({
-      targets: targets.value.map(u => u.id),
-      damageModifier: damageModifier.value,
-      radiusModifier: radiusModifier.value,
-      abilities: selectedAbilities.value,
-      inaccuracyPoint: inaccuracyPoint.value ? inaccuracyPoint.value.pos : null,
-    })
-    u.addCommand(cmd.getState())
-    u.setDirty()
-  }
+  applyAttackOrder({
+    attackers: attackers.value,
+    targets: targets.value,
+    damageModifier: damageModifier.value,
+    radiusModifier: radiusModifier.value,
+    abilities: selectedAbilities.value,
+    inaccuracyPoint: inaccuracyPoint.value?.pos ?? null,
+  })
 
   attackers.value = []
   targets.value = []
@@ -155,74 +133,15 @@ function rebuildAttackOverlay() {
     return
   }
 
-  const items: OverlayItem[] = []
-
-  /* точка + радиус неточного огня */
-  if (
-    hasInaccuracyFire.value
-  ) {
-    if (inaccuracyPoint.value) {
-      const radiusMult = inaccuracyAbility.value?.radiusMult ?? 1
-      const circles: OverlayCircle[] = attackers.value
-        .map((a) => {
-          const radiusMeters =
-            computeInaccuracyRadius(a as BaseUnit, inaccuracyPoint.value!.pos)
-            * radiusModifier.value
-            * radiusMult
-          return {
-            type: 'circle',
-            center: inaccuracyPoint.value!.pos,
-            radius: radiusMeters / window.ROOM_WORLD.map.metersPerPixel,
-            strokeColor: 'black',
-            strokeWidth: 1,
-          } satisfies OverlayCircle
-        })
-        .sort((a, b) => b.radius - a.radius)
-
-      const [largestCircle, ...otherCircles] = circles
-      if (largestCircle) {
-        items.push({
-          ...largestCircle,
-          color: 'rgba(168,85,247,0.45)',
-          fill: true,
-        } satisfies OverlayCircle)
-      }
-      for (const circle of otherCircles) {
-        items.push({
-          ...circle,
-          color: 'rgba(0,0,0,0)',
-          fill: false,
-        } satisfies OverlayCircle)
-      }
-
-      for (const a of attackers.value) {
-        items.push({
-          type: 'line',
-          from: a.pos,
-          to: inaccuracyPoint.value.pos,
-          color: '#facc15',
-          width: 1,
-          dash: [6, 6],
-          dashOffset: -1,
-        } satisfies OverlayLine)
-      }
-    }
-  } else {
-    /* линии атаки (если есть обычные цели) */
-    for (const a of attackers.value) {
-      for (const t of targets.value) {
-        items.push({
-          type: 'line',
-          from: a.pos,
-          to: t.pos,
-          color: '#facc15',
-          width: 1,
-          dash: [6, 6],
-          dashOffset: -1,
-        } satisfies OverlayLine)
-      }
-    }
-  }
+  const items = buildAttackOverlayItems({
+    attackers: attackers.value,
+    targets: targets.value,
+    inaccuracyPoint: inaccuracyPoint.value?.pos ?? null,
+    inaccuracyEnabled: hasInaccuracyFire.value,
+    radiusModifier: radiusModifier.value,
+    inaccuracyRadiusMultiplier: inaccuracyAbility.value?.radiusMult ?? 1,
+    metersPerPixel: window.ROOM_WORLD.map.metersPerPixel,
+  })
 
   window.ROOM_WORLD.setOverlay(items)
 }
@@ -230,21 +149,6 @@ watch(
   () => radiusModifier.value,
   rebuildAttackOverlay
 )
-
-function unitPickRadiusPx() {
-  return 15 * (window.CLIENT_SETTINGS?.[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1)
-}
-
-function isTargetInRangeOfAnyAttacker(target: BaseUnit) {
-  for (const a of attackers.value) {
-    if (!a.alive || a.isRetreat) continue
-    const dx = target.pos.x - a.pos.x
-    const dy = target.pos.y - a.pos.y
-    if (dx * dx + dy * dy <= a.attackRange * a.attackRange) return true
-  }
-  return false
-}
-
 
 function onPointerDown(e: PointerEvent) {
   if (e.button !== 2) return
@@ -264,7 +168,7 @@ function onPointerDown(e: PointerEvent) {
   // ===== Inaccuracy fire: RMB sets point =====
   if (hasInaccuracyFire.value) {
     // ПКМ — задать / переместить точку атаки
-    inaccuracyPoint.value = { pos }
+    inaccuracyPoint.value = toAttackPoint(pos)
     rebuildAttackOverlay()
     return
   }
@@ -273,13 +177,14 @@ function onPointerDown(e: PointerEvent) {
   if (!attackers.value.length) return
   const attackerTeam = attackers.value[0]!.team
 
-  const hit = world.units.pickAt(pos, unitPickRadiusPx())
+  const unitSizeScale = window.CLIENT_SETTINGS?.[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1
+  const hit = world.units.pickAt(pos, getUnitPickRadiusPx(unitSizeScale))
   if (!hit) return
   if (!hit.alive || hit.isRetreat) return
   if (hit.team === attackerTeam) return
 
   // All checks: at least one attacker can reach the target by range.
-  if (!isTargetInRangeOfAnyAttacker(hit)) return
+  if (!isTargetInRangeOfAnyAttacker(hit, attackers.value)) return
 
   hit.selected = !hit.selected
   world.events.emit('changed', { reason: 'select' })

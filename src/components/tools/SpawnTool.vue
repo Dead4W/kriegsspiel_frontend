@@ -9,6 +9,7 @@ import { getSpawnUnitTypes } from "@/engine/resourcePack/units.ts";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import type {unitstate} from "@/engine/units/types.ts";
+import { isAdminTeam, isRedOrBlueTeam } from "@/game/roomGuards.ts";
 
 const { t } = useI18n()
 
@@ -16,7 +17,7 @@ const { t } = useI18n()
 
 const selectedType = ref<UnitType>(UnitType.GENERAL)
 const selectedTeam = ref<unitTeam>('red')
-if ([Team.RED, Team.BLUE].includes(window.PLAYER.team)) {
+if (isRedOrBlueTeam(window.PLAYER.team)) {
   selectedTeam.value = window.PLAYER.team as unitTeam
 }
 const spawnCount = ref(1)
@@ -46,7 +47,7 @@ const UNIT_TYPES = computed(() =>
   }))
 )
 const TEAMS = computed(() => {
-  if (window.PLAYER.team === Team.ADMIN) {
+  if (isAdminTeam()) {
     return [
       { value: 'red' as unitTeam, label: t('team.red') },
       { value: 'blue' as unitTeam, label: t('team.blue') },

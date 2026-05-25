@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import {computed, type UnwrapRef} from 'vue'
 import type {BaseUnit} from '@/engine/units/baseUnit'
-import {Team} from '@/enums/teamKeys'
 import {unitType} from "@/engine";
 import UnitEnvModifierTool from "@/components/tools/UnitEnvModifierTool.vue";
 import UnitCommandTool from "@/components/tools/UnitCommandTool.vue";
 import {canPlayerUseDirectViewOrder} from "@/engine/units/directViewOrderRules.ts";
+import { isAdminTeam } from "@/game/roomGuards.ts";
 
 /* ================= props / emits ================= */
 
@@ -20,7 +20,7 @@ const emit = defineEmits<{
 /* ================= access ================= */
 
 const isAdmin = computed(
-  () => window.PLAYER?.team === Team.ADMIN
+  () => isAdminTeam()
 )
 
 const hasUnits = computed(

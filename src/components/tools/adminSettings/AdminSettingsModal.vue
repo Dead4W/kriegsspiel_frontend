@@ -4,8 +4,9 @@ import { useI18n } from 'vue-i18n'
 import RoomSettingsTab from '@/components/tools/adminSettings/tabs/RoomSettingsTab.vue'
 import BriefingSettingsTab from '@/components/tools/adminSettings/tabs/BriefingSettingsTab.vue'
 import SpawnSettingsTab from '@/components/tools/adminSettings/tabs/SpawnSettingsTab.vue'
+import ActiveZoneSettingsTab from '@/components/tools/adminSettings/tabs/ActiveZoneSettingsTab.vue'
 
-type SettingsTab = 'room' | 'briefing' | 'spawn'
+type SettingsTab = 'room' | 'briefing' | 'spawn' | 'active_zone'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -106,6 +107,14 @@ watch(isCaptureHidden, (hidden) => {
         <button
           type="button"
           class="tab-button"
+          :class="{ active: activeTab === 'active_zone' }"
+          @click="activeTab = 'active_zone'"
+        >
+          {{ t('tools.admin.settings_modal.tabs.active_zone') }}
+        </button>
+        <button
+          type="button"
+          class="tab-button"
           :class="{ active: activeTab === 'briefing' }"
           @click="activeTab = 'briefing'"
         >
@@ -117,6 +126,10 @@ watch(isCaptureHidden, (hidden) => {
         <RoomSettingsTab v-if="activeTab === 'room'" />
         <SpawnSettingsTab
           v-if="activeTab === 'spawn'"
+          @capture-mode-change="onCaptureModeChange"
+        />
+        <ActiveZoneSettingsTab
+          v-if="activeTab === 'active_zone'"
           @capture-mode-change="onCaptureModeChange"
         />
         <BriefingSettingsTab v-if="activeTab === 'briefing'" />

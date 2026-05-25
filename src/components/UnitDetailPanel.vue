@@ -2,11 +2,11 @@
 import {useI18n} from 'vue-i18n'
 import type {BaseUnit, StatKey} from '@/engine/units/baseUnit'
 import {onMounted, onUnmounted, ref, type UnwrapRef} from "vue";
-import {Team} from "@/enums/teamKeys.ts";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {unitType} from "@/engine";
 import {clamp} from "@/engine/math.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
+import { isAdminOrSpectatorTeam } from "@/game/roomGuards.ts";
 
 const { unit } = defineProps<{ unit: UnwrapRef<BaseUnit> }>()
 
@@ -52,11 +52,6 @@ function barStyle(value: number, min: number, max: number) {
     width: `${percent}%`,
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
   }
-}
-
-function isAdmin() {
-  return window.PLAYER.team === Team.ADMIN
-    || window.PLAYER.team === Team.SPECTATOR
 }
 
 function percentClass(key: StatKey, p: number): string {
@@ -229,7 +224,7 @@ onUnmounted(() => {
         </div>
 
         <!-- MORALE -->
-        <div class="stat" v-if="isAdmin()">
+        <div class="stat" v-if="isAdminOrSpectatorTeam()">
           <label>{{ t('stat.morale') }}</label>
           <input
             type="number"
@@ -318,7 +313,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <template v-if="isAdmin()">
+            <template v-if="isAdminOrSpectatorTeam()">
               <div
                 class="stat-mod"
               >

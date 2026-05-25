@@ -7,8 +7,8 @@ import {
 } from '@/enums/clientSettingsKeys'
 
 const { t, locale } = useI18n()
-import {Team} from "@/enums/teamKeys.ts";
 import {useRoute, useRouter} from "vue-router";
+import { isAdminTeam } from "@/game/roomGuards.ts";
 
 
 const router = useRouter()
@@ -20,7 +20,7 @@ const isOpen = ref(false)
 const hasObjectMapRef = ref(false)
 let objectMapPresenceTimer: number | null = null
 
-const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
+const isAdmin = computed(() => isAdminTeam())
 
 function hasObjectMap(): boolean {
   return hasObjectMapRef.value

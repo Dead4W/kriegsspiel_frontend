@@ -5,12 +5,11 @@ import UnitDetailPanel from '@/components/UnitDetailPanel.vue'
 import UnitActionPanel from "@/components/UnitActionPanel.vue";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import CommandsListPanel from "@/components/CommandsListPanel.vue";
-import {Team} from "@/enums/teamKeys.ts";
-import {RoomGameStage} from "@/enums/roomStage.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue';
+import { isAdminOrSpectatorTeam, isWarStage } from "@/game/roomGuards.ts";
 
 /* ================= i18n ================= */
 
@@ -92,13 +91,8 @@ function envIcons(u: BaseUnit) {
     .filter(e => !!e.icon)
 }
 
-function isAdmin() {
-  return window.PLAYER.team === Team.ADMIN
-    || window.PLAYER.team === Team.SPECTATOR;
-}
-
 function isAdminAndWar() {
-  return isAdmin() && window.ROOM_WORLD?.stage === RoomGameStage.WAR;
+  return isAdminOrSpectatorTeam() && isWarStage()
 }
 
 /* ================= focus ================= */
@@ -165,7 +159,7 @@ function selectUnit(u: BaseUnit) {
       </div>
 
       <div v-if="isUnitDetailOpen" class="detail-stack">
-        <CommandsListPanel v-if="isAdmin()" :unit="focusedUnit as BaseUnit" />
+        <CommandsListPanel v-if="isAdminOrSpectatorTeam()" :unit="focusedUnit as BaseUnit" />
         <UnitDetailPanel :unit="focusedUnit" @edit="notifyEdit" />
       </div>
     </div>

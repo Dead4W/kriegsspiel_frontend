@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import {Team} from '@/enums/teamKeys'
-import {RoomGameStage} from "@/enums/roomStage.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
 import type {unitTeam} from "@/engine";
@@ -9,15 +8,23 @@ import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys";
 import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {useI18n} from 'vue-i18n'
-import {AttackCommand, type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
+import {type AttackCommandState} from "@/engine/units/commands/attackCommand.ts";
 import {type MoveCommandState} from "@/engine/units/commands/moveCommand.ts";
 import {type commandstate, type unitstate, unitType} from "@/engine/units/types.ts";
 import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {getInaccuracyAbility} from "@/engine/resourcePack/abilities.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
-import { applyAutoEnvironment } from "@/engine/units/autoEnvironment.ts";
-import {BaseUnit} from "@/engine/units/baseUnit.ts";
+import {processUnitCommands} from "@/engine/world/runTurnStep.ts";
+import {
+  isAdminOrSpectatorTeam,
+  isAdminTeam,
+  isPlanningStage,
+  isRedOrBlueTeam,
+  isTimeModifiersEnabled,
+  isWarStage,
+  isWeatherModifiersEnabled,
+} from "@/game/roomGuards.ts";
 
 const { t } = useI18n()
 
@@ -48,36 +55,8 @@ const displayTurnTime = computed(() => {
 const isLiveDurationLocked = computed(() => running.value && isLiveRunning.value)
 
 const showRemoteLiveBadge = computed(() => {
-  return !isAdmin() && window.ROOM_WORLD.skipTimeLive.value
+  return !isAdminTeam() && window.ROOM_WORLD.skipTimeLive.value
 })
-
-function isAdmin() {
-  return window.PLAYER?.team === Team.ADMIN
-}
-
-function isWar() {
-  return window.ROOM_WORLD.stage === RoomGameStage.WAR;
-}
-
-function isPlanning() {
-  return window.ROOM_WORLD.stage === RoomGameStage.PLANNING;
-}
-
-function isPlayerTeam() {
-  return window.PLAYER?.team === Team.RED || window.PLAYER?.team === Team.BLUE;
-}
-
-function isAdminOrSpectator() {
-  return window.PLAYER?.team === Team.ADMIN || window.PLAYER?.team === Team.SPECTATOR;
-}
-
-function isEnabledTimeModifiers() {
-  return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.TIME_MODIFIERS]
-}
-
-function isEnabledWeatherModifiers() {
-  return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]
-}
 
 function onWheelNumber(
   e: WheelEvent,
@@ -95,263 +74,6 @@ function onWheelNumber(
   } else if (timeType === 'minutes') {
     minutes.value += delta
     minutes.value = Math.min(max, Math.max(min, minutes.value))
-  }
-}
-
-function setUnitAngleFromMoveVector(unit: { angle: number }, from: vec2, to: vec2) {
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  if (dx === 0 && dy === 0) return
-
-  const tau = Math.PI * 2
-  // Unit textures are oriented "forward = up", so shift +PI/2 from +X.
-  const angle = Math.atan2(dy, dx) + Math.PI / 2
-  unit.angle = ((angle % tau) + tau) % tau
-}
-
-type UnitMoveSortKey = {
-  uniqueId: string
-  orderIndex: number
-}
-
-function getFirstMoveSortKey(unit: ReturnType<typeof window.ROOM_WORLD.units.list>[number]): UnitMoveSortKey | null {
-  const firstMoveCommand = unit
-    .getCommands()
-    .find((cmd) => cmd.type === UnitCommandTypes.Move && !cmd.isFinished(unit))
-
-  if (!firstMoveCommand) return null
-
-  const moveState = firstMoveCommand.getState().state as MoveCommandState
-  return {
-    uniqueId: moveState.uniqueId ?? '',
-    orderIndex: Number.isFinite(moveState.orderIndex) ? moveState.orderIndex : Number.MAX_SAFE_INTEGER,
-  }
-}
-
-function sortUnitsForTurnStep(units: ReturnType<typeof window.ROOM_WORLD.units.list>) {
-  units.sort((a, b) => {
-    const aMove = getFirstMoveSortKey(a)
-    const bMove = getFirstMoveSortKey(b)
-
-    if (aMove && !bMove) return -1
-    if (!aMove && bMove) return 1
-
-    if (aMove && bMove) {
-      if (aMove.uniqueId !== bMove.uniqueId) {
-        return aMove.uniqueId.localeCompare(bMove.uniqueId)
-      }
-      if (aMove.orderIndex !== bMove.orderIndex) {
-        return aMove.orderIndex - bMove.orderIndex
-      }
-    }
-
-    return a.id.localeCompare(b.id)
-  })
-}
-
-/* ===== Commands ==== */
-
-function processUnitCommands(dt: number) {
-  const units = window.ROOM_WORLD.units.list()
-  sortUnitsForTurnStep(units)
-  for (const unit of units) {
-    if (!unit.alive) continue
-
-    const commands = unit.getCommands()
-    const firstActiveCommand = commands.find((cmd) => !cmd.isFinished(unit))
-    const isMovingNow = firstActiveCommand?.type === UnitCommandTypes.Move
-    applyAutoEnvironment(unit, isMovingNow ? 'moving' : 'standing')
-  }
-  syncFormationMoveSpeedByOrder(units)
-
-  for (const unit of units) {
-    if (!unit.alive) continue
-
-    let commands = unit.getCommands()
-    if (unit.autoAttack) {
-      const directEnemyVision = window.ROOM_WORLD.units.getDirectView(unit)
-        .filter(u => u.team !== unit.team)
-      const hasInaccuracyAttack = commands.filter(c => c.type === UnitCommandTypes.Attack && (c.getState().state as AttackCommandState).inaccuracyPoint).length > 0
-
-      if (!hasInaccuracyAttack) {
-        commands = commands.filter(c => c.type !== UnitCommandTypes.Attack)
-        const attackCommand = new AttackCommand({
-          targets: directEnemyVision.map(u => u.id),
-          damageModifier: 1,
-          abilities: [],
-          inaccuracyPoint: null
-        })
-        commands.push(attackCommand)
-      }
-    }
-
-    if (commands.length === 0) continue;
-
-    let left_dt = dt;
-
-    const goodCommands = [];
-    const postGoodCommands = [];
-    for (let i = 0; i < commands.length; i++) {
-      const cmd = commands[i]!
-      const moveStartPos =
-        cmd.type === UnitCommandTypes.Move
-          ? { x: unit.pos.x, y: unit.pos.y }
-          : null
-
-      let isRepeat = false;
-      if (cmd.type === UnitCommandTypes.Move) {
-        const cmdMoveState = cmd.getState().state as MoveCommandState
-        isRepeat = cmdMoveState.isPatrol ?? false;
-      }
-
-      if (cmd.isFinished(unit)) {
-        if (isRepeat) {
-          postGoodCommands.push(cmd);
-        }
-        continue;
-      }
-
-      if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat, UnitCommandTypes.Delivery].includes(cmd.type)) {
-        cmd.start(unit)
-        cmd.update(unit, dt)
-        if (cmd.type === UnitCommandTypes.Delivery) {
-          // Delivery command can rebuild unit command queue (append A* move segments).
-          // Keep processing the actual queue, otherwise goodCommands will overwrite it.
-          commands = unit.getCommands()
-        }
-      } else {
-        if (left_dt > 0) {
-          const estimate = cmd.estimate(unit);
-          cmd.start(unit)
-          if (estimate > left_dt) {
-            cmd.update(unit, left_dt)
-            left_dt = 0
-          } else {
-            cmd.update(unit, estimate)
-            left_dt -= estimate;
-          }
-        } else {
-          goodCommands.push(cmd)
-          continue
-        }
-      }
-
-      const isFinishedAfterUpdate = cmd.isFinished(unit)
-      if (isFinishedAfterUpdate && cmd.type === UnitCommandTypes.Move && moveStartPos) {
-        const moveState = cmd.getState().state as MoveCommandState
-        setUnitAngleFromMoveVector(unit, moveStartPos, moveState.target)
-      }
-
-      if (!isFinishedAfterUpdate) {
-        goodCommands.push(cmd);
-      } else if (isRepeat) {
-        postGoodCommands.push(cmd);
-      }
-    }
-
-    for (let cmd of postGoodCommands) {
-      goodCommands.push(cmd)
-    }
-
-    // если список изменился — синхронизируем
-    unit.setCommands(goodCommands)
-
-    const nextActiveCommand = goodCommands.find((cmd) => !cmd.isFinished(unit))
-    const isMovingAfterStep = nextActiveCommand?.type === UnitCommandTypes.Move
-    applyAutoEnvironment(unit, isMovingAfterStep ? 'moving' : 'standing')
-
-    unit.setDirty()
-  }
-
-  syncFormationMoveSpeedByOrder(units)
-}
-
-function syncFormationMoveSpeedByOrder(units: ReturnType<typeof window.ROOM_WORLD.units.list>) {
-  type GroupUnit = {
-    unit: ReturnType<typeof window.ROOM_WORLD.units.list>[number]
-    moveState: MoveCommandState
-  }
-
-  const moveGroups = new Map<string, GroupUnit[]>()
-  const getWaitingColumnSpeedMultiplier = (distancePx: number): number => {
-    if (distancePx <= BaseUnit.COLLISION_RANGE) return 1
-    const metersPerPixel = Math.max(0.0001, Number(window.ROOM_WORLD.map.metersPerPixel) || 1)
-    const distanceMeters = distancePx * metersPerPixel
-    const collisionRangeMeters = BaseUnit.COLLISION_RANGE * metersPerPixel
-    const multiplier = 1 - (distanceMeters - collisionRangeMeters) * 0.001
-    return Math.max(0.1, Math.min(1, multiplier))
-  }
-
-  for (const unit of units) {
-    if (!unit.alive) continue
-    unit.setFormationMoveMinSpeed(null)
-    unit.setColumnLagSpeedMultiplier(1)
-
-    const firstActiveCommand = unit.getCommands().find((cmd) => !cmd.isFinished(unit))
-    if (!firstActiveCommand || firstActiveCommand.type !== UnitCommandTypes.Move) continue
-
-    const moveState = firstActiveCommand.getState().state as MoveCommandState
-    if (!moveState.uniqueId) continue
-
-    const groupUnits = moveGroups.get(moveState.uniqueId)
-    if (groupUnits) {
-      groupUnits.push({
-        unit,
-        moveState,
-      })
-    } else {
-      moveGroups.set(moveState.uniqueId, [{
-        unit,
-        moveState,
-      }])
-    }
-  }
-
-  for (const groupUnits of moveGroups.values()) {
-    if (groupUnits.length < 2) continue
-
-    const minSpeed = Math.min(...groupUnits.map(({ unit }) => unit.speed))
-    const unitByOrderIndex = new Map<number, GroupUnit>()
-
-    for (const groupUnit of groupUnits) {
-      const orderIndex = Number.isFinite(groupUnit.moveState.orderIndex)
-        ? groupUnit.moveState.orderIndex
-        : Number.MAX_SAFE_INTEGER
-      if (!unitByOrderIndex.has(orderIndex)) {
-        unitByOrderIndex.set(orderIndex, groupUnit)
-      }
-    }
-
-    for (const groupUnit of groupUnits) {
-      let laggingMultiplier = 1
-      const currentOrderIndex = Number.isFinite(groupUnit.moveState.orderIndex)
-        ? groupUnit.moveState.orderIndex
-        : Number.MAX_SAFE_INTEGER
-
-      const prevUnit = unitByOrderIndex.get(currentOrderIndex - 1)
-      if (prevUnit) {
-        const distanceToPrevPx = Math.hypot(
-          prevUnit.unit.pos.x - groupUnit.unit.pos.x,
-          prevUnit.unit.pos.y - groupUnit.unit.pos.y
-        )
-        if (distanceToPrevPx > BaseUnit.COLLISION_RANGE) {
-          // Lagging behind previous unit in column: speed up to catch up.
-          laggingMultiplier = 1.1
-        }
-      }
-
-      const nextUnit = unitByOrderIndex.get(currentOrderIndex + 1)
-      if (nextUnit && laggingMultiplier === 1) {
-        const distancePx = Math.hypot(
-          nextUnit.unit.pos.x - groupUnit.unit.pos.x,
-          nextUnit.unit.pos.y - groupUnit.unit.pos.y
-        )
-        laggingMultiplier = getWaitingColumnSpeedMultiplier(distancePx)
-      }
-
-      groupUnit.unit.setFormationMoveMinSpeed(minSpeed)
-      groupUnit.unit.setColumnLagSpeedMultiplier(laggingMultiplier)
-    }
   }
 }
 
@@ -866,7 +588,7 @@ function emitTurnStatePackets(directViewFramesByUnitId?: Map<string, MoveFrame[]
     }
   }
 
-  if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]) {
+  if (isWeatherModifiersEnabled()) {
     window.ROOM_WORLD.events.emit('api', {type: 'weather', data: window.ROOM_WORLD.newWeather.value});
     window.ROOM_WORLD.weather.value = window.ROOM_WORLD.newWeather.value;
   }
@@ -908,7 +630,7 @@ async function runTurnStep(
       const unitPositionsBeforeTick = captureUnitPositionsById()
       const animationDurationMs = getTickAnimationDurationMs(step)
 
-      processUnitCommands(step)
+      processUnitCommands(window.ROOM_WORLD, step)
       await flushTickUnitsWithAnimation(unitPositionsBeforeTick, animationDurationMs)
 
       leftSeconds -= step
@@ -1025,7 +747,7 @@ function onPlayClick() {
 
 const readyStats = computed(() => window.ROOM_WORLD.getPlayerReadyStats())
 const currentPlayerReady = computed(() => {
-  if (!isPlayerTeam()) return false
+  if (!isRedOrBlueTeam()) return false
   const playerId = Number(window.PLAYER?.id)
   if (!Number.isFinite(playerId) || playerId <= 0) return false
   const team = window.PLAYER.team
@@ -1035,7 +757,7 @@ const currentPlayerReady = computed(() => {
 })
 
 function setReady(isReady: boolean) {
-  if (!isPlanning() || !isPlayerTeam()) return
+  if (!isPlanningStage() || !isRedOrBlueTeam()) return
   const playerId = Number(window.PLAYER?.id)
   if (!Number.isFinite(playerId) || playerId <= 0) return
 
@@ -1089,7 +811,7 @@ onUnmounted(() => {
     </div>
 
     <div class="turn-row">
-      <div v-if="isPlanning() && isPlayerTeam()" class="planning-ready-controls">
+      <div v-if="isPlanningStage() && isRedOrBlueTeam()" class="planning-ready-controls">
         <button
           class="ready-btn"
           :class="{ active: currentPlayerReady }"
@@ -1099,11 +821,11 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div v-if="isPlanning() && isAdminOrSpectator()" class="planning-ready-stats">
+      <div v-if="isPlanningStage() && isAdminOrSpectatorTeam()" class="planning-ready-stats">
         {{ t('turn_timer.ready_count', readyStats) }}
       </div>
 
-      <div v-if="isAdmin() && isWar()" class="admin-controls">
+      <div v-if="isAdminTeam() && isWarStage()" class="admin-controls">
         <div class="turn-time">
           ⏱ {{ displayTurnTime }}
         </div>
@@ -1139,13 +861,13 @@ onUnmounted(() => {
     </div>
 
     <div class="world-time-state">
-      <span class="label" v-if="isEnabledTimeModifiers()">
+      <span class="label" v-if="isTimeModifiersEnabled()">
         {{ t(`time.${timeOfDay}`) }}
       </span>
-      <span class="separator" v-if="isEnabledTimeModifiers() && isEnabledWeatherModifiers()">
+      <span class="separator" v-if="isTimeModifiersEnabled() && isWeatherModifiersEnabled()">
         •
       </span>
-      <span class="label" v-if="isEnabledWeatherModifiers()">
+      <span class="label" v-if="isWeatherModifiersEnabled()">
         {{ t(`weather.${weather}`) }}
       </span>
     </div>

@@ -1,6 +1,7 @@
 import {type commandstate, type unitstate, unitType, type uuid} from '@/engine/units/types'
-import {type MoveFrame, world} from '@/engine'
-import {createRafInterval, type RafInterval} from "@/engine/util.ts";
+import type {MoveFrame} from '@/engine/types.ts'
+import {world} from '@/engine/world/world.ts'
+import {createRafInterval} from "@/engine/util.ts";
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import type {CursorObject} from "@/engine/world/cursorregistry.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";
@@ -28,6 +29,13 @@ export type OutMessage =
   | { type: 'ruler'; data: { points: vec2[] } }
   | { type: 'chat'; data: ChatMessage; meta?: {ignore?: boolean} }
   | { type: 'chat_edit'; data: { id: uuid; text: string } }
+  | {
+    type: 'chat_orders_update';
+    data: {
+      id: uuid;
+      orders?: ChatMessage['orders'] | null;
+    }
+  }
   | { type: 'chat_read'; data: uuid[] }
   | { type: 'cursor'; data: CursorObject }
   | { type: 'skip_time'; data: string; live?: boolean; liveIntervalMs?: number; liveGameSecondsPerMinute?: number }
@@ -158,10 +166,89 @@ export function setDemoReadonlyMode(enabled: boolean) {
   isDemoReadonlyMode = enabled
 }
 
+type SocketLike = {
+  readonly readyState: number
+  send(data: string): void
+  close(): void
+  onopen: ((event: unknown) => void) | null
+  onmessage: ((event: { data: string }) => void) | null
+  onclose: ((event: unknown) => void) | null
+  onerror: ((event: unknown) => void) | null
+}
+
+type GameSocketErrorKind = 'parse' | 'close' | 'error'
+
+export type GameSocketErrorContext = {
+  kind: GameSocketErrorKind
+  message: string
+  error?: unknown
+  shouldReload?: boolean
+}
+
+export type GameSocketRuntimeOptions = {
+  socketUrl?: string
+  onError?: (context: GameSocketErrorContext) => void
+  webSocketFactory?: (url: string) => SocketLike
+  syncStrategy?: 'auto' | 'raf' | 'interval'
+  syncIntervalMs?: number
+}
+
+function resolveWindowEnvValue(key: string): string | undefined {
+  const value = window.env?.[key]
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed || undefined
+}
+
+function resolveSocketUrl(explicit?: string): string {
+  if (explicit && explicit.trim()) return explicit.trim()
+  const fromWindow = resolveWindowEnvValue('VITE_SOCKET_URL')
+  if (fromWindow) return fromWindow
+  const fromImportMeta = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_SOCKET_URL
+  if (fromImportMeta && fromImportMeta.trim()) return fromImportMeta.trim()
+  throw new Error('[WS] socket url is not configured (VITE_SOCKET_URL)')
+}
+
+type SyncLoop = {
+  stop(): void
+}
+
+function createSyncLoop(
+  strategy: 'auto' | 'raf' | 'interval',
+  intervalMs: number,
+  fn: () => void
+): SyncLoop {
+  const hasRaf = typeof requestAnimationFrame === 'function'
+  const useRaf = strategy === 'raf' || (strategy === 'auto' && hasRaf)
+
+  if (useRaf) {
+    const rafInterval = createRafInterval(intervalMs, fn)
+    rafInterval.start()
+    return {
+      stop() {
+        rafInterval.stop()
+      },
+    }
+  }
+
+  const intervalId = window.setInterval(fn, intervalMs)
+  return {
+    stop() {
+      window.clearInterval(intervalId)
+    },
+  }
+}
+
 export class GameSocket {
-  private ws!: WebSocket
+  private ws!: SocketLike
   private world!: world
-  private apiEventsListenerUnsub?: unsub;
+  private apiEventsListenerUnsub?: unsub
+  private forceApiEventsListenerUnsub?: unsub
+  private readonly runtimeOptions: GameSocketRuntimeOptions
+
+  constructor(runtimeOptions: GameSocketRuntimeOptions = {}) {
+    this.runtimeOptions = runtimeOptions
+  }
 
   connect(params: {
     roomId: string
@@ -170,8 +257,10 @@ export class GameSocket {
     key?: string
     token?: string
     world: world
+    socketUrl?: string
+    onError?: (context: GameSocketErrorContext) => void
   }) {
-    this.disconnect();
+    this.disconnect()
     const query = new URLSearchParams({
       room_id: params.roomId,
       team: params.team,
@@ -181,7 +270,9 @@ export class GameSocket {
     })
 
     this.world = params.world
-    this.ws = new WebSocket(import.meta.env.VITE_SOCKET_URL + `?${query}`)
+    const socketUrl = resolveSocketUrl(params.socketUrl || this.runtimeOptions.socketUrl)
+    const createSocket = this.runtimeOptions.webSocketFactory || ((url: string) => new WebSocket(url) as unknown as SocketLike)
+    this.ws = createSocket(socketUrl + `?${query}`)
 
     this.ws.onopen = () => {
       this.startSync()
@@ -193,24 +284,50 @@ export class GameSocket {
         this.handleMessage(msg)
       } catch (err) {
         console.error('[WS] invalid message', e.data, err)
-        alert("SOCKET ERROR PARSE MESSAGE");
+        this.handleSocketError({
+          kind: 'parse',
+          message: 'SOCKET ERROR PARSE MESSAGE',
+          error: err,
+        }, params.onError)
       }
     }
 
     this.ws.onclose = () => {
       this.stopSync()
-      alert('Socket closed.\nPage will restarted.')
-      window.location.reload()
+      this.handleSocketError({
+        kind: 'close',
+        message: 'Socket closed.\nPage will restarted.',
+        shouldReload: true,
+      }, params.onError)
     }
 
     this.ws.onerror = (e) => {
-      alert('Socket error.\nProbably you need to restart page and check last changes.')
       console.error('[WS] error', e)
+      this.handleSocketError({
+        kind: 'error',
+        message: 'Socket error.\nProbably you need to restart page and check last changes.',
+        error: e,
+      }, params.onError)
+    }
+  }
+
+  private handleSocketError(context: GameSocketErrorContext, localOnError?: (context: GameSocketErrorContext) => void) {
+    if (localOnError) {
+      localOnError(context)
+      return
+    }
+    if (this.runtimeOptions.onError) {
+      this.runtimeOptions.onError(context)
+      return
+    }
+    window.alert(context.message)
+    if (context.shouldReload) {
+      window.location.reload()
     }
   }
 
   /* ================== OUT ================== */
-  private syncTimer?: RafInterval
+  private syncTimer?: SyncLoop
 
   private sendBatched(messages: OutMessage[], batchSize = 100) {
     if (this.ws.readyState !== WebSocket.OPEN) return
@@ -227,15 +344,18 @@ export class GameSocket {
 
   private busMessages: OutMessage[] = []
   private startSync() {
-    window.ROOM_WORLD.events.on('api', (message) => {
+    this.apiEventsListenerUnsub = window.ROOM_WORLD.events.on('api', (message) => {
       this.busMessages.push(message);
     })
-    window.ROOM_WORLD.events.on('force_api', () => {
+    this.forceApiEventsListenerUnsub = window.ROOM_WORLD.events.on('force_api', () => {
       this.sync();
     })
 
-    this.syncTimer = createRafInterval(500, () => this.sync());
-    this.syncTimer.start();
+    this.syncTimer = createSyncLoop(
+      this.runtimeOptions.syncStrategy || 'auto',
+      this.runtimeOptions.syncIntervalMs || 500,
+      () => this.sync()
+    )
   }
 
   private sync() {
@@ -288,9 +408,15 @@ export class GameSocket {
   private stopSync() {
     if (this.apiEventsListenerUnsub) {
       this.apiEventsListenerUnsub();
+      this.apiEventsListenerUnsub = undefined
+    }
+    if (this.forceApiEventsListenerUnsub) {
+      this.forceApiEventsListenerUnsub();
+      this.forceApiEventsListenerUnsub = undefined
     }
     if (this.syncTimer) {
       this.syncTimer.stop();
+      this.syncTimer = undefined
     }
   }
 
@@ -350,6 +476,10 @@ export class GameSocket {
               u.linkMessage(m.data.id)
             }
           }
+        } else if (m.type === 'chat_orders_update') {
+          const chat = this.world.messages.get(m.data.id)
+          if (!chat) continue
+          chat.orders = m.data.orders ?? null
         } else if (m.type === 'chat_read') {
           for (const id of m.data) {
             const message = this.world.messages.get(id);
@@ -527,5 +657,9 @@ export class GameSocket {
   disconnect() {
     this.stopSync()
     this.ws?.close()
+  }
+
+  isConnected() {
+    return this.ws?.readyState === WebSocket.OPEN
   }
 }

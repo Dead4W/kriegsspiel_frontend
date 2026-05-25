@@ -1,182 +1,116 @@
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, ref, watch, type UnwrapRef} from 'vue'
-import {BaseUnit} from '@/engine/units/baseUnit'
-import type {OverlayItem} from '@/engine/types/overlayTypes'
-import type {vec2} from '@/engine/types'
-import {MoveCommand, type MoveCommandState} from '@/engine/units/commands/moveCommand'
-import {useI18n} from 'vue-i18n'
-import {getTeamColor} from '@/engine/2d/render'
-import {type commandstate, type unitTeam, unitType, type uuid} from '@/engine'
-import type {unsub} from '@/engine/events'
-import {unitlayer} from "@/engine/2d/render";
-import { CLIENT_SETTING_KEYS } from "@/enums/clientSettingsKeys.ts";
-import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import {Team} from "@/enums/teamKeys.ts";
-import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
-import { hasAbilityInaccuracyRadius } from "@/engine/resourcePack/abilities.ts";
-import type {BaseCommand} from "@/engine/units/commands/baseCommand.ts";
-import {canPlayerUseDirectViewOrder} from "@/engine/units/directViewOrderRules.ts";
-import RadialMenu, { type RadialMenuItem } from '@/components/ui/RadialMenu.vue'
-import HotkeyTag from '@/components/ui/HotkeyTag.vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import type { BaseUnit } from "@/engine/units/baseUnit";
+import type { vec2 } from "@/engine/types";
+import { getTeamColor } from "@/engine/2d/render";
+import { type unitTeam, unitType } from "@/engine";
+import type { unsub } from "@/engine/events";
+import { CLIENT_SETTING_KEYS } from "@/enums/clientSettingsKeys";
+import type { UnitAbilityType } from "@/engine/units/modifiers/UnitAbilityModifiers";
+import { hasAbilityInaccuracyRadius } from "@/engine/resourcePack/abilities";
+import RadialMenu, { type RadialMenuItem } from "@/components/ui/RadialMenu.vue";
+import HotkeyTag from "@/components/ui/HotkeyTag.vue";
 import {
   getEnvironmentIcon,
   getRouteEnvironmentStates,
   type EnvironmentStateId,
-} from "@/engine/resourcePack/environment.ts";
+} from "@/engine/resourcePack/environment";
+import { getColumnSegmentRoutePoints } from "@/engine/units/formationMoveAlgorithms/columnAlgorithms";
+import { isAdminTeam } from "@/game/roomGuards";
+import { groupUnitsByTypeAndTeam } from "@/game/commands/shared/groupUnitsByTypeAndTeam";
 import {
-  buildColumnPlanByFirstTargetDistance,
-  getColumnPosition,
-  getColumnSegmentRoutePoints,
-  mergeColumnFirstSegmentWithSmartPath,
-  type ColumnPlanItem as ColumnAlgoPlanItem,
-} from "@/engine/units/formationMoveAlgorithms/columnAlgorithms.ts";
-import {
-  buildFormationCenter,
-  buildFormationOffsets,
-  getFormationSegmentAngles,
-  getFormationReferenceAngle,
-  getFormationTargetPoint,
-} from "@/engine/units/formationMoveAlgorithms/formationAlgorithms.ts";
+  applyMoveOrder,
+  buildContextRouteUpdate,
+  buildMoveFormationCenter,
+  buildMoveFormationOffsets,
+  buildMoveOverlayItems,
+  buildMovePlan,
+  getNearestSelectedUnitPlannedPos,
+  getRouteDistancesMeters,
+  type MoveMode,
+  type MoveRoutePoint,
+} from "@/game/commands/move";
+import { isPointInsideActiveZone } from "@/game/planningSpawns";
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 function teamColor(team: unitTeam) {
-  const { r, g, b } = getTeamColor(team)
-  return `rgba(${r},${g},${b}, 1)`
+  const { r, g, b } = getTeamColor(team);
+  return `rgba(${r},${g},${b}, 1)`;
 }
-
-/* ================= Helpers ======================== */
 
 function envIcon(state: EnvironmentStateId) {
-  return getEnvironmentIcon(state)
+  return getEnvironmentIcon(state);
 }
 
-function shouldRenderMoveLine(
-  segIndex: number | undefined,
-  orderIndex: number | undefined,
-  lastOrderIndex?: number
-) {
-  const normalizedOrderIndex = orderIndex ?? 0
-  const isLastOrder = lastOrderIndex != null && normalizedOrderIndex === lastOrderIndex
-  return (segIndex ?? 0) === 0 || normalizedOrderIndex === 0 || isLastOrder
+function setRouteModifier(modifier: EnvironmentStateId | null) {
+  if (!targets.value.length) return;
+  targets.value[targets.value.length - 1]!.modifier = modifier;
+  rebuildMoveOverlay();
 }
-
-function setRouteModifier(mod: EnvironmentStateId | null) {
-  if (!targets.value.length) return
-  targets.value[targets.value.length - 1]!.modifier = mod
-  rebuildMoveOverlay()
-}
-
-/* ================= props / emits ================= */
 
 const props = defineProps<{
-  units: BaseUnit[]
-}>()
+  units: BaseUnit[];
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-}>()
+  (e: "close"): void;
+}>();
 
-/* ================= SNAPSHOT ================= */
+const ROUTE_MODIFIERS = computed(() => getRouteEnvironmentStates());
 
-const ROUTE_MODIFIERS = computed(() => getRouteEnvironmentStates())
-
-export type RoutePoint = {
-  pos: vec2
-  modifier?: EnvironmentStateId | null
-}
-
-const movingUnits = ref<BaseUnit[]>([])
-const targets = ref<RoutePoint[]>([])
-const isPatrol = ref(false)
-const smartPathEnabled = ref(false)
-const routeListRef = ref<HTMLElement | null>(null)
-
-/* ================= DISTANCE (meters) ================= */
-
-function distPx(a: vec2, b: vec2) {
-  return Math.hypot(b.x - a.x, b.y - a.y)
-}
-
-function getFacingAngleFromSegment(from: vec2, to: vec2, fallback: number): number {
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  if (dx === 0 && dy === 0) return fallback
-
-  const tau = Math.PI * 2
-  const angle = Math.atan2(dy, dx) + Math.PI / 2
-  return ((angle % tau) + tau) % tau
-}
+const movingUnits = ref<BaseUnit[]>([]);
+const targets = ref<MoveRoutePoint[]>([]);
+const isPatrol = ref(false);
+const smartPathEnabled = ref(false);
+const routeListRef = ref<HTMLElement | null>(null);
 
 const routeStartPos = computed<vec2 | null>(() => {
-  const u = movingUnits.value[0]
-  if (!u) return null
-  return u.futurePos ?? u.pos
-})
+  const unit = movingUnits.value[0];
+  if (!unit) return null;
+  return unit.futurePos ?? unit.pos;
+});
 
-const routeDistancesMeters = computed<number[]>(() => {
-  const start = routeStartPos.value
-  if (!start || !targets.value.length) return []
+const routeDistancesMeters = computed<number[]>(() =>
+  getRouteDistancesMeters(
+    routeStartPos.value,
+    targets.value,
+    window.ROOM_WORLD?.map?.metersPerPixel ?? 1
+  )
+);
 
-  const mpp = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
-
-  let prev = start
-  return targets.value.map((t) => {
-    const total = distPx(prev, t.pos) * mpp
-    prev = t.pos
-    return total
-  })
-})
-
-const hasObjectMap = computed(() => {
-  return window.ROOM_WORLD.hasObjectNavMeshMap()
-})
-const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
+const hasObjectMap = computed(() => window.ROOM_WORLD.hasObjectNavMeshMap());
+const isAdmin = computed(() => isAdminTeam());
 
 function fmtMeters(meters: number) {
-  return `${Math.round(meters)} m`
+  return `${Math.round(meters)} m`;
 }
+
+const moveMode = ref<MoveMode>("column");
 
 function loadSmartPathPreference(units: Array<{ type: unitType }>) {
   if (!hasObjectMap.value) {
-    smartPathEnabled.value = false
-    return
+    smartPathEnabled.value = false;
+    return;
   }
   if (!isAdmin.value) {
-    smartPathEnabled.value = moveMode.value === 'column'
-    return
+    smartPathEnabled.value = moveMode.value === "column";
+    return;
   }
 
-  const isSingleMessenger =
-    units.length === 1
-    && units[0]!.type === unitType.MESSENGER
+  const isSingleMessenger = units.length === 1 && units[0]!.type === unitType.MESSENGER;
   if (isSingleMessenger) {
-    smartPathEnabled.value = true
-    return
+    smartPathEnabled.value = true;
+    return;
   }
-  smartPathEnabled.value = Boolean(
-    window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.MOVE_SMART_PATH]
-  )
-}
 
-function onSmartPathToggle(nextValue: boolean) {
-  if (!isAdmin.value) return
-  if (moveMode.value === 'formation' || !hasObjectMap.value) return
-  smartPathEnabled.value = nextValue
-  window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.MOVE_SMART_PATH] = nextValue
-  rebuildRouteBySmartPathMode()
-}
-
-function enforceSmartPathAvailability() {
-  if (hasObjectMap.value) return
-  if (!smartPathEnabled.value) return
-  smartPathEnabled.value = false
-  rebuildRouteBySmartPathMode()
+  smartPathEnabled.value = Boolean(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.MOVE_SMART_PATH]);
 }
 
 function getSegmentRoutePoints(from: vec2, to: vec2): vec2[] {
-  if (moveMode.value === 'formation') {
-    return [{ x: to.x, y: to.y }]
+  if (moveMode.value === "formation") {
+    return [{ x: to.x, y: to.y }];
   }
   return getColumnSegmentRoutePoints(
     window.ROOM_WORLD,
@@ -184,793 +118,329 @@ function getSegmentRoutePoints(from: vec2, to: vec2): vec2[] {
     to,
     smartPathEnabled.value,
     hasObjectMap.value
-  )
+  );
 }
 
 function rebuildRouteBySmartPathMode() {
   if (!targets.value.length) {
-    rebuildMoveOverlay()
-    return
+    rebuildMoveOverlay();
+    return;
   }
 
-  const lastTarget = targets.value[targets.value.length - 1]!
-  const start = routeStartPos.value
-    ?? getNearestSelectedUnitPlannedPos(lastTarget.pos)
-    ?? lastTarget.pos
-  const rebuiltPoints = getSegmentRoutePoints(start, lastTarget.pos)
+  const lastTarget = targets.value[targets.value.length - 1]!;
+  const start =
+    routeStartPos.value ??
+    getNearestSelectedUnitPlannedPos(lastTarget.pos, movingUnits.value as BaseUnit[]) ??
+    lastTarget.pos;
+  const rebuiltPoints = getSegmentRoutePoints(start, lastTarget.pos);
 
   targets.value = rebuiltPoints.map((point) => ({
     pos: point,
     modifier: lastTarget.modifier ?? null,
-  }))
-  rebuildMoveOverlay()
+  }));
+  rebuildMoveOverlay();
 }
 
-function minDistanceToSelectedUnits(point: vec2, unitPositions: vec2[]): number {
-  if (!unitPositions.length) return Infinity
-  let minDist = Infinity
-  for (const unitPos of unitPositions) {
-    const dist = Math.hypot(point.x - unitPos.x, point.y - unitPos.y)
-    if (dist < minDist) minDist = dist
-  }
-  return minDist
+function onSmartPathToggle(nextValue: boolean) {
+  if (!isAdmin.value) return;
+  if (moveMode.value === "formation" || !hasObjectMap.value) return;
+  smartPathEnabled.value = nextValue;
+  window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.MOVE_SMART_PATH] = nextValue;
+  rebuildRouteBySmartPathMode();
 }
 
-function trimRouteHeadByNearestUnitDistance(routePoints: vec2[], unitPositions: vec2[]): vec2[] {
-  if (routePoints.length <= 1 || !unitPositions.length) return [...routePoints]
-  let headIndex = 0
-  while (headIndex < routePoints.length - 1) {
-    const currentDist = minDistanceToSelectedUnits(routePoints[headIndex]!, unitPositions)
-    const nextDist = minDistanceToSelectedUnits(routePoints[headIndex + 1]!, unitPositions)
-    // Если следующая точка не дальше ближайшего юнита, текущую стартовую точку убираем.
-    if (nextDist <= currentDist) {
-      headIndex += 1
-      continue
-    }
-    break
-  }
-  return routePoints.slice(headIndex)
+function enforceSmartPathAvailability() {
+  if (hasObjectMap.value) return;
+  if (!smartPathEnabled.value) return;
+  smartPathEnabled.value = false;
+  rebuildRouteBySmartPathMode();
 }
 
-function normalizeInitialRoutePoints(routePoints: vec2[]): vec2[] {
-  if (!routePoints.length || !movingUnits.value.length) return routePoints
-  const unitPositions = movingUnits.value.map((u) => getUnitPlannedPos(u as BaseUnit))
+type EnvMenuId = EnvironmentStateId | "none";
 
-  // Обрезаем старт не по всем выбранным юнитам, а только по локальному "стартовому"
-  // кластеру у начала маршрута. Иначе длинная колонна (два хвоста) может протолкнуть
-  // первую A* точку слишком далеко вперед, мимо ближайшего перекрестка/поворота.
-  const routeHead = routePoints[0]!
-  const anchor = unitPositions.reduce((best, p) => {
-    if (!best) return p
-    const bestDist = Math.hypot(best.x - routeHead.x, best.y - routeHead.y)
-    const pDist = Math.hypot(p.x - routeHead.x, p.y - routeHead.y)
-    return pDist < bestDist ? p : best
-  }, null as vec2 | null)
-  const localClusterRadius = Math.max(BaseUnit.COLLISION_RANGE * 2, 20)
-  const localUnitPositions = anchor
-    ? unitPositions.filter((p) =>
-      Math.hypot(p.x - anchor.x, p.y - anchor.y) <= localClusterRadius
-    )
-    : unitPositions
-  const normalizeByPositions = localUnitPositions.length ? localUnitPositions : unitPositions
+const envMenuOpen = ref(false);
+const envMenuCenter = ref<vec2>({ x: 0, y: 0 });
+const envMenuAnchorWorld = ref<vec2 | null>(null);
+const envMenuAutoConfirm = ref(false);
 
-  const trimmed = trimRouteHeadByNearestUnitDistance(routePoints, normalizeByPositions)
-  if (trimmed.length <= 1) return trimmed
-
-  // Убираем стартовые точки только пока они внутри локальной стартовой группы.
-  const minClearance = Math.max(8, BaseUnit.COLLISION_RANGE * 0.45)
-  let keepFrom = 0
-  while (keepFrom < trimmed.length - 1) {
-    const dist = minDistanceToSelectedUnits(trimmed[keepFrom]!, normalizeByPositions)
-    if (dist > minClearance) break
-    keepFrom += 1
-  }
-  return trimmed.slice(keepFrom)
-}
-
-function getNearestSelectedUnitPlannedPos(point: vec2): vec2 | null {
-  if (!movingUnits.value.length) return null
-  let bestPos: vec2 | null = null
-  let bestDist = Infinity
-  for (const unit of movingUnits.value) {
-    const pos = getUnitPlannedPos(unit as BaseUnit)
-    const dist = Math.hypot(pos.x - point.x, pos.y - point.y)
-    if (dist < bestDist) {
-      bestDist = dist
-      bestPos = pos
-    }
-  }
-  return bestPos ? { x: bestPos.x, y: bestPos.y } : null
-}
-
-/* ================= ENV MENU (radial) ================= */
-
-type EnvMenuId = EnvironmentStateId | 'none'
-
-const envMenuOpen = ref(false)
-const envMenuCenter = ref<vec2>({ x: 0, y: 0 })
-const envMenuAnchorWorld = ref<vec2 | null>(null)
-const envMenuAutoConfirm = ref(false)
-
-let envMenuRaf: number | null = null
-let lastCamKey = ''
+let envMenuRaf: number | null = null;
+let lastCamKey = "";
 
 function updateEnvMenuCenter() {
-  const anchor = envMenuAnchorWorld.value
-  if (!anchor) return
+  const anchor = envMenuAnchorWorld.value;
+  if (!anchor) return;
 
-  const cam = window.ROOM_WORLD.camera
-  const key = `${cam.pos.x.toFixed(2)}:${cam.pos.y.toFixed(2)}:${cam.zoom.toFixed(4)}:${anchor.x.toFixed(2)}:${anchor.y.toFixed(2)}`
-  if (key === lastCamKey) return
-  lastCamKey = key
+  const cam = window.ROOM_WORLD.camera;
+  const key = `${cam.pos.x.toFixed(2)}:${cam.pos.y.toFixed(2)}:${cam.zoom.toFixed(4)}:${anchor.x.toFixed(2)}:${anchor.y.toFixed(2)}`;
+  if (key === lastCamKey) return;
+  lastCamKey = key;
 
-  envMenuCenter.value = cam.worldToScreen(anchor)
+  envMenuCenter.value = cam.worldToScreen(anchor);
 }
 
 function startEnvMenuTracking() {
-  if (envMenuRaf != null) return
+  if (envMenuRaf != null) return;
   const loop = () => {
     if (!envMenuOpen.value) {
-      envMenuRaf = null
-      return
+      envMenuRaf = null;
+      return;
     }
-    updateEnvMenuCenter()
-    envMenuRaf = requestAnimationFrame(loop)
-  }
-  envMenuRaf = requestAnimationFrame(loop)
+    updateEnvMenuCenter();
+    envMenuRaf = requestAnimationFrame(loop);
+  };
+  envMenuRaf = requestAnimationFrame(loop);
 }
 
 function stopEnvMenuTracking() {
-  if (envMenuRaf != null) {
-    cancelAnimationFrame(envMenuRaf)
-    envMenuRaf = null
-  }
+  if (envMenuRaf == null) return;
+  cancelAnimationFrame(envMenuRaf);
+  envMenuRaf = null;
 }
 
 function openEnvMenu(anchorWorld?: vec2, autoConfirmAfterPick = false) {
-  const anchor =
-    anchorWorld ??
-    targets.value[targets.value.length - 1]?.pos ??
-    null
+  const anchor = anchorWorld ?? targets.value[targets.value.length - 1]?.pos ?? null;
+  if (!anchor) return;
 
-  if (!anchor) return
+  envMenuAutoConfirm.value = autoConfirmAfterPick;
+  envMenuAnchorWorld.value = { x: anchor.x, y: anchor.y };
+  lastCamKey = "";
+  updateEnvMenuCenter();
 
-  envMenuAutoConfirm.value = autoConfirmAfterPick
-  envMenuAnchorWorld.value = { x: anchor.x, y: anchor.y }
-  lastCamKey = ''
-  updateEnvMenuCenter()
-
-  envMenuOpen.value = true
-  startEnvMenuTracking()
+  envMenuOpen.value = true;
+  startEnvMenuTracking();
 }
 
 function closeEnvMenu() {
-  envMenuOpen.value = false
-  envMenuAutoConfirm.value = false
-  stopEnvMenuTracking()
+  envMenuOpen.value = false;
+  envMenuAutoConfirm.value = false;
+  stopEnvMenuTracking();
 }
 
 const envMenuCenterItem = computed<RadialMenuItem<EnvMenuId> | null>(() => {
-  if (!targets.value.length) return null
-  const active = targets.value[targets.value.length - 1]!.modifier == null
+  if (!targets.value.length) return null;
+  const active = targets.value[targets.value.length - 1]!.modifier == null;
   return {
-    id: 'none',
-    icon: '✖',
-    label: t('clear'),
+    id: "none",
+    icon: "✖",
+    label: t("clear"),
     active,
-    ariaLabel: t('clear'),
-  }
-})
+    ariaLabel: t("clear"),
+  };
+});
 
 const envMenuItems = computed<RadialMenuItem<EnvMenuId>[]>(() => {
-  const current = targets.value.length
-    ? targets.value[targets.value.length - 1]!.modifier ?? null
-    : null
-
-  return ROUTE_MODIFIERS.value.map((mod) => ({
-    id: mod,
-    icon: envIcon(mod),
-    label: t(`env.${mod}`),
-    active: current === mod,
-    ariaLabel: t(`env.${mod}`),
-  }))
-})
+  const current = targets.value.length ? targets.value[targets.value.length - 1]!.modifier ?? null : null;
+  return ROUTE_MODIFIERS.value.map((modifier) => ({
+    id: modifier,
+    icon: envIcon(modifier),
+    label: t(`env.${modifier}`),
+    active: current === modifier,
+    ariaLabel: t(`env.${modifier}`),
+  }));
+});
 
 function onEnvMenuSelect(item: RadialMenuItem<EnvMenuId>) {
-  if (item.id === 'none') {
-    setRouteModifier(null)
-    if (envMenuAutoConfirm.value) {
-      confirm()
-    }
-    return
+  if (item.id === "none") {
+    setRouteModifier(null);
+    if (envMenuAutoConfirm.value) confirm();
+    return;
   }
-  setRouteModifier(item.id)
-  if (envMenuAutoConfirm.value) {
-    confirm()
-  }
+  setRouteModifier(item.id);
+  if (envMenuAutoConfirm.value) confirm();
 }
 
-/* ================= ABILITIES ================= */
+const selectedAbilities = ref<UnitAbilityType[]>([]);
 
-const selectedAbilities = ref<UnitAbilityType[]>([])
-function toggleAbility(a: UnitAbilityType) {
-  if (selectedAbilities.value.includes(a)) {
-    selectedAbilities.value = selectedAbilities.value.filter(x => x !== a)
-  } else {
-    selectedAbilities.value.push(a)
+function toggleAbility(ability: UnitAbilityType) {
+  if (selectedAbilities.value.includes(ability)) {
+    selectedAbilities.value = selectedAbilities.value.filter((item) => item !== ability);
+    return;
   }
+  selectedAbilities.value.push(ability);
 }
 
 const availableAbilities = computed<UnitAbilityType[]>(() => {
-  const set = new Set<UnitAbilityType>()
-
-  for (const u of movingUnits.value) {
-    for (const a of u.abilities) {
-      if (hasAbilityInaccuracyRadius(a)) continue
-      set.add(a)
+  const set = new Set<UnitAbilityType>();
+  for (const unit of movingUnits.value) {
+    for (const ability of unit.abilities) {
+      if (hasAbilityInaccuracyRadius(ability)) continue;
+      set.add(ability);
     }
   }
-
-  return [...set]
-})
-
-/* ================= MOVE MODE ================= */
-
-type MoveMode = 'column' | 'formation'
-const moveMode = ref<MoveMode>('column')
+  return [...set];
+});
 
 function setMoveMode(mode: MoveMode) {
-  if (moveMode.value === mode) return
-  moveMode.value = mode
-  if (mode === 'formation') {
-    smartPathEnabled.value = false
+  if (moveMode.value === mode) return;
+  moveMode.value = mode;
+  if (mode === "formation") {
+    smartPathEnabled.value = false;
   } else if (!isAdmin.value) {
-    smartPathEnabled.value = hasObjectMap.value
+    smartPathEnabled.value = hasObjectMap.value;
   }
-  rebuildMoveOverlay()
+  rebuildMoveOverlay();
 }
 
-/* ================= FORMATION ================= */
+const movePlan = computed(() => {
+  if (!movingUnits.value.length || !targets.value.length) return [];
+  return buildMovePlan(movingUnits.value as BaseUnit[], targets.value[0]!.pos);
+});
 
-function getUnitPlannedPos(u: BaseUnit): vec2 {
-  let p: vec2 = u.pos
+const formationCenter = computed<vec2 | null>(() => buildMoveFormationCenter(movingUnits.value as BaseUnit[]));
+const formationOffsets = computed<Record<string, vec2>>(() =>
+  buildMoveFormationOffsets(movingUnits.value as BaseUnit[], formationCenter.value)
+);
 
-  // Важно: берём ТОЛЬКО Move, и идём по очереди.
-  // Если в списке уже есть несколько Move — конечной будет target последнего.
-  for (const cmd of u.getCommands()) {
-    if (cmd.type !== UnitCommandTypes.Move) continue
-    const moveCmd = cmd as MoveCommand
-    p = moveCmd.getState().state.target
-  }
-
-  return p
-}
-
-type MovePlanItem = { unit: UnwrapRef<BaseUnit>; orderIndex: number; startPos: vec2 }
-
-function getFirstActiveMoveState(unit: BaseUnit): MoveCommandState | null {
-  const activeMove = unit.getCommands().find(
-    (cmd) => cmd.type === UnitCommandTypes.Move && !cmd.isFinished(unit)
-  )
-  if (!activeMove) return null
-  return (activeMove as MoveCommand).getState().state
-}
-
-/** План (порядок) колонны считается по первой точке маршрута */
-const movePlan = computed<MovePlanItem[]>(() => {
-  if (!movingUnits.value.length || !targets.value.length) return []
-
-  const firstTarget = targets.value[0]!
-
-  // заранее считаем "эффективные позиции" (конец цепочки Move)
-  const unitsLeft = movingUnits.value.map((unit) => ({
-    unit,
-    startPos: getUnitPlannedPos(unit as BaseUnit),
-  }))
-
-  // Если все выбранные юниты уже идут в одной колонне, сохраняем текущий порядок.
-  // Это предотвращает "переламывание" колонны при постановке приказа из середины.
-  const orderByExistingColumn = (() => {
-    const groupedByMove = new Map<string, Array<{ unit: BaseUnit; orderIndex: number }>>()
-    for (const unit of movingUnits.value) {
-      const moveState = getFirstActiveMoveState(unit as BaseUnit)
-      if (!moveState || !moveState.uniqueId || !Number.isFinite(moveState.orderIndex)) continue
-      const existing = groupedByMove.get(moveState.uniqueId)
-      const item = { unit: unit as BaseUnit, orderIndex: moveState.orderIndex }
-      if (existing) {
-        existing.push(item)
-      } else {
-        groupedByMove.set(moveState.uniqueId, [item])
-      }
-    }
-
-    for (const group of groupedByMove.values()) {
-      if (group.length !== movingUnits.value.length) continue
-      const uniqOrder = new Set(group.map((item) => item.orderIndex))
-      if (uniqOrder.size !== group.length) continue
-      return group
-        .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map((item) => item.unit.id)
-    }
-    return null
-  })()
-
-  if (orderByExistingColumn) {
-    const startPosByUnitId = new Map(
-      unitsLeft.map(({ unit, startPos }) => [unit.id, startPos] as const)
-    )
-    return orderByExistingColumn
-      .map((unitId) => {
-        const unit = movingUnits.value.find((item) => item.id === unitId)
-        if (!unit) return null
-        const startPos = startPosByUnitId.get(unitId)
-        if (!startPos) return null
-        return { unit, startPos }
-      })
-      .filter((item): item is { unit: UnwrapRef<BaseUnit>; startPos: vec2 } => Boolean(item))
-      .map(({ unit, startPos }, orderIndex) => ({ unit, startPos, orderIndex }))
-  }
-
-  const algoPlan = buildColumnPlanByFirstTargetDistance(
-    unitsLeft.map(({ unit, startPos }) => ({ unitId: unit.id, startPos })),
-    firstTarget.pos
-  )
-
-  const unitById = new Map(unitsLeft.map((item) => [item.unit.id, item.unit] as const))
-  return algoPlan
-    .map((item) => {
-      const unit = unitById.get(item.unitId)
-      if (!unit) return null
-      return { unit, startPos: item.startPos, orderIndex: item.orderIndex }
-    })
-    .filter((item): item is MovePlanItem => Boolean(item))
-})
-
-const formationCenter = computed<vec2 | null>(() => buildFormationCenter(
-  movingUnits.value.map((unit) => ({
-    unitId: unit.id,
-    startPos: getUnitPlannedPos(unit as BaseUnit),
-  }))
-))
-
-const formationOffsets = computed<Record<uuid, vec2>>(() => {
-  const offsets = buildFormationOffsets(
-    movingUnits.value.map((unit) => ({
-      unitId: unit.id,
-      startPos: getUnitPlannedPos(unit as BaseUnit),
-    })),
-    formationCenter.value
-  )
-  return offsets as Record<uuid, vec2>
-})
-
-function isSegmentLongEnoughMeters(from: vec2, to: vec2, minMeters = 30): boolean {
-  const metersPerPixel = window.ROOM_WORLD?.map?.metersPerPixel ?? 1
-  const distMeters = Math.hypot(to.x - from.x, to.y - from.y) * metersPerPixel
-  return distMeters >= minMeters
-}
-
-/* ================= GROUPING ================= */
-
-function group(units: UnwrapRef<BaseUnit[]>) {
-  const map = new Map<string, { type: string; team: unitTeam; count: number }>()
-
-  for (const u of units) {
-    const key = `${u.type}:${u.team}`
-    map.set(key, {
-      type: u.type,
-      team: u.team,
-      count: (map.get(key)?.count ?? 0) + 1,
-    })
-  }
-
-  return [...map.values()]
-}
-
-const unitsGrouped = computed(() => group(movingUnits.value))
-
-/* ================= TARGET PICK ================= */
+const unitsGrouped = computed(() => groupUnitsByTypeAndTeam(movingUnits.value));
 
 function applyContextTarget(pos: vec2, append: boolean) {
-  const snappedPos =
-    moveMode.value === 'column'
-      ? (
-        window.ROOM_WORLD.findNearestObjectLocalCenter(pos, ['good_road', 'road'], 30, 12)?.center
-        ?? window.ROOM_WORLD.findNearestObjectPoint(pos, ['good_road', 'road'], 30)
-        ?? pos
-      )
-      : pos
-  const modifier = targets.value[targets.value.length - 1]?.modifier ?? null
+  if (!isPointInsideActiveZone(pos)) return;
+  const nextTargets = buildContextRouteUpdate({
+    mode: moveMode.value,
+    pos,
+    append,
+    targets: targets.value,
+    routeStartPos: routeStartPos.value,
+    movingUnits: movingUnits.value as BaseUnit[],
+    world: window.ROOM_WORLD,
+    getSegmentRoutePoints,
+  });
+  targets.value = nextTargets;
 
   if (append) {
-    const start = targets.value[targets.value.length - 1]?.pos ?? routeStartPos.value ?? snappedPos
-    const rawRoutePoints = getSegmentRoutePoints(start, snappedPos)
-    const normalizedRoutePoints = targets.value.length
-      ? rawRoutePoints
-      : normalizeInitialRoutePoints(rawRoutePoints)
-    const routePoints = normalizedRoutePoints
-    for (const point of routePoints) {
-      targets.value.push({ pos: point, modifier })
-    }
     nextTick(() => {
-      routeListRef.value?.scrollTo({ top: routeListRef.value.scrollHeight, behavior: 'smooth' })
-    })
-  } else {
-    const hasTargets = targets.value.length > 0
-    const nearestSelectedStart = getNearestSelectedUnitPlannedPos(snappedPos)
-    const start = hasTargets
-      ? (targets.value.length > 1
-        ? targets.value[targets.value.length - 2]!.pos
-        : routeStartPos.value ?? targets.value[0]!.pos)
-      : (nearestSelectedStart ?? routeStartPos.value ?? snappedPos)
-    const rawRoutePoints = getSegmentRoutePoints(start, snappedPos)
-    const normalizedRoutePoints = ((!hasTargets)
-      ? normalizeInitialRoutePoints(rawRoutePoints)
-      : rawRoutePoints
-    )
-    const routePoints = normalizedRoutePoints
-      .map((point) => ({ pos: point, modifier }))
-
-    if (!hasTargets) {
-      targets.value = routePoints
-    } else {
-      targets.value.splice(targets.value.length - 1, 1, ...routePoints)
-    }
+      routeListRef.value?.scrollTo({ top: routeListRef.value.scrollHeight, behavior: "smooth" });
+    });
   }
 
-  rebuildMoveOverlay()
+  rebuildMoveOverlay();
 }
 
-function onPointerDown(e: PointerEvent) {
-  if (e.button !== 2) return
-  if ((e.target as HTMLElement)?.closest('.order-move')) return
+function onPointerDown(event: PointerEvent) {
+  if (event.button !== 2) return;
+  if ((event.target as HTMLElement)?.closest(".order-move")) return;
 
-  // ⛔ остановить событие для других onPointerDown
-  e.stopPropagation()
-  e.preventDefault()
+  event.stopPropagation();
+  event.preventDefault();
 
-  const world = window.ROOM_WORLD
-  const pos = world.camera.screenToWorld({
-    x: e.clientX,
-    y: e.clientY,
-  })
+  const pos = window.ROOM_WORLD.camera.screenToWorld({
+    x: event.clientX,
+    y: event.clientY,
+  });
 
-  applyContextTarget(pos, true)
+  applyContextTarget(pos, true);
   if (isAdmin.value) {
-    openEnvMenu(undefined, false)
+    openEnvMenu(undefined, false);
   }
 }
-
-
-/* ================= OVERLAY ================= */
 
 function rebuildMoveOverlay() {
-  if (!movingUnits.value.length || !targets.value.length) {
-    window.ROOM_WORLD.clearOverlay()
-    return
+  const items = buildMoveOverlayItems({
+    movingUnits: movingUnits.value as BaseUnit[],
+    targets: targets.value,
+    plan: movePlan.value,
+    formationCenter: formationCenter.value,
+    formationOffsets: formationOffsets.value,
+    moveMode: moveMode.value,
+    metersPerPixel: window.ROOM_WORLD?.map?.metersPerPixel ?? 1,
+    roomWorld: window.ROOM_WORLD,
+    smartPathEnabled: smartPathEnabled.value,
+    hasObjectMap: hasObjectMap.value,
+  });
+
+  if (!items.length) {
+    window.ROOM_WORLD.clearOverlay();
+    return;
   }
-
-  const items: OverlayItem[] = []
-
-  // используем план, чтобы порядок был стабильный
-  const plan = movePlan.value
-  const routePoints = targets.value.map((item) => item.pos)
-  const columnAlgoPlan: ColumnAlgoPlanItem[] = plan.map((item) => ({
-    unitId: item.unit.id,
-    startPos: item.startPos,
-    orderIndex: item.orderIndex,
-  }))
-  const formationSegmentAngles = getFormationSegmentAngles(
-    formationCenter.value,
-    routePoints,
-    window.ROOM_WORLD?.map?.metersPerPixel ?? 1,
-    8
-  )
-  const formationRefAngle = getFormationReferenceAngle(formationSegmentAngles)
-
-  plan.forEach(({ unit: u, orderIndex }, planIdx) => {
-    const lastPlanOrderIndex = plan.length - 1
-    let from = u.pos
-    let lastMoveSegment: { from: vec2; to: vec2 } | null = null
-
-    // Paint previous commands
-    const unitCommands = u.getCommands()
-    for (const cmd of unitCommands) {
-      if (cmd.type !== UnitCommandTypes.Move) continue;
-      const moveCmd = cmd as MoveCommand
-      const moveState = moveCmd.getState().state as MoveCommandState
-      const target = moveState.target
-
-      if (shouldRenderMoveLine(moveState.segIndex, moveState.orderIndex, lastPlanOrderIndex)) {
-        items.push({
-          type: 'line',
-          from,
-          to: target,
-          color: 'rgba(34,197,94,0.65)',
-          width: 6,
-          dash: [6, 6],
-          dashOffset: -1,
-        })
-      }
-      lastMoveSegment = { from, to: target }
-      from = target
-    }
-
-    for (let segIndex = 0; segIndex < targets.value.length; segIndex++) {
-      const t = targets.value[segIndex]!
-
-      let to_points: vec2[] = [];
-
-      if (moveMode.value === 'formation' && formationOffsets.value[u.id]) {
-        to_points = [getFormationTargetPoint(
-          segIndex,
-          t.pos,
-          formationOffsets.value[u.id],
-          formationSegmentAngles,
-          formationRefAngle
-        )]
-      } else if (moveMode.value === 'column') {
-        to_points = getColumnPosition(
-          segIndex,
-          orderIndex,
-          routePoints,
-          columnAlgoPlan,
-          BaseUnit.COLLISION_RANGE
-        )
-        if (segIndex === 0) {
-          to_points = mergeColumnFirstSegmentWithSmartPath(
-            window.ROOM_WORLD,
-            from,
-            to_points,
-            smartPathEnabled.value,
-            hasObjectMap.value
-          )
-        }
-      } else {
-        to_points = [t.pos]
-      }
-
-      for (const to of to_points) {
-        const isLongEnough = isSegmentLongEnoughMeters(from, to, 30)
-        if (shouldRenderMoveLine(segIndex, orderIndex, lastPlanOrderIndex)) {
-          items.push({
-            type: 'line',
-            from,
-            to,
-            color: 'rgba(34,197,94,0.65)',
-            width: 6,
-            dash: [6, 6],
-            dashOffset: -1,
-          })
-        }
-        if (isLongEnough) {
-          lastMoveSegment = { from, to }
-        }
-        from = to;
-      }
-
-      if (segIndex === targets.value.length-1) {
-        const to = to_points.length ? to_points[to_points.length-1]! : u.pos;
-        const previewAngle = lastMoveSegment
-          ? getFacingAngleFromSegment(lastMoveSegment.from, lastMoveSegment.to, u.angle)
-          : u.angle
-        const { r, g, b } = getTeamColor(u.team)
-        if (u.type === unitType.MESSENGER) {
-          items.push({
-            type: 'circle',
-            center: {x: to.x, y: to.y},
-            radius: Math.min(unitlayer.BASE_UNIT_W, unitlayer.BASE_UNIT_H) / 1.5,
-            color: `rgba(${r},${g},${b},0.25)`,
-            strokeColor: 'black',
-          })
-        } else {
-          items.push({
-            type: 'rect',
-            from: { x: to.x - unitlayer.BASE_UNIT_W / 2, y: to.y - unitlayer.BASE_UNIT_H / 2 },
-            to: { x: to.x + unitlayer.BASE_UNIT_W / 2, y: to.y + unitlayer.BASE_UNIT_H / 2 },
-            angle: previewAngle,
-            fillColor: `rgba(${r},${g},${b},0.25)`,
-            color: 'black',
-          })
-        }
-      }
-
-      if (to_points.length) from = to_points[to_points.length-1]!
-    }
-  })
-
-  window.ROOM_WORLD.setOverlay(items)
+  window.ROOM_WORLD.setOverlay(items);
 }
-
-/* ================= ACTION ================= */
 
 function confirm() {
-  if (!movingUnits.value.length || !targets.value.length) {
-    return
-  }
+  if (!movingUnits.value.length || !targets.value.length) return;
 
-  const uniqueId = crypto.randomUUID();
-  const shouldSendDirectViewOrder = canPlayerUseDirectViewOrder(movingUnits.value)
-
-  if (!movingUnits.value.length || !targets.value.length) {
-    window.ROOM_WORLD.clearOverlay()
-    return
-  }
-
-  // используем план, чтобы порядок был стабильный
-  const plan = movePlan.value
-
-  const new_commands: Map<uuid, BaseCommand<any, any>[]> = new Map()
-  const routeTargets = [...targets.value]
-  const routePoints = routeTargets.map((item) => item.pos)
-  const columnAlgoPlan: ColumnAlgoPlanItem[] = plan.map((item) => ({
-    unitId: item.unit.id,
-    startPos: item.startPos,
-    orderIndex: item.orderIndex,
-  }))
-  const formationSegmentAngles = getFormationSegmentAngles(
-    formationCenter.value,
-    routePoints,
-    window.ROOM_WORLD?.map?.metersPerPixel ?? 1,
-    8
-  )
-  const formationRefAngle = getFormationReferenceAngle(formationSegmentAngles)
-
-  plan.forEach(({ unit: u, orderIndex }) => {
-    const unit = u as BaseUnit
-    let from = unit.pos
-    new_commands.set(unit.id, [])
-
-    // Compute previous commands
-    const unitCommands = unit.getCommands()
-    for (const cmd of unitCommands) {
-      if (cmd.type !== UnitCommandTypes.Move) continue;
-      const moveCmd = cmd as MoveCommand
-      from = moveCmd.getState().state.target
-    }
-
-    for (let segIndex = 0; segIndex < routeTargets.length; segIndex++) {
-      const t = routeTargets[segIndex]!
-
-      let to_points: vec2[] = [];
-
-      if (moveMode.value === 'formation' && formationOffsets.value[u.id]) {
-        to_points = [getFormationTargetPoint(
-          segIndex,
-          t.pos,
-          formationOffsets.value[u.id],
-          formationSegmentAngles,
-          formationRefAngle
-        )]
-      } else if (moveMode.value === 'column') {
-        to_points = getColumnPosition(
-          segIndex,
-          orderIndex,
-          routePoints,
-          columnAlgoPlan,
-          BaseUnit.COLLISION_RANGE
-        )
-        if (segIndex === 0) {
-          to_points = mergeColumnFirstSegmentWithSmartPath(
-            window.ROOM_WORLD,
-            from,
-            to_points,
-            smartPathEnabled.value,
-            hasObjectMap.value
-          )
-        }
-      } else {
-        to_points = [t.pos]
-      }
-
-      for (const to of to_points) {
-        const cmd = new MoveCommand({
-          target: {
-            x: to.x,
-            y: to.y,
-          },
-          modifier: t.modifier ?? null,
-          orderIndex: moveMode.value === 'column' ? orderIndex : 0,
-          uniqueId: uniqueId,
-          abilities: selectedAbilities.value,
-          segIndex: segIndex,
-          isPatrol: isPatrol.value,
-        })
-        new_commands.get(u.id)!.push(cmd)
-        from = to;
-      }
-      if (to_points.length) from = to_points[to_points.length-1]!
-    }
-  })
-
-  for (const u of movingUnits.value) {
-    const cmds = new_commands.get(u.id)!
-    u.manualEnvironment = null
-    for (const cmd of cmds) {
-      u.addCommand(cmd.getState())
-    }
-    u.setDirty()
-  }
-
-  if (shouldSendDirectViewOrder) {
-    for (const selectedUnit of movingUnits.value) {
-      const moveCommands = selectedUnit
-        .getCommands()
-        .map((cmd) => cmd.getState() as commandstate)
-        .filter((cmd) => cmd.type === UnitCommandTypes.Move)
-      window.ROOM_WORLD.events.emit('api', {
-        type: 'direct_view_send_order',
-        team: window.PLAYER.team,
+  applyMoveOrder({
+    movingUnits: movingUnits.value as BaseUnit[],
+    routeTargets: [...targets.value],
+    plan: movePlan.value,
+    formationCenter: formationCenter.value,
+    formationOffsets: formationOffsets.value,
+    moveMode: moveMode.value,
+    smartPathEnabled: smartPathEnabled.value,
+    hasObjectMap: hasObjectMap.value,
+    selectedAbilities: selectedAbilities.value,
+    isPatrol: isPatrol.value,
+    createUniqueId: () => crypto.randomUUID(),
+    roomWorld: window.ROOM_WORLD,
+    metersPerPixel: window.ROOM_WORLD?.map?.metersPerPixel ?? 1,
+    playerTeam: window.PLAYER.team,
+    emitDirectViewOrder: ({ team, unitId, commands }) => {
+      window.ROOM_WORLD.events.emit("api", {
+        type: "direct_view_send_order",
+        team: team as any,
         data: {
-          unitId: selectedUnit.id,
-          commands: moveCommands,
+          unitId,
+          commands,
         },
-      })
-    }
-  }
+      });
+    },
+  });
 
-  closeEnvMenu()
-  cleanup()
-  window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });
+  closeEnvMenu();
+  cleanup();
+  window.ROOM_WORLD.events.emit("changed", { reason: "unit" });
 }
-
 
 function cleanup() {
-  closeEnvMenu()
-  movingUnits.value = []
-  targets.value = []
-  isPatrol.value = false
-  window.ROOM_WORLD.clearOverlay()
-  emit('close')
+  closeEnvMenu();
+  movingUnits.value = [];
+  targets.value = [];
+  isPatrol.value = false;
+  window.ROOM_WORLD.clearOverlay();
+  emit("close");
 }
 
-/* ================= LIFE CYCLE ================= */
-
-let unsubscribe: unsub
+let unsubscribe: unsub;
 
 onMounted(() => {
-  movingUnits.value = [...props.units]
-  loadSmartPathPreference(movingUnits.value)
-  enforceSmartPathAvailability()
+  movingUnits.value = [...props.units];
+  loadSmartPathPreference(movingUnits.value);
+  enforceSmartPathAvailability();
 
-  window.addEventListener('pointerdown', onPointerDown)
-
-  unsubscribe = window.ROOM_WORLD.events.on('changed', ({ reason }) => {
-    if (reason === 'overlay' || reason === 'animation' || reason === 'camera') return
-    if (reason === 'select') {
-      movingUnits.value = window.ROOM_WORLD.units.list().filter(u => u.selected)
+  window.addEventListener("pointerdown", onPointerDown);
+  unsubscribe = window.ROOM_WORLD.events.on("changed", ({ reason }) => {
+    if (reason === "overlay" || reason === "animation" || reason === "camera") return;
+    if (reason === "select") {
+      movingUnits.value = window.ROOM_WORLD.units.list().filter((unit) => unit.selected);
       if (!targets.value.length) {
-        loadSmartPathPreference(movingUnits.value)
+        loadSmartPathPreference(movingUnits.value);
       }
     }
-    enforceSmartPathAvailability()
-    rebuildMoveOverlay()
-  })
-
+    enforceSmartPathAvailability();
+    rebuildMoveOverlay();
+  });
   window.INPUT.IGNORE_DRAG = true;
-})
+});
 
 onUnmounted(() => {
-  unsubscribe?.()
-  movingUnits.value = []
-  targets.value = []
-  window.removeEventListener('pointerdown', onPointerDown)
-  window.ROOM_WORLD.clearOverlay()
+  unsubscribe?.();
+  movingUnits.value = [];
+  targets.value = [];
+  window.removeEventListener("pointerdown", onPointerDown);
+  window.ROOM_WORLD.clearOverlay();
   window.INPUT.IGNORE_DRAG = false;
-  stopEnvMenuTracking()
-})
+  stopEnvMenuTracking();
+});
 
 watch(hasObjectMap, () => {
-  enforceSmartPathAvailability()
-})
+  enforceSmartPathAvailability();
+});
 
 defineExpose({
   confirm,
   applyContextTarget,
   setMoveMode,
   openEnvMenu,
-})
-
+});
 </script>
 
 <template>

@@ -219,6 +219,26 @@ function onUnitsBlockClick(units: Array<BaseUnit | uuid>) {
   if (!resolved.length) return
   emit('focusUnits', resolved)
 }
+
+const orderPreview = computed(() => {
+  const orders = props.message.orders
+  if (!orders || !Array.isArray(orders.perUnit) || !orders.perUnit.length) return []
+  return orders.perUnit.map((item) => {
+    const unit = window.ROOM_WORLD.units.get(item.unitId)
+    const unitLabel = unit?.label || item.unitLabel || item.unitId
+    const commandNames = (item.commands || [])
+      .map((command) => {
+        const rawType = (command as { type?: unknown }).type
+        return typeof rawType === 'string' ? rawType : null
+      })
+      .filter((value): value is string => Boolean(value))
+    return {
+      unitId: item.unitId,
+      unitLabel,
+      commandNames,
+    }
+  })
+})
 </script>
 
 <template>
@@ -318,6 +338,20 @@ function onUnitsBlockClick(units: Array<BaseUnit | uuid>) {
           {{ quotedMessagePreview || `#${message.quotedMessageId.slice(0, 8)}` }}
         </span>
       </button>
+
+      <div v-if="message.orders && orderPreview.length" class="orders-panel">
+        <div class="orders-panel-title">
+          Orders ({{ message.orders.status }})
+        </div>
+        <div
+          v-for="item in orderPreview"
+          :key="`order-${message.id}-${item.unitId}`"
+          class="orders-panel-row"
+        >
+          <span class="orders-panel-unit">{{ item.unitLabel }}</span>
+          <span class="orders-panel-actions">{{ item.commandNames.join(', ') || 'none' }}</span>
+        </div>
+      </div>
 
       <div
         v-if="!hasMessageUnitTags"
@@ -716,5 +750,32 @@ function onUnitsBlockClick(units: Array<BaseUnit | uuid>) {
 
 .self .quoted-message-preview-text {
   color: rgba(2, 6, 23, 0.9);
+}
+
+.orders-panel {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.45);
+  font-size: 11px;
+}
+
+.orders-panel-title {
+  color: #93c5fd;
+  margin-bottom: 4px;
+}
+
+.orders-panel-row {
+  display: flex;
+  gap: 6px;
+}
+
+.orders-panel-unit {
+  font-weight: 600;
+}
+
+.orders-panel-actions {
+  opacity: 0.95;
 }
 </style>

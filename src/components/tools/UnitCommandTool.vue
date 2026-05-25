@@ -13,7 +13,7 @@ import CommandWait from "@/components/tools/commands/CommandWait.vue";
 import CommandRetreat from "@/components/tools/commands/CommandRetreat.vue";
 import { onUnitCommandRequest, type UnitCommandRequest } from '@/engine/2d/input'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
-import {Team} from "@/enums/teamKeys.ts";
+import { isAdminTeam } from "@/game/roomGuards.ts";
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -33,7 +33,7 @@ const hotkeys: Record<string, UnitCommandTypes> = {
 }
 
 const activeOrder = ref<UnitCommandTypes | null>(null)
-const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
+const isAdmin = computed(() => isAdminTeam())
 
 const attackRef = ref<any>(null)
 const moveRef = ref<any>(null)

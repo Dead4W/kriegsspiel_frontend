@@ -35,7 +35,7 @@ import {
   getEnvironmentMoraleCheckMod
 } from "@/engine/resourcePack/environment.ts";
 import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/moraleCheck.ts";
-import { isPlanningTeamSpawnPointAllowed } from '@/game/planningSpawns'
+import { isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone } from '@/game/planningSpawns'
 
 const REMOTE_MOVE_INTERPOLATION_STEP_MS = 24
 
@@ -168,6 +168,7 @@ export abstract class BaseUnit {
 
     to.x = clamp(to.x, 0, window.ROOM_WORLD.map.width);
     to.y = clamp(to.y, 0, window.ROOM_WORLD.map.height);
+    if (!isPointInsideActiveZone(to)) return
     if (!isPlanningTeamSpawnPointAllowed(this.team, to)) return
 
     this.pos = to;
@@ -630,140 +631,6 @@ export abstract class BaseUnit {
 
   getFormation(): FormationType {
     return this.formation
-  }
-
-  getAiReport(): {user: string, text: string}[] {
-    let result: { user: string; text: string; }[] = []
-
-    // Message history
-    const messages = this.messages
-    for (const message of messages) {
-      const user = message.author_team === Team.ADMIN ? 'assistant' : 'user'
-      result.push({
-        user: user,
-        text: message.text,
-      })
-    }
-
-    // Stat self info
-    const selfInfo: string[] = []
-    selfInfo.push(`UNIT INFO`)
-    selfInfo.push(`type: ${this.type}`)
-    selfInfo.push(`team: ${this.team}`)
-    selfInfo.push(`position: x=${this.pos.x.toFixed(2)}, y=${this.pos.y.toFixed(2)}`)
-    selfInfo.push(`hp: ${this.hp.toFixed(2)}/${this.stats.maxHp}`)
-    selfInfo.push(`ammo: ${this.ammo.toFixed(2)}/${this.stats.ammoMax}`)
-    selfInfo.push(`morale: ${this.morale}`)
-    selfInfo.push(`formation: ${this.formation}`)
-    selfInfo.push(`alive: ${this.alive}`)
-
-    // Env state
-    if (this.envState.length) {
-      selfInfo.push(``)
-      selfInfo.push(`ENVIRONMENT STATES:`)
-      for (const s of this.envState) {
-        selfInfo.push(`- ${s}`)
-      }
-    }
-
-    // Active ability
-    if (this.activeAbilityType) {
-      selfInfo.push(``)
-      selfInfo.push(`ACTIVE ABILITY: ${this.activeAbilityType}`)
-    }
-
-    // DirectView units
-    const visibleUnits = window.ROOM_WORLD.units.getDirectView(this)
-    selfInfo.push(``)
-    selfInfo.push(`VISIBLE UNITS:`)
-    if (!visibleUnits.length) {
-      selfInfo.push(`- none`)
-    } else {
-      for (const u of visibleUnits) {
-        if (u.id === this.id) continue
-        if (!u.alive) continue
-        const dist = Math.hypot(this.pos.x - u.pos.x, this.pos.y - u.pos.y) * window.ROOM_WORLD.map.metersPerPixel;
-
-        selfInfo.push(
-          `- id= ${u.id}, type=${u.type}, team=${u.team}, hp=${u.hp.toFixed(2)}/${u.stats.maxHp}, ` +
-          `pos=(${u.pos.x.toFixed(2)}, ${u.pos.y.toFixed(2)}), ` +
-          `distance=${Math.round(dist)} meters, `
-        )
-      }
-    }
-
-    // Attackers
-    const attackers = window.ROOM_WORLD.units
-      .list()
-      .filter(u => {
-        if (u.id === this.id) return false
-        if (!u.alive) return false
-
-        return u.commands.some(cmd =>
-          cmd.type === UnitCommandTypes.Attack &&
-          cmd.state?.targets.some(id => id === this.id)
-        )
-      })
-    selfInfo.push(``)
-    selfInfo.push(`ATTACKERS:`)
-    if (!attackers.length) {
-      selfInfo.push(`- none`)
-    } else {
-      for (const a of attackers) {
-        const dist = Math.hypot(
-          this.pos.x - a.pos.x,
-          this.pos.y - a.pos.y
-        ) * window.ROOM_WORLD.map.metersPerPixel
-
-        selfInfo.push(
-          `- type=${a.type}, team=${a.team}, ` +
-          `hp=${a.hp.toFixed(2)}/${a.stats.maxHp}, ` +
-          `distance=${Math.round(dist)} meters`
-        )
-      }
-    }
-
-    // Targets
-    const targets = this.commands
-      .filter(cmd => cmd.type === UnitCommandTypes.Attack)
-      .map(
-        cmd => cmd.state.targets.map(t => window.ROOM_WORLD.units.get(t))
-      )
-      .flat()
-      .filter((u): u is BaseUnit => Boolean(u && u.alive))
-    selfInfo.push(``)
-    selfInfo.push(`TARGETS:`)
-    if (!targets.length) {
-      selfInfo.push(`- none`)
-    } else {
-      for (const t of targets) {
-        const dist = Math.hypot(
-          this.pos.x - t.pos.x,
-          this.pos.y - t.pos.y
-        ) * window.ROOM_WORLD.map.metersPerPixel
-
-        selfInfo.push(
-          `- type=${t.type}, team=${t.team}, ` +
-          `hp=${t.hp.toFixed(2)}/${t.stats.maxHp}, ` +
-          `distance=${Math.round(dist)} meters`
-        )
-      }
-    }
-
-    // world state
-    selfInfo.push(``)
-    selfInfo.push(`WORLD:`)
-    selfInfo.push(`timeOfDay: ${window.ROOM_WORLD.getTimeOfDay()}`)
-    selfInfo.push(`weather: ${window.ROOM_WORLD.weather.value}`)
-
-    result.push({
-      user: 'user',
-      text: selfInfo.join('\n'),
-    })
-
-    console.log(selfInfo.join('\n'))
-
-    return result
   }
 
   refreshFuturePos(): void {

@@ -22,6 +22,21 @@ export type ChatMessage = {
   deliveryStatus?: 'pending' | 'in_transit' | 'delivered' | 'failed' | 'intercepted'
   routePoints?: Array<{ x: number; y: number }>
   unitFallbackTitles?: Record<uuid, string>
+  orders?: {
+    status: 'pending' | 'ready' | 'needs_clarification' | 'error'
+    provider: string
+    model: string
+    generatedAt: string
+    summary?: string
+    unresolvedLocations?: string[]
+    perUnit: Array<{
+      unitId: uuid
+      unitLabel?: string
+      commands: unknown[]
+      notes?: string[]
+    }>
+    rawPlan?: unknown
+  } | null
   team: Team
   status: ChatMessageStatus
   delivered: boolean

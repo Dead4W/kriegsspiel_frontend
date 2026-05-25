@@ -13,6 +13,10 @@ type TeamSettings = {
   spawns?: unknown
 }
 
+type RoomParamsSettings = {
+  activeZones?: unknown
+}
+
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null
   return value
@@ -76,11 +80,43 @@ export function isPointInsideSpawnRect(pos: Point, rect: SpawnRect): boolean {
   )
 }
 
+function getRoomParamsSource(): RoomParamsSettings {
+  const fromParams = window.ROOM_PARAMS
+  if (fromParams && typeof fromParams === 'object') {
+    return fromParams as RoomParamsSettings
+  }
+  const fromSettings = window.ROOM_SETTINGS as Record<string, unknown>
+  if (fromSettings && typeof fromSettings === 'object') {
+    return fromSettings as RoomParamsSettings
+  }
+  return {}
+}
+
+export function getActiveZoneRects(): SpawnRect[] {
+  const source = getRoomParamsSource()
+  const rawActiveZones = source.activeZones
+  if (!Array.isArray(rawActiveZones)) return []
+  return rawActiveZones
+    .map(normalizeRect)
+    .filter((rect): rect is SpawnRect => rect !== null)
+}
+
+export function isPointInsideAnyRect(pos: Point, rects: SpawnRect[]): boolean {
+  return rects.some((rect) => isPointInsideSpawnRect(pos, rect))
+}
+
+export function isPointInsideActiveZone(pos: Point): boolean {
+  const zones = getActiveZoneRects()
+  if (!zones.length) return true
+  return isPointInsideAnyRect(pos, zones)
+}
+
 export function isPlanningTeamSpawnPointAllowed(team: string, pos: Point): boolean {
+  if (!isPointInsideActiveZone(pos)) return false
   if (window.ROOM_WORLD.stage !== RoomGameStage.PLANNING) return true
   const zones = getTeamSpawnRects(team)
   if (!zones.length) return true
-  return zones.some((zone) => isPointInsideSpawnRect(pos, zone))
+  return isPointInsideAnyRect(pos, zones)
 }
 
 function getTeamUnitLimitsSource(): Record<string, Record<string, unknown>> {

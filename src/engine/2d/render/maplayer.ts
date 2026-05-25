@@ -2,7 +2,7 @@ import type { world } from '@/engine/world/world'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { Team } from '@/enums/teamKeys.ts'
 import { RoomGameStage } from '@/enums/roomStage.ts'
-import { getTeamSpawnRects, type SpawnRect } from '@/game/planningSpawns'
+import { getActiveZoneRects, getTeamSpawnRects, type SpawnRect } from '@/game/planningSpawns'
 
 type TeamSpawnZone = {
   team: Team.RED | Team.BLUE
@@ -36,6 +36,7 @@ export class maplayer {
       0, 0, cam.viewport.x, cam.viewport.y
     )
 
+    this.drawActiveZones(ctx, w)
     this.drawPlanningSpawnZones(ctx, w)
 
     // ===== DEBUG: FOREST MAP =====
@@ -82,6 +83,45 @@ export class maplayer {
 
     const zones = this.getVisibleSpawnZones(team)
     this.drawPlayerSpawnFog(ctx, w, zones, team)
+  }
+
+  private drawActiveZones(ctx: CanvasRenderingContext2D, w: world) {
+    const zones = getActiveZoneRects()
+    if (!zones.length) return
+
+    const team = window.PLAYER.team
+    if (team !== Team.ADMIN && team !== Team.RED && team !== Team.BLUE && team !== Team.SPECTATOR) return
+
+    this.drawActiveFog(ctx, w, zones)
+  }
+
+  private drawActiveFog(
+    ctx: CanvasRenderingContext2D,
+    w: world,
+    zones: SpawnRect[],
+  ) {
+    const cam = w.camera
+    ctx.save()
+    ctx.scale(cam.zoom, cam.zoom)
+    ctx.translate(-cam.pos.x, -cam.pos.y)
+
+    const viewportWorldX = cam.pos.x
+    const viewportWorldY = cam.pos.y
+    const viewportWorldW = cam.viewport.x / cam.zoom
+    const viewportWorldH = cam.viewport.y / cam.zoom
+
+    const fogPath = new Path2D()
+    fogPath.rect(viewportWorldX, viewportWorldY, viewportWorldW, viewportWorldH)
+    for (const zone of zones) {
+      const width = Math.max(0, zone.to.x - zone.from.x)
+      const height = Math.max(0, zone.to.y - zone.from.y)
+      if (width <= 0 || height <= 0) continue
+      fogPath.rect(zone.from.x, zone.from.y, width, height)
+    }
+
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.35)'
+    ctx.fill(fogPath, 'evenodd')
+    ctx.restore()
   }
 
   private getAdminSpawnZones(): TeamSpawnZone[] {

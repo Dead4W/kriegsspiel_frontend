@@ -521,6 +521,7 @@
         "tabs": {
           "room": "Room settings",
           "spawn": "Spawn zones",
+          "active_zone": "Active zone",
           "briefing": "Briefing"
         },
         "room": {
@@ -546,6 +547,13 @@
           "add": "Set spawn",
           "remove": "Remove",
           "empty": "No spawns set. Team can place/move units anywhere."
+        },
+        "active_zone": {
+          "group_title": "Global active zone",
+          "group_hint": "Outside active zones, spawning and moving units is blocked. Click \"Add zone\", hold LMB for first corner and release for second corner.",
+          "add": "Add zone",
+          "remove": "Remove",
+          "empty": "No active zones set. Zone restrictions are disabled."
         }
       }
     },

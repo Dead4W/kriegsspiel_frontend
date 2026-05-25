@@ -23,7 +23,7 @@ import type {Weather} from "@/engine/resourcePack/weather.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import type {PlayerReadyInfo} from "@/engine/types/connectionTypes.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
-import { isPlanningTeamSpawnPointAllowed, isTeamUnitTypeSpawnAllowed } from '@/game/planningSpawns'
+import { isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone, isTeamUnitTypeSpawnAllowed } from '@/game/planningSpawns'
 
 type worldevents = {
   changed: { reason: string }
@@ -151,6 +151,7 @@ export class world {
   addUnits(states: unitstate[]) {
     const acceptedStates: unitstate[] = []
     for (const s of states) {
+      if (!isPointInsideActiveZone(s.pos)) continue
       if (!isPlanningTeamSpawnPointAllowed(s.team, s.pos)) continue
       if (!isTeamUnitTypeSpawnAllowed(s.team, s.type, acceptedStates)) continue
       this.units.upsert(s)

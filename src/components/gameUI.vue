@@ -15,11 +15,11 @@ import DemoTool from "@/components/tools/DemoTool.vue";
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import HelpPanel from "@/components/tools/HelpPanel.vue";
 import WeatherControl from "@/components/WeatherControl.vue";
-import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import PaintTool from "@/components/tools/PaintTool.vue";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import PlanningEntryModal from '@/components/PlanningEntryModal.vue'
+import { isAdminTeam, isRedOrBlueTeam, isWeatherModifiersEnabled } from "@/game/roomGuards.ts";
 
 const { t } = useI18n()
 const props = defineProps<{
@@ -70,18 +70,6 @@ function toggle(e: MouseEvent, tool: Tools) {
   e.preventDefault()
   e.stopPropagation()
   activeTool.value = activeTool.value === tool ? null : tool
-}
-
-function isAdmin() {
-  return window.PLAYER.team === Team.ADMIN;
-}
-
-function isPlayerTeam() {
-  return window.PLAYER.team === Team.RED || window.PLAYER.team === Team.BLUE
-}
-
-function isEnabledWeatherModifiers() {
-  return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.WEATHER_MODIFIERS]
 }
 
 const ROTATE_STEP = Math.PI / 32
@@ -141,7 +129,7 @@ function closePlanningEntryModal() {
 
 function syncPlanningEntryModalState() {
   const shouldDisplay =
-    isPlayerTeam()
+    isRedOrBlueTeam()
     && world.value.stage === RoomGameStage.PLANNING
 
   if (!shouldDisplay) {
@@ -183,17 +171,17 @@ onUnmounted(() => {
       @close="closePlanningEntryModal"
     />
 
-    <ForcesBar v-if="isAdmin()"/>
+    <ForcesBar v-if="isAdminTeam()"/>
 
-    <div v-if="!isEnd || !isAdmin()" class="top-bar no-select">
+    <div v-if="!isEnd || !isAdminTeam()" class="top-bar no-select">
       <TurnTimer />
-      <WeatherControl class="weather-under" v-if="isAdmin() && isEnabledWeatherModifiers() && !isEnd" />
+      <WeatherControl class="weather-under" v-if="isAdminTeam() && isWeatherModifiersEnabled() && !isEnd" />
     </div>
 
     <!-- Панель инструментов -->
     <div class="toolbar no-select">
       <button
-        v-if="isAdmin() && isWar && !props.is3dMode"
+        v-if="isAdminTeam() && isWar && !props.is3dMode"
         :class="{ active: shiftHeld }"
         @pointerdown.stop.prevent
         @click="toggleHardMove"
@@ -204,7 +192,7 @@ onUnmounted(() => {
       </button>
 
       <button
-        v-if="isAdmin()"
+        v-if="isAdminTeam()"
         :class="{ active: activeTool === Tools.ADMIN }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.ADMIN)"
@@ -260,12 +248,12 @@ onUnmounted(() => {
     </div>
 
     <DemoTool
-      v-if="isAdmin() && isEnd"
+      v-if="isAdminTeam() && isEnd"
       @close="close"
     />
 
     <AdminTool
-      v-if="isAdmin() && activeTool === Tools.ADMIN"
+      v-if="isAdminTeam() && activeTool === Tools.ADMIN"
       class="no-select"
     />
 
@@ -302,7 +290,7 @@ onUnmounted(() => {
 
     <KringChat :is3d-mode="props.is3dMode" />
 
-    <NotificationsPanel v-if="isAdmin() && !isEnd && !props.is3dMode" :is3d-mode="props.is3dMode" />
+    <NotificationsPanel v-if="isAdminTeam() && !isEnd && !props.is3dMode" :is3d-mode="props.is3dMode" />
   </div>
 </template>
 

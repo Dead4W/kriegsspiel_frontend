@@ -2,8 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
-import { WaitCommand } from '@/engine/units/commands/waitCommand.ts'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
+import { applyWaitOrder, getWaitDurationSeconds, normalizeWaitTime } from '@/game/commands/wait'
 
 const { t } = useI18n()
 
@@ -26,21 +26,23 @@ const seconds = ref(0)
 const comment = ref('')
 
 const waitTime = computed(() => {
-  return minutes.value * 60 + seconds.value
+  return getWaitDurationSeconds({
+    minutes: minutes.value,
+    seconds: seconds.value,
+  })
 })
 
 /* ===== ACTION ===== */
 
 function confirm() {
-  for (const u of unitsSnapshot.value) {
-    const cmd = new WaitCommand({
-      wait: waitTime.value > 0 ? waitTime.value : 0,
-      elapsed: 0,
-      comment: comment.value || undefined,
-    })
-    u.addCommand(cmd.getState())
-    u.setDirty()
-  }
+  applyWaitOrder({
+    units: unitsSnapshot.value,
+    time: {
+      minutes: minutes.value,
+      seconds: seconds.value,
+    },
+    comment: comment.value,
+  })
 
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
   emit('close')
@@ -50,6 +52,12 @@ function confirm() {
 
 onMounted(() => {
   unitsSnapshot.value = [...props.units]
+  const normalized = normalizeWaitTime({
+    minutes: minutes.value,
+    seconds: seconds.value,
+  })
+  minutes.value = normalized.minutes
+  seconds.value = normalized.seconds
 })
 
 defineExpose({

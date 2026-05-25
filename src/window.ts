@@ -6,10 +6,12 @@ import type {PlayerInfo} from "@/enums/playerInfo.ts";
 type RoomSettingsWindowState = Partial<Record<RoomSettingKey, any>> & {
   teamBriefing?: Record<string, string>
   perTeamSettings?: Record<string, Record<string, unknown>>
+  activeZones?: unknown[]
 }
 
 declare global {
   interface Window {
+    env: Record<string, string | undefined>
     ROOM_SETTINGS: RoomSettingsWindowState
     ROOM_PARAMS: Record<string, any>
     CLIENT_SETTINGS: Partial<Record<ClientSettingKey, any>>

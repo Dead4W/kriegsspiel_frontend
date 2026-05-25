@@ -9,6 +9,14 @@ import './window.ts'
 
 import * as Sentry from "@sentry/vue";
 
+window.env = {
+  ...(window.env || {}),
+  ...Object.fromEntries(
+    Object.entries((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {})
+      .map(([key, value]) => [key, typeof value === 'string' ? value : undefined])
+  ),
+}
+
 const app = createApp(App)
 
 if (import.meta.env.VITE_SENTRY_DSN) {

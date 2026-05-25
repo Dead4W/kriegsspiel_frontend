@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import {computed, watch} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {Team} from '@/enums/teamKeys.ts'
-import {RoomGameStage} from "@/enums/roomStage.ts";
 import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
+import { isAdminTeam, isPlanningStage } from "@/game/roomGuards.ts";
 
 const { t } = useI18n()
 
 const weather = window.ROOM_WORLD.newWeather
-const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
+const isAdmin = computed(() => isAdminTeam())
 
 watch(window.ROOM_WORLD.newWeather, () => {
-  if (window.ROOM_WORLD.stage !== RoomGameStage.PLANNING) return
+  if (!isPlanningStage()) return
 
   window.ROOM_WORLD.events.emit('api', {type: 'weather', data: window.ROOM_WORLD.newWeather.value});
   window.ROOM_WORLD.weather.value = window.ROOM_WORLD.newWeather.value;

@@ -11,6 +11,10 @@ import {ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import {getMessengerLogicConfig} from "@/engine/resourcePack/messengerLogic.ts";
 import {buildMessengerRouteByNearestPoints} from "@/engine/units/messengerRoute.ts";
 import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
+import { AttackCommand } from "@/engine/units/commands/attackCommand.ts";
+import { WaitCommand } from "@/engine/units/commands/waitCommand.ts";
+import { RetreatCommand } from "@/engine/units/commands/retreatCommand.ts";
+import type { commandstate } from "@/engine";
 
 export interface DeliveryCommandState {
   targets: uuid[],
@@ -953,6 +957,7 @@ export class DeliveryCommand extends BaseCommand<
       for (const m of unit.messages) {
         window.ROOM_WORLD.units.withNewCommandsTmp.add(id);
         u.linkMessage(m.id);
+        this.applyMessageOrdersToUnit(m.id, u);
         u.setDirty();
         deliveredAny = true
       }
@@ -964,6 +969,40 @@ export class DeliveryCommand extends BaseCommand<
     if (deliveredAny) {
       this.emitDeliveryStatus('delivered')
     }
+  }
+
+  private toCommandObjects(rawCommands: unknown[]): Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand> {
+    const commands: Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand> = []
+    for (const raw of rawCommands) {
+      if (!raw || typeof raw !== 'object') continue
+      const state = raw as commandstate
+      if (state.type === UnitCommandTypes.Move && state.state) {
+        commands.push(new MoveCommand(state.state as MoveCommandState))
+      } else if (state.type === UnitCommandTypes.Attack && state.state) {
+        commands.push(new AttackCommand(state.state as any))
+      } else if (state.type === UnitCommandTypes.Wait && state.state) {
+        commands.push(new WaitCommand(state.state as any))
+      } else if (state.type === UnitCommandTypes.Retreat && state.state) {
+        commands.push(new RetreatCommand(state.state as any))
+      }
+    }
+    return commands
+  }
+
+  private applyMessageOrdersToUnit(messageId: uuid, targetUnit: BaseUnit) {
+    const message = window.ROOM_WORLD.messages.get(messageId)
+    const orders = message?.orders
+    if (!message || !orders || orders.status !== 'ready') return
+    const plan = orders.perUnit?.find((item) => item.unitId === targetUnit.id)
+    if (!plan || !Array.isArray(plan.commands) || !plan.commands.length) return
+
+    const generatedCommands = this.toCommandObjects(plan.commands as unknown[])
+    if (!generatedCommands.length) return
+    const nonMoveAttackCommands = targetUnit.getCommands().filter((command) => (
+      command.type !== UnitCommandTypes.Move && command.type !== UnitCommandTypes.Attack
+    ))
+    targetUnit.manualEnvironment = null
+    targetUnit.setCommands([...nonMoveAttackCommands, ...generatedCommands])
   }
 
   private finishReturn(unit: BaseUnit) {

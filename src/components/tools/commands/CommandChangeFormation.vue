@@ -3,9 +3,11 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import type { FormationType } from '@/engine'
-import { ChangeFormationCommand } from '@/engine/units/commands/changeFormationCommand'
-import { getFormationTypes } from "@/engine/resourcePack/formations.ts";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
+import {
+  applyChangeFormationOrder,
+  getAvailableFormationTypes,
+} from '@/game/commands/changeFormation'
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -21,16 +23,17 @@ const { t } = useI18n()
 
 const selectedFormation = ref<FormationType | null>(null)
 
-const FORMATIONS = computed<FormationType[]>(() => getFormationTypes())
+const FORMATIONS = computed<FormationType[]>(() => getAvailableFormationTypes())
 
 /* ================= ACTIONS ================= */
 
 function confirm() {
   if (!selectedFormation.value) return
 
-  for (const unit of props.units) {
-    unit.setFormation(selectedFormation.value)
-  }
+  applyChangeFormationOrder({
+    units: props.units,
+    formation: selectedFormation.value,
+  })
 
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
   emit('close')

@@ -7,13 +7,19 @@ import {Team} from "@/enums/teamKeys.ts";
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {type unitstate, unitType, type uuid} from "@/engine";
-import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Messenger} from "@/engine/units/messenger.ts";
 import {DeliveryCommand} from "@/engine/units/commands/deliveryCommand.ts";
-import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {getTeamColor} from "@/engine/2d/render/util.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
 import KringChatMessage from "@/components/chat/KringChatMessage.vue";
+import {
+  isAdminTeam,
+  isEndStage,
+  isPlayerRoomMapEnabled,
+  isRedOrBlueTeam,
+  isSpectatorTeam,
+  isWarStage,
+} from "@/game/roomGuards.ts";
 import {
   autoSpawnMessengerForIncomingOrder,
   findHighestHpUnit,
@@ -59,16 +65,12 @@ function setLastReadMessageId(team: Team, messageId: string) {
   localStorage.setItem(getLastReadKey(team), messageId)
 }
 
-function isPlayerRoomMap() {
-  return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.IS_PLAYER_ROOM_MAP]
-}
-
 function isOwnMessage(m: ChatMessage) {
-  if (window.PLAYER.team === Team.SPECTATOR) {
+  if (isSpectatorTeam()) {
     return m.author_team === Team.ADMIN;
   }
 
-  if (isPlayer() && isPlayerRoomMap()) {
+  if (isRedOrBlueTeam() && isPlayerRoomMapEnabled()) {
     if (m.author_id != null && window.PLAYER.id != null) {
       return m.author_id === window.PLAYER.id;
     }
@@ -80,7 +82,7 @@ function isOwnMessage(m: ChatMessage) {
 }
 
 function syncPlayerChatReadState() {
-  if (!isPlayer()) {
+  if (!isRedOrBlueTeam()) {
     return;
   }
 
@@ -125,10 +127,6 @@ function isUnreadMessage(m: ChatMessage): boolean {
   }
 }
 
-function canSpawnMessenger(): boolean {
-  return window.PLAYER.team === Team.ADMIN
-}
-
 function onSpawnMessenger(m: ChatMessage) {
   if (props.is3dMode) return
   spawnMessengerForMessage(m, selectedUnits.value, t(`unit.${unitType.MESSENGER}`))
@@ -141,15 +139,6 @@ function isAtBottom(container: HTMLElement, threshold = 20) {
   )
 }
 
-function isPlayer() {
-  return window.PLAYER.team === Team.BLUE
-    || window.PLAYER.team === Team.RED
-}
-
-function isWarStage(): boolean {
-  return window.ROOM_WORLD.stage === RoomGameStage.WAR
-}
-
 function getSendWarningMessage() {
   if (isEditing.value) {
     return null;
@@ -159,17 +148,13 @@ function getSendWarningMessage() {
     return t('chat.warning.selection_hint');
   }
 
-  if (!isPlayer()) {
+  if (!isRedOrBlueTeam()) {
     const teams = new Set(selectedUnits.value.map(u => u.team))
     if (teams.size > 1) {
       return t('chat.warning.selection_both_team')
     }
   }
   return null;
-}
-
-function isEnd() {
-  return window.ROOM_WORLD.stage === RoomGameStage.END
 }
 
 function focusUnits(units: BaseUnit[]) {
@@ -326,7 +311,7 @@ const unreadByTeam = computed<Record<Team, number>>(() => {
   const result = {} as Record<Team, number>
 
   for (const t of teams.map(t => t.id)) {
-    if (window.ROOM_WORLD.stage === RoomGameStage.END) {
+    if (isEndStage()) {
       result[t] = 0
       continue
     }
@@ -363,7 +348,7 @@ const routePoints = ref<Array<{ x: number; y: number }>>([])
 function isRouteCaptureActive(): boolean {
   return (
     isOpen.value
-    && isPlayer()
+    && isRedOrBlueTeam()
     && isWarStage()
     && selectedUnits.value.length > 0
     && input.value.trim().length > 0
@@ -531,7 +516,7 @@ function send() {
 
   const baseTeam = selected[0]!.team as Team;
   const inferredReportTeam = (
-    window.PLAYER.team === Team.ADMIN
+    isAdminTeam()
     && isWarStage()
     && !selected.some((u) => u.type === unitType.GENERAL)
   )
@@ -570,14 +555,14 @@ function send() {
 
   const shouldAutoSpawnAdminWithGeneral = (
     isWarStage()
-    && window.PLAYER.team === Team.ADMIN
+    && isAdminTeam()
     && (team === Team.RED || team === Team.BLUE)
     && selectedGeneral != null
   )
 
   const shouldAutoSpawnAdminReport = (
     isWarStage()
-    && window.PLAYER.team === Team.ADMIN
+    && isAdminTeam()
     && !selected.some((u) => u.type === unitType.GENERAL)
     && (team === Team.RED || team === Team.BLUE)
   )
@@ -704,7 +689,7 @@ function redrawRoutePreview() {
 }
 
 function onGlobalPointerDown(event: PointerEvent) {
-  if (!isRouteCaptureActive() || !isPlayer() || !isWarStage()) return
+  if (!isRouteCaptureActive() || !isRedOrBlueTeam() || !isWarStage()) return
   const target = event.target as HTMLElement | null
   if (target && target.closest('.krig-chat')) return
   event.preventDefault()
@@ -912,13 +897,13 @@ function onChangedWorld(event: { reason: string }) {
   }
   selectedUnits.value = window.ROOM_WORLD.units.getSelected()
   selectedUnits.value = selectedUnits.value.filter(u => u.type !== unitType.MESSENGER);
-  if (isPlayer()) {
+  if (isRedOrBlueTeam()) {
     selectedUnits.value = selectedUnits.value.filter(u => u.team === window.PLAYER.team);
   }
 
   if (
     event.reason === 'select'
-    && !isPlayer()
+    && !isRedOrBlueTeam()
     && selectedUnits.value.length
     && activeTeam.value !== Team.ADMIN
   ) {
@@ -1036,9 +1021,9 @@ onBeforeUnmount(() => {
         :is-own="isOwnMessage(m)"
         :is-unread="isUnreadMessage(m)"
         :highlighted="highlightedMessageId === m.id"
-        :can-spawn-messenger="canSpawnMessenger()"
+        :can-spawn-messenger="isAdminTeam()"
         :can-edit="canEditMessage(m)"
-        :is-player="isPlayer()"
+        :is-player="isRedOrBlueTeam()"
         @spawn-messenger="onSpawnMessenger"
         @edit-message="startEditMessage"
         @quote-message="setQuote"
@@ -1049,7 +1034,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- input -->
-    <template v-if="!isEnd()">
+    <template v-if="!isEndStage()">
       <template v-if="!getSendWarningMessage()">
         <form class="chat-input" @submit.prevent="send">
           <div v-if="quotedMessage" class="chat-quote-banner">
@@ -1057,7 +1042,7 @@ onBeforeUnmount(() => {
             <button type="button" @click="clearQuote">{{ t('chat.cancel') }}</button>
           </div>
 
-          <div v-if="isPlayer() && isWarStage()" class="chat-route-toolbar">
+          <div v-if="isRedOrBlueTeam() && isWarStage()" class="chat-route-toolbar">
             <span class="chat-route-toolbar-hint">
               {{ t('chat.route.auto_capture_hint') }}
             </span>
@@ -1127,9 +1112,9 @@ onBeforeUnmount(() => {
     <div
       v-if="unreadInActiveTab > 0"
       class="new-messages-float"
-      @click="isPlayer() ? onClickMarkAllAsRead() : scrollToFirstUnread()"
+      @click="isRedOrBlueTeam() ? onClickMarkAllAsRead() : scrollToFirstUnread()"
     >
-      <template v-if="isPlayer()">
+      <template v-if="isRedOrBlueTeam()">
         {{ t('chat.mark_all_as_read') }}
       </template>
       <template v-else>

@@ -2,8 +2,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BaseUnit } from '@/engine/units/baseUnit'
-import { RetreatCommand } from '@/engine/units/commands/retreatCommand.ts'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
+import {
+  applyRetreatOrder,
+  getRetreatDurationMinutes,
+  getRetreatDurationSeconds,
+  normalizeRetreatTime,
+} from '@/game/commands/retreat'
 
 const { t } = useI18n()
 
@@ -25,25 +30,29 @@ const hours = ref(24)
 const minutes = ref(0)
 
 const retreatTimeSeconds = computed(() => {
-  return hours.value * 60 * 60 + minutes.value * 60
+  return getRetreatDurationSeconds({
+    hours: hours.value,
+    minutes: minutes.value,
+  })
 })
 
 const retreatTimeMinutes = computed(() => {
-  return hours.value * 60 + minutes.value
+  return getRetreatDurationMinutes({
+    hours: hours.value,
+    minutes: minutes.value,
+  })
 })
 
 /* ===== ACTION ===== */
 
 function apply() {
-  for (const u of unitsSnapshot.value) {
-    const cmd = new RetreatCommand({
-      elapsed: 0,
-      duration: retreatTimeSeconds.value > 0 ? retreatTimeSeconds.value : 0,
-    })
-    u.clearCommands()
-    u.setCommands([cmd])
-    u.setDirty()
-  }
+  applyRetreatOrder({
+    units: unitsSnapshot.value,
+    time: {
+      hours: hours.value,
+      minutes: minutes.value,
+    },
+  })
 
   window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
   emit('close')
@@ -55,6 +64,12 @@ function confirm() {
 
 onMounted(() => {
   unitsSnapshot.value = [...props.units]
+  const normalized = normalizeRetreatTime({
+    hours: hours.value,
+    minutes: minutes.value,
+  })
+  hours.value = normalized.hours
+  minutes.value = normalized.minutes
 })
 
 defineExpose({

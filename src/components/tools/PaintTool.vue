@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount, onMounted, ref} from "vue";
 import type {PaintStroke} from "@/engine/types/paintTypes.ts";
-import {Team} from "@/enums/teamKeys.ts";
 import HotkeyTag from "@/components/ui/HotkeyTag.vue";
+import { isAdminTeam } from "@/game/roomGuards.ts";
 
 const color = ref("#ff3b30")
 const opacity = ref(0.85)
 const width = ref(4)
 const shareForPlayers = ref(false)
-
-function isAdmin() {
-  return window.PLAYER.team === Team.ADMIN
-}
 
 const strokeStyle = computed(() => hexToRgba(color.value, opacity.value))
 const eraserStyle = computed(() => `rgba(0,0,0,1)`)
@@ -71,7 +67,7 @@ function onPointerDown(e: PointerEvent) {
     color: currentMode === 'erase' ? eraserStyle.value : strokeStyle.value,
     width: width.value,
     mode: currentMode,
-    sharedForPlayers: isAdmin() ? shareForPlayers.value : undefined,
+    sharedForPlayers: isAdminTeam() ? shareForPlayers.value : undefined,
   }
 
   // Add immediately so drawing is visible while dragging.
@@ -210,7 +206,7 @@ onBeforeUnmount(() => {
         <HotkeyTag key-label="Ctrl+Z" />
       </button>
       <button
-        v-if="isAdmin()"
+        v-if="isAdminTeam()"
         class="share-btn"
         :class="{ active: shareForPlayers }"
         @click="shareForPlayers = !shareForPlayers"

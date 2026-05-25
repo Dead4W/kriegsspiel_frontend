@@ -129,10 +129,7 @@ const routeDistancesMeters = computed<number[]>(() => {
 })
 
 const hasObjectMap = computed(() => {
-  return Boolean(
-    window.ROOM_WORLD.objectMapImageData
-    && window.ROOM_WORLD.objectMapColorToEntity.size > 0
-  )
+  return window.ROOM_WORLD.hasObjectNavMeshMap()
 })
 const isAdmin = computed(() => window.PLAYER.team === Team.ADMIN)
 

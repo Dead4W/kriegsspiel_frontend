@@ -33,12 +33,8 @@ function getRaycastOccluderPenalty(
   x: number,
   y: number
 ): { penalty: number; softenedByDistance: boolean } | null {
-  const objectMap = w.objectMapImageData
-  if (objectMap && w.objectMapColorToEntity.size > 0) {
-    if (x < 0 || y < 0 || x >= objectMap.width || y >= objectMap.height) return null
-    const i = (Math.floor(y) * objectMap.width + Math.floor(x)) * 4
-    const key = `${objectMap.data[i]},${objectMap.data[i + 1]},${objectMap.data[i + 2]}`
-    const entity = w.objectMapColorToEntity.get(key)
+  if (w.hasObjectNavMeshMap()) {
+    const entity = w.getObjectNavMeshEntityAt({ x: Math.floor(x), y: Math.floor(y) })
     if (entity === FOREST_OCCLUDER_ENTITY) {
       return {
         penalty: FOREST_DISTANCE_PENALTY,

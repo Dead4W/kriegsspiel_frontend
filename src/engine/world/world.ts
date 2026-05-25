@@ -33,6 +33,48 @@ type worldevents = {
   camera: {}
 }
 
+type ObjectNavMeshMap = {
+  width: number
+  height: number
+  entitiesById: string[]
+  entityIdByPixel: Uint16Array
+}
+
+function buildObjectNavMeshMap(
+  imageData: ImageData,
+  colorToEntity: Map<string, string>
+): ObjectNavMeshMap {
+  const width = imageData.width
+  const height = imageData.height
+  const pixelCount = width * height
+  const entityIdByPixel = new Uint16Array(pixelCount)
+  const entitiesById: string[] = ['']
+  const entityToId = new Map<string, number>()
+  const pixels = imageData.data
+
+  for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex += 1) {
+    const rgbaIndex = pixelIndex * 4
+    const key = `${pixels[rgbaIndex]},${pixels[rgbaIndex + 1]},${pixels[rgbaIndex + 2]}`
+    const entity = colorToEntity.get(key)
+    if (!entity) continue
+
+    let entityId = entityToId.get(entity)
+    if (entityId == null) {
+      entityId = entitiesById.length
+      entityToId.set(entity, entityId)
+      entitiesById.push(entity)
+    }
+    entityIdByPixel[pixelIndex] = entityId
+  }
+
+  return {
+    width,
+    height,
+    entitiesById,
+    entityIdByPixel,
+  }
+}
+
 export class world {
   private static readonly LIVE_TIME_TICK_MS = 100
 
@@ -65,6 +107,7 @@ export class world {
   objectMapCtx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
   objectMapImageData?: ImageData
   objectMapColorToEntity: Map<string, string> = new Map()
+  objectNavMeshMap?: ObjectNavMeshMap
 
   heightMap?: HeightSampler
   heightMapCanvas?: OffscreenCanvas | HTMLCanvasElement
@@ -226,18 +269,26 @@ export class world {
     this.objectMapCtx = ctx
     this.objectMapImageData = imageData
     this.objectMapColorToEntity = nextMap
+    this.objectNavMeshMap = buildObjectNavMeshMap(imageData, nextMap)
     this.events.emit('changed', { reason: 'objectMap' })
   }
 
-  getObjectMapEntityAt(pos: vec2): string | null {
-    if (!this.objectMapImageData || !this.objectMapColorToEntity.size) return null
+  hasObjectNavMeshMap(): boolean {
+    return Boolean(this.objectNavMeshMap && this.objectNavMeshMap.entitiesById.length > 1)
+  }
+
+  getObjectNavMeshEntityAt(pos: vec2): string | null {
+    if (!this.objectNavMeshMap) return null
     const x = Math.round(pos.x)
     const y = Math.round(pos.y)
     if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) return null
-    const idx = (y * this.map.width + x) * 4
-    const pixels = this.objectMapImageData.data
-    const key = `${pixels[idx]},${pixels[idx + 1]},${pixels[idx + 2]}`
-    return this.objectMapColorToEntity.get(key) ?? null
+    const index = (y * this.map.width) + x
+    const entityId = this.objectNavMeshMap.entityIdByPixel[index] ?? 0
+    return this.objectNavMeshMap.entitiesById[entityId] ?? null
+  }
+
+  getObjectMapEntityAt(pos: vec2): string | null {
+    return this.getObjectNavMeshEntityAt(pos)
   }
 
   isObjectEntityAt(pos: vec2, entity: string): boolean {
@@ -249,13 +300,22 @@ export class world {
     entities: string[],
     maxRadiusPx: number = 12
   ): vec2 | null {
-    if (!this.objectMapImageData || !this.objectMapColorToEntity.size || !entities.length) return null
+    if (!this.objectNavMeshMap || !entities.length) return null
     const targets = new Set(entities.map((item) => String(item)))
+    const targetIds = new Set<number>()
+    for (let i = 1; i < this.objectNavMeshMap.entitiesById.length; i += 1) {
+      const entity = this.objectNavMeshMap.entitiesById[i]
+      if (entity && targets.has(entity)) {
+        targetIds.add(i)
+      }
+    }
+    if (!targetIds.size) return null
+
     const startX = Math.round(pos.x)
     const startY = Math.round(pos.y)
     if (startX < 0 || startY < 0 || startX >= this.map.width || startY >= this.map.height) return null
 
-    const data = this.objectMapImageData.data
+    const data = this.objectNavMeshMap.entityIdByPixel
     const radius = Math.max(0, Math.round(maxRadiusPx))
     let bestDistSq = Infinity
     let bestX = -1
@@ -269,10 +329,9 @@ export class world {
         if (x < 0 || x >= this.map.width) continue
         const distSq = dx * dx + dy * dy
         if (distSq > radius * radius || distSq >= bestDistSq) continue
-        const idx = (y * this.map.width + x) * 4
-        const key = `${data[idx]},${data[idx + 1]},${data[idx + 2]}`
-        const entity = this.objectMapColorToEntity.get(key)
-        if (!entity || !targets.has(entity)) continue
+        const idx = (y * this.map.width) + x
+        const entityId = data[idx] ?? 0
+        if (!targetIds.has(entityId)) continue
         bestDistSq = distSq
         bestX = x
         bestY = y
@@ -284,7 +343,7 @@ export class world {
   }
 
   hasObjectEntityOnSegment(from: vec2, to: vec2, entity: string, sampleStepPx: number = 2): boolean {
-    if (!this.objectMapImageData || !this.objectMapColorToEntity.size) return false
+    if (!this.objectNavMeshMap) return false
     const dx = to.x - from.x
     const dy = to.y - from.y
     const length = Math.hypot(dx, dy)
@@ -308,13 +367,16 @@ export class world {
     return false
   }
 
-  private getObjectMapEntityAtPixel(x: number, y: number): string | null {
-    if (!this.objectMapImageData || !this.objectMapColorToEntity.size) return null
+  private getObjectNavMeshEntityAtPixel(x: number, y: number): string | null {
+    if (!this.objectNavMeshMap) return null
     if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) return null
-    const idx = (y * this.map.width + x) * 4
-    const pixels = this.objectMapImageData.data
-    const key = `${pixels[idx]},${pixels[idx + 1]},${pixels[idx + 2]}`
-    return this.objectMapColorToEntity.get(key) ?? null
+    const idx = (y * this.map.width) + x
+    const entityId = this.objectNavMeshMap.entityIdByPixel[idx] ?? 0
+    return this.objectNavMeshMap.entitiesById[entityId] ?? null
+  }
+
+  private getObjectMapEntityAtPixel(x: number, y: number): string | null {
+    return this.getObjectNavMeshEntityAtPixel(x, y)
   }
 
   findNearestObjectComponentCenter(
@@ -327,7 +389,7 @@ export class world {
 
     const seedX = Math.round(seed.x)
     const seedY = Math.round(seed.y)
-    const seedEntity = this.getObjectMapEntityAtPixel(seedX, seedY)
+    const seedEntity = this.getObjectNavMeshEntityAtPixel(seedX, seedY)
     if (!seedEntity) return null
 
     const allowedEntities = new Set(entities.map((item) => String(item)))
@@ -355,7 +417,7 @@ export class world {
 
     while (queue.length) {
       const [x, y] = queue.pop()!
-      const entity = this.getObjectMapEntityAtPixel(x, y)
+      const entity = this.getObjectNavMeshEntityAtPixel(x, y)
       if (entity !== seedEntity) continue
 
       sumX += x

@@ -144,7 +144,7 @@ function distance(a: GridPoint, b: GridPoint): number {
 }
 
 function getEntityAtPixel(w: world, x: number, y: number): string | null {
-  return w.getObjectMapEntityAt({ x, y });
+  return w.getObjectNavMeshEntityAt({ x, y });
 }
 
 function buildSpeedLookup(): {
@@ -760,7 +760,7 @@ export function buildRoadTurnRoutePoints(
   options: BuildRoadTurnRouteOptions = {}
 ): vec2[] {
   return debugRoadPathPerformance("buildRoadTurnRoutePoints", () => {
-    if (!w.objectMapImageData || w.objectMapColorToEntity.size === 0) {
+    if (!w.hasObjectNavMeshMap()) {
       return [{ x: to.x, y: to.y }];
     }
 

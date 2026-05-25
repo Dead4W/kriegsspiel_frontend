@@ -9,10 +9,7 @@ export type DirectViewOrderUnitLike = {
 }
 
 export function hasObjectsMapForDirectViewOrder(): boolean {
-  return Boolean(
-    window.ROOM_WORLD.objectMapImageData
-    && window.ROOM_WORLD.objectMapColorToEntity.size > 0
-  )
+  return window.ROOM_WORLD.hasObjectNavMeshMap()
 }
 
 export function isPlayerDirectViewOrderContext(): boolean {

@@ -27,9 +27,7 @@ function hasObjectMap(): boolean {
 }
 
 function syncObjectMapPresence() {
-  hasObjectMapRef.value = Boolean(
-    window.ROOM_WORLD?.objectMapImageData && window.ROOM_WORLD.objectMapColorToEntity.size > 0
-  )
+  hasObjectMapRef.value = window.ROOM_WORLD?.hasObjectNavMeshMap?.() ?? false
 }
 
 type ClientSettingsUiItem =

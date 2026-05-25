@@ -47,7 +47,7 @@ const OBJECT_ENV_PRIORITIES: Record<EnvMode, Array<{ entities: string[]; envIds:
 const MOVING_DEFAULT_FIELD_ENV_IDS = ["in_field", "in_plain_field", "in_soft_field", "field"]
 
 function isObjectMapReady(): boolean {
-  return Boolean(window.ROOM_WORLD.objectMapImageData && window.ROOM_WORLD.objectMapColorToEntity.size > 0)
+  return window.ROOM_WORLD.hasObjectNavMeshMap()
 }
 
 function getNearRadiusPx(): number {

@@ -64,6 +64,10 @@ class MinHeap {
     return this.data.length;
   }
 
+  peek(): { node: number; score: number } | null {
+    return this.data.length ? this.data[0]! : null;
+  }
+
   push(node: number, score: number) {
     this.data.push({ node, score });
     this.bubbleUp(this.data.length - 1);
@@ -257,25 +261,58 @@ function findPathAStarWithEnvironmentSpeed(
     return penalty
   }
 
-  const openHeap = new MinHeap();
-  const gScore = new Map<number, number>();
-  const parent = new Map<number, number>();
-  const closed = new Set<number>();
+  const forwardOpen = new MinHeap();
+  const backwardOpen = new MinHeap();
+  const forwardG = new Map<number, number>();
+  const backwardG = new Map<number, number>();
+  const forwardParent = new Map<number, number>();
+  const backwardParent = new Map<number, number>();
+  const forwardClosed = new Set<number>();
+  const backwardClosed = new Set<number>();
   const entityCache = new Map<number, string | null>();
   let bestIdx = startIdx;
   let bestDistanceToGoal = distance(start, goal);
+  let bestMeetNode: number | null = null;
+  let bestMeetCost = Infinity;
 
-  const reconstructPath = (targetIdx: number): GridPoint[] | null => {
+  const reconstructForwardPath = (
+    targetIdx: number,
+    parentMap: Map<number, number>
+  ): GridPoint[] | null => {
     const path: GridPoint[] = [];
     let walk = targetIdx;
     while (true) {
       path.push(toPoint(walk, width));
-      const prev = parent.get(walk);
+      const prev = parentMap.get(walk);
       if (prev == null) break;
       walk = prev;
     }
     path.reverse();
     return path.length > 1 ? path : null;
+  };
+
+  const reconstructBidirectionalPath = (meetIdx: number): GridPoint[] | null => {
+    const left: GridPoint[] = [];
+    let walk = meetIdx;
+    while (true) {
+      left.push(toPoint(walk, width));
+      const prev = forwardParent.get(walk);
+      if (prev == null) break;
+      walk = prev;
+    }
+    left.reverse();
+
+    const right: GridPoint[] = [];
+    walk = meetIdx;
+    while (true) {
+      const next = backwardParent.get(walk);
+      if (next == null) break;
+      walk = next;
+      right.push(toPoint(walk, width));
+    }
+
+    const merged = [...left, ...right];
+    return merged.length > 1 ? merged : null;
   };
 
   const getEntityByIndex = (idx: number): string | null => {
@@ -289,7 +326,6 @@ function findPathAStarWithEnvironmentSpeed(
 
   const metersPerPixel = Math.max(0.0001, Number(w.map.metersPerPixel) || 1);
   const dangerousEmptyRadiusPx = EMPTY_NEAR_WATER_DANGER_RADIUS_METERS / metersPerPixel;
-  const dangerousEmptyRadiusSq = dangerousEmptyRadiusPx * dangerousEmptyRadiusPx;
   const dangerousEmptyCache = new Map<number, boolean>();
   const isDangerousEmptyNearWater = (idx: number): boolean => {
     if (dangerousEmptyRadiusPx <= 0) return false;
@@ -301,23 +337,43 @@ function findPathAStarWithEnvironmentSpeed(
       return false;
     }
 
-    const point = toPoint(idx, width);
-    const searchRadius = Math.ceil(dangerousEmptyRadiusPx);
-    const minX = Math.max(0, point.x - searchRadius);
-    const maxX = Math.min(width - 1, point.x + searchRadius);
-    const minY = Math.max(0, point.y - searchRadius);
-    const maxY = Math.min(height - 1, point.y + searchRadius);
+    // Water danger propagates only through connected empty cells.
+    // Non-empty entities act as barriers for this local flood search.
+    const open = new MinHeap();
+    const localBest = new Map<number, number>();
+    const localClosed = new Set<number>();
+    open.push(idx, 0);
+    localBest.set(idx, 0);
 
-    for (let y = minY; y <= maxY; y += 1) {
-      for (let x = minX; x <= maxX; x += 1) {
-        const dx = x - point.x;
-        const dy = y - point.y;
-        if ((dx * dx) + (dy * dy) > dangerousEmptyRadiusSq) continue;
-        const entity = getEntityByIndex(toIndex(x, y, width));
+    while (open.size > 0) {
+      const current = open.pop();
+      if (!current) break;
+      const currentIdx = current.node;
+      const currentDist = current.score;
+      if (currentDist > dangerousEmptyRadiusPx) break;
+      if (localClosed.has(currentIdx)) continue;
+      localClosed.add(currentIdx);
+
+      const point = toPoint(currentIdx, width);
+      for (const n of neighbors) {
+        const nx = point.x + n.dx;
+        const ny = point.y + n.dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+
+        const nextIdx = toIndex(nx, ny, width);
+        const nextDist = currentDist + n.cost;
+        if (nextDist > dangerousEmptyRadiusPx) continue;
+
+        const entity = getEntityByIndex(nextIdx);
         if (entity && BLOCKED_WATER_ENTITIES.has(entity)) {
           dangerousEmptyCache.set(idx, true);
           return true;
         }
+        if (entity) continue;
+
+        if (nextDist >= (localBest.get(nextIdx) ?? Infinity)) continue;
+        localBest.set(nextIdx, nextDist);
+        open.push(nextIdx, nextDist);
       }
     }
 
@@ -340,8 +396,10 @@ function findPathAStarWithEnvironmentSpeed(
     return null;
   }
 
-  gScore.set(startIdx, 0);
-  openHeap.push(startIdx, distance(start, goal) * minCostPerPx);
+  forwardG.set(startIdx, 0);
+  backwardG.set(goalIdx, 0);
+  forwardOpen.push(startIdx, distance(start, goal) * minCostPerPx);
+  backwardOpen.push(goalIdx, distance(goal, start) * minCostPerPx);
 
   let visited = 0;
   const neighbors = [
@@ -355,11 +413,36 @@ function findPathAStarWithEnvironmentSpeed(
     { dx: -1, dy: -1, cost: SQRT2 },
   ];
 
-  while (openHeap.size > 0) {
-    const current = openHeap.pop();
+  while (forwardOpen.size > 0 && backwardOpen.size > 0) {
+    const forwardTop = forwardOpen.peek();
+    const backwardTop = backwardOpen.peek();
+    if (
+      bestMeetNode != null
+      && forwardTop
+      && backwardTop
+      && forwardTop.score + backwardTop.score >= bestMeetCost
+    ) {
+      break;
+    }
+
+    const expandForward = (() => {
+      if (!forwardTop) return false;
+      if (!backwardTop) return true;
+      return forwardTop.score <= backwardTop.score;
+    })();
+
+    const open = expandForward ? forwardOpen : backwardOpen;
+    const closed = expandForward ? forwardClosed : backwardClosed;
+    const ownG = expandForward ? forwardG : backwardG;
+    const otherG = expandForward ? backwardG : forwardG;
+    const ownParent = expandForward ? forwardParent : backwardParent;
+    const heuristicTarget = expandForward ? goal : start;
+
+    const current = open.pop();
     if (!current) break;
     const currentIdx = current.node;
     if (closed.has(currentIdx)) continue;
+
     const currentPoint = toPoint(currentIdx, width);
     const currentDistanceToGoal = distance(currentPoint, goal);
     if (currentDistanceToGoal < bestDistanceToGoal) {
@@ -367,18 +450,23 @@ function findPathAStarWithEnvironmentSpeed(
       bestIdx = currentIdx;
     }
 
-    if (currentIdx === goalIdx) {
-      return reconstructPath(currentIdx);
-    }
-
     closed.add(currentIdx);
     visited += 1;
     if (visited > MAX_PATH_NODES) {
-      return reconstructPath(bestIdx);
+      break;
     }
 
-    const currentG = gScore.get(currentIdx) ?? Infinity;
+    const currentG = ownG.get(currentIdx) ?? Infinity;
     const currentEntity = getEntityByIndex(currentIdx);
+
+    const otherKnownG = otherG.get(currentIdx);
+    if (otherKnownG != null) {
+      const joined = currentG + otherKnownG;
+      if (joined < bestMeetCost) {
+        bestMeetCost = joined;
+        bestMeetNode = currentIdx;
+      }
+    }
 
     for (const n of neighbors) {
       const nx = currentPoint.x + n.dx;
@@ -388,30 +476,52 @@ function findPathAStarWithEnvironmentSpeed(
       const neighborIdx = toIndex(nx, ny, width);
       if (closed.has(neighborIdx)) continue;
       const neighborEntity = getEntityByIndex(neighborIdx);
-      const stepCost = getTraversableCellCost(
-        currentEntity,
-        neighborEntity,
-        n.cost,
-        speedLookup.getCellSpeedMultiplier,
-        preferRoadRoute,
-        isDangerousEmptyNearWater(neighborIdx)
-      );
+      const stepCost = expandForward
+        ? getTraversableCellCost(
+          currentEntity,
+          neighborEntity,
+          n.cost,
+          speedLookup.getCellSpeedMultiplier,
+          preferRoadRoute,
+          neighborEntity == null && isDangerousEmptyNearWater(neighborIdx)
+        )
+        : getTraversableCellCost(
+          neighborEntity,
+          currentEntity,
+          n.cost,
+          speedLookup.getCellSpeedMultiplier,
+          preferRoadRoute,
+          currentEntity == null && isDangerousEmptyNearWater(currentIdx)
+        );
       if (!Number.isFinite(stepCost)) continue;
 
-      const tentative = currentG + stepCost;
-      const threatCost = getThreatCost(nx, ny)
-      const weightedTentative = tentative + threatCost
-      if (weightedTentative >= (gScore.get(neighborIdx) ?? Infinity)) continue;
+      const threatCost = expandForward
+        ? getThreatCost(nx, ny)
+        : getThreatCost(currentPoint.x, currentPoint.y);
+      const tentative = currentG + stepCost + threatCost;
+      if (tentative >= (ownG.get(neighborIdx) ?? Infinity)) continue;
 
-      parent.set(neighborIdx, currentIdx);
-      gScore.set(neighborIdx, weightedTentative);
-      const heuristic = distance({ x: nx, y: ny }, goal) * minCostPerPx;
-      const f = weightedTentative + heuristic;
-      openHeap.push(neighborIdx, f);
+      ownParent.set(neighborIdx, currentIdx);
+      ownG.set(neighborIdx, tentative);
+
+      const otherGValue = otherG.get(neighborIdx);
+      if (otherGValue != null) {
+        const joined = tentative + otherGValue;
+        if (joined < bestMeetCost) {
+          bestMeetCost = joined;
+          bestMeetNode = neighborIdx;
+        }
+      }
+
+      const heuristic = distance({ x: nx, y: ny }, heuristicTarget) * minCostPerPx;
+      open.push(neighborIdx, tentative + heuristic);
     }
   }
 
-  return reconstructPath(bestIdx);
+  if (bestMeetNode != null) {
+    return reconstructBidirectionalPath(bestMeetNode);
+  }
+  return reconstructForwardPath(bestIdx, forwardParent);
 }
 
 function toTurnPoints(path: GridPoint[]): vec2[] {

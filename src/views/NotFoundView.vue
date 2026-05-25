@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useHead } from '@vueuse/head'
+import { useHead } from '@unhead/vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useHead } from '@vueuse/head'
+import { useHead } from '@unhead/vue'
 import api from '@/api/client'
 import type {Team} from "@/enums/teamKeys.ts";
 import {RoomGameStage} from "@/enums/roomStage.ts";

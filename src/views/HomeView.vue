@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useHead } from '@vueuse/head'
+import { useHead } from '@unhead/vue'
 import axios from 'axios'
 import api from '@/api/client'
 

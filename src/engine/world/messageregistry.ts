@@ -1,5 +1,6 @@
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import type {uuid} from "@/engine";
+import {applyReadyMessageOrdersToDeliveredUnits} from "@/engine/units/messageOrders.ts";
 
 
 export class messageregistry {
@@ -34,6 +35,14 @@ export class messageregistry {
 
   get(id: uuid): ChatMessage | null {
     return this.map.get(id) ?? null
+  }
+
+  setOrders(id: uuid, orders: ChatMessage["orders"] | null | undefined): ChatMessage | null {
+    const message = this.map.get(id)
+    if (!message) return null
+    message.orders = orders ?? null
+    applyReadyMessageOrdersToDeliveredUnits(message)
+    return message
   }
 
   list(): ChatMessage[] {

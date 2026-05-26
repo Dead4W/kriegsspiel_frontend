@@ -477,9 +477,8 @@ export class GameSocket {
             }
           }
         } else if (m.type === 'chat_orders_update') {
-          const chat = this.world.messages.get(m.data.id)
+          const chat = this.world.messages.setOrders(m.data.id, m.data.orders ?? null)
           if (!chat) continue
-          chat.orders = m.data.orders ?? null
         } else if (m.type === 'chat_read') {
           for (const id of m.data) {
             const message = this.world.messages.get(id);

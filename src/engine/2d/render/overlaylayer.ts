@@ -52,6 +52,7 @@ export class overlaylayer {
     for (const r of rects) this.drawRect(ctx, cam, canvas, r)
     for (const t of texts) this.drawText(ctx, cam, canvas, t)
     this.drawDebugPreviewArea(ctx, cam, canvas)
+    this.drawDebugCursorCoords(ctx, w, canvas)
     if (performance.now() - this.lastDastOffsetEdit > 10) { // every 10ms
       this.lineDashOffset++
       this.lastDastOffsetEdit = performance.now()
@@ -64,6 +65,7 @@ export class overlaylayer {
     canvas: HTMLCanvasElement,
   ) {
     if (!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.DEBUG_MODE]) return
+    if (!this.previewDebugArea) return
 
     const {from, to, confidence} = this.previewDebugArea
     const clampedConfidence = Math.min(1, Math.max(0, confidence))
@@ -108,6 +110,31 @@ export class overlaylayer {
     const label = `DBG area X:${from.x}-${to.x} Y:${from.y}-${to.y} conf:${clampedConfidence.toFixed(2)}`
     ctx.strokeText(label, x + 10, y - 10)
     ctx.fillText(label, x + 10, y - 10)
+    ctx.restore()
+  }
+
+  private drawDebugCursorCoords(
+    ctx: CanvasRenderingContext2D,
+    w: world,
+    canvas: HTMLCanvasElement,
+  ) {
+    if (!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.DEBUG_MODE]) return
+
+    const pos = w.cursor.getCurrentPos()
+    const label = `Cursor: X ${Math.round(pos.x)} Y ${Math.round(pos.y)}`
+
+    ctx.save()
+    ctx.font = '12px monospace'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'bottom'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
+    ctx.lineWidth = 3
+    const x = 12
+    const viewportHeight = canvas.clientHeight || w.camera.viewport.y
+    const y = viewportHeight - 12
+    ctx.strokeText(label, x, y)
+    ctx.fillText(label, x, y)
     ctx.restore()
   }
 

@@ -45,6 +45,10 @@ export class cursorregistry {
     })
   }
 
+  getCurrentPos(): vec2 {
+    return this.pos
+  }
+
   getMoveFrames(): CursorObject | null {
     if (window.location.hostname === 'localhost') {
       return null

@@ -24,8 +24,6 @@ export type ChatMessage = {
   unitFallbackTitles?: Record<uuid, string>
   orders?: {
     status: 'pending' | 'ready' | 'needs_clarification' | 'error'
-    provider: string
-    model: string
     generatedAt: string
     summary?: string
     unresolvedLocations?: string[]

@@ -11,6 +11,7 @@ type TeamSpawnZone = {
 
 export class maplayer {
   private img: CanvasImageSource | null = null
+  private fogMaskCanvas: HTMLCanvasElement | null = null
 
   private canRenderDebugMaps() {
     return window.PLAYER.team === Team.ADMIN || window.PLAYER.team === Team.SPECTATOR
@@ -82,6 +83,7 @@ export class maplayer {
     }
 
     const zones = this.getVisibleSpawnZones(team)
+    if (!zones.length) return
     this.drawPlayerSpawnFog(ctx, w, zones, team)
   }
 
@@ -91,6 +93,7 @@ export class maplayer {
 
     const team = window.PLAYER.team
     if (team !== Team.ADMIN && team !== Team.RED && team !== Team.BLUE && team !== Team.SPECTATOR) return
+    if (window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]) return
 
     this.drawActiveFog(ctx, w, zones)
   }
@@ -100,28 +103,7 @@ export class maplayer {
     w: world,
     zones: SpawnRect[],
   ) {
-    const cam = w.camera
-    ctx.save()
-    ctx.scale(cam.zoom, cam.zoom)
-    ctx.translate(-cam.pos.x, -cam.pos.y)
-
-    const viewportWorldX = cam.pos.x
-    const viewportWorldY = cam.pos.y
-    const viewportWorldW = cam.viewport.x / cam.zoom
-    const viewportWorldH = cam.viewport.y / cam.zoom
-
-    const fogPath = new Path2D()
-    fogPath.rect(viewportWorldX, viewportWorldY, viewportWorldW, viewportWorldH)
-    for (const zone of zones) {
-      const width = Math.max(0, zone.to.x - zone.from.x)
-      const height = Math.max(0, zone.to.y - zone.from.y)
-      if (width <= 0 || height <= 0) continue
-      fogPath.rect(zone.from.x, zone.from.y, width, height)
-    }
-
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.35)'
-    ctx.fill(fogPath, 'evenodd')
-    ctx.restore()
+    this.drawFogOutsideRects(ctx, w, zones, 'rgba(2, 6, 23, 0.35)')
   }
 
   private getAdminSpawnZones(): TeamSpawnZone[] {
@@ -171,41 +153,66 @@ export class maplayer {
     zones: SpawnRect[],
     team: Team.RED | Team.BLUE,
   ) {
-    const cam = w.camera
     const spawnTint = team === Team.RED
       ? 'rgba(248, 113, 113, 0.08)'
       : 'rgba(96, 165, 250, 0.08)'
+    this.drawFogOutsideRects(ctx, w, zones, 'rgba(2, 6, 23, 0.2)')
 
+    const cam = w.camera
     ctx.save()
-    ctx.scale(cam.zoom, cam.zoom)
-    ctx.translate(-cam.pos.x, -cam.pos.y)
-
-    const viewportWorldX = cam.pos.x
-    const viewportWorldY = cam.pos.y
-    const viewportWorldW = cam.viewport.x / cam.zoom
-    const viewportWorldH = cam.viewport.y / cam.zoom
-
-    const fogPath = new Path2D()
-    fogPath.rect(viewportWorldX, viewportWorldY, viewportWorldW, viewportWorldH)
-    for (const zone of zones) {
-      const width = Math.max(0, zone.to.x - zone.from.x)
-      const height = Math.max(0, zone.to.y - zone.from.y)
-      if (width <= 0 || height <= 0) continue
-      fogPath.rect(zone.from.x, zone.from.y, width, height)
-    }
-
-    // Fill only outside spawn zones, so map remains visible inside zones.
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.2)'
-    ctx.fill(fogPath, 'evenodd')
-
     ctx.fillStyle = spawnTint
     for (const zone of zones) {
-      const width = Math.max(0, zone.to.x - zone.from.x)
-      const height = Math.max(0, zone.to.y - zone.from.y)
+      const from = cam.worldToScreen(zone.from)
+      const to = cam.worldToScreen(zone.to)
+      const left = Math.min(from.x, to.x)
+      const top = Math.min(from.y, to.y)
+      const width = Math.max(0, Math.abs(to.x - from.x))
+      const height = Math.max(0, Math.abs(to.y - from.y))
       if (width <= 0 || height <= 0) continue
-      ctx.fillRect(zone.from.x, zone.from.y, width, height)
+      ctx.fillRect(left, top, width, height)
     }
     ctx.restore()
+  }
+
+  private drawFogOutsideRects(
+    ctx: CanvasRenderingContext2D,
+    w: world,
+    zones: SpawnRect[],
+    fogColor: string,
+  ) {
+    const cam = w.camera
+    const viewportW = Math.max(1, Math.floor(cam.viewport.x))
+    const viewportH = Math.max(1, Math.floor(cam.viewport.y))
+
+    if (!this.fogMaskCanvas || this.fogMaskCanvas.width !== viewportW || this.fogMaskCanvas.height !== viewportH) {
+      this.fogMaskCanvas = document.createElement('canvas')
+      this.fogMaskCanvas.width = viewportW
+      this.fogMaskCanvas.height = viewportH
+    }
+
+    const maskCtx = this.fogMaskCanvas.getContext('2d')
+    if (!maskCtx) return
+
+    maskCtx.clearRect(0, 0, viewportW, viewportH)
+    maskCtx.globalCompositeOperation = 'source-over'
+    maskCtx.fillStyle = fogColor
+    maskCtx.fillRect(0, 0, viewportW, viewportH)
+    maskCtx.globalCompositeOperation = 'destination-out'
+    maskCtx.fillStyle = 'rgba(0, 0, 0, 1)'
+
+    for (const zone of zones) {
+      const from = cam.worldToScreen(zone.from)
+      const to = cam.worldToScreen(zone.to)
+      const left = Math.min(from.x, to.x)
+      const top = Math.min(from.y, to.y)
+      const width = Math.max(0, Math.abs(to.x - from.x))
+      const height = Math.max(0, Math.abs(to.y - from.y))
+      if (width <= 0 || height <= 0) continue
+      maskCtx.fillRect(left, top, width, height)
+    }
+
+    maskCtx.globalCompositeOperation = 'source-over'
+    ctx.drawImage(this.fogMaskCanvas, 0, 0)
   }
 
   private drawForestMap(ctx: CanvasRenderingContext2D, w: world) {

@@ -3,7 +3,7 @@ import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import type {BaseUnit} from '@/engine/units/baseUnit'
 import {useI18n} from 'vue-i18n'
 import {getTeamColor} from "@/engine/2d/render";
-import {type unitTeam} from "@/engine";
+import { type commandstate, type unitTeam } from "@/engine";
 import type {unsub} from "@/engine/events";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
@@ -19,6 +19,14 @@ import {
   toAttackPoint,
   type AttackInaccuracyPoint,
 } from "@/game/commands/attack";
+import { isAdminTeam } from "@/game/roomGuards";
+import {
+  canPlayerUseDirectViewOrder,
+  getUnitsEligibleForDirectViewOrder,
+  isPlayerDirectViewOrderContext,
+} from "@/engine/units/directViewOrderRules";
+import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes";
+import { CommandStatus } from "@/engine/units/commands/baseCommand";
 
 const {t} = useI18n()
 
@@ -78,6 +86,7 @@ const radiusModifier = ref(1.0)
 
 const inaccuracyAbility = computed(() => getInaccuracyAbility(selectedAbilities.value))
 const hasInaccuracyFire = computed(() => !!inaccuracyAbility.value)
+const isAdmin = computed(() => isAdminTeam())
 
 watch(selectedAbilities, (list) => {
   if (!getInaccuracyAbility(list)) {
@@ -105,14 +114,46 @@ function syncTargets() {
 function confirm() {
   if (!targets.value.length && !inaccuracyPoint.value) return
 
+  const directViewEligibleUnits = getUnitsEligibleForDirectViewOrder(attackers.value) as BaseUnit[]
+  const unitsToApply = isPlayerDirectViewOrderContext()
+    ? directViewEligibleUnits
+    : attackers.value
+  if (!unitsToApply.length) return
+
+  const nextDamageModifier = isAdmin.value ? damageModifier.value : 1.0
+  const nextRadiusModifier = isAdmin.value ? radiusModifier.value : 1.0
   applyAttackOrder({
-    attackers: attackers.value,
+    attackers: unitsToApply,
     targets: targets.value,
-    damageModifier: damageModifier.value,
-    radiusModifier: radiusModifier.value,
+    damageModifier: nextDamageModifier,
+    radiusModifier: nextRadiusModifier,
     abilities: selectedAbilities.value,
     inaccuracyPoint: inaccuracyPoint.value?.pos ?? null,
   })
+  const shouldSendDirectViewOrder = canPlayerUseDirectViewOrder(unitsToApply)
+  if (shouldSendDirectViewOrder) {
+    for (const unit of unitsToApply) {
+      const attackCommand: commandstate = {
+        type: UnitCommandTypes.Attack,
+        status: CommandStatus.Pending,
+        state: {
+          targets: targets.value.map((target) => target.id),
+          damageModifier: 1.0,
+          radiusModifier: 1.0,
+          abilities: selectedAbilities.value,
+          inaccuracyPoint: inaccuracyPoint.value?.pos ?? null,
+        },
+      }
+      window.ROOM_WORLD.events.emit("api", {
+        type: "direct_view_send_order",
+        team: window.PLAYER.team as any,
+        data: {
+          unitId: unit.id,
+          commands: [attackCommand],
+        },
+      })
+    }
+  }
 
   attackers.value = []
   targets.value = []
@@ -305,7 +346,7 @@ defineExpose({
     </div>
 
     <!-- ===== SETTINGS ===== -->
-    <div class="column settings">
+    <div v-if="isAdmin" class="column settings">
       <!-- damage modifier -->
       <div class="setting-row">
         <div class="title">

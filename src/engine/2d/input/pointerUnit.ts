@@ -5,7 +5,10 @@ import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import {emitUnitCommandRequest} from "@/engine/2d/input/unitCommandBus";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
-import {areUnitsEligibleForDirectViewOrder, isPlayerDirectViewOrderContext} from "@/engine/units/directViewOrderRules.ts";
+import {
+  getUnitsEligibleForDirectViewOrder,
+  isPlayerDirectViewOrderContext
+} from "@/engine/units/directViewOrderRules.ts";
 import { InputLifecycle } from '@/engine/input/lifecycle'
 
 export function bindUnitInteraction(
@@ -63,7 +66,7 @@ export function bindUnitInteraction(
   }
 
   function playerSelectedIsAllowOrder() {
-    return areUnitsEligibleForDirectViewOrder(w.units.getSelected())
+    return getUnitsEligibleForDirectViewOrder(w.units.getSelected()).length > 0
   }
 
   function isPlayerToolActive() {

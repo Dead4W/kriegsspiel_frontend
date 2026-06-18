@@ -98,7 +98,10 @@ function refreshNotifications() {
   }
   const units = window.ROOM_WORLD.units.list()
 
-  const unitsWithNewOrder = units.filter(u => window.ROOM_WORLD.units.withNewCommands.has(u.id))
+  const unitsWithNewOrder = units.filter((u) => (
+    u.type !== unitType.GENERAL
+    && window.ROOM_WORLD.units.withNewCommands.has(u.id)
+  ))
   const unitsWithoutOrder = units
     .filter(u => {
       const cmds = u.getCommands()

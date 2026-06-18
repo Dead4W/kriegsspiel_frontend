@@ -14,6 +14,7 @@ import CommandRetreat from "@/components/tools/commands/CommandRetreat.vue";
 import { onUnitCommandRequest, type UnitCommandRequest } from '@/engine/2d/input'
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import { isAdminTeam } from "@/game/roomGuards.ts";
+import { canPlayerUseDirectViewOrder, getUnitsEligibleForDirectViewOrder } from "@/engine/units/directViewOrderRules.ts";
 
 const props = defineProps<{
   units: BaseUnit[]
@@ -34,6 +35,8 @@ const hotkeys: Record<string, UnitCommandTypes> = {
 
 const activeOrder = ref<UnitCommandTypes | null>(null)
 const isAdmin = computed(() => isAdminTeam())
+const canUseDirectViewOrder = computed(() => canPlayerUseDirectViewOrder(props.units))
+const canShowOrderButtons = computed(() => isAdmin.value || canUseDirectViewOrder.value)
 
 const attackRef = ref<any>(null)
 const moveRef = ref<any>(null)
@@ -107,6 +110,30 @@ function isUiEventTarget(target: EventTarget | null) {
 }
 
 function clearCommands() {
+  if (canUseDirectViewOrder.value) {
+    const eligibleUnits = getUnitsEligibleForDirectViewOrder(props.units)
+    for (const u of eligibleUnits) {
+      const nonDirectViewCommands = u
+        .getCommands()
+        .filter(command => (
+          command.type !== UnitCommandTypes.Move
+          && command.type !== UnitCommandTypes.Attack
+        ))
+      u.manualEnvironment = null
+      u.setCommands(nonDirectViewCommands)
+      window.ROOM_WORLD.events.emit("api", {
+        type: "direct_view_send_order",
+        team: window.PLAYER.team as any,
+        data: {
+          unitId: u.id,
+          commands: [],
+        },
+      })
+    }
+    window.ROOM_WORLD.events.emit('changed', { reason: 'unit' })
+    return
+  }
+
   for (const u of props.units) {
     u.clearCommands()
     u.setDirty()
@@ -216,7 +243,10 @@ function hotkeyTitle(command: UnitCommandTypes) {
 
 function isCommandDisabled(command: UnitCommandTypes): boolean {
   if (!props.units.length) return true
-  if (!isAdmin.value && command !== UnitCommandTypes.Move) return true
+  if (!isAdmin.value) {
+    const canUseDirectViewAttack = canUseDirectViewOrder.value && command === UnitCommandTypes.Attack
+    if (command !== UnitCommandTypes.Move && !canUseDirectViewAttack) return true
+  }
 
   if (command === UnitCommandTypes.Attack && isMessenger()) return true
   if (command === UnitCommandTypes.ChangeFormation && isMessenger()) return true
@@ -226,7 +256,10 @@ function isCommandDisabled(command: UnitCommandTypes): boolean {
 }
 
 async function onCommandRequest(req: UnitCommandRequest) {
-  if (!isAdmin.value && req.command !== UnitCommandTypes.Move) return
+  if (!isAdmin.value && req.command !== UnitCommandTypes.Move) {
+    const canUseDirectViewAttack = canUseDirectViewOrder.value && req.command === UnitCommandTypes.Attack
+    if (!canUseDirectViewAttack) return
+  }
 
   // Allow live updates for active Move (drag preview)
   if (activeOrder.value) {
@@ -296,9 +329,10 @@ onUnmounted(() => {
   <div class="orders-root">
 
     <!-- ===== BUTTONS ===== -->
-    <div v-if="!activeOrder && isAdmin" class="orders-buttons">
-      <div class="order-stack">
+    <div v-if="!activeOrder && canShowOrderButtons" class="orders-buttons">
+      <div v-if="isAdmin || canUseDirectViewOrder" class="order-stack">
         <button
+          v-if="isAdmin"
           class="order-btn autoattack"
           type="button"
           @click="toggleAutoAttack"
@@ -322,6 +356,7 @@ onUnmounted(() => {
         </button>
 
         <button
+          v-if="isAdmin || canUseDirectViewOrder"
           class="order-btn attack"
           @click="open(UnitCommandTypes.Attack)"
           :disabled="isCommandDisabled(UnitCommandTypes.Attack)"
@@ -344,6 +379,7 @@ onUnmounted(() => {
 <!--      </button>-->
 
       <button
+        v-if="isAdmin"
         class="order-btn"
         @click="open(UnitCommandTypes.ChangeFormation)"
         :disabled="isCommandDisabled(UnitCommandTypes.ChangeFormation)"
@@ -355,6 +391,7 @@ onUnmounted(() => {
       </button>
 
       <button
+        v-if="isAdmin"
         class="order-btn"
         @click="open(UnitCommandTypes.Wait)"
         :disabled="isCommandDisabled(UnitCommandTypes.Wait)"
@@ -379,6 +416,7 @@ onUnmounted(() => {
 <!--      </button>-->
 
       <button
+        v-if="isAdmin"
         class="order-btn retreat"
         @click="open(UnitCommandTypes.Retreat)"
         :disabled="isCommandDisabled(UnitCommandTypes.Retreat)"
@@ -389,7 +427,7 @@ onUnmounted(() => {
         <HotkeyTag key-label="5" />
       </button>
 
-      <div class="order-stack">
+      <div v-if="isAdmin" class="order-stack">
         <button
           class="order-btn morale-plus"
           type="button"

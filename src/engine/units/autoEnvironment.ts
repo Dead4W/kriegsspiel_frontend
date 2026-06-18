@@ -23,6 +23,10 @@ const OBJECT_ENV_PRIORITIES: Record<EnvMode, Array<{ entities: string[]; envIds:
       entities: ["forest"],
       envIds: ["in_forest"],
     },
+    {
+      entities: ["water", "river"],
+      envIds: ["in_water", "on_water", "in_river"],
+    },
   ],
   moving: [
     {
@@ -34,12 +38,12 @@ const OBJECT_ENV_PRIORITIES: Record<EnvMode, Array<{ entities: string[]; envIds:
       envIds: ["on_road", "in_road"],
     },
     {
-      entities: ["forest"],
-      envIds: ["in_forest"],
-    },
-    {
       entities: ["water", "river"],
       envIds: ["in_water", "on_water", "in_river"],
+    },
+    {
+      entities: ["forest"],
+      envIds: ["in_forest"],
     },
   ],
 }

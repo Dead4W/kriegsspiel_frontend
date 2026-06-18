@@ -1,6 +1,7 @@
 import {
   type commandstate,
   type FormationType,
+  type UnitAiTriggerState,
   type unitstate,
   type unitTeam,
   unitType,
@@ -126,6 +127,7 @@ export abstract class BaseUnit {
   protected formation: FormationType;
 
   protected messagesLinked: MessageLinked[] = []
+  protected aiTriggers: UnitAiTriggerState[] = []
 
   lastSelected: number = 0;
 
@@ -156,6 +158,7 @@ export abstract class BaseUnit {
     this.envState = s.envState ?? [];
     this.manualEnvironment = (s.manualEnvironment as EnvironmentStateId | null | undefined) ?? null
     this.messagesLinked = s.messagesLinked ?? [];
+    this.aiTriggers = (s.aiTriggers ?? []).map((trigger) => ({ ...trigger }))
     this.directView = s.directView ?? false
     this.refreshAngleFromCommands();
   }
@@ -392,6 +395,7 @@ export abstract class BaseUnit {
       formation: this.formation,
 
       messagesLinked: this.messagesLinked,
+      aiTriggers: this.aiTriggers.map((trigger) => ({ ...trigger })),
 
       directView: this.directView,
 
@@ -624,6 +628,24 @@ export abstract class BaseUnit {
     return result
   }
 
+  getAiTriggers(): UnitAiTriggerState[] {
+    return this.aiTriggers.map((trigger) => ({ ...trigger }))
+  }
+
+  setAiTriggers(triggers: UnitAiTriggerState[]) {
+    this.aiTriggers = triggers.map((trigger) => ({ ...trigger }))
+    this.setDirty()
+  }
+
+  touchAiTrigger(index: number, isoTime: string) {
+    if (index < 0 || index >= this.aiTriggers.length) return
+    this.aiTriggers[index] = {
+      ...this.aiTriggers[index]!,
+      lastTriggeredAt: isoTime,
+    }
+    this.setDirty()
+  }
+
   activateAbility(newAbilityType: UnitAbilityType | null) {
     this.activeAbilityType = newAbilityType
     this.setDirty()
@@ -691,6 +713,14 @@ export abstract class BaseUnit {
 
   setAutoAttack(autoAttack: boolean) {
     this.autoAttack = autoAttack;
+    if (!autoAttack) {
+      const nextCommands = this.commands.filter((command) => command.type !== UnitCommandTypes.Attack)
+      if (nextCommands.length !== this.commands.length) {
+        this.commands = nextCommands
+        this.refreshFuturePos()
+        this.refreshAngleFromCommands()
+      }
+    }
     this.setDirty();
   }
 

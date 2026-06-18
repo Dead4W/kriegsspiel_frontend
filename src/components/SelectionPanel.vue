@@ -10,6 +10,7 @@ import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue';
 import { isAdminOrSpectatorTeam, isWarStage } from "@/game/roomGuards.ts";
+import { canPlayerUseDirectViewOrder } from "@/engine/units/directViewOrderRules.ts";
 
 /* ================= i18n ================= */
 
@@ -58,6 +59,16 @@ onUnmounted(() => {
 
 const hasSelection = computed(() => selectedUnits.value.length > 0)
 const isMultiple = computed(() => selectedUnits.value.length > 1)
+const canShowCommandsListPanel = computed(() => {
+  if (!focusedUnit.value) return false
+  if (isAdminOrSpectatorTeam()) return true
+  return canPlayerUseDirectViewOrder([focusedUnit.value])
+})
+const shouldHideAttackDamageModifier = computed(() => {
+  if (!focusedUnit.value) return false
+  if (isAdminOrSpectatorTeam()) return false
+  return canPlayerUseDirectViewOrder([focusedUnit.value])
+})
 
 const selectionSummary = computed(() => {
   const map = new Map<string, { team: string; type: string; count: number }>()
@@ -159,7 +170,11 @@ function selectUnit(u: BaseUnit) {
       </div>
 
       <div v-if="isUnitDetailOpen" class="detail-stack">
-        <CommandsListPanel v-if="isAdminOrSpectatorTeam()" :unit="focusedUnit as BaseUnit" />
+        <CommandsListPanel
+          v-if="canShowCommandsListPanel"
+          :unit="focusedUnit as BaseUnit"
+          :hide-attack-damage-modifier="shouldHideAttackDamageModifier"
+        />
         <UnitDetailPanel :unit="focusedUnit" @edit="notifyEdit" />
       </div>
     </div>

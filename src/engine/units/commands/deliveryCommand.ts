@@ -526,6 +526,7 @@ export class DeliveryCommand extends BaseCommand<
       candidate.alive
       && candidate.team !== unit.team
       && candidate.type !== unitType.MESSENGER
+      && !candidate.isRetreat
       && candidate.stats.visionRange > 0
     ))
     const metersPerPixel = window.ROOM_WORLD.map.metersPerPixel
@@ -548,11 +549,17 @@ export class DeliveryCommand extends BaseCommand<
   }
 
   private rememberEnemySightings(enemies: BaseUnit[]) {
-    if (!enemies.length) return
+    const threatEnemies = enemies.filter((enemy) => (
+      enemy.alive
+      && enemy.type !== unitType.MESSENGER
+      && !enemy.isRetreat
+      && enemy.stats.visionRange > 0
+    ))
+    if (!threatEnemies.length) return
     if (!this.state.enemySightings) this.state.enemySightings = []
     const approxMergeDistancePx = Math.max(4, 150 / Math.max(0.0001, window.ROOM_WORLD.map.metersPerPixel))
     const approxMergeDistanceSq = approxMergeDistancePx * approxMergeDistancePx
-    for (const enemy of enemies) {
+    for (const enemy of threatEnemies) {
       const existingIdx = this.state.enemySightings.findIndex((sighting) => {
         const dx = sighting.x - enemy.pos.x
         const dy = sighting.y - enemy.pos.y

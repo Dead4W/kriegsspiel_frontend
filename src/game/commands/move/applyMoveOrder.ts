@@ -15,7 +15,11 @@ import {
   getFormationSegmentAngles,
   getFormationTargetPoint,
 } from "@/engine/units/formationMoveAlgorithms/formationAlgorithms";
-import { canPlayerUseDirectViewOrder } from "@/engine/units/directViewOrderRules";
+import {
+  canPlayerUseDirectViewOrder,
+  getUnitsEligibleForDirectViewOrder,
+  isPlayerDirectViewOrderContext
+} from "@/engine/units/directViewOrderRules";
 import type { MoveMode, MovePlanItem, MoveRoutePoint } from "./types";
 import { isPointInsideActiveZone } from "@/game/planningSpawns";
 
@@ -62,10 +66,28 @@ export function applyMoveOrder(options: ApplyMoveOrderOptions): void {
   if (!movingUnits.length || !routeTargets.length) return;
   if (routeTargets.some((target) => !isPointInsideActiveZone(target.pos))) return;
 
+  const directViewEligibleUnits = getUnitsEligibleForDirectViewOrder(movingUnits) as BaseUnit[];
+  const unitsToApplyOrder = isPlayerDirectViewOrderContext()
+    ? directViewEligibleUnits
+    : movingUnits;
+  if (!unitsToApplyOrder.length) return;
+
   const uniqueId = createUniqueId();
-  const shouldSendDirectViewOrder = canPlayerUseDirectViewOrder(movingUnits);
+  const shouldSendDirectViewOrder = canPlayerUseDirectViewOrder(unitsToApplyOrder);
+  const shouldReplaceMoveCommands = shouldSendDirectViewOrder;
   const routePoints = routeTargets.map((item) => item.pos);
-  const columnAlgoPlan: ColumnAlgoPlanItem[] = plan.map((item) => ({
+  const planByUnitId = new Map(plan.map((item) => [item.unit.id, item]));
+  const normalizedPlan = unitsToApplyOrder
+    .map((unit, orderIndex) => {
+      const sourcePlan = planByUnitId.get(unit.id);
+      if (!sourcePlan) return null;
+      return {
+        ...sourcePlan,
+        orderIndex,
+      };
+    })
+    .filter((item): item is MovePlanItem => item !== null);
+  const columnAlgoPlan: ColumnAlgoPlanItem[] = normalizedPlan.map((item) => ({
     unitId: item.unit.id,
     startPos: item.startPos,
     orderIndex: item.orderIndex,
@@ -74,14 +96,16 @@ export function applyMoveOrder(options: ApplyMoveOrderOptions): void {
   const formationRefAngle = getFormationReferenceAngle(formationSegmentAngles);
   const newCommands = new Map<uuid, BaseCommand<any, any>[]>();
 
-  for (const { unit, orderIndex } of plan) {
+  for (const { unit, orderIndex } of normalizedPlan) {
     let from = unit.pos;
     newCommands.set(unit.id, []);
 
-    for (const command of unit.getCommands()) {
-      if (command.type !== UnitCommandTypes.Move) continue;
-      const moveCommand = command as MoveCommand;
-      from = moveCommand.getState().state.target;
+    if (!shouldReplaceMoveCommands) {
+      for (const command of unit.getCommands()) {
+        if (command.type !== UnitCommandTypes.Move) continue;
+        const moveCommand = command as MoveCommand;
+        from = moveCommand.getState().state.target;
+      }
     }
 
     for (let segIndex = 0; segIndex < routeTargets.length; segIndex++) {
@@ -138,19 +162,25 @@ export function applyMoveOrder(options: ApplyMoveOrderOptions): void {
     }
   }
 
-  for (const unit of movingUnits) {
+  for (const unit of unitsToApplyOrder) {
     const commands = newCommands.get(unit.id)!;
     unit.manualEnvironment = null;
-    for (const command of commands) {
-      unit.addCommand(command.getState());
+    if (shouldReplaceMoveCommands) {
+      const nonMoveCommands = unit
+        .getCommands()
+        .filter((command) => command.type !== UnitCommandTypes.Move);
+      unit.setCommands([...nonMoveCommands, ...commands]);
+    } else {
+      for (const command of commands) {
+        unit.addCommand(command.getState());
+      }
     }
     unit.setDirty();
   }
 
   if (!shouldSendDirectViewOrder) return;
-  for (const selectedUnit of movingUnits) {
-    const moveCommands = selectedUnit
-      .getCommands()
+  for (const selectedUnit of unitsToApplyOrder) {
+    const moveCommands = (newCommands.get(selectedUnit.id) ?? [])
       .map((command) => command.getState() as commandstate)
       .filter((command) => command.type === UnitCommandTypes.Move);
     emitDirectViewOrder({

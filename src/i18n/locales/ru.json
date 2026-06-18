@@ -481,6 +481,7 @@
   "command_desc": {
     "move": "Движение: {dist}",
     "attack": "Атака целей: {count}, модификатор урона {dmg}",
+    "attack_no_dmg": "Атака целей: {count}",
     "changeFormation": "Смена построения на «{formation}»",
     "retreat": "{action}"
   },

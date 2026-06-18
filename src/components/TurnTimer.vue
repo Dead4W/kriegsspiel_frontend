@@ -39,7 +39,7 @@ const livePerMinute = ref(false)
 const totalSeconds = ref(0)
 const running = ref(false)
 const isLiveRunning = ref(false)
-const LIVE_TICK_MS = 30_000
+const LIVE_TICK_MS = 1_000
 let liveLoopToken = 0
 let liveWaitTimeoutId: ReturnType<typeof window.setTimeout> | null = null
 
@@ -341,9 +341,9 @@ function mapAttackCommandForDirectView(command: commandstate, unitId: string, te
 function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
   const unit = window.ROOM_WORLD.units.get(unitId)
   if (!unit) return []
+  if (unit.team !== team) return []
 
   const rawCommands = unit.getCommands().map((command) => command.getState() as commandstate)
-  const isEnemyUnit = unit.team !== team
   let firstMoveIncluded = false
   let moveChainHiddenByFog = false
 
@@ -355,10 +355,6 @@ function getDirectViewCommands(unitId: string, team: unitTeam): commandstate[] {
       if (command.type === UnitCommandTypes.Move) {
         return true
       }
-      if (isEnemyUnit) {
-        return false
-      }
-
       if (!firstMoveIncluded) {
         firstMoveIncluded = true
         return true
@@ -547,7 +543,9 @@ function emitTurnStatePackets(directViewFramesByUnitId?: Map<string, MoveFrame[]
             team: u.team,
             pos: u.pos,
             angle: u.angle,
+            roomMapUserId: u.roomMapUserId,
             seenRoomUserIds: u.seenRoomUserIds,
+            commands: getDirectViewCommands(u.id, team as unitTeam),
           }
         } else {
           unitState = {
@@ -556,6 +554,7 @@ function emitTurnStatePackets(directViewFramesByUnitId?: Map<string, MoveFrame[]
             team: u.team,
             pos: u.pos,
             angle: u.angle,
+            roomMapUserId: u.roomMapUserId,
             seenRoomUserIds: u.seenRoomUserIds,
 
             isRetreatState: u.isRetreat,
@@ -645,10 +644,6 @@ async function runTurnStep(
       await new Promise(requestAnimationFrame)
     }
 
-    const directViewAnimationDurationMs = isLive ? LIVE_TICK_MS : getTickAnimationDurationMs(secondsToSkip)
-    const directViewFramesByUnitId = buildMoveFramesByUnitId(turnStartUnitPositions, directViewAnimationDurationMs)
-    emitTurnStatePackets(directViewFramesByUnitId)
-
     if (!isLive && runningSteps > 0) {
       window.ROOM_WORLD.events.emit('api', {
         type: 'skip_time',
@@ -667,6 +662,10 @@ async function runTurnStep(
     for (const unitId of window.ROOM_WORLD.units.withNewCommandsTmp) {
       window.ROOM_WORLD.units.withNewCommands.add(unitId)
     }
+
+    const directViewAnimationDurationMs = isLive ? LIVE_TICK_MS : getTickAnimationDurationMs(secondsToSkip)
+    const directViewFramesByUnitId = buildMoveFramesByUnitId(turnStartUnitPositions, directViewAnimationDurationMs)
+    emitTurnStatePackets(directViewFramesByUnitId)
 
     // Do not broadcast no-op skip_time: it drops live flag on remote clients.
     window.ROOM_WORLD.skipTime(0, false)

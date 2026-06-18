@@ -1,11 +1,20 @@
 import { RoomGameStage } from '@/enums/roomStage.ts'
 import { Team } from '@/enums/teamKeys.ts'
+import { unitType } from '@/engine/units/types.ts'
 
 export type DirectViewOrderUnitLike = {
   directView?: boolean
+  type?: string
   team: Team | string
   isRetreat?: boolean
   roomMapUserId?: number
+}
+
+export function isUnitEligibleForDirectViewOrder(unit: DirectViewOrderUnitLike): boolean {
+  return Boolean(unit.directView)
+    && unit.type !== unitType.MESSENGER
+    && unit.team === window.PLAYER.team
+    && !unit.isRetreat
 }
 
 export function hasObjectsMapForDirectViewOrder(): boolean {
@@ -20,17 +29,15 @@ export function isPlayerDirectViewOrderContext(): boolean {
 
 export function areUnitsEligibleForDirectViewOrder(units: DirectViewOrderUnitLike[]): boolean {
   if (!units.length) return false
-  const playerId = window.ROOM_WORLD.roomMapUserId ?? window.PLAYER.id ?? null
-  if (playerId == null) return false
 
-  return units.every((unit) => (
-    Boolean(unit.directView)
-    && unit.team === window.PLAYER.team
-    && !unit.isRetreat
-    && unit.roomMapUserId === playerId
-  ))
+  return units.every(isUnitEligibleForDirectViewOrder)
+}
+
+export function getUnitsEligibleForDirectViewOrder<T extends DirectViewOrderUnitLike>(units: T[]): T[] {
+  return units.filter(isUnitEligibleForDirectViewOrder)
 }
 
 export function canPlayerUseDirectViewOrder(units: DirectViewOrderUnitLike[]): boolean {
-  return isPlayerDirectViewOrderContext() && areUnitsEligibleForDirectViewOrder(units)
+  return isPlayerDirectViewOrderContext()
+    && getUnitsEligibleForDirectViewOrder(units).length > 0
 }

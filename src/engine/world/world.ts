@@ -31,6 +31,12 @@ type worldevents = {
   api: OutMessage
   force_api: {}
   camera: {}
+  ai_trigger: {
+    unitId: string
+    triggerType: string
+    sourceMessageId: string | null
+    details?: Record<string, unknown>
+  }
 }
 
 type ObjectNavMeshMap = {

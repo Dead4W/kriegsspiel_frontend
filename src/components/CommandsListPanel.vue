@@ -12,7 +12,13 @@ import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyMo
 import SortableList from "@/components/ui/SortableList.vue";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 
-const { unit } = defineProps<{ unit: BaseUnit }>()
+const props = withDefaults(defineProps<{
+  unit: BaseUnit
+  hideAttackDamageModifier?: boolean
+}>(), {
+  hideAttackDamageModifier: false,
+})
+const unit = props.unit
 const { t } = useI18n()
 
 const commands = computed(() => {
@@ -246,6 +252,11 @@ function description(cmd: BaseCommand<any, any>, cmdIndex: number) {
       if (attackState.inaccuracyPoint) {
         const inaccuracyRadius = computeInaccuracyRadius(unit, attackState.inaccuracyPoint) * (attackState.radiusModifier ?? 1);
         targets = attackCmd.getUnitsInInaccuracyRadius(inaccuracyRadius, unit).length;
+      }
+      if (props.hideAttackDamageModifier) {
+        return t('command_desc.attack_no_dmg', {
+          count: targets,
+        })
       }
       return t('command_desc.attack', {
         count: targets,

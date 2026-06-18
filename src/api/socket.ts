@@ -162,6 +162,38 @@ function syncRoomSettingsFromOptions(options: unknown) {
   syncRoomBriefingFromPerTeamSettings(extractPerTeamSettings(options))
 }
 
+function shouldDeferUnitMessageLink(message: ChatMessage, stage: RoomGameStage): boolean {
+  if (stage !== RoomGameStage.WAR) return false
+  if (message.delivered) return false
+  return message.deliveryStatus === 'pending' || message.deliveryStatus === 'in_transit'
+}
+
+function applyMessengerDeliveryUpdate(
+  message: ChatMessage,
+  payload: {
+    time: string
+    messengerId?: uuid
+    quotedMessageId?: uuid | null
+    deliveryStatus?: 'pending' | 'in_transit' | 'delivered' | 'failed' | 'intercepted'
+  }
+) {
+  if (payload.messengerId) {
+    message.messengerId = payload.messengerId
+  }
+  if (payload.quotedMessageId !== undefined) {
+    message.quotedMessageId = payload.quotedMessageId
+  }
+  if (payload.deliveryStatus) {
+    message.deliveryStatus = payload.deliveryStatus
+  }
+  if (message.deliveryStatus === 'delivered') {
+    message.delivered = true
+    message.delivered_at = payload.time
+  } else if (message.deliveryStatus === 'failed' || message.deliveryStatus === 'intercepted') {
+    message.delivered = false
+  }
+}
+
 export function setDemoReadonlyMode(enabled: boolean) {
   isDemoReadonlyMode = enabled
 }
@@ -470,15 +502,21 @@ export class GameSocket {
           }
         } else if (m.type === 'chat') {
           this.world.messages.upsert(m.data, 'remote', m.meta && m.meta.ignore);
-          for (const unitId of m.data.unitIds) {
-            const u = this.world.units.get(unitId)
-            if (u) {
-              u.linkMessage(m.data.id)
+          if (!shouldDeferUnitMessageLink(m.data, this.world.stage)) {
+            for (const unitId of m.data.unitIds) {
+              const u = this.world.units.get(unitId)
+              if (u) {
+                u.linkMessage(m.data.id)
+              }
             }
           }
         } else if (m.type === 'chat_orders_update') {
           const chat = this.world.messages.setOrders(m.data.id, m.data.orders ?? null)
           if (!chat) continue
+        } else if (m.type === 'messenger_delivery' || m.type === 'messenger_delivery_update') {
+          const message = this.world.messages.get(m.data.id)
+          if (!message) continue
+          applyMessengerDeliveryUpdate(message, m.data)
         } else if (m.type === 'chat_read') {
           for (const id of m.data) {
             const message = this.world.messages.get(id);
@@ -573,18 +611,37 @@ export class GameSocket {
           if (!unitId) continue
           const unit = this.world.units.get(unitId)
           if (!unit) continue
+          if (unit.type === unitType.MESSENGER) continue
 
           const incomingCommands = Array.isArray(m.data?.commands)
             ? m.data.commands
             : []
-          const nonMoveCommands = unit
+          const directViewManagedTypes = new Set(['move', 'attack'])
+          const incomingCommandTypes = new Set(
+            incomingCommands
+              .map((cmd) => (cmd as { type?: unknown })?.type)
+              .filter((type): type is string => (
+                typeof type === 'string'
+                && directViewManagedTypes.has(type)
+              ))
+          )
+          const preservedCommands = unit
             .getCommands()
-            .filter((cmd) => cmd.type !== 'move')
-          const moveCommands = incomingCommands
-            .filter((cmd): cmd is commandstate => cmd?.type === 'move')
+            .filter((cmd) => {
+              // Empty direct-view payload means "clear player orders".
+              if (!incomingCommandTypes.size) {
+                return !directViewManagedTypes.has(cmd.type)
+              }
+              return !incomingCommandTypes.has(cmd.type)
+            })
+          const nextIncomingCommands = incomingCommands
+            .filter((cmd): cmd is commandstate => {
+              const type = (cmd as { type?: unknown })?.type
+              return type === 'move' || type === 'attack'
+            })
             .map((cmd) => createUnitCommand(cmd))
           unit.manualEnvironment = null
-          unit.setCommands([...nonMoveCommands, ...moveCommands])
+          unit.setCommands([...preservedCommands, ...nextIncomingCommands])
         } else if (m.type === 'weather') {
           window.ROOM_WORLD.weather.value = m.data
           window.ROOM_WORLD.newWeather.value = m.data

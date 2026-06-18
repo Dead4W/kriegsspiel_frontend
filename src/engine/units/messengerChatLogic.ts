@@ -111,8 +111,13 @@ function findFreeMessengerSpawnPosition(origin: Point, direction: Point): Point 
   const inBounds = (x: number, y: number) =>
     x >= 0 && y >= 0 && x <= map.width && y <= map.height
 
+  const isWaterOrRiver = (x: number, y: number) => {
+    const entity = w.getObjectNavMeshEntityAt({ x, y })
+    return entity === 'water' || entity === 'river'
+  }
+
   const isFree = (x: number, y: number) =>
-    !w.units.list().some((u) => {
+    !isWaterOrRiver(x, y) && !w.units.list().some((u) => {
       if (!u.alive) return false
       const dx = u.pos.x - x
       const dy = u.pos.y - y
@@ -128,10 +133,24 @@ function findFreeMessengerSpawnPosition(origin: Point, direction: Point): Point 
     }
   }
 
-  return {
+  const fallback = {
     x: Math.max(0, Math.min(map.width, origin.x)),
     y: Math.max(0, Math.min(map.height, origin.y)),
   }
+  if (!isWaterOrRiver(fallback.x, fallback.y)) return fallback
+
+  for (let radius = 1; radius <= 24; radius += 1) {
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        const x = fallback.x + dx
+        const y = fallback.y + dy
+        if (!inBounds(x, y)) continue
+        if (isFree(x, y)) return { x, y }
+      }
+    }
+  }
+
+  return fallback
 }
 
 export function getMessengerSpawnPosition(origin: Point, team: Team, radiusMeters = 1000): Point {
@@ -308,6 +327,7 @@ export function getCurrentMessengerRouteFromGeneral(
 export function autoSpawnMessengerForIncomingOrder(message: ChatMessage): boolean {
   if (window.PLAYER.team !== Team.ADMIN) return false
   if (window.ROOM_WORLD.stage !== RoomGameStage.WAR) return false
+  if (!window.ROOM_WORLD.hasObjectNavMeshMap()) return false
   if (message.author_team === Team.ADMIN) return false
   if (message.deliveryStatus && message.deliveryStatus !== 'pending') return false
   if (message.messengerId && window.ROOM_WORLD.units.get(message.messengerId)) return false

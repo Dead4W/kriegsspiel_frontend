@@ -117,6 +117,9 @@ function syncPlayerChatReadState() {
 }
 
 function isUnreadMessage(m: ChatMessage): boolean {
+  if (!isMessageVisibleToCurrentViewer(m)) {
+    return false
+  }
   let currentAuthorTeam = window.PLAYER.team;
   if (currentAuthorTeam === Team.SPECTATOR) currentAuthorTeam = Team.ADMIN;
 
@@ -125,6 +128,29 @@ function isUnreadMessage(m: ChatMessage): boolean {
   } else {
     return !isOwnMessage(m) && m.delivered && m.status !== ChatMessageStatus.Read
   }
+}
+
+function isMessageDeliveredToRecipient(message: ChatMessage): boolean {
+  return message.delivered || message.deliveryStatus === 'delivered'
+}
+
+function isMessageVisibleToCurrentViewer(message: ChatMessage): boolean {
+  if (!isAdminTeam() && !isSpectatorTeam()) {
+    return true
+  }
+  if (isOwnMessage(message)) {
+    return true
+  }
+  if (message.author_team === Team.ADMIN) {
+    return true
+  }
+  return isMessageDeliveredToRecipient(message)
+}
+
+function shouldDeferUnitMessageLink(message: ChatMessage): boolean {
+  if (!isWarStage()) return false
+  if (message.delivered) return false
+  return message.deliveryStatus === 'pending' || message.deliveryStatus === 'in_transit'
 }
 
 function onSpawnMessenger(m: ChatMessage) {
@@ -299,6 +325,7 @@ const visibleMessages: ComputedRef<ChatMessage[]> = computed(() => {
   return messages.value
     .filter(m => m.time <= window.ROOM_WORLD.time)
     .filter(m => m.team === activeTeam.value)
+    .filter((m) => isMessageVisibleToCurrentViewer(m))
     .sort((a, b) => getMessageOrderTimestamp(a) - getMessageOrderTimestamp(b))
 })
 const textarea = ref<HTMLTextAreaElement | null>(null)
@@ -336,6 +363,7 @@ const wasAtBottom = ref(true)
 ======================= */
 
 const messages = ref<ChatMessage[]>([])
+const notifiedIncomingMessageIds = new Set<uuid>()
 
 const input = ref('')
 const editingMessageId = ref<uuid | null>(null)
@@ -545,16 +573,18 @@ function send() {
   } as ChatMessage;
 
   window.ROOM_WORLD.addMessage(m);
-
-  for (const u of selected) {
-    u.linkMessage(m.id);
-    u.setDirty()
+  if (!shouldDeferUnitMessageLink(m)) {
+    for (const u of selected) {
+      u.linkMessage(m.id);
+      u.setDirty()
+    }
   }
 
   const selectedGeneral = selected.find((u) => u.type === unitType.GENERAL) ?? null
 
   const shouldAutoSpawnAdminWithGeneral = (
     isWarStage()
+    && window.ROOM_WORLD.hasObjectNavMeshMap()
     && isAdminTeam()
     && (team === Team.RED || team === Team.BLUE)
     && selectedGeneral != null
@@ -562,6 +592,7 @@ function send() {
 
   const shouldAutoSpawnAdminReport = (
     isWarStage()
+    && window.ROOM_WORLD.hasObjectNavMeshMap()
     && isAdminTeam()
     && !selected.some((u) => u.type === unitType.GENERAL)
     && (team === Team.RED || team === Team.BLUE)
@@ -872,20 +903,6 @@ function autoResizeInput() {
 function onChangedWorld(event: { reason: string }) {
   textSize.value = Number(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.CHAT_TEXT_SIZE] ?? 15)
 
-  // Проверяем новые сообщения только на финальном сокет-ивенте,
-  // чтобы пачка сообщений из одного ws-пакета давала одно уведомление.
-  if (event.reason === 'ws') {
-    const new_messages = window.ROOM_WORLD.messages.getNew().filter(m => !isOwnMessage(m));
-    if (new_messages.length) {
-      for (const message of new_messages) {
-        autoSpawnMessengerForIncomingOrder(message)
-      }
-      const messageSound = new Audio('/assets/sounds/new_message.ogg')
-      messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME]
-      messageSound.play().catch(() => {})
-    }
-  }
-
   const lastWasAtBottom = wasAtBottom.value;
 
   messages.value = window.ROOM_WORLD.messages.list()
@@ -910,6 +927,38 @@ function onChangedWorld(event: { reason: string }) {
     activeTeam.value = selectedUnits.value.length > 0 ? Team.ADMIN : Team.RED;
   }
 
+  // Проверяем новые сообщения только на финальном сокет-ивенте,
+  // чтобы пачка сообщений из одного ws-пакета давала одно уведомление.
+  // UI уже синхронизирован выше, поэтому ошибки в автоспавне/звуке не задержат рендер чата.
+  if (event.reason === 'ws') {
+    const newMessages = window.ROOM_WORLD.messages.getNew().filter((m) => !isOwnMessage(m));
+    if (newMessages.length) {
+      for (const message of newMessages) {
+        try {
+          autoSpawnMessengerForIncomingOrder(message)
+        } catch (error) {
+          console.error('[KringChat] Failed to auto-spawn messenger for incoming order', error)
+        }
+      }
+    }
+
+    const visibleIncomingMessages = messages.value.filter((message) => (
+      !isOwnMessage(message)
+      && isMessageVisibleToCurrentViewer(message)
+    ))
+    const hasNewAudibleMessage = visibleIncomingMessages.some((message) => (
+      !notifiedIncomingMessageIds.has(message.id)
+    ))
+    for (const message of visibleIncomingMessages) {
+      notifiedIncomingMessageIds.add(message.id)
+    }
+    if (hasNewAudibleMessage) {
+      const messageSound = new Audio('/assets/sounds/new_message.ogg')
+      messageSound.volume = window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SOUND_VOLUME] ?? 0.3
+      messageSound.play().catch(() => {})
+    }
+  }
+
   // Держмимся низа
   if (lastWasAtBottom) {
     const el = document.querySelector('.chat-messages') as HTMLElement | null
@@ -928,6 +977,12 @@ onMounted(() => {
   window.addEventListener('resize', clampHeightToViewport)
   window.addEventListener('pointerdown', onGlobalPointerDown, true)
   window.ROOM_WORLD.events.on('changed', onChangedWorld)
+  onChangedWorld({ reason: 'init' })
+  for (const message of messages.value) {
+    if (!isOwnMessage(message) && isMessageVisibleToCurrentViewer(message)) {
+      notifiedIncomingMessageIds.add(message.id)
+    }
+  }
 })
 
 onBeforeUnmount(() => {

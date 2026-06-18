@@ -22,6 +22,7 @@ import { groupUnitsByTypeAndTeam } from "@/game/commands/shared/groupUnitsByType
 import {
   applyMoveOrder,
   buildContextRouteUpdate,
+  getColumnRouteStartPosByTarget,
   buildMoveFormationCenter,
   buildMoveFormationOffsets,
   buildMoveOverlayItems,
@@ -32,6 +33,10 @@ import {
   type MoveRoutePoint,
 } from "@/game/commands/move";
 import { isPointInsideActiveZone } from "@/game/planningSpawns";
+import {
+  getUnitsEligibleForDirectViewOrder,
+  isPlayerDirectViewOrderContext,
+} from "@/engine/units/directViewOrderRules";
 
 const { t } = useI18n();
 
@@ -69,6 +74,9 @@ const routeListRef = ref<HTMLElement | null>(null);
 const routeStartPos = computed<vec2 | null>(() => {
   const unit = movingUnits.value[0];
   if (!unit) return null;
+  if (ignoreExistingMoveCommandsForPreview.value) {
+    return unit.pos;
+  }
   return unit.futurePos ?? unit.pos;
 });
 
@@ -82,6 +90,12 @@ const routeDistancesMeters = computed<number[]>(() =>
 
 const hasObjectMap = computed(() => window.ROOM_WORLD.hasObjectNavMeshMap());
 const isAdmin = computed(() => isAdminTeam());
+const ignoreExistingMoveCommandsForPreview = computed(() => isPlayerDirectViewOrderContext());
+
+function getMoveEligibleUnits(units: BaseUnit[]): BaseUnit[] {
+  if (isAdmin.value) return [...units];
+  return getUnitsEligibleForDirectViewOrder(units) as BaseUnit[];
+}
 
 function fmtMeters(meters: number) {
   return `${Math.round(meters)} m`;
@@ -128,9 +142,21 @@ function rebuildRouteBySmartPathMode() {
   }
 
   const lastTarget = targets.value[targets.value.length - 1]!;
+  const columnStart = moveMode.value === "column"
+    ? getColumnRouteStartPosByTarget(
+      lastTarget.pos,
+      movingUnits.value as BaseUnit[],
+      { ignoreExistingMoveCommands: ignoreExistingMoveCommandsForPreview.value }
+    )
+    : null;
   const start =
+    columnStart ??
     routeStartPos.value ??
-    getNearestSelectedUnitPlannedPos(lastTarget.pos, movingUnits.value as BaseUnit[]) ??
+    getNearestSelectedUnitPlannedPos(
+      lastTarget.pos,
+      movingUnits.value as BaseUnit[],
+      { ignoreExistingMoveCommands: ignoreExistingMoveCommandsForPreview.value }
+    ) ??
     lastTarget.pos;
   const rebuiltPoints = getSegmentRoutePoints(start, lastTarget.pos);
 
@@ -283,12 +309,23 @@ function setMoveMode(mode: MoveMode) {
 
 const movePlan = computed(() => {
   if (!movingUnits.value.length || !targets.value.length) return [];
-  return buildMovePlan(movingUnits.value as BaseUnit[], targets.value[0]!.pos);
+  return buildMovePlan(
+    movingUnits.value as BaseUnit[],
+    targets.value[0]!.pos,
+    { ignoreExistingMoveCommands: ignoreExistingMoveCommandsForPreview.value }
+  );
 });
 
-const formationCenter = computed<vec2 | null>(() => buildMoveFormationCenter(movingUnits.value as BaseUnit[]));
+const formationCenter = computed<vec2 | null>(() => buildMoveFormationCenter(
+  movingUnits.value as BaseUnit[],
+  { ignoreExistingMoveCommands: ignoreExistingMoveCommandsForPreview.value }
+));
 const formationOffsets = computed<Record<string, vec2>>(() =>
-  buildMoveFormationOffsets(movingUnits.value as BaseUnit[], formationCenter.value)
+  buildMoveFormationOffsets(
+    movingUnits.value as BaseUnit[],
+    formationCenter.value,
+    { ignoreExistingMoveCommands: ignoreExistingMoveCommandsForPreview.value }
+  )
 );
 
 const unitsGrouped = computed(() => groupUnitsByTypeAndTeam(movingUnits.value));
@@ -304,6 +341,7 @@ function applyContextTarget(pos: vec2, append: boolean) {
     movingUnits: movingUnits.value as BaseUnit[],
     world: window.ROOM_WORLD,
     getSegmentRoutePoints,
+    ignoreExistingMoveCommands: ignoreExistingMoveCommandsForPreview.value,
   });
   targets.value = nextTargets;
 
@@ -346,6 +384,7 @@ function rebuildMoveOverlay() {
     roomWorld: window.ROOM_WORLD,
     smartPathEnabled: smartPathEnabled.value,
     hasObjectMap: hasObjectMap.value,
+    renderExistingMoveCommands: !ignoreExistingMoveCommandsForPreview.value,
   });
 
   if (!items.length) {
@@ -402,7 +441,7 @@ function cleanup() {
 let unsubscribe: unsub;
 
 onMounted(() => {
-  movingUnits.value = [...props.units];
+  movingUnits.value = getMoveEligibleUnits(props.units);
   loadSmartPathPreference(movingUnits.value);
   enforceSmartPathAvailability();
 
@@ -410,7 +449,8 @@ onMounted(() => {
   unsubscribe = window.ROOM_WORLD.events.on("changed", ({ reason }) => {
     if (reason === "overlay" || reason === "animation" || reason === "camera") return;
     if (reason === "select") {
-      movingUnits.value = window.ROOM_WORLD.units.list().filter((unit) => unit.selected);
+      const selectedUnits = window.ROOM_WORLD.units.list().filter((unit) => unit.selected);
+      movingUnits.value = getMoveEligibleUnits(selectedUnits);
       if (!targets.value.length) {
         loadSmartPathPreference(movingUnits.value);
       }

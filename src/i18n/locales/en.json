@@ -476,6 +476,7 @@
   "command_desc": {
     "move": "Move: {dist}",
     "attack": "Attack targets: {count}, damage modifier {dmg}",
+    "attack_no_dmg": "Attack targets: {count}",
     "changeFormation": "Change formation to \"{formation}\"",
     "retreat": "{action}"
   },

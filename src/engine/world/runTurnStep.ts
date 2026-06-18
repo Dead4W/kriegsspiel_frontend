@@ -5,6 +5,7 @@ import { AttackCommand, type AttackCommandState } from "@/engine/units/commands/
 import { type MoveCommandState } from "@/engine/units/commands/moveCommand.ts";
 import type { vec2 } from "@/engine/types.ts";
 import { BaseUnit } from "@/engine/units/baseUnit.ts";
+import { processAiTriggers } from "@/game/ai/processAiTriggers.ts";
 
 const MAX_STEP_SECONDS = 60;
 
@@ -260,6 +261,7 @@ export function processUnitCommands(worldInstance: world, dt: number) {
     unit.setDirty();
   }
 
+  processAiTriggers(worldInstance);
   syncFormationMoveSpeedByOrder(units, worldInstance);
 }
 

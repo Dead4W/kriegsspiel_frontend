@@ -10,7 +10,14 @@ import {
 } from "@/engine/units/formationMoveAlgorithms/formationAlgorithms";
 import type { MovePlanItem } from "./types";
 
-export function getUnitPlannedPos(unit: BaseUnit): vec2 {
+type MovePlanOptions = {
+  ignoreExistingMoveCommands?: boolean;
+};
+
+export function getUnitPlannedPos(unit: BaseUnit, options?: MovePlanOptions): vec2 {
+  if (options?.ignoreExistingMoveCommands) {
+    return { x: unit.pos.x, y: unit.pos.y };
+  }
   let pos: vec2 = unit.pos;
   for (const command of unit.getCommands()) {
     if (command.type !== UnitCommandTypes.Move) continue;
@@ -54,14 +61,16 @@ function resolveOrderByExistingColumn(units: BaseUnit[]): uuid[] | null {
   return null;
 }
 
-export function buildMovePlan(units: BaseUnit[], firstTarget: vec2): MovePlanItem[] {
+export function buildMovePlan(units: BaseUnit[], firstTarget: vec2, options?: MovePlanOptions): MovePlanItem[] {
   if (!units.length) return [];
 
   const unitsWithStartPos = units.map((unit) => ({
     unit,
-    startPos: getUnitPlannedPos(unit),
+    startPos: getUnitPlannedPos(unit, options),
   }));
-  const orderByExistingColumn = resolveOrderByExistingColumn(units);
+  const orderByExistingColumn = options?.ignoreExistingMoveCommands
+    ? null
+    : resolveOrderByExistingColumn(units);
 
   if (orderByExistingColumn) {
     const startPosByUnitId = new Map(
@@ -97,20 +106,24 @@ export function buildMovePlan(units: BaseUnit[], firstTarget: vec2): MovePlanIte
     .filter((item): item is MovePlanItem => Boolean(item));
 }
 
-export function buildMoveFormationCenter(units: BaseUnit[]): vec2 | null {
+export function buildMoveFormationCenter(units: BaseUnit[], options?: MovePlanOptions): vec2 | null {
   return buildFormationCenter(
     units.map((unit) => ({
       unitId: unit.id,
-      startPos: getUnitPlannedPos(unit),
+      startPos: getUnitPlannedPos(unit, options),
     }))
   );
 }
 
-export function buildMoveFormationOffsets(units: BaseUnit[], center: vec2 | null): Record<uuid, vec2> {
+export function buildMoveFormationOffsets(
+  units: BaseUnit[],
+  center: vec2 | null,
+  options?: MovePlanOptions
+): Record<uuid, vec2> {
   return buildFormationOffsets(
     units.map((unit) => ({
       unitId: unit.id,
-      startPos: getUnitPlannedPos(unit),
+      startPos: getUnitPlannedPos(unit, options),
     })),
     center
   ) as Record<uuid, vec2>;

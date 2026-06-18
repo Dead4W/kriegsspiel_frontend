@@ -53,6 +53,7 @@ interface BuildMoveOverlayItemsOptions {
   roomWorld: unknown;
   smartPathEnabled: boolean;
   hasObjectMap: boolean;
+  renderExistingMoveCommands?: boolean;
 }
 
 export function buildMoveOverlayItems(options: BuildMoveOverlayItemsOptions): OverlayItem[] {
@@ -67,6 +68,7 @@ export function buildMoveOverlayItems(options: BuildMoveOverlayItemsOptions): Ov
     roomWorld,
     smartPathEnabled,
     hasObjectMap,
+    renderExistingMoveCommands = true,
   } = options;
   if (!movingUnits.length || !targets.length) return [];
 
@@ -85,25 +87,27 @@ export function buildMoveOverlayItems(options: BuildMoveOverlayItemsOptions): Ov
     let from = unit.pos;
     let lastMoveSegment: { from: vec2; to: vec2 } | null = null;
 
-    for (const command of unit.getCommands()) {
-      if (command.type !== UnitCommandTypes.Move) continue;
-      const moveCommand = command as MoveCommand;
-      const moveState = moveCommand.getState().state as MoveCommandState;
-      const target = moveState.target;
+    if (renderExistingMoveCommands) {
+      for (const command of unit.getCommands()) {
+        if (command.type !== UnitCommandTypes.Move) continue;
+        const moveCommand = command as MoveCommand;
+        const moveState = moveCommand.getState().state as MoveCommandState;
+        const target = moveState.target;
 
-      if (shouldRenderMoveLine(moveState.segIndex, moveState.orderIndex, lastPlanOrderIndex)) {
-        items.push({
-          type: "line",
-          from,
-          to: target,
-          color: "rgba(34,197,94,0.65)",
-          width: 6,
-          dash: [6, 6],
-          dashOffset: -1,
-        });
+        if (shouldRenderMoveLine(moveState.segIndex, moveState.orderIndex, lastPlanOrderIndex)) {
+          items.push({
+            type: "line",
+            from,
+            to: target,
+            color: "rgba(34,197,94,0.65)",
+            width: 6,
+            dash: [6, 6],
+            dashOffset: -1,
+          });
+        }
+        lastMoveSegment = { from, to: target };
+        from = target;
       }
-      lastMoveSegment = { from, to: target };
-      from = target;
     }
 
     for (let segIndex = 0; segIndex < targets.length; segIndex++) {

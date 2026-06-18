@@ -52,11 +52,27 @@ export interface unitstate {
 
   formation?: FormationType;
   activeAbilityType?: UnitAbilityType | null;
+  aiTriggers?: UnitAiTriggerState[];
 
   messagesLinked?: MessageLinked[],
 
   directView?: boolean
 }
+
+export type UnitAiTriggerState =
+  | {
+      type: 'on_enemy_distance'
+      distanceMeters: number
+      sourceMessageId?: uuid | null
+      lastTriggeredAt?: string | null
+      cooldownSeconds?: number
+    }
+  | {
+      type: 'on_attacked'
+      sourceMessageId?: uuid | null
+      lastTriggeredAt?: string | null
+      cooldownSeconds?: number
+    }
 
 export type commandstate =
   { type: UnitCommandTypes.Move; status: CommandStatus; state: MoveCommandState }

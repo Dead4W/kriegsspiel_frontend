@@ -58,7 +58,7 @@ function edit() {
   >
     <!-- ===== ENV MODIFIERS ===== -->
     <UnitEnvModifierTool
-      v-if="!isMessenger()"
+      v-if="isAdmin && !isMessenger()"
       :units="units as BaseUnit[]"
       @edit="edit"
     />

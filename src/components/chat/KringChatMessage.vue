@@ -239,6 +239,12 @@ const orderPreview = computed(() => {
     }
   })
 })
+
+const canShowOrders = computed(() => {
+  if (!props.message.orders) return false
+  if (props.message.delivered) return true
+  return props.message.deliveryStatus === 'delivered'
+})
 </script>
 
 <template>
@@ -339,7 +345,7 @@ const orderPreview = computed(() => {
         </span>
       </button>
 
-      <div v-if="message.orders && orderPreview.length" class="orders-panel">
+      <div v-if="canShowOrders && orderPreview.length" class="orders-panel">
         <div class="orders-panel-title">
           Orders ({{ message.orders.status }})
         </div>

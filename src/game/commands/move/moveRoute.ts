@@ -1,7 +1,11 @@
 import { BaseUnit } from "@/engine/units/baseUnit";
 import type { vec2 } from "@/engine/types";
 import type { MoveMode, MoveRoutePoint } from "./types";
-import { getUnitPlannedPos } from "./movePlan";
+import { buildMovePlan, getUnitPlannedPos } from "./movePlan";
+
+type MoveRouteOptions = {
+  ignoreExistingMoveCommands?: boolean;
+};
 
 interface MoveRouteWorld {
   findNearestObjectLocalCenter(
@@ -24,19 +28,35 @@ export function getRouteDistancesMeters(start: vec2 | null, targets: MoveRoutePo
   });
 }
 
-export function getNearestSelectedUnitPlannedPos(point: vec2, units: BaseUnit[]): vec2 | null {
+export function getNearestSelectedUnitPlannedPos(
+  point: vec2,
+  units: BaseUnit[],
+  options?: MoveRouteOptions
+): vec2 | null {
   if (!units.length) return null;
 
   let bestPos: vec2 | null = null;
   let bestDist = Infinity;
   for (const unit of units) {
-    const pos = getUnitPlannedPos(unit);
+    const pos = getUnitPlannedPos(unit, options);
     const dist = Math.hypot(pos.x - point.x, pos.y - point.y);
     if (dist >= bestDist) continue;
     bestDist = dist;
     bestPos = pos;
   }
   return bestPos ? { x: bestPos.x, y: bestPos.y } : null;
+}
+
+export function getColumnRouteStartPosByTarget(
+  firstTarget: vec2,
+  units: BaseUnit[],
+  options?: MoveRouteOptions
+): vec2 | null {
+  if (!units.length) return null;
+  const columnPlan = buildMovePlan(units, firstTarget, options);
+  const leader = columnPlan[0];
+  if (!leader) return null;
+  return { x: leader.startPos.x, y: leader.startPos.y };
 }
 
 function minDistanceToPositions(point: vec2, positions: vec2[]): number {
@@ -65,10 +85,10 @@ function trimRouteHeadByNearestUnitDistance(routePoints: vec2[], unitPositions: 
   return routePoints.slice(headIndex);
 }
 
-function normalizeInitialRoutePoints(routePoints: vec2[], units: BaseUnit[]): vec2[] {
+function normalizeInitialRoutePoints(routePoints: vec2[], units: BaseUnit[], options?: MoveRouteOptions): vec2[] {
   if (!routePoints.length || !units.length) return routePoints;
 
-  const unitPositions = units.map((unit) => getUnitPlannedPos(unit));
+  const unitPositions = units.map((unit) => getUnitPlannedPos(unit, options));
   const routeHead = routePoints[0]!;
   const anchor = unitPositions.reduce((best, pos) => {
     if (!best) return pos;
@@ -114,30 +134,48 @@ interface BuildContextRouteUpdateOptions {
   movingUnits: BaseUnit[];
   world: MoveRouteWorld;
   getSegmentRoutePoints: (from: vec2, to: vec2) => vec2[];
+  ignoreExistingMoveCommands?: boolean;
 }
 
 export function buildContextRouteUpdate(options: BuildContextRouteUpdateOptions): MoveRoutePoint[] {
-  const { mode, pos, append, targets, routeStartPos, movingUnits, world, getSegmentRoutePoints } = options;
+  const {
+    mode,
+    pos,
+    append,
+    targets,
+    routeStartPos,
+    movingUnits,
+    world,
+    getSegmentRoutePoints,
+    ignoreExistingMoveCommands,
+  } = options;
   const snappedPos = snapTargetPos(world, mode, pos);
   const modifier = targets[targets.length - 1]?.modifier ?? null;
+  const preferredColumnStart = mode === "column"
+    ? getColumnRouteStartPosByTarget(snappedPos, movingUnits, { ignoreExistingMoveCommands })
+    : null;
 
   if (append) {
-    const start = targets[targets.length - 1]?.pos ?? routeStartPos ?? snappedPos;
+    const start = targets[targets.length - 1]?.pos ?? preferredColumnStart ?? routeStartPos ?? snappedPos;
     const rawRoutePoints = getSegmentRoutePoints(start, snappedPos);
     const normalizedRoutePoints = targets.length
       ? rawRoutePoints
-      : normalizeInitialRoutePoints(rawRoutePoints, movingUnits);
+      : normalizeInitialRoutePoints(rawRoutePoints, movingUnits, { ignoreExistingMoveCommands });
     return [...targets, ...normalizedRoutePoints.map((point) => ({ pos: point, modifier }))];
   }
 
   const hasTargets = targets.length > 0;
-  const nearestSelectedStart = getNearestSelectedUnitPlannedPos(snappedPos, movingUnits);
+  const nearestSelectedStart = getNearestSelectedUnitPlannedPos(
+    snappedPos,
+    movingUnits,
+    { ignoreExistingMoveCommands }
+  );
   const start = hasTargets
     ? (targets.length > 1 ? targets[targets.length - 2]!.pos : routeStartPos ?? targets[0]!.pos)
-    : (nearestSelectedStart ?? routeStartPos ?? snappedPos);
+    : (preferredColumnStart ?? nearestSelectedStart ?? routeStartPos ?? snappedPos);
   const rawRoutePoints = getSegmentRoutePoints(start, snappedPos);
   const normalizedRoutePoints = !hasTargets
-    ? normalizeInitialRoutePoints(rawRoutePoints, movingUnits)
+    ? normalizeInitialRoutePoints(rawRoutePoints, movingUnits, { ignoreExistingMoveCommands })
     : rawRoutePoints;
   const nextRoutePoints = normalizedRoutePoints.map((point) => ({ pos: point, modifier }));
 

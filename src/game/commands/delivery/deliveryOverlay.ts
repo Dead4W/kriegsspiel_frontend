@@ -3,6 +3,7 @@ import {
   buildDeliveryRoutePoints,
   getMessengerRegularMoveTargets,
   resolveDeliveryTargetByNearestGoal,
+  type DeliveryRouteWorld,
   type DeliveryRoutableUnit,
 } from "./deliveryRouting";
 
@@ -12,7 +13,7 @@ interface BuildDeliveryOverlayItemsOptions<
 > {
   messengers: TMessenger[];
   targets: TTarget[];
-  roomWorld: unknown;
+  roomWorld: DeliveryRouteWorld;
 }
 
 export function buildDeliveryOverlayItems<

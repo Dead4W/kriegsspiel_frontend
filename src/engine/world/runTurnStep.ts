@@ -314,7 +314,7 @@ export async function runTurnStep(params: {
         type: "skip_time",
         data: worldInstance.time,
         live: isLive || undefined,
-        liveIntervalMs: isLive ? Number(process.env.LIVE_INTERVAL_MS || 30000) : undefined,
+        liveIntervalMs: isLive ? Number(import.meta.env.VITE_LIVE_INTERVAL_MS ?? 30000) : undefined,
         liveGameSecondsPerMinute: isLive ? liveGameSecondsPerMinute : undefined,
       });
     }

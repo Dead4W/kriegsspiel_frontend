@@ -4,6 +4,8 @@ import { DeliveryCommand } from "@/engine/units/commands/deliveryCommand";
 import type { MoveCommandState } from "@/engine/units/commands/moveCommand";
 import { buildRoadTurnRoutePoints } from "@/engine/world/roadPath";
 
+export type DeliveryRouteWorld = Parameters<typeof buildRoadTurnRoutePoints>[0];
+
 export interface DeliveryPosition {
   x: number;
   y: number;
@@ -68,7 +70,7 @@ export function resolveDeliveryTargetByNearestGoal<TTarget extends DeliveryRouta
 }
 
 export function buildDeliveryRoutePoints(
-  roomWorld: unknown,
+  roomWorld: DeliveryRouteWorld,
   from: DeliveryPosition,
   goal: DeliveryPosition
 ): DeliveryPosition[] {

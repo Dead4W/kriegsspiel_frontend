@@ -42,7 +42,7 @@ export function buildDeliverySelectionSnapshot<
   const { allUnits, messengers } = options;
 
   if (!messengers.length) return [];
-  const messengerTeam = messengers[0].team;
+  const messengerTeam = messengers[0]!.team;
 
   return allUnits.filter((unit) => {
     if (!unit.selected) return false;

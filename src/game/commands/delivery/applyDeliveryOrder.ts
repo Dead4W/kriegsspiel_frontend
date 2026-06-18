@@ -6,6 +6,7 @@ import {
   getMessengerRegularMoveTargets,
   hasPendingRegularMove,
   resolveDeliveryTargetByNearestGoal,
+  type DeliveryRouteWorld,
   type DeliveryRoutableUnit,
   type DeliveryRoutingCommand,
 } from "./deliveryRouting";
@@ -20,7 +21,7 @@ interface ApplyDeliveryOrderOptions<TMessenger extends DeliveryOrderUnit, TTarge
   messengers: TMessenger[];
   targets: TTarget[];
   allTargets: TTarget[];
-  roomWorld: unknown;
+  roomWorld: DeliveryRouteWorld;
   createUniqueId: () => string;
 }
 

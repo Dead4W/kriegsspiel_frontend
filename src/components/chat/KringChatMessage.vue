@@ -347,7 +347,7 @@ const canShowOrders = computed(() => {
 
       <div v-if="canShowOrders && orderPreview.length" class="orders-panel">
         <div class="orders-panel-title">
-          Orders ({{ message.orders.status }})
+          Orders ({{ message.orders?.status ?? 'unknown' }})
         </div>
         <div
           v-for="item in orderPreview"

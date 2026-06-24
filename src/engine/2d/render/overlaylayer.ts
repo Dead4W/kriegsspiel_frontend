@@ -51,66 +51,11 @@ export class overlaylayer {
     for (const c of circles) this.drawCircle(ctx, cam, canvas, c)
     for (const r of rects) this.drawRect(ctx, cam, canvas, r)
     for (const t of texts) this.drawText(ctx, cam, canvas, t)
-    this.drawDebugPreviewArea(ctx, cam, canvas)
     this.drawDebugCursorCoords(ctx, w, canvas)
     if (performance.now() - this.lastDastOffsetEdit > 10) { // every 10ms
       this.lineDashOffset++
       this.lastDastOffsetEdit = performance.now()
     }
-  }
-
-  private drawDebugPreviewArea(
-    ctx: CanvasRenderingContext2D,
-    cam: Cam,
-    canvas: HTMLCanvasElement,
-  ) {
-    if (!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.DEBUG_MODE]) return
-    if (!this.previewDebugArea) return
-
-    const {from, to, confidence} = this.previewDebugArea
-    const clampedConfidence = Math.min(1, Math.max(0, confidence))
-    const a = cam.worldToScreen(from)
-    const b = cam.worldToScreen(to)
-    const x = Math.min(a.x, b.x)
-    const y = Math.min(a.y, b.y)
-    const w = Math.abs(a.x - b.x)
-    const h = Math.abs(a.y - b.y)
-
-    if (
-      x + w < 0 ||
-      y + h < 0 ||
-      x > canvas.width ||
-      y > canvas.height
-    ) return
-
-    ctx.save()
-    ctx.fillStyle = 'rgba(245, 158, 11, 0.18)'
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.95)'
-    ctx.lineWidth = Math.max(1, 2 * cam.zoom)
-    ctx.setLineDash([8 * cam.zoom, 6 * cam.zoom])
-    ctx.lineDashOffset = -this.lineDashOffset
-
-    ctx.fillRect(x, y, w, h)
-    ctx.strokeRect(x, y, w, h)
-
-    ctx.setLineDash([])
-    const centerX = x + w / 2
-    const centerY = y + h / 2
-    ctx.beginPath()
-    ctx.moveTo(centerX - 8, centerY)
-    ctx.lineTo(centerX + 8, centerY)
-    ctx.moveTo(centerX, centerY - 8)
-    ctx.lineTo(centerX, centerY + 8)
-    ctx.stroke()
-
-    ctx.font = `${Math.max(11, 12 * cam.zoom)}px monospace`
-    ctx.fillStyle = 'rgba(254, 240, 138, 1)'
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
-    ctx.lineWidth = Math.max(1, 2 * cam.zoom)
-    const label = `DBG area X:${from.x}-${to.x} Y:${from.y}-${to.y} conf:${clampedConfidence.toFixed(2)}`
-    ctx.strokeText(label, x + 10, y - 10)
-    ctx.fillText(label, x + 10, y - 10)
-    ctx.restore()
   }
 
   private drawDebugCursorCoords(

@@ -70,7 +70,7 @@ export const ROOM_SETTINGS: readonly RoomSetting[] = [
     i18nLabel: 'settings.autoStatsUpdate.label',
     i18nDescription: 'settings.autoStatsUpdate.description',
     level: 'stable',
-    default: false,
+    default: true,
   },
   {
     key: ROOM_SETTING_KEYS.IS_PLAYER_ROOM_MAP,

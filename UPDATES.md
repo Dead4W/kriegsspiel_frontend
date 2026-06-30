@@ -1,9 +1,10 @@
 [2026-07-01]
-- Disabled is_player_room map
+- Disabled is_player_room map by default
   It was confusing for newbies couldn't access player red/blue map.
   To create player rooms, 
   I had to log in as a different user. 
   For example, using incognito or anonymous login.
+- Enabled auto_stats_update by default
 - Improved visual of unit detail stats button
 - Chart view - fix errors
 

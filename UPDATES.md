@@ -1,3 +1,12 @@
+[2026-07-01]
+- Disabled is_player_room map
+  It was confusing that I couldn't access my player card.
+  To create player rooms, 
+  I had to log in as a different user. 
+  For example, using incognito or anonymous login.
+- Improved visual of unit detail stats button
+- Chart view - fix errors
+
 [2026-05-25]
 - Unit Orders - fix render
 - Unit Orders - optimize render

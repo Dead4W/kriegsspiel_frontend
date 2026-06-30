@@ -78,7 +78,7 @@ export const ROOM_SETTINGS: readonly RoomSetting[] = [
     i18nLabel: 'settings.isPlayerRoomMap.label',
     i18nDescription: 'settings.isPlayerRoomMap.description',
     level: 'stable',
-    default: true,
+    default: false,
   },
 
   // === beta ===

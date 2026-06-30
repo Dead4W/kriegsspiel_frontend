@@ -235,10 +235,15 @@ onUnmounted(() => {
         </div>
 
         <!-- TOGGLE STATS -->
-        <div class="stats-toggle" @click="isStatsOpen = !isStatsOpen">
+        <button
+          type="button"
+          class="stats-toggle"
+          :aria-expanded="isStatsOpen"
+          @click="isStatsOpen = !isStatsOpen"
+        >
           <span>{{ t('stat.details') }}</span>
           <span class="arrow" :class="{ open: isStatsOpen }">▾</span>
-        </div>
+        </button>
 
         <template v-if="isStatsOpen">
           <!-- Messages -->
@@ -545,18 +550,39 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #0f172a;
   cursor: pointer;
   font-size: 11px;
-  color: #94a3b8;
+  color: #cbd5e1;
   margin: 6px 0 8px;
   user-select: none;
 }
 
-.stats-toggle:hover {
+.stats-toggle:hover,
+.stats-toggle:focus-visible {
+  border-color: var(--accent);
   color: white;
+  background: #111c30;
+}
+
+.stats-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .stats-toggle .arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #1e293b;
+  color: white;
   transition: transform 0.2s ease;
 }
 

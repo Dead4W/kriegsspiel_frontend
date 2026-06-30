@@ -52,7 +52,7 @@ export class maplayer {
     // ===== DEBUG: FOREST MAP =====
     if (
       this.canRenderDebugMaps() &&
-      w.objectMapCanvas &&
+      w.objectNavMeshMap &&
       window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SHOW_OBJECT_MAP]
     ) {
       this.drawObjectMap(ctx, w)
@@ -233,7 +233,8 @@ export class maplayer {
   }
 
   private drawObjectMap(ctx: CanvasRenderingContext2D, w: world) {
-    if (!w.objectMapCanvas) return
+    const objectMapCanvas = w.getObjectMapDebugCanvas()
+    if (!objectMapCanvas) return
 
     const cam = w.camera
 
@@ -241,7 +242,7 @@ export class maplayer {
     ctx.scale(cam.zoom, cam.zoom)
     ctx.translate(-cam.pos.x, -cam.pos.y)
     ctx.globalAlpha = 0.7
-    ctx.drawImage(w.objectMapCanvas, 0, 0)
+    ctx.drawImage(objectMapCanvas, 0, 0)
     ctx.restore()
   }
 

@@ -39,11 +39,89 @@ type worldevents = {
   }
 }
 
-type ObjectNavMeshMap = {
+type ObjectNavMeshEntityBuffer = Uint8Array | Uint16Array
+
+type ObjectNavMeshActiveZone = {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
+type ObjectNavMeshZone = ObjectNavMeshActiveZone & {
   width: number
   height: number
+  pixels: ObjectNavMeshEntityBuffer
+}
+
+type ObjectNavMeshMap = {
   entitiesById: string[]
-  entityIdByPixel: Uint16Array
+  entityIdByName: Map<string, number>
+  zones: ObjectNavMeshZone[]
+}
+
+function buildEntityIdByName(entitiesById: string[]): Map<string, number> {
+  const map = new Map<string, number>()
+  for (let id = 1; id < entitiesById.length; id += 1) {
+    const entity = entitiesById[id]
+    if (!entity) continue
+    map.set(entity, id)
+  }
+  return map
+}
+
+function normalizeActiveZones(
+  zones: Array<{ minX: number; minY: number; maxX: number; maxY: number }> | null | undefined,
+  width: number,
+  height: number,
+): ObjectNavMeshActiveZone[] | null {
+  if (!zones?.length) return null
+  const normalized: ObjectNavMeshActiveZone[] = []
+  for (const zone of zones) {
+    const minX = Math.max(0, Math.min(width - 1, Math.floor(zone.minX)))
+    const minY = Math.max(0, Math.min(height - 1, Math.floor(zone.minY)))
+    const maxX = Math.max(0, Math.min(width - 1, Math.floor(zone.maxX)))
+    const maxY = Math.max(0, Math.min(height - 1, Math.floor(zone.maxY)))
+    if (maxX < minX || maxY < minY) continue
+    normalized.push({ minX, minY, maxX, maxY })
+  }
+  return normalized.length ? normalized : null
+}
+
+function buildNavMeshZones(
+  source: ObjectNavMeshEntityBuffer,
+  mapWidth: number,
+  mapHeight: number,
+  zones: ObjectNavMeshActiveZone[] | null
+): ObjectNavMeshZone[] {
+  const normalizedZones = zones?.length
+    ? zones
+    : [{ minX: 0, minY: 0, maxX: mapWidth - 1, maxY: mapHeight - 1 }]
+  const packedZones: ObjectNavMeshZone[] = []
+  for (const zone of normalizedZones) {
+    const width = zone.maxX - zone.minX + 1
+    const height = zone.maxY - zone.minY + 1
+    if (width <= 0 || height <= 0) continue
+    if (
+      zone.minX === 0
+      && zone.minY === 0
+      && zone.maxX === mapWidth - 1
+      && zone.maxY === mapHeight - 1
+    ) {
+      packedZones.push({ ...zone, width, height, pixels: source })
+      continue
+    }
+    const pixels = source instanceof Uint16Array
+      ? new Uint16Array(width * height)
+      : new Uint8Array(width * height)
+    for (let y = 0; y < height; y += 1) {
+      const srcRowStart = (zone.minY + y) * mapWidth + zone.minX
+      const dstRowStart = y * width
+      pixels.set(source.subarray(srcRowStart, srcRowStart + width), dstRowStart)
+    }
+    packedZones.push({ ...zone, width, height, pixels })
+  }
+  return packedZones
 }
 
 function buildObjectNavMeshMap(
@@ -53,7 +131,7 @@ function buildObjectNavMeshMap(
   const width = imageData.width
   const height = imageData.height
   const pixelCount = width * height
-  const entityIdByPixel = new Uint16Array(pixelCount)
+  const entityIdByPixel = new Uint8Array(pixelCount)
   const entitiesById: string[] = ['']
   const entityToId = new Map<string, number>()
   const pixels = imageData.data
@@ -67,6 +145,9 @@ function buildObjectNavMeshMap(
     let entityId = entityToId.get(entity)
     if (entityId == null) {
       entityId = entitiesById.length
+      if (entityId > 255) {
+        throw new Error('[world] too many object-map entities for Uint8 nav-mesh (max 255)')
+      }
       entityToId.set(entity, entityId)
       entitiesById.push(entity)
     }
@@ -74,10 +155,9 @@ function buildObjectNavMeshMap(
   }
 
   return {
-    width,
-    height,
     entitiesById,
-    entityIdByPixel,
+    entityIdByName: buildEntityIdByName(entitiesById),
+    zones: buildNavMeshZones(entityIdByPixel, width, height, null),
   }
 }
 
@@ -109,11 +189,10 @@ export class world {
   forestCtx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
   forestImageData?: ImageData
 
-  objectMapCanvas?: OffscreenCanvas | HTMLCanvasElement
-  objectMapCtx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
-  objectMapImageData?: ImageData
   objectMapColorToEntity: Map<string, string> = new Map()
   objectNavMeshMap?: ObjectNavMeshMap
+  private objectMapDebugCanvas?: OffscreenCanvas | HTMLCanvasElement
+  private objectMapDebugSource?: ObjectNavMeshMap
 
   heightMap?: HeightSampler
   heightMapCanvas?: OffscreenCanvas | HTMLCanvasElement
@@ -272,11 +351,52 @@ export class world {
       }
     }
 
-    this.objectMapCanvas = canvas
-    this.objectMapCtx = ctx
-    this.objectMapImageData = imageData
     this.objectMapColorToEntity = nextMap
     this.objectNavMeshMap = buildObjectNavMeshMap(imageData, nextMap)
+    this.events.emit('changed', { reason: 'objectMap' })
+  }
+
+  setObjectNavMeshPixels(
+    pixels: Uint8Array | Uint8ClampedArray,
+    width: number,
+    height: number,
+    colorToEntity: Map<string, string>
+  ) {
+    if (width !== this.map.width || height !== this.map.height) {
+      console.warn(
+        '[world] object nav-mesh pixel size does not match map size',
+        { pixelSize: { width, height }, mapSize: { width: this.map.width, height: this.map.height } }
+      )
+    }
+    const imageData = { width, height, data: pixels } as unknown as ImageData
+    this.objectMapColorToEntity = colorToEntity
+    this.objectNavMeshMap = buildObjectNavMeshMap(imageData, colorToEntity)
+    this.events.emit('changed', { reason: 'objectMap' })
+  }
+
+  setObjectNavMeshDecoded(
+    width: number,
+    height: number,
+    entitiesById: string[],
+    entityIdByPixel: ObjectNavMeshEntityBuffer,
+    colorToEntity?: Map<string, string>,
+    activeZones?: Array<{ minX: number; minY: number; maxX: number; maxY: number }> | null,
+  ) {
+    if (width !== this.map.width || height !== this.map.height) {
+      console.warn(
+        '[world] object nav-mesh size does not match map size',
+        { navSize: { width, height }, mapSize: { width: this.map.width, height: this.map.height } }
+      )
+    }
+    if (colorToEntity) {
+      this.objectMapColorToEntity = colorToEntity
+    }
+    const normalizedZones = normalizeActiveZones(activeZones, width, height)
+    this.objectNavMeshMap = {
+      entitiesById,
+      entityIdByName: buildEntityIdByName(entitiesById),
+      zones: buildNavMeshZones(entityIdByPixel, width, height, normalizedZones),
+    }
     this.events.emit('changed', { reason: 'objectMap' })
   }
 
@@ -284,14 +404,99 @@ export class world {
     return Boolean(this.objectNavMeshMap && this.objectNavMeshMap.entitiesById.length > 1)
   }
 
-  getObjectNavMeshEntityAt(pos: vec2): string | null {
+  // Lazily rebuilds a colored debug canvas from the nav-mesh (object map is no
+  // longer kept as a raw canvas). Cached by nav-mesh reference, so it is rebuilt
+  // only when the object map actually changes.
+  getObjectMapDebugCanvas(): OffscreenCanvas | HTMLCanvasElement | null {
+    const navMesh = this.objectNavMeshMap
+    if (!navMesh) return null
+    if (this.objectMapDebugCanvas && this.objectMapDebugSource === navMesh) {
+      return this.objectMapDebugCanvas
+    }
+
+    const width = this.map.width
+    const height = this.map.height
+    const canvas =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(width, height)
+        : Object.assign(document.createElement('canvas'), { width, height })
+    const ctx = canvas.getContext('2d') as
+      | CanvasRenderingContext2D
+      | OffscreenCanvasRenderingContext2D
+      | null
+    if (!ctx) return null
+
+    const colorById: Array<[number, number, number] | null> = new Array(
+      navMesh.entitiesById.length
+    ).fill(null)
+    for (const [colorKey, entity] of this.objectMapColorToEntity) {
+      const entityId = navMesh.entityIdByName.get(entity)
+      if (entityId == null) continue
+      const parts = colorKey.split(',')
+      const r = Number(parts[0])
+      const g = Number(parts[1])
+      const b = Number(parts[2])
+      if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) continue
+      colorById[entityId] = [r, g, b]
+    }
+
+    const imageData = ctx.createImageData(width, height)
+    const data = imageData.data
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const entityId = this.getObjectNavMeshEntityIdAtPixel(navMesh, x, y)
+        if (!entityId) continue
+        const color = colorById[entityId]
+        if (!color) continue
+        const rgbaIndex = ((y * width) + x) * 4
+        data[rgbaIndex] = color[0]
+        data[rgbaIndex + 1] = color[1]
+        data[rgbaIndex + 2] = color[2]
+        data[rgbaIndex + 3] = 255
+      }
+    }
+    ctx.putImageData(imageData, 0, 0)
+
+    this.objectMapDebugCanvas = canvas
+    this.objectMapDebugSource = navMesh
+    return canvas
+  }
+
+  private resolveObjectEntityId(entity: string): number | null {
     if (!this.objectNavMeshMap) return null
+    const normalized = String(entity)
+    if (!normalized) return null
+    return this.objectNavMeshMap.entityIdByName.get(normalized) ?? null
+  }
+
+  private resolveObjectEntityIds(entities: string[]): Set<number> {
+    const ids = new Set<number>()
+    if (!this.objectNavMeshMap) return ids
+    for (const entity of entities) {
+      const entityId = this.resolveObjectEntityId(entity)
+      if (entityId != null) ids.add(entityId)
+    }
+    return ids
+  }
+
+  private getObjectNavMeshEntityIdAtPixel(navMesh: ObjectNavMeshMap, x: number, y: number): number {
+    if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) return 0
+    for (const zone of navMesh.zones) {
+      if (x < zone.minX || x > zone.maxX || y < zone.minY || y > zone.maxY) continue
+      const localX = x - zone.minX
+      const localY = y - zone.minY
+      return zone.pixels[(localY * zone.width) + localX] ?? 0
+    }
+    return 0
+  }
+
+  getObjectNavMeshEntityAt(pos: vec2): string | null {
+    const navMesh = this.objectNavMeshMap
+    if (!navMesh) return null
     const x = Math.round(pos.x)
     const y = Math.round(pos.y)
-    if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) return null
-    const index = (y * this.map.width) + x
-    const entityId = this.objectNavMeshMap.entityIdByPixel[index] ?? 0
-    return this.objectNavMeshMap.entitiesById[entityId] ?? null
+    const entityId = this.getObjectNavMeshEntityIdAtPixel(navMesh, x, y)
+    return navMesh.entitiesById[entityId] ?? null
   }
 
   getObjectMapEntityAt(pos: vec2): string | null {
@@ -307,22 +512,15 @@ export class world {
     entities: string[],
     maxRadiusPx: number = 12
   ): vec2 | null {
-    if (!this.objectNavMeshMap || !entities.length) return null
-    const targets = new Set(entities.map((item) => String(item)))
-    const targetIds = new Set<number>()
-    for (let i = 1; i < this.objectNavMeshMap.entitiesById.length; i += 1) {
-      const entity = this.objectNavMeshMap.entitiesById[i]
-      if (entity && targets.has(entity)) {
-        targetIds.add(i)
-      }
-    }
+    const navMesh = this.objectNavMeshMap
+    if (!navMesh || !entities.length) return null
+    const targetIds = this.resolveObjectEntityIds(entities)
     if (!targetIds.size) return null
 
     const startX = Math.round(pos.x)
     const startY = Math.round(pos.y)
     if (startX < 0 || startY < 0 || startX >= this.map.width || startY >= this.map.height) return null
 
-    const data = this.objectNavMeshMap.entityIdByPixel
     const radius = Math.max(0, Math.round(maxRadiusPx))
     let bestDistSq = Infinity
     let bestX = -1
@@ -336,8 +534,7 @@ export class world {
         if (x < 0 || x >= this.map.width) continue
         const distSq = dx * dx + dy * dy
         if (distSq > radius * radius || distSq >= bestDistSq) continue
-        const idx = (y * this.map.width) + x
-        const entityId = data[idx] ?? 0
+        const entityId = this.getObjectNavMeshEntityIdAtPixel(navMesh, x, y)
         if (!targetIds.has(entityId)) continue
         bestDistSq = distSq
         bestX = x
@@ -350,24 +547,26 @@ export class world {
   }
 
   hasObjectEntityOnSegment(from: vec2, to: vec2, entity: string, sampleStepPx: number = 2): boolean {
-    if (!this.objectNavMeshMap) return false
+    const navMesh = this.objectNavMeshMap
+    if (!navMesh) return false
+    const targetEntityId = this.resolveObjectEntityId(entity)
+    if (targetEntityId == null) return false
     const dx = to.x - from.x
     const dy = to.y - from.y
     const length = Math.hypot(dx, dy)
-    if (length === 0) return this.isObjectEntityAt(from, entity)
+    const sampleEntityIdAt = (x: number, y: number): number => {
+      const px = Math.round(x)
+      const py = Math.round(y)
+      return this.getObjectNavMeshEntityIdAtPixel(navMesh, px, py)
+    }
+    if (length === 0) return sampleEntityIdAt(from.x, from.y) === targetEntityId
     const step = Math.max(1, sampleStepPx)
     const samples = Math.max(1, Math.ceil(length / step))
     for (let i = 0; i <= samples; i += 1) {
       const t = i / samples
-      if (
-        this.isObjectEntityAt(
-          {
-            x: from.x + dx * t,
-            y: from.y + dy * t,
-          },
-          entity
-        )
-      ) {
+      const x = from.x + dx * t
+      const y = from.y + dy * t
+      if (sampleEntityIdAt(x, y) === targetEntityId) {
         return true
       }
     }
@@ -375,11 +574,10 @@ export class world {
   }
 
   private getObjectNavMeshEntityAtPixel(x: number, y: number): string | null {
-    if (!this.objectNavMeshMap) return null
-    if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) return null
-    const idx = (y * this.map.width) + x
-    const entityId = this.objectNavMeshMap.entityIdByPixel[idx] ?? 0
-    return this.objectNavMeshMap.entitiesById[entityId] ?? null
+    const navMesh = this.objectNavMeshMap
+    if (!navMesh) return null
+    const entityId = this.getObjectNavMeshEntityIdAtPixel(navMesh, x, y)
+    return navMesh.entitiesById[entityId] ?? null
   }
 
   private getObjectMapEntityAtPixel(x: number, y: number): string | null {
@@ -391,16 +589,19 @@ export class world {
     entities: string[],
     maxRadiusPx: number = 24
   ): { center: vec2; entity: string } | null {
+    const navMesh = this.objectNavMeshMap
+    if (!navMesh) return null
     const seed = this.findNearestObjectPoint(pos, entities, maxRadiusPx)
     if (!seed) return null
 
     const seedX = Math.round(seed.x)
     const seedY = Math.round(seed.y)
-    const seedEntity = this.getObjectNavMeshEntityAtPixel(seedX, seedY)
+    const seedEntityId = this.getObjectNavMeshEntityIdAtPixel(navMesh, seedX, seedY)
+    if (!seedEntityId) return null
+    const seedEntity = navMesh.entitiesById[seedEntityId]
     if (!seedEntity) return null
-
-    const allowedEntities = new Set(entities.map((item) => String(item)))
-    if (!allowedEntities.has(seedEntity)) return null
+    const targetIds = this.resolveObjectEntityIds(entities)
+    if (!targetIds.has(seedEntityId)) return null
 
     const width = this.map.width
     const height = this.map.height
@@ -424,8 +625,8 @@ export class world {
 
     while (queue.length) {
       const [x, y] = queue.pop()!
-      const entity = this.getObjectNavMeshEntityAtPixel(x, y)
-      if (entity !== seedEntity) continue
+      const entityId = this.getObjectNavMeshEntityIdAtPixel(navMesh, x, y)
+      if (entityId !== seedEntityId) continue
 
       sumX += x
       sumY += y
@@ -459,18 +660,20 @@ export class world {
     maxRadiusPx: number = 24,
     localRadiusPx: number = 10
   ): { center: vec2; entity: string } | null {
+    const navMesh = this.objectNavMeshMap
+    if (!navMesh) return null
     const seed = this.findNearestObjectPoint(pos, entities, maxRadiusPx)
     if (!seed) return null
-
-    const seedEntity = this.getObjectMapEntityAt(seed)
-    if (!seedEntity) return null
-    const allowedEntities = new Set(entities.map((item) => String(item)))
-    if (!allowedEntities.has(seedEntity)) return null
 
     const radius = Math.max(1, Math.round(localRadiusPx))
     const seedX = Math.round(seed.x)
     const seedY = Math.round(seed.y)
-
+    const seedEntityId = this.getObjectNavMeshEntityIdAtPixel(navMesh, seedX, seedY)
+    if (!seedEntityId) return null
+    const seedEntity = navMesh.entitiesById[seedEntityId]
+    if (!seedEntity) return null
+    const targetIds = this.resolveObjectEntityIds(entities)
+    if (!targetIds.has(seedEntityId)) return null
     let sumX = 0
     let sumY = 0
     let count = 0
@@ -483,8 +686,8 @@ export class world {
         if (x < 0 || x >= this.map.width) continue
         if (dx * dx + dy * dy > radius * radius) continue
 
-        const entity = this.getObjectMapEntityAt({ x, y })
-        if (entity !== seedEntity) continue
+        const entityId = this.getObjectNavMeshEntityIdAtPixel(navMesh, x, y)
+        if (entityId !== seedEntityId) continue
         sumX += x
         sumY += y
         count += 1

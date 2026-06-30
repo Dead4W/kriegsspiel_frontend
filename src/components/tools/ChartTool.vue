@@ -9,7 +9,7 @@ import {
   LineElement,
   PointElement,
   LinearScale,
-  TimeScale,
+  TimeSeriesScale,
   Tooltip,
   Legend,
 } from 'chart.js'
@@ -25,7 +25,7 @@ ChartJS.register(
   LineElement,
   PointElement,
   LinearScale,
-  TimeScale,
+  TimeSeriesScale,
   Tooltip,
   Legend
 )
@@ -130,18 +130,20 @@ const chartOptions: ChartOptions<'line'> = {
   maintainAspectRatio: false,
   scales: {
     x: {
-      type: 'time',
+      type: 'timeseries',
       time: {
-        unit: 'second',
         displayFormats: {
           second: 'HH:mm:ss',
           minute: 'HH:mm:ss',
           hour: 'HH:mm:ss',
+          day: 'HH:mm:ss',
         },
         tooltipFormat: 'HH:mm:ss',
       },
       ticks: {
         source: 'data',
+        autoSkip: true,
+        maxRotation: 0,
       },
       title: {
         display: true,

@@ -23,6 +23,8 @@ const hasAcceptedCookies = ref(false)
 const showCookieBanner = computed(() => !hasAcceptedCookies.value)
 const updates = ref<{ date: string; items: string[] }[]>([])
 const updatesLoading = ref(false)
+const DISCORD_INVITE_URL = import.meta.env.VITE_DISCORD_INVITE_URL
+const DISCORD_WIDGET_BANNER_URL = import.meta.env.VITE_DISCORD_WIDGET_BANNER_URL
 
 function parseUpdatesMarkdown(text: string): { date: string; items: string[] }[] {
   const result: { date: string; items: string[] }[] = []
@@ -284,6 +286,21 @@ function acceptCookies() {
         </router-link>
       </div>
 
+      <div class="discord-widget-wrap">
+        <a
+          class="discord-compact"
+          :href="DISCORD_INVITE_URL"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img
+            class="discord-banner"
+            :src="DISCORD_WIDGET_BANNER_URL"
+            alt="Join our Discord server"
+          />
+        </a>
+      </div>
+
       <div class="updates-block">
         <div class="updates-list">
           <div v-if="updatesLoading" class="updates-loading">{{ t('loading') }}</div>
@@ -462,6 +479,33 @@ h1 {
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+.discord-widget-wrap {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.discord-compact {
+  display: inline-flex;
+  border-radius: var(--radius, 8px);
+  overflow: hidden;
+  border: 1px solid rgba(88, 101, 242, 0.45);
+  box-shadow: 0 8px 20px rgba(88, 101, 242, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.discord-compact:hover {
+  transform: translateY(-2px);
+  border-color: rgba(88, 101, 242, 0.7);
+  box-shadow: 0 12px 30px rgba(88, 101, 242, 0.2);
+}
+
+.discord-banner {
+  display: block;
+  width: min(420px, 100%);
+  height: auto;
 }
 
 .actions button,

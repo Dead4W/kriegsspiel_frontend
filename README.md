@@ -1,6 +1,7 @@
 # Kriegspiel Frontend
 
 **Fog of war without fog** — Vue 3 frontend for the Kriegspiel tactical wargame.
+https://kriegsspiel.io/
 
 ## Related
 

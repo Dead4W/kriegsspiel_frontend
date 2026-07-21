@@ -2,10 +2,15 @@
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createAbilityState } from '@/components/resourcePack/factories'
-import type { AbilityState as AbilityType, AbilityStatKey } from '@/components/resourcePack/types'
+import type {
+  AbilityState as AbilityType,
+  AbilityStatKey,
+  ResourcePackUnitType,
+} from '@/components/resourcePack/types'
 
 const props = defineProps<{
   abilities: AbilityType[]
+  units: ResourcePackUnitType[]
 }>()
 
 const { t, te, locale } = useI18n()
@@ -70,6 +75,30 @@ function removeRadius(ability: AbilityType) {
   if (!ability.params) return
   delete ability.params.radius
   cleanupParams(ability)
+}
+
+function unitHasAbility(unit: ResourcePackUnitType, abilityId: string): boolean {
+  return Array.isArray(unit.abilities) && unit.abilities.includes(abilityId)
+}
+
+function toggleUnitAbility(unit: ResourcePackUnitType, abilityId: string) {
+  const current = Array.isArray(unit.abilities) ? unit.abilities : []
+  const next = unitHasAbility(unit, abilityId)
+    ? current.filter((id) => id !== abilityId)
+    : [...new Set([...current, abilityId])]
+
+  if (next.length) {
+    unit.abilities = next
+    return
+  }
+  delete unit.abilities
+}
+
+function getUnitLabel(unit: ResourcePackUnitType): string {
+  const title = unit.title?.trim()
+  if (title) return title
+  const id = unit.id?.trim()
+  return id && te(`unit.${id}`) ? t(`unit.${id}`) : id
 }
 
 function updateMultiplier(ability: AbilityType, statKey: AbilityStatKey, rawValue: string) {
@@ -233,6 +262,24 @@ function getAbilityRenderKey(ability: AbilityType, index: number): string {
             />
           </label>
         </div>
+
+        <section class="section-block">
+          <div class="section-header">
+            <h4>{{ t('resourcePackCreator.abilitiesEditor.availableTo') }}</h4>
+          </div>
+          <div class="tag-options">
+            <button
+              v-for="unit in units"
+              :key="`${ability.id}-unit-${unit.id}`"
+              type="button"
+              class="tag-chip"
+              :class="{ active: unitHasAbility(unit, ability.id) }"
+              @click="toggleUnitAbility(unit, ability.id)"
+            >
+              {{ getUnitLabel(unit) }}
+            </button>
+          </div>
+        </section>
 
         <section class="section-block modifier-section">
           <div class="section-header section-header-row">
@@ -485,6 +532,33 @@ function getAbilityRenderKey(ability: AbilityType, index: number): string {
 .section-header h4 {
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+.tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.6rem;
+  padding: 0.18rem 0.62rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.3);
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tag-chip.active {
+  border-color: color-mix(in srgb, var(--accent) 62%, rgba(59, 130, 246, 0.38));
+  background: color-mix(in srgb, var(--accent) 22%, rgba(15, 23, 42, 0.45));
+  color: var(--text);
 }
 
 .empty-inline {

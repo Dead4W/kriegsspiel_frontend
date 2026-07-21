@@ -723,7 +723,7 @@ onMounted(loadTemplates)
           </button>
           <div v-if="isAbilitiesEditorOpen" class="editor-body">
             <fieldset class="editor-fieldset" :disabled="isEditorReadonly">
-              <AbilitiesEditor :abilities="abilityTypes" />
+              <AbilitiesEditor :abilities="abilityTypes" :units="unitTypes" />
             </fieldset>
           </div>
         </section>

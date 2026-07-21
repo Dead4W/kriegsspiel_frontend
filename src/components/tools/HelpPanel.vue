@@ -99,7 +99,17 @@ const formationBlocks = computed(() =>
 )
 
 const abilityBlocks = computed(() =>
-  generateFromRecord(getAbilityMultipliers(), 'ability')
+  Object.entries(getAbilityMultipliers()).map(([ability, stats]) => ({
+    id: `ability:${ability}`,
+    labelKey: `ability.${ability}`,
+    rows: Object.entries(stats).map(([stat, multiplier]) => ({
+      stat: stat as StatKey,
+      multiplier: multiplier as number,
+    })),
+    units: getUnitTypes()
+      .filter((unit) => unit.abilities.includes(ability))
+      .map((unit) => te(`unit.${unit.id}`) ? t(`unit.${unit.id}`) : unit.title ?? unit.id),
+  }))
 )
 
 function getFormationTagLabel(tag: string): string {
@@ -111,6 +121,16 @@ function getFormationTagLabel(tag: string): string {
 
 function getFormationInfo(blockId: string) {
   return formationBlocks.value.find((block) => block.id === blockId) ?? null
+}
+
+function getAbilityInfo(blockId: string) {
+  return abilityBlocks.value.find((block) => block.id === blockId) ?? null
+}
+
+function getBlockUnits(categoryId: string, blockId: string): string[] {
+  if (categoryId === 'formation') return getFormationInfo(blockId)?.units ?? []
+  if (categoryId === 'ability') return getAbilityInfo(blockId)?.units ?? []
+  return []
 }
 
 /* ===== categories ===== */
@@ -161,7 +181,21 @@ const categories = computed(() => [
               :key="block.id"
               class="modifier-block"
             >
-              <h3>{{ t(block.labelKey) }}</h3>
+              <div class="block-title">
+                <h3>{{ t(block.labelKey) }}</h3>
+                <div
+                  v-if="category.id === 'formation' && getFormationInfo(block.id)?.tags.length"
+                  class="formation-tag-chips"
+                >
+                  <span
+                    v-for="tag in getFormationInfo(block.id)?.tags"
+                    :key="tag"
+                    class="formation-tag-chip"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
+              </div>
 
               <table v-if="block.rows.length">
                 <tr v-for="row in block.rows" :key="row.stat">
@@ -177,7 +211,10 @@ const categories = computed(() => [
                 </tr>
               </table>
 
-              <div v-if="category.id === 'formation'" class="formation-details">
+              <div
+                v-if="category.id === 'formation' || category.id === 'ability'"
+                class="formation-details"
+              >
                 <p v-if="getFormationInfo(block.id)?.tags.length">
                   <strong>{{ t('tools.modifiers.rules') }}:</strong>
                   {{ getFormationInfo(block.id)?.tags.map(getFormationTagLabel).join(', ') }}
@@ -186,13 +223,13 @@ const categories = computed(() => [
                   <strong>{{ t('tools.modifiers.availableTo') }}:</strong>
                   <div class="user-chips">
                     <span
-                      v-for="unit in getFormationInfo(block.id)?.units ?? []"
+                      v-for="unit in getBlockUnits(category.id, block.id)"
                       :key="unit"
                       class="user-chip"
                     >
                       {{ unit }}
                     </span>
-                    <span v-if="!getFormationInfo(block.id)?.units.length" class="empty-value">—</span>
+                    <span v-if="!getBlockUnits(category.id, block.id).length" class="empty-value">—</span>
                   </div>
                 </div>
               </div>
@@ -289,9 +326,34 @@ const categories = computed(() => [
 }
 
 .modifier-block h3 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
+}
+
+.block-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 8px;
+}
+
+.formation-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.formation-tag-chip {
+  padding: 0.14rem 0.38rem;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 999px;
+  background: rgba(120, 53, 15, 0.25);
+  color: #fde68a;
+  font-size: 10px;
+  line-height: 1;
 }
 
 .formation-details {

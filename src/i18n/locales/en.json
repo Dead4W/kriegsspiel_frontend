@@ -158,6 +158,7 @@
       "addModifier": "Add",
       "removeModifier": "Remove",
       "multipliersTitle": "Stat multipliers",
+      "availableTo": "Available to units",
       "multipliersSubtitle": "Leave radius empty unless the ability should affect area-fire spread.",
       "emptyModifiers": "No modifiers added.",
       "emptyTitle": "No abilities yet.",

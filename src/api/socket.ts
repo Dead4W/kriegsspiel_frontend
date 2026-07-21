@@ -501,7 +501,8 @@ export class GameSocket {
             this.world.units.remove(unitId, 'remote');
           }
         } else if (m.type === 'chat') {
-          this.world.messages.upsert(m.data, 'remote', m.meta && m.meta.ignore);
+          const ignoreNewMessage = m.meta?.ignore === true && window.PLAYER.team !== Team.SPECTATOR
+          this.world.messages.upsert(m.data, 'remote', ignoreNewMessage);
           if (!shouldDeferUnitMessageLink(m.data, this.world.stage)) {
             for (const unitId of m.data.unitIds) {
               const u = this.world.units.get(unitId)

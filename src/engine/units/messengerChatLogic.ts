@@ -343,14 +343,24 @@ export function autoSpawnMessengerForIncomingOrder(message: ChatMessage): boolea
     .filter((u): u is BaseUnit => Boolean(u && u.alive && u.type !== unitType.MESSENGER))
   if (!targetUnits.length) return false
 
-  const general = window.ROOM_WORLD.units
+  const teamGenerals = window.ROOM_WORLD.units
     .list()
-    .find((u) => (
+    .filter((u) => (
       u.alive
       && u.type === unitType.GENERAL
       && u.team === message.author_team
-      && (message.author_id == null || u.roomMapUserId === message.author_id)
     ))
+  const authorGeneral = message.author_id == null
+    ? null
+    : teamGenerals.find((u) => u.roomMapUserId === message.author_id) ?? null
+  const routeStart = message.routePoints?.[0] ?? getUnitsApproxCenter(targetUnits)
+  const general = authorGeneral ?? teamGenerals
+    .slice()
+    .sort((a, b) => {
+      const aDistance = Math.hypot(a.pos.x - routeStart.x, a.pos.y - routeStart.y)
+      const bDistance = Math.hypot(b.pos.x - routeStart.x, b.pos.y - routeStart.y)
+      return aDistance - bDistance
+    })[0] ?? null
   if (!general) return false
 
   const messengerState: unitstate = {
@@ -359,6 +369,7 @@ export function autoSpawnMessengerForIncomingOrder(message: ChatMessage): boolea
     team: general.team,
     pos: { x: general.pos.x, y: general.pos.y },
     label: 'AUTO GENERATED MESSENGER',
+    roomMapUserId: general.roomMapUserId,
     messagesLinked: [{ id: message.id, time: window.ROOM_WORLD.time }],
   }
 
@@ -375,6 +386,8 @@ export function autoSpawnMessengerForIncomingOrder(message: ChatMessage): boolea
     deliveryStatus: 'pending',
   }).getState())
 
-  window.ROOM_WORLD.addUnits([messenger.toState()])
+  window.ROOM_WORLD.units.upsert(messenger.toState())
+  message.messengerId = messengerState.id
+  window.ROOM_WORLD.events.emit('changed', { reason: 'messenger_auto_spawn' })
   return true
 }

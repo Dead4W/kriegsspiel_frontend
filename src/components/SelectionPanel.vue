@@ -9,7 +9,12 @@ import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue';
-import { isAdminOrSpectatorTeam, isWarStage } from "@/game/roomGuards.ts";
+import {
+  canWriteGameState,
+  isAdminOrSpectatorTeam,
+  isAdminTeam,
+  isWarStage,
+} from "@/game/roomGuards.ts";
 import { canPlayerUseDirectViewOrder } from "@/engine/units/directViewOrderRules.ts";
 
 /* ================= i18n ================= */
@@ -61,7 +66,7 @@ const hasSelection = computed(() => selectedUnits.value.length > 0)
 const isMultiple = computed(() => selectedUnits.value.length > 1)
 const canShowCommandsListPanel = computed(() => {
   if (!focusedUnit.value) return false
-  if (isAdminOrSpectatorTeam()) return true
+  if (isAdminTeam()) return true
   return canPlayerUseDirectViewOrder([focusedUnit.value])
 })
 const shouldHideAttackDamageModifier = computed(() => {
@@ -103,7 +108,7 @@ function envIcons(u: BaseUnit) {
 }
 
 function isAdminAndWar() {
-  return isAdminOrSpectatorTeam() && isWarStage()
+  return isAdminTeam() && isWarStage()
 }
 
 /* ================= focus ================= */
@@ -156,7 +161,7 @@ function selectUnit(u: BaseUnit) {
         >
           {{ isUnitDetailOpen ? '\\/' : '/\\' }}
         </button>
-        <span v-if="selectedUnits.length === 1" class="rotate-hint">
+        <span v-if="canWriteGameState() && selectedUnits.length === 1" class="rotate-hint">
           {{ t('tools.rotate_angle') }}
           <HotkeyTag key-label="Shift+Q/E" inline />
           OR

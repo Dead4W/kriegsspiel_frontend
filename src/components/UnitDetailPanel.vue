@@ -6,7 +6,7 @@ import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {unitType} from "@/engine";
 import {clamp} from "@/engine/math.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
-import { isAdminOrSpectatorTeam } from "@/game/roomGuards.ts";
+import { canWriteGameState, isAdminOrSpectatorTeam, isAdminTeam } from "@/game/roomGuards.ts";
 
 const { unit } = defineProps<{ unit: UnwrapRef<BaseUnit> }>()
 
@@ -26,6 +26,7 @@ const isStatsOpen = ref(false)
 /* Logic */
 
 const onEdit = (emitChanged = true) => {
+  if (!canWriteGameState()) return
   window.ROOM_WORLD.units.addUnitDirty(unit.id)
   if (emitChanged) {
     emit('edit')
@@ -77,6 +78,10 @@ function syncInputValues() {
 }
 
 function commitInput(normalizeInput = true) {
+  if (!canWriteGameState()) {
+    syncInputValues()
+    return
+  }
   let changed = false
 
   const hp = Number(hpProxy.value.replace(',', '.'))
@@ -162,6 +167,7 @@ onUnmounted(() => {
       <input
         class="name"
         v-model="unit.label"
+        :disabled="!canWriteGameState()"
         :placeholder="t('stat.name')"
         @keydown.stop
         @change="onEditChange"
@@ -184,6 +190,7 @@ onUnmounted(() => {
             type="text"
             inputmode="decimal"
             v-model="hpProxy"
+            :disabled="!canWriteGameState()"
             min="0"
             :max="unit.stats.maxHp"
             @keydown.stop
@@ -207,6 +214,7 @@ onUnmounted(() => {
             type="text"
             inputmode="decimal"
             v-model="ammoProxy"
+            :disabled="!canWriteGameState()"
             min="0"
             :max="unit.stats.ammoMax"
             @keydown.stop
@@ -224,7 +232,7 @@ onUnmounted(() => {
         </div>
 
         <!-- MORALE -->
-        <div class="stat" v-if="isAdminOrSpectatorTeam()">
+        <div class="stat" v-if="isAdminTeam()">
           <label>{{ t('stat.morale') }}</label>
           <input
             type="number"

@@ -27,6 +27,12 @@ export type ChatMessage = {
     generatedAt: string
     summary?: string
     unresolvedLocations?: string[]
+    hintPositions?: Array<{
+      name: string
+      description: string
+      x: number
+      y: number
+    }>
     perUnit: Array<{
       unitId: uuid
       unitLabel?: string

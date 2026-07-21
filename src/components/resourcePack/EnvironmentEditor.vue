@@ -9,9 +9,15 @@ type UnitTypeOption = {
   label: string
 }
 
+type FormationOption = {
+  id: string
+  label: string
+}
+
 const props = defineProps<{
   states: EnvironmentState[]
   unitTypeOptions: UnitTypeOption[]
+  formationOptions: FormationOption[]
 }>()
 
 const { t, te, locale } = useI18n()
@@ -121,6 +127,19 @@ function updateMoraleCheckMod(state: EnvironmentState, rawValue: string) {
   }
 
   ensureParams(state).moraleCheckMod = nextValue
+}
+
+function updateForceFormation(state: EnvironmentState, rawValue: string) {
+  const nextValue = rawValue.trim()
+  if (!nextValue) {
+    if (state.params) {
+      delete state.params.forceFormation
+      cleanupParams(state)
+    }
+    return
+  }
+
+  ensureParams(state).forceFormation = nextValue
 }
 
 function updateMultiplier(state: EnvironmentState, statKey: EnvironmentStatKey, rawValue: string) {
@@ -408,6 +427,19 @@ function getStateRenderKey(state: EnvironmentState, index: number): string {
               :value="state.params?.moraleCheckMod ?? ''"
               @input="updateMoraleCheckMod(state, getEventValue($event))"
             />
+          </label>
+
+          <label class="field">
+            <span>{{ t('resourcePackCreator.environmentEditor.fields.forceFormation') }}</span>
+            <select
+              :value="state.params?.forceFormation ?? ''"
+              @change="updateForceFormation(state, getEventValue($event))"
+            >
+              <option value="">{{ t('resourcePackCreator.environmentEditor.formations.none') }}</option>
+              <option v-for="formation in formationOptions" :key="formation.id" :value="formation.id">
+                {{ formation.label }}
+              </option>
+            </select>
           </label>
 
           <label class="field checkbox-field">

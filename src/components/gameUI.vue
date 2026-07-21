@@ -19,7 +19,12 @@ import PaintTool from "@/components/tools/PaintTool.vue";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import PlanningEntryModal from '@/components/PlanningEntryModal.vue'
-import { isAdminTeam, isRedOrBlueTeam, isWeatherModifiersEnabled } from "@/game/roomGuards.ts";
+import {
+  canWriteGameState,
+  isAdminTeam,
+  isRedOrBlueTeam,
+  isWeatherModifiersEnabled,
+} from "@/game/roomGuards.ts";
 
 const { t } = useI18n()
 const props = defineProps<{
@@ -69,6 +74,7 @@ function toggleHideUnitsLayer(e: MouseEvent) {
 function toggle(e: MouseEvent, tool: Tools) {
   e.preventDefault()
   e.stopPropagation()
+  if (!canWriteGameState() && (tool === Tools.SPAWN || tool === Tools.PAINT)) return
   activeTool.value = activeTool.value === tool ? null : tool
 }
 
@@ -80,7 +86,12 @@ function onKeydown(e: KeyboardEvent) {
   const hasSystemModifier = e.ctrlKey || e.metaKey || e.altKey
 
   // Shift+Q / Shift+E — rotate selected unit angle (only when exactly one selected)
-  if (!hasSystemModifier && e.shiftKey && (e.code === 'KeyQ' || e.code === 'KeyE')) {
+  if (
+    canWriteGameState()
+    && !hasSystemModifier
+    && e.shiftKey
+    && (e.code === 'KeyQ' || e.code === 'KeyE')
+  ) {
     const selected = window.ROOM_WORLD?.units.getSelected() ?? []
     if (selected.length === 1) {
       const u = selected[0]!
@@ -201,7 +212,7 @@ onUnmounted(() => {
       </button>
 
       <button
-        v-if="!isEnd && !props.is3dMode"
+        v-if="canWriteGameState() && !isEnd && !props.is3dMode"
         :class="{ active: activeTool === Tools.SPAWN }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.SPAWN)"
@@ -221,7 +232,7 @@ onUnmounted(() => {
       </button>
 
       <button
-        v-if="!props.is3dMode"
+        v-if="canWriteGameState() && !props.is3dMode"
         :class="{ active: activeTool === Tools.PAINT }"
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.PAINT)"
@@ -261,7 +272,7 @@ onUnmounted(() => {
 
 
     <SpawnTool
-      v-if="activeTool === Tools.SPAWN"
+      v-if="canWriteGameState() && activeTool === Tools.SPAWN"
       class="no-select"
     />
 
@@ -271,7 +282,7 @@ onUnmounted(() => {
     />
 
     <PaintTool
-      v-if="activeTool === Tools.PAINT"
+      v-if="canWriteGameState() && activeTool === Tools.PAINT"
       class="no-select"
     />
 

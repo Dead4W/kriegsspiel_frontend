@@ -1,3 +1,18 @@
+[2026-07-21]
+- Spectator - add explicit spectator team and read-only game controls
+- Spectator - disable chat composition, unit editing, orders, spawn and paint tools
+- Spectator - use right-click to move camera and preserve new-message notifications
+- Messenger - add 50m chain delivery through friendly units
+- Messenger - improve auto-spawn routes and reuse active messengers for follow-up messages
+- Messenger - improve routing around threats and delivery reports
+- DirectView - clip move chains, attack targets and unit movement by fog of war
+- DirectView - show partially visible artillery inaccuracy zones
+- Environment - add forced formation setting for environment states
+- Environment - force default formation in houses and column formation on bridges
+- Movement - improve road and bridge environment detection; clear active ability after movement
+- AI triggers - support at_game_time orders and runtime on_attacked / on_enemy_seen triggers
+- Chat - show message timestamps as game time
+
 [2026-07-01]
 - Disabled is_player_room map by default
   It was confusing for newbies couldn't access player red/blue map.

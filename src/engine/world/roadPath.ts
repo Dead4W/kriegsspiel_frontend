@@ -55,6 +55,7 @@ export type RoadPathThreatZone = {
 
 export type BuildRoadTurnRouteOptions = {
   threatZones?: RoadPathThreatZone[]
+  allowDirectFallback?: boolean
 }
 
 class MinHeap {
@@ -871,7 +872,7 @@ export function buildRoadTurnRoutePoints(
 ): vec2[] {
   return debugRoadPathPerformance("buildRoadTurnRoutePoints", () => {
     if (!w.hasObjectNavMeshMap()) {
-      return [{ x: to.x, y: to.y }];
+      return options.allowDirectFallback === false ? [] : [{ x: to.x, y: to.y }];
     }
 
     const width = w.map.width;
@@ -907,7 +908,7 @@ export function buildRoadTurnRoutePoints(
     });
 
     if (chainedPath.length < 2) {
-      return [{ x: to.x, y: to.y }];
+      return options.allowDirectFallback === false ? [] : [{ x: to.x, y: to.y }];
     }
 
     const path = dedupeSequential(chainedPath);

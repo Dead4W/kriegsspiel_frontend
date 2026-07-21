@@ -11,6 +11,7 @@ import type {vec2} from "@/engine";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import SortableList from "@/components/ui/SortableList.vue";
 import { getEnvironmentIcon } from "@/engine/resourcePack/environment.ts";
+import { canWriteGameState } from "@/game/roomGuards.ts";
 
 const props = withDefaults(defineProps<{
   unit: BaseUnit
@@ -98,6 +99,7 @@ function itemCmds(item: DisplayItem): BaseCommand<any, any>[] {
 }
 
 function onReorder(payload: { orderedKeys: string[] }) {
+  if (!canWriteGameState()) return
   const byKey = new Map(displayItems.value.map(i => [i.key, i] as const))
   const orderedItems = payload.orderedKeys
     .map(k => byKey.get(k))
@@ -138,6 +140,7 @@ function cmdKey(cmd: BaseCommand<any, any>) {
 }
 
 function remove(cmd: BaseCommand<any, any>) {
+  if (!canWriteGameState()) return
   const key = cmdKey(cmd)
   const list = unit.getCommands() ?? []
   const next = list.filter(c => cmdKey(c) !== key)
@@ -145,6 +148,7 @@ function remove(cmd: BaseCommand<any, any>) {
 }
 
 function removeMany(cmds: BaseCommand<any, any>[]) {
+  if (!canWriteGameState()) return
   const keys = new Set(cmds.map(cmdKey))
   const list = unit.getCommands() ?? []
   const next = list.filter(c => !keys.has(cmdKey(c)))

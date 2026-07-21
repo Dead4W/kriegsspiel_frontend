@@ -16,6 +16,7 @@ import {getInaccuracyAbility} from "@/engine/resourcePack/abilities.ts";
 import {computeInaccuracyRadius} from "@/engine/units/modifiers/UnitInaccuracyModifier.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 import {processUnitCommands} from "@/engine/world/runTurnStep.ts";
+import {emitTurnStatePackets as emitSharedTurnStatePackets} from "@/engine/world/turnDirectView.ts";
 import {
   isAdminOrSpectatorTeam,
   isAdminTeam,
@@ -528,69 +529,7 @@ async function flushTickUnitsWithAnimation(
 const MAX_STEP_SECONDS = 60 // 1 тик = 1 минута
 
 function emitTurnStatePackets(directViewFramesByUnitId?: Map<string, MoveFrame[]>) {
-  // DirectView general
-  if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.GENERAL_VISION_UPDATE]) {
-    const directViewByTeam = window.ROOM_WORLD.units.getDirectViewByGenerals();
-    for (const team of [Team.RED, Team.BLUE]) {
-      window.ROOM_WORLD.events.emit('api', {type: 'direct_view', team: team, data: directViewByTeam.get(team as unitTeam)!.map(({id, isDirect}) => {
-        const u = window.ROOM_WORLD.units.get(id)!
-        let unitState: unitstate
-        if (!isDirect) {
-          // For chained (non-direct) visibility update only position data.
-          unitState = {
-            id: u.id,
-            type: u.type,
-            team: u.team,
-            pos: u.pos,
-            angle: u.angle,
-            roomMapUserId: u.roomMapUserId,
-            seenRoomUserIds: u.seenRoomUserIds,
-            commands: getDirectViewCommands(u.id, team as unitTeam),
-          }
-        } else {
-          unitState = {
-            id: u.id,
-            type: u.type,
-            team: u.team,
-            pos: u.pos,
-            angle: u.angle,
-            roomMapUserId: u.roomMapUserId,
-            seenRoomUserIds: u.seenRoomUserIds,
-
-            isRetreatState: u.isRetreat,
-
-            hp: u.hp,
-            ammo: u.ammo,
-
-            envState: u.envState,
-            formation: u.getFormation(),
-            activeAbilityType: u.activeAbilityType,
-            commands: getDirectViewCommands(u.id, team as unitTeam),
-          }
-        }
-
-        const frames = clipFramesForDirectViewTeam(
-          directViewFramesByUnitId?.get(u.id),
-          u.team,
-          team as unitTeam
-        )
-        return {
-          unit: unitState,
-          frames: frames && frames.length > 0 ? frames : undefined,
-        }
-      })})
-      window.ROOM_WORLD.events.emit('api', {
-        type: 'direct_view_objects',
-        team,
-        data: getDirectViewObjects(team as unitTeam),
-      })
-    }
-  }
-
-  if (isWeatherModifiersEnabled()) {
-    window.ROOM_WORLD.events.emit('api', {type: 'weather', data: window.ROOM_WORLD.newWeather.value});
-    window.ROOM_WORLD.weather.value = window.ROOM_WORLD.newWeather.value;
-  }
+  emitSharedTurnStatePackets(window.ROOM_WORLD, directViewFramesByUnitId)
 }
 
 function clearLiveWaitTimer() {

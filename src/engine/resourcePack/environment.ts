@@ -6,6 +6,7 @@ import {
 } from '@/engine/assets/resourcepack'
 
 import { unitType } from '@/engine/units/types'
+import type { FormationType } from '@/engine/units/types'
 import type { StatKey } from '@/engine/units/baseUnit'
 
 export type EnvStatMultiplier = Partial<Record<StatKey, number>> & {
@@ -136,6 +137,30 @@ export function getEnvironmentNumberParam(
   const states = getEnvironmentStates(pack)
   const entry = states.find((s) => String(s.id) === state)
   return entry?.params ? toFiniteNumber(entry.params[key]) : null
+}
+
+export function getEnvironmentStringParam(
+  state: EnvironmentStateId,
+  key: string,
+  pack: ResourcePack | null = getResourcePack()
+): string | null {
+  const states = getEnvironmentStates(pack)
+  const entry = states.find((s) => String(s.id) === state)
+  const value = entry?.params?.[key]
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  return normalized || null
+}
+
+export function getEnvironmentForcedFormation(
+  states: EnvironmentStateId[],
+  pack: ResourcePack | null = getResourcePack()
+): FormationType | null {
+  for (const state of states) {
+    const formation = getEnvironmentStringParam(state, 'forceFormation', pack)
+    if (formation) return formation
+  }
+  return null
 }
 
 export function getEnvironmentMoraleCheckMod(

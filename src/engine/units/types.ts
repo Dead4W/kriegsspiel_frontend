@@ -61,17 +61,10 @@ export interface unitstate {
 
 export type UnitAiTriggerState =
   | {
-      type: 'on_enemy_distance'
-      distanceMeters: number
+      type: 'at_game_time'
+      atGameTime: string
       sourceMessageId?: uuid | null
-      lastTriggeredAt?: string | null
-      cooldownSeconds?: number
-    }
-  | {
-      type: 'on_attacked'
-      sourceMessageId?: uuid | null
-      lastTriggeredAt?: string | null
-      cooldownSeconds?: number
+      fired?: boolean
     }
 
 export type commandstate =

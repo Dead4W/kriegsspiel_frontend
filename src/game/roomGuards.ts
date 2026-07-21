@@ -14,6 +14,10 @@ export function isSpectatorTeam(team: Team | null = getPlayerTeam()): boolean {
   return team === Team.SPECTATOR;
 }
 
+export function canWriteGameState(team: Team | null = getPlayerTeam()): boolean {
+  return isAdminTeam(team) || isRedOrBlueTeam(team);
+}
+
 export function isAdminOrSpectatorTeam(team: Team | null = getPlayerTeam()): boolean {
   return isAdminTeam(team) || isSpectatorTeam(team);
 }

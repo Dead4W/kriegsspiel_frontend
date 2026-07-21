@@ -644,7 +644,11 @@ onMounted(loadTemplates)
           </button>
           <div v-if="isEnvironmentEditorOpen" class="editor-body">
             <fieldset class="editor-fieldset" :disabled="isEditorReadonly">
-              <EnvironmentEditor :states="environmentStates" :unit-type-options="unitTypeOptions" />
+              <EnvironmentEditor
+                :states="environmentStates"
+                :unit-type-options="unitTypeOptions"
+                :formation-options="formationOptions"
+              />
             </fieldset>
           </div>
         </section>

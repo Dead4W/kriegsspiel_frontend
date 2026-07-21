@@ -37,6 +37,11 @@ type worldevents = {
     sourceMessageId: string | null
     details?: Record<string, unknown>
   }
+  message_delivered: {
+    messageId: string
+    unitIds: string[]
+    messengerId: string | null
+  }
 }
 
 type ObjectNavMeshEntityBuffer = Uint8Array | Uint16Array

@@ -107,48 +107,19 @@ function parseAiTriggersFromNotes(notes: unknown, sourceMessageId: string): {
       if (!rawTrigger || typeof rawTrigger !== "object") continue;
       const rec = rawTrigger as Record<string, unknown>;
       const triggerType = String(rec.type ?? "").toLowerCase();
-      if (triggerType === "on_enemy_distance") {
-        const distanceMeters = parseDistanceMeters(
-          rec.distanceMeters ?? rec.distance ?? rec.meters
-        ) ?? 0;
-        if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) continue;
-        parsedTriggers.push({
-          type: "on_enemy_distance",
-          distanceMeters,
-          sourceMessageId,
-          cooldownSeconds: Number.isFinite(Number(rec.cooldownSeconds))
-            ? Math.max(1, Number(rec.cooldownSeconds))
-            : 15,
-          lastTriggeredAt: null,
-        });
-        continue;
-      }
-      if (triggerType === "on_attacked") {
-        parsedTriggers.push({
-          type: "on_attacked",
-          sourceMessageId,
-          cooldownSeconds: Number.isFinite(Number(rec.cooldownSeconds))
-            ? Math.max(1, Number(rec.cooldownSeconds))
-            : 5,
-          lastTriggeredAt: null,
-        });
-      }
+      if (triggerType !== "at_game_time") continue
+      const atGameTime = String(rec.atGameTime ?? "").trim()
+      const parsedTime = Date.parse(atGameTime.replace(" ", "T"))
+      if (!atGameTime || !Number.isFinite(parsedTime)) continue
+      parsedTriggers.push({
+        type: "at_game_time",
+        atGameTime,
+        sourceMessageId,
+        fired: false,
+      })
     }
   }
   return { hasDirective, triggers: parsedTriggers };
-}
-
-function parseDistanceMeters(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (!normalized) return null;
-    const match = normalized.match(/-?\d+(\.\d+)?/);
-    if (!match) return null;
-    const parsed = Number(match[0]);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
 }
 
 function parseSendMessageTextsFromNotes(notes: unknown): string[] {
@@ -308,11 +279,26 @@ function spawnMessengerForUnitMessage(message: ChatMessage, sourceUnit: BaseUnit
     } as commandstate],
   }
   window.ROOM_WORLD.addUnits([messengerState])
+  message.messengerId = messengerId
 }
 
-function emitUnitLinkedMessage(sourceMessage: ChatMessage, targetUnit: BaseUnit, text: string): boolean {
+export function emitUnitLinkedMessage(
+  sourceMessage: ChatMessage,
+  targetUnit: BaseUnit,
+  text: string,
+  existingMessengerId: string | null = null,
+): boolean {
   const messageTeam = resolveUnitTeam(targetUnit)
   if (!messageTeam) return false
+  const existingMessenger = existingMessengerId
+    ? window.ROOM_WORLD.units.get(existingMessengerId)
+    : null
+  const reuseMessenger = Boolean(
+    existingMessenger
+    && existingMessenger.alive
+    && existingMessenger.type === unitType.MESSENGER
+    && existingMessenger.team === targetUnit.team
+  )
 
   const outgoing: ChatMessage = {
     id: crypto.randomUUID(),
@@ -324,14 +310,19 @@ function emitUnitLinkedMessage(sourceMessage: ChatMessage, targetUnit: BaseUnit,
     created_at: new Date().toISOString(),
     delivered_at: null,
     quotedMessageId: sourceMessage.id,
-    deliveryStatus: "pending",
+    messengerId: reuseMessenger ? existingMessenger!.id : null,
+    deliveryStatus: reuseMessenger ? "in_transit" : "pending",
     team: messageTeam,
     status: ChatMessageStatus.Sent,
     delivered: false,
   }
   window.ROOM_WORLD.addMessage(outgoing)
   targetUnit.linkMessage(outgoing.id)
-  spawnMessengerForUnitMessage(outgoing, targetUnit)
+  if (reuseMessenger) {
+    existingMessenger!.linkMessage(outgoing.id)
+  } else {
+    spawnMessengerForUnitMessage(outgoing, targetUnit)
+  }
   return true
 }
 

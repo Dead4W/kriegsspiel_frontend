@@ -9,7 +9,20 @@ export const NEAR_OBJECT_DISTANCE_METERS = 50
 
 type EnvMode = "moving" | "standing"
 
-const OBJECT_ENV_PRIORITIES: Record<EnvMode, Array<{ entities: string[]; envIds: string[] }>> = {
+type ObjectEnvironmentPriority = { entities: string[]; envIds: string[] }
+
+const ROAD_OBJECT_ENV_PRIORITIES: ObjectEnvironmentPriority[] = [
+  {
+    entities: ["good_road", "bridge"],
+    envIds: ["on_good_road", "in_good_road"],
+  },
+  {
+    entities: ["road"],
+    envIds: ["on_road", "in_road"],
+  },
+]
+
+const OBJECT_ENV_PRIORITIES: Record<EnvMode, ObjectEnvironmentPriority[]> = {
   standing: [
     {
       entities: ["cover_house", "fortified_house", "fortified_building"],
@@ -23,20 +36,14 @@ const OBJECT_ENV_PRIORITIES: Record<EnvMode, Array<{ entities: string[]; envIds:
       entities: ["forest"],
       envIds: ["in_forest"],
     },
+    ...ROAD_OBJECT_ENV_PRIORITIES,
     {
       entities: ["water", "river"],
       envIds: ["in_water", "on_water", "in_river"],
     },
   ],
   moving: [
-    {
-      entities: ["good_road"],
-      envIds: ["on_good_road", "in_good_road"],
-    },
-    {
-      entities: ["road"],
-      envIds: ["on_road", "in_road"],
-    },
+    ...ROAD_OBJECT_ENV_PRIORITIES,
     {
       entities: ["water", "river"],
       envIds: ["in_water", "on_water", "in_river"],
@@ -71,6 +78,19 @@ function resolveEnvironmentId(envCandidates: string[]): string | null {
 function hasNearbyEntity(unit: BaseUnit, entities: string[], radiusPx: number): boolean {
   if (radiusPx <= 0) return false
   return Boolean(window.ROOM_WORLD.findNearestObjectPoint(unit.pos, entities, radiusPx))
+}
+
+function resolveNearbyEnvironment(
+  unit: BaseUnit,
+  priorities: ObjectEnvironmentPriority[],
+  radiusPx: number,
+): string | null {
+  for (const priority of priorities) {
+    if (!hasNearbyEntity(unit, priority.entities, radiusPx)) continue
+    const environment = resolveEnvironmentId(priority.envIds)
+    if (environment) return environment
+  }
+  return null
 }
 
 function setEnvironmentState(unit: BaseUnit, environment: string | null) {
@@ -146,9 +166,17 @@ export function applyAutoEnvironment(unit: BaseUnit, mode: EnvMode): boolean {
 
   const firstMoveModifier = getFirstMoveCommandModifier(unit)
   if (firstMoveModifier) {
-    applyWaterEnvironmentPenalty(unit, firstMoveModifier)
-    setEnvironmentState(unit, firstMoveModifier)
-    applyBridgeFormation(unit, mode === "moving", getNearRadiusPx())
+    const radiusPx = getNearRadiusPx()
+    const nearbyRoadEnvironment = (
+      hasEnvironmentStateTag(firstMoveModifier, "is_water")
+      && isObjectMapReady()
+    )
+      ? resolveNearbyEnvironment(unit, ROAD_OBJECT_ENV_PRIORITIES, radiusPx)
+      : null
+    const nextEnvironment = nearbyRoadEnvironment ?? firstMoveModifier
+    applyWaterEnvironmentPenalty(unit, nextEnvironment)
+    setEnvironmentState(unit, nextEnvironment)
+    applyBridgeFormation(unit, mode === "moving", radiusPx)
     return false
   }
 
@@ -159,13 +187,7 @@ export function applyAutoEnvironment(unit: BaseUnit, mode: EnvMode): boolean {
 
   const radiusPx = getNearRadiusPx()
   const priorities = OBJECT_ENV_PRIORITIES[mode]
-  let nextEnvironment: string | null = null
-
-  for (const priority of priorities) {
-    if (!hasNearbyEntity(unit, priority.entities, radiusPx)) continue
-    nextEnvironment = resolveEnvironmentId(priority.envIds)
-    if (nextEnvironment) break
-  }
+  let nextEnvironment = resolveNearbyEnvironment(unit, priorities, radiusPx)
   if (mode === "moving" && !nextEnvironment) {
     nextEnvironment = resolveEnvironmentId(MOVING_DEFAULT_FIELD_ENV_IDS)
   }

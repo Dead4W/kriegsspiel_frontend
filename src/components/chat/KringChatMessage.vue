@@ -6,18 +6,17 @@ import DOMPurify from 'dompurify'
 import IdenticonAvatar from "@/components/ui/IdenticonAvatar.vue";
 import {type ChatMessage} from "@/engine/types/chatMessage.ts";
 import {BaseUnit} from "@/engine/units/baseUnit.ts";
-import {Team} from "@/enums/teamKeys.ts";
 import {type uuid} from "@/engine";
 
 const props = defineProps<{
   message: ChatMessage
-  activeTeam: Team
   isOwn: boolean
   isUnread: boolean
   highlighted: boolean
   canSpawnMessenger: boolean
   canEdit: boolean
   isPlayer: boolean
+  isSpectator: boolean
 }>()
 
 const emit = defineEmits<{
@@ -94,33 +93,11 @@ function isFallbackUnitTitle(u: BaseUnit | uuid): boolean {
   return !!props.message.unitFallbackTitles?.[u]
 }
 
-function isPlayableTeam(team: Team): boolean {
-  return team === Team.RED || team === Team.BLUE
-}
-
-function shouldUseCreatedAtTimestamp(message: ChatMessage): boolean {
-  return isPlayableTeam(props.activeTeam) && message.author_team === props.activeTeam
-}
-
-const displayTimestamp = computed(() => {
-  if (shouldUseCreatedAtTimestamp(props.message)) {
-    return props.message.created_at ?? props.message.time
-  }
-  return props.message.time
-})
+const displayTimestamp = computed(() => props.message.time)
 
 const displayTime = computed(() => {
   const value = displayTimestamp.value
-  const normalized = value.replace(' ', 'T')
-  const hasTimezone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(normalized)
-  const date = new Date(hasTimezone ? normalized : `${normalized}Z`)
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleTimeString(
-      [localStorage.getItem('i18n_locale') ?? 'en'],
-      {hour: '2-digit', minute: '2-digit', second: '2-digit'},
-    )
-  }
-  const timePart = value.split(' ')[1]
+  const timePart = value.match(/(?:^|[ T])(\d{2}:\d{2}(?::\d{2})?)/)?.[1]
   return timePart ?? value
 })
 
@@ -297,6 +274,7 @@ const canShowOrders = computed(() => {
           </button>
 
           <button
+            v-if="!isSpectator"
             class="quote-message-btn"
             :title="t('chat.quote')"
             @click.stop="emit('quoteMessage', message.id)"
@@ -305,7 +283,7 @@ const canShowOrders = computed(() => {
           </button>
 
           <button
-            v-if="isUnread && !isPlayer"
+            v-if="isUnread && !isPlayer && !isSpectator"
             class="mark-read-btn"
             :title="t('chat.mark_as_read')"
             @click.stop="emit('markAsRead', message.id)"

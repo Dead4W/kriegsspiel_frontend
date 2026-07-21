@@ -13,6 +13,7 @@ import {getTeamColor} from "@/engine/2d/render/util.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
 import KringChatMessage from "@/components/chat/KringChatMessage.vue";
 import {
+  canWriteGameState,
   isAdminTeam,
   isEndStage,
   isPlayerRoomMapEnabled,
@@ -135,7 +136,10 @@ function isMessageDeliveredToRecipient(message: ChatMessage): boolean {
 }
 
 function isMessageVisibleToCurrentViewer(message: ChatMessage): boolean {
-  if (!isAdminTeam() && !isSpectatorTeam()) {
+  if (isSpectatorTeam()) {
+    return true
+  }
+  if (!isAdminTeam()) {
     return true
   }
   if (isOwnMessage(message)) {
@@ -384,7 +388,8 @@ function isRouteCaptureActive(): boolean {
 }
 
 function canEditMessage(message: ChatMessage): boolean {
-  return isOwnMessage(message)
+  return canWriteGameState()
+    && isOwnMessage(message)
     && message.time === window.ROOM_WORLD.time
 }
 
@@ -509,6 +514,7 @@ function onInputEscape() {
 }
 
 function send() {
+  if (!canWriteGameState()) return
   if (!input.value.trim()) return
 
   if (editingMessageId.value) {
@@ -932,8 +938,11 @@ function onChangedWorld(event: { reason: string }) {
   // UI уже синхронизирован выше, поэтому ошибки в автоспавне/звуке не задержат рендер чата.
   if (event.reason === 'ws') {
     const newMessages = window.ROOM_WORLD.messages.getNew().filter((m) => !isOwnMessage(m));
-    if (newMessages.length) {
-      for (const message of newMessages) {
+    const messengerSpawnCandidates = window.ROOM_WORLD.messages
+      .getMessengerSpawnCandidates()
+      .filter((m) => !isOwnMessage(m))
+    if (messengerSpawnCandidates.length) {
+      for (const message of messengerSpawnCandidates) {
         try {
           autoSpawnMessengerForIncomingOrder(message)
         } catch (error) {
@@ -946,8 +955,9 @@ function onChangedWorld(event: { reason: string }) {
       !isOwnMessage(message)
       && isMessageVisibleToCurrentViewer(message)
     ))
-    const hasNewAudibleMessage = visibleIncomingMessages.some((message) => (
-      !notifiedIncomingMessageIds.has(message.id)
+    const hasNewAudibleMessage = newMessages.some((message) => (
+      isMessageVisibleToCurrentViewer(message)
+      && !notifiedIncomingMessageIds.has(message.id)
     ))
     for (const message of visibleIncomingMessages) {
       notifiedIncomingMessageIds.add(message.id)
@@ -1072,13 +1082,13 @@ onBeforeUnmount(() => {
         v-for="m in visibleMessages"
         :key="m.id"
         :message="m"
-        :active-team="activeTeam"
         :is-own="isOwnMessage(m)"
         :is-unread="isUnreadMessage(m)"
         :highlighted="highlightedMessageId === m.id"
         :can-spawn-messenger="isAdminTeam()"
         :can-edit="canEditMessage(m)"
         :is-player="isRedOrBlueTeam()"
+        :is-spectator="isSpectatorTeam()"
         @spawn-messenger="onSpawnMessenger"
         @edit-message="startEditMessage"
         @quote-message="setQuote"
@@ -1089,7 +1099,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- input -->
-    <template v-if="!isEndStage()">
+    <template v-if="canWriteGameState() && !isEndStage()">
       <template v-if="!getSendWarningMessage()">
         <form class="chat-input" @submit.prevent="send">
           <div v-if="quotedMessage" class="chat-quote-banner">
@@ -1165,7 +1175,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div
-      v-if="unreadInActiveTab > 0"
+      v-if="unreadInActiveTab > 0 && !isSpectatorTeam()"
       class="new-messages-float"
       @click="isRedOrBlueTeam() ? onClickMarkAllAsRead() : scrollToFirstUnread()"
     >

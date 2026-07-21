@@ -33,6 +33,7 @@ import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifie
 import {getUnitNumberParam} from "@/engine/resourcePack/units.ts";
 import {
   type EnvironmentStateId,
+  getEnvironmentForcedFormation,
   getEnvironmentMoraleCheckMod
 } from "@/engine/resourcePack/environment.ts";
 import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/moraleCheck.ts";
@@ -128,6 +129,11 @@ export abstract class BaseUnit {
 
   protected messagesLinked: MessageLinked[] = []
   protected aiTriggers: UnitAiTriggerState[] = []
+  private pendingAttackDamage: {
+    hpBefore: number
+    hpAfter: number
+    attackerIds: uuid[]
+  } | null = null
 
   lastSelected: number = 0;
 
@@ -211,14 +217,36 @@ export abstract class BaseUnit {
     this.ammo = clamp(s.ammo ?? this.stats.ammoMax, 0, this.stats.ammoMax)
   }
 
-  takeDamage(amount: number): number {
+  takeDamage(amount: number, attacker: BaseUnit | null = null): number {
+    const hpBefore = this.hp
     const afterMod = amount * this.takeDamageMod
     this.hp -= afterMod;
     if (this.hp <= 0) {
       this.hp = 0
     }
+    if (attacker && attacker.id !== this.id && this.hp < hpBefore) {
+      const pending = this.pendingAttackDamage
+      this.pendingAttackDamage = {
+        hpBefore: pending?.hpBefore ?? hpBefore,
+        hpAfter: this.hp,
+        attackerIds: pending?.attackerIds.includes(attacker.id)
+          ? pending.attackerIds
+          : [...(pending?.attackerIds ?? []), attacker.id],
+      }
+    }
     this.setDirty()
     return afterMod
+  }
+
+  consumeAttackDamage() {
+    const pending = this.pendingAttackDamage
+    this.pendingAttackDamage = null
+    return pending
+      ? {
+          ...pending,
+          attackerIds: [...pending.attackerIds],
+        }
+      : null
   }
 
   /**
@@ -411,9 +439,10 @@ export abstract class BaseUnit {
   }
 
   protected getFormationMultiplier<K extends keyof UnitStats | 'damage'>(
-    key: K
+    key: K,
+    formation: FormationType = this.getEffectiveFormation()
   ): number {
-    return (getFormationMultipliers() as any)[this.formation]?.[key] ?? 1
+    return (getFormationMultipliers() as any)[formation]?.[key] ?? 1
   }
 
   get alive(): boolean {
@@ -466,10 +495,12 @@ export abstract class BaseUnit {
     }
 
     // formation
-    if (this.getFormationMultiplier(key) != 1) {
-      const m = this.getFormationMultiplier(key)
+    const effectiveFormation = this.getEffectiveFormation()
+    const formationMultiplier = this.getFormationMultiplier(key, effectiveFormation)
+    if (formationMultiplier != 1) {
+      const m = formationMultiplier
       total *= m
-      sources.push({ type: 'formation', state: this.formation, multiplier: m })
+      sources.push({ type: 'formation', state: effectiveFormation, multiplier: m })
     }
 
     // ability
@@ -637,11 +668,11 @@ export abstract class BaseUnit {
     this.setDirty()
   }
 
-  touchAiTrigger(index: number, isoTime: string) {
+  touchAiTrigger(index: number) {
     if (index < 0 || index >= this.aiTriggers.length) return
     this.aiTriggers[index] = {
       ...this.aiTriggers[index]!,
-      lastTriggeredAt: isoTime,
+      fired: true,
     }
     this.setDirty()
   }
@@ -653,6 +684,10 @@ export abstract class BaseUnit {
 
   getFormation(): FormationType {
     return this.formation
+  }
+
+  getEffectiveFormation(): FormationType {
+    return getEnvironmentForcedFormation(this.envState) ?? this.formation
   }
 
   refreshFuturePos(): void {

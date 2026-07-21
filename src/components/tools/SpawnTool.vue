@@ -9,7 +9,7 @@ import { getSpawnUnitTypes } from "@/engine/resourcePack/units.ts";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import type {unitstate} from "@/engine/units/types.ts";
-import { isAdminTeam, isRedOrBlueTeam } from "@/game/roomGuards.ts";
+import { canWriteGameState, isAdminTeam, isRedOrBlueTeam } from "@/game/roomGuards.ts";
 
 const { t } = useI18n()
 
@@ -165,6 +165,7 @@ function parseDebugUnitState(raw: string): unitstate {
 }
 
 function createUnitFromDebugJson() {
+  if (!canWriteGameState()) return
   debugCreateError.value = ''
   debugCreateSuccess.value = false
   const raw = debugUnitStateJson.value.trim()
@@ -192,6 +193,7 @@ function createUnitFromDebugJson() {
 /* ================= spawn ================= */
 
 function onClick(e: PointerEvent) {
+  if (!canWriteGameState()) return
   if (e.button !== 0) return;
 
   if ((e.target as HTMLElement)?.closest('.spawn-panel')) return

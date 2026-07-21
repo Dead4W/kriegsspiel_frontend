@@ -6,8 +6,14 @@ import { type MoveCommandState } from "@/engine/units/commands/moveCommand.ts";
 import type { vec2 } from "@/engine/types.ts";
 import { BaseUnit } from "@/engine/units/baseUnit.ts";
 import { processAiTriggers } from "@/game/ai/processAiTriggers.ts";
+import {
+  buildMoveFramesByUnitId,
+  captureUnitPositionsById,
+  emitTurnStatePackets,
+} from "@/engine/world/turnDirectView.ts";
 
 const MAX_STEP_SECONDS = 60;
+const TURN_ANIMATION_DURATION_MS = 50;
 
 type UnitLike = ReturnType<world["units"]["list"]>[number];
 
@@ -269,12 +275,21 @@ export async function runTurnStep(params: {
   worldInstance: world;
   secondsToSkip: number;
   isLive: boolean;
+  liveIntervalMs?: number;
   liveGameSecondsPerMinute?: number;
   shouldContinue?: () => boolean;
 }) {
-  const { worldInstance, secondsToSkip, isLive, liveGameSecondsPerMinute, shouldContinue } = params;
+  const {
+    worldInstance,
+    secondsToSkip,
+    isLive,
+    liveIntervalMs,
+    liveGameSecondsPerMinute,
+    shouldContinue,
+  } = params;
   if (secondsToSkip <= 0) return 0;
 
+  const turnStartUnitPositions = captureUnitPositionsById(worldInstance);
   worldInstance.units.withNewCommandsTmp.clear();
   worldInstance.socketLock = true;
   let runningSteps = 0;
@@ -314,7 +329,7 @@ export async function runTurnStep(params: {
         type: "skip_time",
         data: worldInstance.time,
         live: isLive || undefined,
-        liveIntervalMs: isLive ? Number(import.meta.env.VITE_LIVE_INTERVAL_MS ?? 30000) : undefined,
+        liveIntervalMs: isLive ? liveIntervalMs : undefined,
         liveGameSecondsPerMinute: isLive ? liveGameSecondsPerMinute : undefined,
       });
     }
@@ -322,6 +337,16 @@ export async function runTurnStep(params: {
     for (const unitId of worldInstance.units.withNewCommandsTmp) {
       worldInstance.units.withNewCommands.add(unitId);
     }
+
+    const directViewAnimationDurationMs = isLive
+      ? (liveIntervalMs ?? TURN_ANIMATION_DURATION_MS)
+      : TURN_ANIMATION_DURATION_MS;
+    const directViewFramesByUnitId = buildMoveFramesByUnitId(
+      worldInstance,
+      turnStartUnitPositions,
+      directViewAnimationDurationMs,
+    );
+    emitTurnStatePackets(worldInstance, directViewFramesByUnitId);
 
     worldInstance.skipTime(0, false);
     worldInstance.socketLock = false;

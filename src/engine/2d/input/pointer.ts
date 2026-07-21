@@ -2,6 +2,7 @@ import type { world } from '@/engine/world/world'
 import type { vec2 } from '@/engine/types'
 import { sub } from '@/engine/math'
 import { InputLifecycle } from '@/engine/input/lifecycle'
+import { canWriteGameState } from '@/game/roomGuards.ts'
 
 export function bindPointer(canvas: HTMLCanvasElement, w: world) {
   let dragging = false
@@ -31,9 +32,9 @@ export function bindPointer(canvas: HTMLCanvasElement, w: world) {
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 2) return
     if (window.INPUT.IGNORE_DRAG) return
-    // Если есть выделение — ПКМ используется для контекстных приказов,
-    // а не для перетаскивания камеры.
-    if (w.units.getSelected().length > 0) return
+    // При наличии прав на изменение игры ПКМ у выделения создаёт
+    // контекстный приказ. Для наблюдателя ПКМ остаётся перетаскиванием камеры.
+    if (canWriteGameState() && w.units.getSelected().length > 0) return
 
     dragging = true
     last = { x: e.clientX, y: e.clientY }

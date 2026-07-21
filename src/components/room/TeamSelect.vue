@@ -88,6 +88,12 @@ watch(
 
     <div class="buttons">
       <button
+        class="team-spectator"
+        @click="onTeamSelected(Team.SPECTATOR)"
+      >
+        {{ getTeamTitle(Team.SPECTATOR) }}
+      </button>
+      <button
         v-for="roomMap in selectableRoomMaps"
         :key="roomMap.room_map_id"
         @click="onTeamSelected(roomMap.team, roomMap.user?.id ?? null)"
@@ -98,10 +104,6 @@ watch(
           : {{ roomMap.user.name || 'John Doe' }}
         </template>
       </button>
-    </div>
-
-    <div v-if="selectableRoomMaps.length === 0" class="empty">
-      No room maps available
     </div>
   </div>
 </template>
@@ -162,5 +164,26 @@ button:hover {
   border: none;
 }
 
+.team-admin {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: #f59e0b;
+}
+
+.team-admin:hover {
+  background: rgba(245, 158, 11, 0.24);
+  border-color: #fbbf24;
+}
+
+.team-spectator {
+  color: #d8b4fe;
+  background: rgba(168, 85, 247, 0.14);
+  border-color: #a855f7;
+}
+
+.team-spectator:hover {
+  background: rgba(168, 85, 247, 0.24);
+  border-color: #c084fc;
+}
 
 </style>

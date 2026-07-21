@@ -46,6 +46,7 @@ export type EnvironmentState = {
   isRoute?: boolean
   params?: {
     moraleCheckMod?: number
+    forceFormation?: string
     [key: string]: unknown
   }
   multipliers?: Partial<Record<EnvironmentStatKey, number>>

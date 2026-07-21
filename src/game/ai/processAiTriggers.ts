@@ -1,120 +1,127 @@
 import type { world } from "@/engine/world/world.ts";
 import type { BaseUnit } from "@/engine/units/baseUnit.ts";
-import type { UnitAiTriggerState } from "@/engine";
+import { unitType, type UnitAiTriggerState } from "@/engine";
+import { Team } from "@/enums/teamKeys.ts";
 
 type TriggerEventPayload = {
   unitId: string;
-  triggerType: UnitAiTriggerState["type"];
+  triggerType: string;
   sourceMessageId: string | null;
   details?: Record<string, unknown>;
 };
 
-const previousHpByWorld = new WeakMap<world, Map<string, number>>();
+const previousVisibleEnemiesByWorld = new WeakMap<world, Map<string, Set<string>>>();
 
-function getPreviousHpMap(worldInstance: world): Map<string, number> {
-  const existing = previousHpByWorld.get(worldInstance);
+function getPreviousVisibleEnemiesMap(worldInstance: world): Map<string, Set<string>> {
+  const existing = previousVisibleEnemiesByWorld.get(worldInstance);
   if (existing) return existing;
-  const created = new Map<string, number>();
-  previousHpByWorld.set(worldInstance, created);
+  const created = new Map<string, Set<string>>();
+  previousVisibleEnemiesByWorld.set(worldInstance, created);
   return created;
-}
-
-function hasTriggerCooldown(trigger: UnitAiTriggerState): boolean {
-  const cooldownSeconds = trigger.cooldownSeconds ?? 0;
-  if (!Number.isFinite(cooldownSeconds) || cooldownSeconds <= 0) return false;
-  const lastTriggeredAtMs = trigger.lastTriggeredAt ? Date.parse(trigger.lastTriggeredAt) : NaN;
-  if (!Number.isFinite(lastTriggeredAtMs)) return false;
-  const elapsedMs = Date.now() - lastTriggeredAtMs;
-  return elapsedMs < cooldownSeconds * 1000;
 }
 
 function emitTrigger(worldInstance: world, payload: TriggerEventPayload) {
   worldInstance.events.emit("ai_trigger", payload);
 }
 
-function processOnEnemyDistanceTrigger(
-  worldInstance: world,
-  unit: BaseUnit,
-  trigger: UnitAiTriggerState
-): TriggerEventPayload | null {
-  if (trigger.type !== "on_enemy_distance") return null;
-  const directEnemies = worldInstance.units
-    .getDirectView(unit)
-    .filter((otherUnit) => otherUnit.team !== unit.team && otherUnit.alive);
-  if (!directEnemies.length) return null;
-  const metersPerPixel = Math.max(0.0001, Number(worldInstance.map.metersPerPixel) || 1);
-  let nearestDistanceMeters = Infinity;
-  for (const enemy of directEnemies) {
-    const distanceMeters = Math.hypot(
-      enemy.pos.x - unit.pos.x,
-      enemy.pos.y - unit.pos.y
-    ) * metersPerPixel;
-    if (distanceMeters < nearestDistanceMeters) {
-      nearestDistanceMeters = distanceMeters;
-    }
-  }
-  if (!Number.isFinite(nearestDistanceMeters)) return null;
-  if (nearestDistanceMeters > trigger.distanceMeters) return null;
-  return {
-    unitId: unit.id,
-    triggerType: "on_enemy_distance",
-    sourceMessageId: trigger.sourceMessageId ?? null,
-    details: {
-      directEnemyCount: directEnemies.length,
-      nearestDistanceMeters,
-      thresholdMeters: trigger.distanceMeters,
-    },
-  };
+function resolveLatestDeliveredMessageId(unit: BaseUnit): string | null {
+  const messages = unit.messages
+    .filter((message) => (
+      message.author_team === Team.RED || message.author_team === Team.BLUE
+    ))
+    .sort((a, b) => a.time.localeCompare(b.time))
+  return messages[messages.length - 1]?.id ?? null
 }
 
-function processOnAttackedTrigger(
+function processAtGameTimeTrigger(
+  worldInstance: world,
   unit: BaseUnit,
   trigger: UnitAiTriggerState,
-  previousHp: number | undefined
 ): TriggerEventPayload | null {
-  if (trigger.type !== "on_attacked") return null;
-  const prevHp = (typeof previousHp === "number" && Number.isFinite(previousHp))
-    ? previousHp
-    : null;
-  if (prevHp == null) return null;
-  if (unit.hp >= prevHp) return null;
+  if (trigger.type !== "at_game_time" || trigger.fired) return null
+  const currentGameTimeMs = Date.parse(String(worldInstance.time).replace(" ", "T"))
+  const targetGameTimeMs = Date.parse(String(trigger.atGameTime).replace(" ", "T"))
+  if (!Number.isFinite(currentGameTimeMs) || !Number.isFinite(targetGameTimeMs)) return null
+  if (currentGameTimeMs < targetGameTimeMs) return null
   return {
     unitId: unit.id,
-    triggerType: "on_attacked",
+    triggerType: "at_game_time",
     sourceMessageId: trigger.sourceMessageId ?? null,
     details: {
-      hpBefore: prevHp,
-      hpAfter: unit.hp,
+      atGameTime: trigger.atGameTime,
+      currentGameTime: worldInstance.time,
     },
-  };
+  }
 }
 
 export function processAiTriggers(worldInstance: world) {
-  const previousHpMap = getPreviousHpMap(worldInstance);
-  const nowIso = new Date().toISOString();
+  const previousVisibleEnemiesMap = getPreviousVisibleEnemiesMap(worldInstance)
   const units = worldInstance.units.list();
   for (const unit of units) {
-    if (!unit.alive) {
-      previousHpMap.delete(unit.id);
+    const attackDamage = unit.consumeAttackDamage()
+    if (
+      !unit.alive
+      || unit.type === unitType.GENERAL
+      || unit.type === unitType.MESSENGER
+      || unit.isRetreat
+    ) {
+      if (unit.alive && unit.isRetreat) {
+        previousVisibleEnemiesMap.set(unit.id, new Set(
+          worldInstance.units
+            .getDirectView(unit)
+            .filter((otherUnit) => otherUnit.team !== unit.team && otherUnit.alive)
+            .map((enemy) => enemy.id)
+        ))
+      } else {
+        previousVisibleEnemiesMap.delete(unit.id)
+      }
       continue;
     }
+    const sourceMessageId = resolveLatestDeliveredMessageId(unit)
+    if (attackDamage) {
+      emitTrigger(worldInstance, {
+        unitId: unit.id,
+        triggerType: "on_attacked",
+        sourceMessageId,
+        details: {
+          hpBefore: attackDamage.hpBefore,
+          hpAfter: attackDamage.hpAfter,
+          attackerIds: attackDamage.attackerIds,
+        },
+      })
+    }
+
+    const directEnemies = worldInstance.units
+      .getDirectView(unit)
+      .filter((otherUnit) => otherUnit.team !== unit.team && otherUnit.alive)
+    const currentVisibleEnemyIds = new Set(directEnemies.map((enemy) => enemy.id))
+    const previousVisibleEnemyIds = previousVisibleEnemiesMap.get(unit.id) ?? new Set<string>()
+    const newlyVisibleEnemies = directEnemies.filter((enemy) => !previousVisibleEnemyIds.has(enemy.id))
+    if (newlyVisibleEnemies.length) {
+      emitTrigger(worldInstance, {
+        unitId: unit.id,
+        triggerType: "on_enemy_seen",
+        sourceMessageId,
+        details: {
+          enemyIds: newlyVisibleEnemies.map((enemy) => enemy.id),
+          directEnemyCount: directEnemies.length,
+        },
+      })
+    }
+
     const triggers = unit.getAiTriggers();
-    const previousHp = previousHpMap.get(unit.id);
     let didTrigger = false;
     for (let idx = 0; idx < triggers.length; idx += 1) {
       const trigger = triggers[idx]!;
-      if (hasTriggerCooldown(trigger)) continue;
-      const enemyDistancePayload = processOnEnemyDistanceTrigger(worldInstance, unit, trigger);
-      const attackedPayload = processOnAttackedTrigger(unit, trigger, previousHp);
-      const payload = enemyDistancePayload ?? attackedPayload;
+      const payload = processAtGameTimeTrigger(worldInstance, unit, trigger)
       if (!payload) continue;
       emitTrigger(worldInstance, payload);
       didTrigger = true;
-      unit.touchAiTrigger(idx, nowIso);
+      unit.touchAiTrigger(idx);
     }
     if (didTrigger) {
       unit.setDirty();
     }
-    previousHpMap.set(unit.id, unit.hp);
+    previousVisibleEnemiesMap.set(unit.id, currentVisibleEnemyIds)
   }
 }

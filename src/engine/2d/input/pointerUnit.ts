@@ -10,6 +10,7 @@ import {
   isPlayerDirectViewOrderContext
 } from "@/engine/units/directViewOrderRules.ts";
 import { InputLifecycle } from '@/engine/input/lifecycle'
+import { canWriteGameState } from '@/game/roomGuards.ts'
 
 export function bindUnitInteraction(
   canvas: HTMLCanvasElement,
@@ -329,6 +330,10 @@ export function bindUnitInteraction(
       }
 
       const isCommandDrag = shouldDragAsCommand()
+      if (!canWriteGameState()) {
+        w.events.emit('changed', { reason: 'select' })
+        return
+      }
       mode = isCommandDrag ? 'commandDrag' : 'drag'
       startWorld = worldPos
       dragOrigin.clear()
@@ -470,6 +475,7 @@ export function bindUnitInteraction(
 
   const ROTATE_STEP = Math.PI / 32
   function onWheel(e: WheelEvent) {
+    if (!canWriteGameState()) return
     if (window.INPUT.IGNORE_UNIT_INTERACTION) return
     if (mode !== 'drag' && mode !== 'commandDrag') return
     const selected = w.units.getSelected()
@@ -577,6 +583,7 @@ export function bindUnitInteraction(
     if (e.shiftKey) shiftKeyActive = true
     if (e.key !== 'Delete' || e.repeat) return
     if (window.INPUT.IGNORE_UNIT_INTERACTION) return
+    if (!canWriteGameState()) return
 
     const selected = w.units.getSelected()
     if (!selected.length) return

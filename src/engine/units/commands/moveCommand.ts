@@ -54,9 +54,11 @@ export class MoveCommand extends BaseCommand<
   }
 
   update(unit: BaseUnit, dt: number) {
+    if (this.isFinished(unit)) {
+      unit.activateAbility(null)
+      return
+    }
     this.applyStateToUnit(unit)
-
-    if (this.isFinished(unit)) return
     if (!this.canMove(unit)) return
 
     const dx = this.state.target.x - unit.pos.x
@@ -75,6 +77,10 @@ export class MoveCommand extends BaseCommand<
         x: unit.pos.x + (dx / dist) * speed,
         y: unit.pos.y + (dy / dist) * speed,
       })
+    }
+
+    if (this.isFinished(unit)) {
+      unit.activateAbility(null)
     }
   }
 

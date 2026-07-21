@@ -5,6 +5,7 @@ import { UnitCommandTypes } from '@/engine/units/enums/UnitCommandTypes'
 import { emitUnitCommandRequest } from '@/engine/2d/input/unitCommandBus'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import { InputLifecycle } from '@/engine/input/lifecycle'
+import { canWriteGameState } from '@/game/roomGuards.ts'
 
 function isUiEventTarget(target: EventTarget | null) {
   const el = target as HTMLElement | null
@@ -75,6 +76,7 @@ export function bindUnitContextCommands(w: world) {
   const lifecycle = new InputLifecycle()
   const onPointerDownCapture = (e: PointerEvent) => {
     if (e.button !== 2) return
+    if (!canWriteGameState()) return
     if (window.INPUT.IGNORE_UNIT_INTERACTION) return
     if (window.INPUT.IGNORE_DRAG) return
     if (isAnyOrderOpen()) return

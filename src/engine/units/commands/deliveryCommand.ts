@@ -11,7 +11,7 @@ import {ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import {getMessengerLogicConfig} from "@/engine/resourcePack/messengerLogic.ts";
 import {buildMessengerRouteByNearestPoints} from "@/engine/units/messengerRoute.ts";
 import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
-import { applyReadyMessageOrdersToUnit } from "@/engine/units/messageOrders.ts";
+import {emitUnitLinkedMessage} from "@/engine/units/messageOrders.ts";
 
 export interface DeliveryCommandState {
   targets: uuid[],
@@ -49,7 +49,7 @@ export class DeliveryCommand extends BaseCommand<
   UnitCommandTypes.Delivery,
   DeliveryCommandState
 > {
-  private static readonly DELIVERY_RANGE_MULTIPLIER = 2;
+  private static readonly DELIVERY_RANGE_METERS = 50;
   private static readonly ENEMY_THREAT_RADIUS_METERS = 1000;
   private static readonly MAX_ENEMY_SIGHTINGS = 24;
   private static readonly OUTBOUND_TRACE_MAX_POINTS = 1200;
@@ -65,7 +65,7 @@ export class DeliveryCommand extends BaseCommand<
   }
 
   private getDeliveryRange(): number {
-    return BaseUnit.COLLISION_RANGE * DeliveryCommand.DELIVERY_RANGE_MULTIPLIER;
+    return DeliveryCommand.DELIVERY_RANGE_METERS / window.ROOM_WORLD.map.metersPerPixel;
   }
 
   private distanceTo(unit: BaseUnit, target: BaseUnit): number {
@@ -144,12 +144,23 @@ export class DeliveryCommand extends BaseCommand<
   private buildDeliveryRoute(goal: vec2, from: vec2): vec2[] {
     const startedAt = this.nowMs()
     const threatZones = this.getEnemyThreatZones()
-    const points = buildRoadTurnRoutePoints(
+    let points = buildRoadTurnRoutePoints(
       window.ROOM_WORLD,
       from,
       goal,
-      threatZones.length ? { threatZones } : undefined
+      {
+        threatZones,
+        allowDirectFallback: false,
+      }
     );
+    if (!points.length && threatZones.length) {
+      points = buildRoadTurnRoutePoints(
+        window.ROOM_WORLD,
+        from,
+        goal,
+        { allowDirectFallback: false }
+      )
+    }
     const durationMs = this.nowMs() - startedAt
     this.logPerf('build_delivery_route', {
       durationMs,
@@ -158,8 +169,7 @@ export class DeliveryCommand extends BaseCommand<
       goal: { x: goal.x, y: goal.y },
       resultPoints: points.length,
     })
-    if (points.length) return points;
-    return [{ x: goal.x, y: goal.y }];
+    return points;
   }
 
   private getEnemyThreatZones(): Array<{ x: number; y: number; radiusPx: number }> {
@@ -472,8 +482,14 @@ export class DeliveryCommand extends BaseCommand<
     if (this.state.reportSent) return
     if (!this.shouldReturnAfterSuccessfulDelivery()) return
     if (!this.state.sourceUnitId) return
-    const team = unit.team === 'red' ? Team.RED : Team.BLUE
-    const reportId = crypto.randomUUID()
+    const sourceMessage = this.state.messageId
+      ? window.ROOM_WORLD.messages.get(this.state.messageId)
+      : null
+    if (!sourceMessage) return
+    const responseUnit = (this.state.targetsDelivered ?? [])
+      .map((id) => window.ROOM_WORLD.units.get(id))
+      .find((candidate): candidate is BaseUnit => Boolean(candidate?.alive))
+    if (!responseUnit) return
     const undeliveredUnitIds = this.getPendingTargetIds()
     const attackedTargets = this.state.attackedTargets ?? []
     const textLines = [
@@ -487,22 +503,12 @@ export class DeliveryCommand extends BaseCommand<
     if (attackedTargets.length) {
       textLines.push(`#i18n.chat.messenger.units_in_battle ${this.buildUnitTagsList(attackedTargets)}`)
     }
-    window.ROOM_WORLD.addMessage({
-      id: reportId,
-      author: 'Messenger',
-      author_team: Team.ADMIN,
-      unitIds: this.state.targetsDelivered ?? [],
-      text: textLines.join('\n'),
-      time: window.ROOM_WORLD.time,
-      created_at: new Date().toISOString(),
-      delivered_at: null,
-      quotedMessageId: this.state.quotedMessageId ?? this.state.messageId ?? null,
-      team,
-      status: ChatMessageStatus.Sent,
-      delivered: false,
-      deliveryStatus: 'delivered',
-    })
-    this.state.reportSent = true
+    this.state.reportSent = emitUnitLinkedMessage(
+      sourceMessage,
+      responseUnit,
+      textLines.join('\n'),
+      unit.id,
+    )
   }
 
   private shouldReturnAfterSuccessfulDelivery(): boolean {
@@ -670,15 +676,35 @@ export class DeliveryCommand extends BaseCommand<
   }
 
   private canDeliverAnyPendingTargetNow(unit: BaseUnit): boolean {
-    const deliveryRange = this.getDeliveryRange()
-    for (const id of this.getPendingTargetIds()) {
-      const target = window.ROOM_WORLD.units.get(id)
-      if (!target || !target.alive) continue
-      if (this.distanceTo(unit, target) <= deliveryRange) {
-        return true
+    return this.getChainReachableTargetIds(unit, false).size > 0
+  }
+
+  private getChainReachableTargetIds(unit: BaseUnit, ignoreRange: boolean): Set<uuid> {
+    const pendingTargetIds = new Set(this.getPendingTargetIds())
+    if (ignoreRange) return pendingTargetIds
+
+    const chainRange = this.getDeliveryRange()
+    const chainUnits = window.ROOM_WORLD.units.list().filter((candidate) => (
+      candidate.alive
+      && candidate.type !== unitType.MESSENGER
+      && candidate.team === unit.team
+    ))
+    const queue = chainUnits.filter((candidate) => this.distanceTo(unit, candidate) <= chainRange)
+    const reachableUnitIds = new Set<uuid>(queue.map((candidate) => candidate.id))
+
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      for (const candidate of chainUnits) {
+        if (reachableUnitIds.has(candidate.id)) continue
+        if (this.distanceTo(current, candidate) > chainRange) continue
+        reachableUnitIds.add(candidate.id)
+        queue.push(candidate)
       }
     }
-    return false
+
+    return new Set(
+      Array.from(pendingTargetIds).filter((id) => reachableUnitIds.has(id))
+    )
   }
 
   private tryHandleReachedTarget(
@@ -688,11 +714,12 @@ export class DeliveryCommand extends BaseCommand<
   ): boolean {
     if (!deliveryTarget) return false
     const deliveryRange = this.getDeliveryRange()
-    if (this.distanceTo(unit, deliveryTarget) > deliveryRange) return false
     if (this.state.returning) {
+      if (this.distanceTo(unit, deliveryTarget) > deliveryRange) return false
       this.finishReturn(unit)
       return true
     }
+    if (!this.canDeliverAnyPendingTargetNow(unit)) return false
     if (!this.state.returning && !visibleTarget && this.state.manualRoutePoints?.length) {
       if ((this.state.routeIndex ?? 0) < (this.state.route?.length ?? 0)) {
         this.ensureDeliveryMoveCommands(unit)
@@ -840,7 +867,11 @@ export class DeliveryCommand extends BaseCommand<
       return false;
     }
 
-    if (this.distanceTo(unit, deliveryTarget) <= this.getDeliveryRange()) {
+    if (
+      this.state.returning
+        ? this.distanceTo(unit, deliveryTarget) <= this.getDeliveryRange()
+        : this.canDeliverAnyPendingTargetNow(unit)
+    ) {
       return false;
     }
     if (this.hasPendingDeliveryMove(unit)) {
@@ -919,7 +950,7 @@ export class DeliveryCommand extends BaseCommand<
         returning: Boolean(this.state.returning),
       })
       routePoints = this.buildDeliveryRoute(deliveryTarget.pos, unit.pos);
-      if (!visibleTarget && !this.state.returning && routePoints.length) {
+      if (!visibleTarget && !this.state.returning && routePoints.length > 1) {
         this.state.route = routePoints.map((point) => ({ x: point.x, y: point.y }))
         this.state.routeIndex = 0
         this.state.routeKind = 'auto'
@@ -952,16 +983,19 @@ export class DeliveryCommand extends BaseCommand<
   }
 
   private deliverToTarget(unit: BaseUnit, ignoreRange = false) {
-    const deliveryRange = this.getDeliveryRange()
+    const reachableTargetIds = this.getChainReachableTargetIds(unit, ignoreRange)
     let deliveredAny = false
+    const deliveredByMessage = new Map<string, string[]>()
     for (const id of this.getPendingTargetIds()) {
+      if (!reachableTargetIds.has(id)) continue
       const u = window.ROOM_WORLD.units.get(id);
       if (!u) continue;
-      if (!ignoreRange && this.distanceTo(unit, u) > deliveryRange) continue;
       for (const m of unit.messages) {
         window.ROOM_WORLD.units.withNewCommandsTmp.add(id);
         u.linkMessage(m.id);
-        applyReadyMessageOrdersToUnit(window.ROOM_WORLD.messages.get(m.id), u);
+        const deliveredUnitIds = deliveredByMessage.get(m.id) ?? []
+        deliveredUnitIds.push(id)
+        deliveredByMessage.set(m.id, deliveredUnitIds)
         u.setDirty();
         deliveredAny = true
       }
@@ -971,16 +1005,55 @@ export class DeliveryCommand extends BaseCommand<
       this.markTargetDelivered(id)
     }
     if (deliveredAny) {
+      for (const [messageId, unitIds] of deliveredByMessage) {
+        window.ROOM_WORLD.events.emit('message_delivered', {
+          messageId,
+          unitIds,
+          messengerId: this.state.messengerId ?? unit.id,
+        })
+      }
       this.emitDeliveryStatus('delivered')
     }
   }
 
+  private deliverReturnMessages(unit: BaseUnit, target: BaseUnit | null) {
+    if (!target) return
+    for (const linkedMessage of unit.messages) {
+      const message = window.ROOM_WORLD.messages.get(linkedMessage.id)
+      if (!message) continue
+      if (message.messengerId !== unit.id || message.delivered) continue
+      target.linkMessage(message.id)
+      message.deliveryStatus = 'delivered'
+      message.delivered = true
+      message.delivered_at = window.ROOM_WORLD.time
+      const roomUserIds = target.roomMapUserId > 0 ? [target.roomMapUserId] : []
+      window.ROOM_WORLD.events.emit('api', {
+        type: 'messenger_delivery',
+        data: {
+          id: message.id,
+          roomUserIds,
+          time: window.ROOM_WORLD.time,
+          messengerId: unit.id,
+          quotedMessageId: message.quotedMessageId ?? null,
+          deliveryStatus: 'delivered',
+        },
+      })
+      window.ROOM_WORLD.events.emit('message_delivered', {
+        messageId: message.id,
+        unitIds: [target.id],
+        messengerId: unit.id,
+      })
+    }
+  }
+
   private finishReturn(unit: BaseUnit) {
+    const returnTarget = this.resolveReturnTarget(unit)
     if (this.state.returnReason) {
       this.sendReportIfNeeded(unit, this.state.returnReason)
     } else {
       this.sendSuccessReportIfNeeded(unit)
     }
+    this.deliverReturnMessages(unit, returnTarget)
     this.applyReturnHpDeltaIfNeeded()
     this.state.delivered = true;
     window.ROOM_WORLD.units.remove(unit.id);

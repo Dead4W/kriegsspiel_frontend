@@ -118,12 +118,16 @@
       "emptyTypeOverrides": "No per-unit overrides added.",
       "emptyTitle": "No environment states yet.",
       "emptyText": "Add a state to start building the environment section.",
+      "formations": {
+        "none": "Do not override formation"
+      },
       "fields": {
         "title": "Display title",
         "icon": "Icon",
         "tags": "Tags",
         "isRoute": "Route state",
         "moraleCheckMod": "Morale",
+        "forceFormation": "Forced formation",
         "unitType": "Unit type"
       }
     },

@@ -1,14 +1,20 @@
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import type {uuid} from "@/engine";
-import {applyReadyMessageOrdersToDeliveredUnits} from "@/engine/units/messageOrders.ts";
 
 
 export class messageregistry {
   private map = new Map<uuid, ChatMessage>()
   private dirty = new Set<uuid>()
   private newMessages = new Set<uuid>();
+  private messengerSpawnCandidates = new Set<uuid>();
+  private remoteMessagesSeen = new Set<uuid>();
 
   upsert(item: ChatMessage, source: 'local' | 'remote' = 'local', ignoreNew: boolean = false): ChatMessage {
+    if (source === 'remote' && !this.remoteMessagesSeen.has(item.id)) {
+      this.remoteMessagesSeen.add(item.id)
+      this.messengerSpawnCandidates.add(item.id)
+    }
+
     const existing = this.map.get(item.id)
     if (existing) {
       const next: ChatMessage = { ...item }
@@ -41,7 +47,6 @@ export class messageregistry {
     const message = this.map.get(id)
     if (!message) return null
     message.orders = orders ?? null
-    applyReadyMessageOrdersToDeliveredUnits(message)
     return message
   }
 
@@ -81,5 +86,18 @@ export class messageregistry {
     this.newMessages.clear();
 
     return list;
+  }
+
+  getMessengerSpawnCandidates(): ChatMessage[] {
+    const list: ChatMessage[] = []
+    for (const id of this.messengerSpawnCandidates) {
+      const item = this.map.get(id)
+      if (item) {
+        list.push(item)
+      }
+    }
+    this.messengerSpawnCandidates.clear()
+
+    return list
   }
 }

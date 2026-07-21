@@ -2,7 +2,7 @@
 import {computed, onBeforeUnmount, onMounted, ref} from "vue";
 import type {PaintStroke} from "@/engine/types/paintTypes.ts";
 import HotkeyTag from "@/components/ui/HotkeyTag.vue";
-import { isAdminTeam } from "@/game/roomGuards.ts";
+import { canWriteGameState, isAdminTeam } from "@/game/roomGuards.ts";
 
 const color = ref("#ff3b30")
 const opacity = ref(0.85)
@@ -49,6 +49,7 @@ function worldPosFromEvent(e: PointerEvent) {
 }
 
 function onPointerDown(e: PointerEvent) {
+  if (!canWriteGameState()) return
   if (e.button !== 0 && e.button !== 2) return
   if (isUiEventTarget(e.target)) return
   if (painting) return

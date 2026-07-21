@@ -22,6 +22,10 @@ export type RoomData = {
   name: string
   weather?: Weather
   ingame_time?: string
+  blueWin?: number
+  redWin?: number
+  blueResult?: Record<string, string>
+  redResult?: Record<string, string>
   admin_id: number
   options: Record<RoomSettingKey, any>
   params?: Record<string, any>

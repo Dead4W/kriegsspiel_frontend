@@ -20,8 +20,15 @@ export type DirectViewUnitPacket = {
   frames?: MoveFrame[]
 }
 
+export type EndResults = {
+  blueWin?: number
+  redWin?: number
+  blueResult?: Record<string, string>
+  redResult?: Record<string, string>
+}
+
 export type OutMessage =
-  | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: Weather, options?: Record<string, unknown>, params?: Record<string, unknown>} }
+  | { type: 'room'; data: {ingame_time: string, stage: RoomGameStage, weather: Weather, options?: Record<string, unknown>, params?: Record<string, unknown>} & EndResults }
   | { type: 'unit'; data: unitstate; frames?: MoveFrame[] }
   | { type: 'unit-remove'; data: uuid[] }
   | { type: 'paint_add'; data: PaintStroke }
@@ -40,7 +47,7 @@ export type OutMessage =
   | { type: 'cursor'; data: CursorObject }
   | { type: 'skip_time'; data: string; live?: boolean; liveIntervalMs?: number; liveGameSecondsPerMinute?: number }
   | { type: 'skip_time_success'; data: true }
-  | { type: 'set_stage'; data: RoomGameStage }
+  | { type: 'set_stage'; data: RoomGameStage | ({ stage: RoomGameStage } & EndResults) }
   | {
     type: 'messenger_delivery';
     data: {
@@ -123,6 +130,17 @@ function applyRoomParams(params: unknown) {
   if (!params || typeof params !== 'object') return
   window.ROOM_PARAMS ??= {}
   Object.assign(window.ROOM_PARAMS, params as Record<string, unknown>)
+}
+
+function applyEndResults(results: EndResults) {
+  const values = Object.fromEntries(
+    Object.entries(results).filter(([, value]) => value !== undefined)
+  )
+  if (!Object.keys(values).length) return
+  window.ROOM_PARAMS ??= {}
+  Object.assign(window.ROOM_PARAMS, values)
+  window.ROOM_SETTINGS ??= {}
+  Object.assign(window.ROOM_SETTINGS, values)
 }
 
 function extractPerTeamSettings(value: unknown): Record<string, Record<string, unknown>> | null {
@@ -555,6 +573,7 @@ export class GameSocket {
           }
           applyRoomParams(m.data.params)
           syncRoomSettingsFromParams(m.data.params)
+          applyEndResults(m.data)
         } else if (m.type === 'room_params_update') {
           applyRoomParams(m.data)
           syncRoomSettingsFromParams(m.data)
@@ -566,8 +585,15 @@ export class GameSocket {
             ...(m.data || {}),
           }
         } else if (m.type === 'set_stage') {
-          if (this.world.stage === RoomGameStage.PLANNING) {
-            this.world.stage = m.data;
+          const stage = typeof m.data === 'string' ? m.data : m.data.stage
+          if (
+            (this.world.stage === RoomGameStage.PLANNING && stage === RoomGameStage.WAR)
+            || (this.world.stage === RoomGameStage.WAR && stage === RoomGameStage.END)
+          ) {
+            this.world.stage = stage
+            if (typeof m.data === 'object') {
+              applyEndResults(m.data)
+            }
           }
         } else if (m.type === 'direct_view') {
           for (const u of window.ROOM_WORLD.units.list()) {

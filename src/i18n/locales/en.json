@@ -755,6 +755,28 @@
     "team_info": "You are playing for team:",
     "close": "Close"
   },
+  "endGameModal": {
+    "strategic": {
+      "grandVictory": "Grand strategic victory",
+      "goodVictory": "Good strategic victory",
+      "victory": "Strategic victory",
+      "draw": "Strategic draw",
+      "defeat": "Strategic defeat",
+      "goodDefeat": "Good strategic defeat",
+      "grandDefeat": "Grand strategic defeat"
+    },
+    "tactical": {
+      "grandVictory": "Grand tactical victory",
+      "goodVictory": "Good tactical victory",
+      "victory": "Tactical victory",
+      "draw": "Tactical draw",
+      "defeat": "Tactical defeat",
+      "goodDefeat": "Good tactical defeat",
+      "grandDefeat": "Grand tactical defeat"
+    },
+    "noResult": "The battle has ended.",
+    "close": "Close"
+  },
 
   "profile": "Profile",
   "profileSeo": {

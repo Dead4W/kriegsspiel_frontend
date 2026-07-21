@@ -19,6 +19,7 @@ import PaintTool from "@/components/tools/PaintTool.vue";
 import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import PlanningEntryModal from '@/components/PlanningEntryModal.vue'
+import EndGameModal from '@/components/EndGameModal.vue'
 import {
   canWriteGameState,
   isAdminTeam,
@@ -47,6 +48,34 @@ const isWar = ref(false)
 const hideUnitsLayer = ref(!!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER])
 const isPlanningEntryModalVisible = ref(false)
 const planningEntryModalClosed = ref(false)
+const isEndGameModalVisible = ref(false)
+const endGameModalClosed = ref(false)
+const endGameResults = ref<{
+  blueWin?: number
+  redWin?: number
+  blueResult?: Record<string, string>
+  redResult?: Record<string, string>
+}>({})
+
+function readDescriptions(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const descriptions = Object.entries(value as Record<string, unknown>)
+    .filter(([, description]) => typeof description === 'string' && description.trim())
+  return descriptions.length ? Object.fromEntries(descriptions) as Record<string, string> : undefined
+}
+
+function readEndGameResults() {
+  const source = {
+    ...(window.ROOM_SETTINGS as Record<string, unknown>),
+    ...(window.ROOM_PARAMS as Record<string, unknown>),
+  }
+  return {
+    blueWin: typeof source.blueWin === 'number' ? source.blueWin : undefined,
+    redWin: typeof source.redWin === 'number' ? source.redWin : undefined,
+    blueResult: readDescriptions(source.blueResult),
+    redResult: readDescriptions(source.redResult),
+  }
+}
 
 const playerTeam = computed<Team | null>(() => window.PLAYER?.team ?? null)
 const playerTeamForModal = computed<Team.RED | Team.BLUE | null>(() => {
@@ -153,12 +182,35 @@ function syncPlanningEntryModalState() {
   }
 }
 
+function closeEndGameModal() {
+  endGameModalClosed.value = true
+  isEndGameModalVisible.value = false
+}
+
+function syncEndGameModalState() {
+  const shouldDisplay =
+    isRedOrBlueTeam()
+    && world.value.stage === RoomGameStage.END
+  if (!shouldDisplay) {
+    isEndGameModalVisible.value = false
+    if (world.value.stage !== RoomGameStage.END) {
+      endGameModalClosed.value = false
+    }
+    return
+  }
+  if (!endGameModalClosed.value) {
+    isEndGameModalVisible.value = true
+  }
+}
+
 function sync() {
   world.value = window.ROOM_WORLD
   isEnd.value = world.value.stage === RoomGameStage.END
   isWar.value = world.value.stage === RoomGameStage.WAR
   hideUnitsLayer.value = !!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]
+  endGameResults.value = readEndGameResults()
   syncPlanningEntryModalState()
+  syncEndGameModalState()
 }
 
 onMounted(() => {
@@ -180,6 +232,12 @@ onUnmounted(() => {
       v-if="isPlanningEntryModalVisible && playerTeamForModal"
       :team="playerTeamForModal"
       @close="closePlanningEntryModal"
+    />
+    <EndGameModal
+      v-if="isEndGameModalVisible && playerTeamForModal"
+      :team="playerTeamForModal"
+      :results="endGameResults"
+      @close="closeEndGameModal"
     />
 
     <ForcesBar v-if="isAdminTeam()"/>

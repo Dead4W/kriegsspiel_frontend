@@ -155,6 +155,8 @@ export type UnitUiVisual = {
   hpBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   ammoBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   ammoBarBackground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
+  fatigueBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
+  fatigueBarBackground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   baseFlagY: number
 }
 
@@ -226,10 +228,24 @@ export function createUnitUi(objectSize: number) {
   )
   ammoBarFill.position.set(0, barBaseY - (barHeight + barGap), objectSize * 0.045)
   ammoBarFill.renderOrder = 71
+  const fatigueBarBackground = new THREE.Mesh(
+    new THREE.PlaneGeometry(barWidth, barHeight, 1, 1),
+    makeBarMaterial(0x000000, 0.62)
+  )
+  fatigueBarBackground.position.set(0, barBaseY - (barHeight + barGap) * 2, objectSize * 0.04)
+  fatigueBarBackground.renderOrder = 70
+  const fatigueBarFill = new THREE.Mesh(
+    new THREE.PlaneGeometry(barWidth, barHeight, 1, 1),
+    makeBarMaterial(0xef4444, 1)
+  )
+  fatigueBarFill.position.set(0, barBaseY - (barHeight + barGap) * 2, objectSize * 0.045)
+  fatigueBarFill.renderOrder = 71
   barsRoot.add(hpBarBackground)
   barsRoot.add(hpBarFill)
   barsRoot.add(ammoBarBackground)
   barsRoot.add(ammoBarFill)
+  barsRoot.add(fatigueBarBackground)
+  barsRoot.add(fatigueBarFill)
   flagRoot.add(barsRoot)
 
   return {
@@ -240,6 +256,8 @@ export function createUnitUi(objectSize: number) {
     hpBarFill,
     ammoBarFill,
     ammoBarBackground,
+    fatigueBarFill,
+    fatigueBarBackground,
     baseFlagY: flagBaseY,
   } satisfies UnitUiVisual
 }

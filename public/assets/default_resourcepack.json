@@ -106,7 +106,8 @@
     "moveHoursPerPoint": 0.5,
     "recoveryPerHour": 1,
     "attackedRecoveryMultiplier": 0.5,
-    "damageCurvePower": 5,
+    "damageCurvePower": 1,
+    "minDamageMultiplier": 0.4,
     "speedThresholds": [
       { "moreThan": 5, "multiplier": 0.8 },
       { "moreThan": 8, "multiplier": 0.6 }
@@ -140,11 +141,11 @@
   },
   "abilities": {
     "types": [
-      { "id": "charge", "title": "Charge", "multipliers": { "speed": 5, "fatigue": 4 } },
-      { "id": "double_time_move", "title": "Double time", "multipliers": { "speed": 2, "fatigue": 2 } },
-      { "id": "gallop", "title": "Gallop", "multipliers": { "speed": 4, "fatigue": 3 } },
+      { "id": "charge", "title": "Charge", "multipliers": { "speed": 5, "fatigue": 24 } },
+      { "id": "double_time_move", "title": "Double time", "multipliers": { "speed": 2, "fatigue": 12 } },
+      { "id": "gallop", "title": "Gallop", "multipliers": { "speed": 4, "fatigue": 12 } },
       { "id": "inaccuracy_fire", "title": "Area fire", "multipliers": {}, "params": { "radius": 1 } },
-      { "id": "throttle", "title": "Sprint", "multipliers": { "speed": 2, "fatigue": 2.5 } }
+      { "id": "throttle", "title": "Sprint", "multipliers": { "speed": 2, "fatigue": 12 } }
     ]
   },
   "units": {

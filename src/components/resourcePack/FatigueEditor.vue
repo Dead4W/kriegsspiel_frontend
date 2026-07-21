@@ -22,6 +22,7 @@ const fields = [
   'recoveryPerHour',
   'attackedRecoveryMultiplier',
   'damageCurvePower',
+  'minDamageMultiplier',
 ] as const
 
 const thresholds = computed(() => fatigue.value.speedThresholds ?? (fatigue.value.speedThresholds = []))

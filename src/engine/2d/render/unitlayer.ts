@@ -18,6 +18,7 @@ import {getEnvironmentIcon} from "@/engine/resourcePack/environment.ts";
 import {getFormationIcon} from "@/engine/resourcePack/formations.ts";
 import {getUnitNumberParam, getUnitStringParam} from "@/engine/resourcePack/units.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
+import {getFatigueConfig} from "@/engine/resourcePack/fatigue.ts";
 
 type MoveOrderRange = {
   min: number
@@ -513,8 +514,9 @@ export class unitlayer {
     ctx.fillStyle = hpGradientColor(hpRatio)
     ctx.fillRect(p.x - w / 2, y, w * hpRatio, barH)
 
+    let nextBarY = y + barH
     if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]) {
-      const ammoY = y + barH
+      const ammoY = nextBarY
       const ammoRatio = unit.ammo / unit.stats.ammoMax
 
 
@@ -523,6 +525,18 @@ export class unitlayer {
 
       ctx.fillStyle = 'rgb(255,106,0)'
       ctx.fillRect(p.x - w / 2, ammoY, w * ammoRatio, barH)
+      nextBarY += barH
+    }
+
+    if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.FATIGUE]) {
+      const fatigueY = nextBarY
+      const fatigueRatio = Math.max(0, Math.min(1, unit.fatigue / getFatigueConfig().max))
+
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'
+      ctx.fillRect(p.x - w / 2, fatigueY, w, barH)
+
+      ctx.fillStyle = '#ef4444'
+      ctx.fillRect(p.x - w / 2, fatigueY, w * fatigueRatio, barH)
     }
   }
 

@@ -4,6 +4,7 @@ import {
   type ResourcePack,
   toFiniteNumber,
 } from '@/engine/assets/resourcepack'
+import { clamp } from '@/engine/math'
 
 export type FatigueConfig = {
   max: number
@@ -12,6 +13,7 @@ export type FatigueConfig = {
   recoveryPerHour: number
   attackedRecoveryMultiplier: number
   damageCurvePower: number
+  minDamageMultiplier: number
   speedThresholds: Array<{
     moreThan: number
     multiplier: number
@@ -24,7 +26,8 @@ const DEFAULT_FATIGUE_CONFIG: FatigueConfig = {
   moveHoursPerPoint: 0.5,
   recoveryPerHour: 1,
   attackedRecoveryMultiplier: 0.5,
-  damageCurvePower: 5,
+  damageCurvePower: 1,
+  minDamageMultiplier: 0.4,
   speedThresholds: [
     { moreThan: 5, multiplier: 0.8 },
     { moreThan: 8, multiplier: 0.6 },
@@ -67,6 +70,11 @@ export function getFatigueConfig(
       toFiniteNumber(raw.attackedRecoveryMultiplier) ?? DEFAULT_FATIGUE_CONFIG.attackedRecoveryMultiplier,
     ),
     damageCurvePower: positiveNumber(raw.damageCurvePower, DEFAULT_FATIGUE_CONFIG.damageCurvePower),
+    minDamageMultiplier: clamp(
+      toFiniteNumber(raw.minDamageMultiplier) ?? DEFAULT_FATIGUE_CONFIG.minDamageMultiplier,
+      0,
+      1,
+    ),
     speedThresholds: speedThresholds.length ? speedThresholds : [...DEFAULT_FATIGUE_CONFIG.speedThresholds],
   }
 }

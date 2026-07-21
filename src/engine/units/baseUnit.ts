@@ -568,7 +568,10 @@ export abstract class BaseUnit {
       const fatigueConfig = getFatigueConfig()
       const fatigue = clamp(this.fatigue, 0, fatigueConfig.max)
       if (key === 'damage') {
-        const multiplier = Math.max(0, 1 - Math.pow(fatigue / fatigueConfig.max, fatigueConfig.damageCurvePower))
+        const multiplier = Math.max(
+          fatigueConfig.minDamageMultiplier,
+          1 - Math.pow(fatigue / fatigueConfig.max, fatigueConfig.damageCurvePower),
+        )
         if (multiplier !== 1) {
           total *= multiplier
           sources.push({ type: 'fatigue', state: 'damage', multiplier })

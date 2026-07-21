@@ -155,7 +155,8 @@ export function createInitialFatigue(): FatigueDraft {
     moveHoursPerPoint: 0.5,
     recoveryPerHour: 1,
     attackedRecoveryMultiplier: 0.5,
-    damageCurvePower: 5,
+    damageCurvePower: 1,
+    minDamageMultiplier: 0.4,
     speedThresholds: [
       { moreThan: 5, multiplier: 0.8 },
       { moreThan: 8, multiplier: 0.6 },

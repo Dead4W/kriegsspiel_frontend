@@ -156,6 +156,7 @@ export type ResourcePackDraft = {
     recoveryPerHour?: number
     attackedRecoveryMultiplier?: number
     damageCurvePower?: number
+    minDamageMultiplier?: number
     speedThresholds?: Array<{
       moreThan?: number
       multiplier?: number

@@ -39,6 +39,8 @@ export type FormationVisual = {
   hpBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   ammoBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   ammoBarBackground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
+  fatigueBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
+  fatigueBarBackground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   baseFlagY: number
   bodyMaterial: THREE.MeshStandardMaterial
   headMaterial: THREE.MeshStandardMaterial
@@ -407,6 +409,8 @@ export function createFormationMesh(
     hpBarFill,
     ammoBarFill,
     ammoBarBackground,
+    fatigueBarFill,
+    fatigueBarBackground,
     baseFlagY,
   } = createUnitUi(objectSize)
   const { retreatFlagsRoot, retreatFlagCloths, retreatFlagMaterial } = createRetreatFlags(
@@ -433,6 +437,8 @@ export function createFormationMesh(
     hpBarFill,
     ammoBarFill,
     ammoBarBackground,
+    fatigueBarFill,
+    fatigueBarBackground,
     baseFlagY,
     bodyMaterial,
     headMaterial,

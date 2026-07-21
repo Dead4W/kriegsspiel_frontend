@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {useI18n} from 'vue-i18n'
 import type {BaseUnit, StatKey} from '@/engine/units/baseUnit'
-import {onMounted, onUnmounted, ref, type UnwrapRef} from "vue";
+import {computed, onMounted, onUnmounted, ref, watch, type UnwrapRef} from "vue";
 import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {unitType} from "@/engine";
 import {clamp} from "@/engine/math.ts";
@@ -9,7 +9,8 @@ import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { canWriteGameState, isAdminOrSpectatorTeam, isAdminTeam, isFatigueEnabled } from "@/game/roomGuards.ts";
 import { getFatigueConfig } from '@/engine/resourcePack/fatigue'
 
-const { unit } = defineProps<{ unit: UnwrapRef<BaseUnit> }>()
+const props = defineProps<{ unit: UnwrapRef<BaseUnit> }>()
+const unit = computed(() => props.unit)
 
 const emit = defineEmits<{
   (e: 'edit'): void
@@ -17,7 +18,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const typeLabel = t(`unit.${unit.type}`)
+const typeLabel = computed(() => t(`unit.${unit.value.type}`))
 
 /* Refs */
 
@@ -28,7 +29,7 @@ const isStatsOpen = ref(false)
 
 const onEdit = (emitChanged = true) => {
   if (!canWriteGameState()) return
-  window.ROOM_WORLD.units.addUnitDirty(unit.id)
+  window.ROOM_WORLD.units.addUnitDirty(unit.value.id)
   if (emitChanged) {
     emit('edit')
   }
@@ -86,8 +87,9 @@ function formatStatInput(value: number | undefined) {
 }
 
 function syncInputValues() {
-  hpProxy.value = formatStatInput(unit.hp)
-  ammoProxy.value = formatStatInput(unit.ammo)
+  hpProxy.value = formatStatInput(unit.value.hp)
+  ammoProxy.value = formatStatInput(unit.value.ammo)
+  fatigueProxy.value = formatStatInput(unit.value.fatigue)
 }
 
 function commitInput(normalizeInput = true) {
@@ -99,18 +101,27 @@ function commitInput(normalizeInput = true) {
 
   const hp = Number(hpProxy.value.replace(',', '.'))
   if (!Number.isNaN(hp)) {
-    const nextHp = clamp(hp, 0, unit.stats.maxHp!)
-    if (unit.hp !== nextHp) {
-      unit.hp = nextHp
+    const nextHp = clamp(hp, 0, unit.value.stats.maxHp!)
+    if (unit.value.hp !== nextHp) {
+      unit.value.hp = nextHp
       changed = true
     }
   }
 
   const ammo = Number(ammoProxy.value.replace(',', '.'))
-  if (!Number.isNaN(ammo) && unit.stats.ammoMax != null) {
-    const nextAmmo = clamp(ammo, 0, unit.stats.ammoMax)
-    if (unit.ammo !== nextAmmo) {
-      unit.ammo = nextAmmo
+  if (!Number.isNaN(ammo) && unit.value.stats.ammoMax != null) {
+    const nextAmmo = clamp(ammo, 0, unit.value.stats.ammoMax)
+    if (unit.value.ammo !== nextAmmo) {
+      unit.value.ammo = nextAmmo
+      changed = true
+    }
+  }
+
+  const fatigue = Number(fatigueProxy.value.replace(',', '.'))
+  if (!Number.isNaN(fatigue)) {
+    const nextFatigue = clamp(fatigue, 0, getFatigueConfig().max)
+    if (unit.value.fatigue !== nextFatigue) {
+      unit.value.fatigue = nextFatigue
       changed = true
     }
   }
@@ -134,6 +145,7 @@ function commitInputOnChange() {
 
 const ammoProxy = ref('0')
 const hpProxy = ref('0')
+const fatigueProxy = ref('0')
 
 function isEnabledAmmo() {
   return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]
@@ -148,7 +160,7 @@ function isDebug() {
 }
 
 function copyUnitState() {
-  const json = JSON.stringify(unit.toState(), null, 2)
+  const json = JSON.stringify(unit.value.toState(), null, 2)
   void navigator.clipboard?.writeText(json)
 }
 
@@ -158,13 +170,13 @@ function syncSelection(data: {reason: string}) {
   if (data.reason === 'ws') {
     return;
   }
-  isMessenger.value = unit.type === unitType.MESSENGER;
+  isMessenger.value = unit.value.type === unitType.MESSENGER;
   syncInputValues()
   refreshKey.value++
 }
+watch(() => props.unit.id, () => syncSelection({reason: 'unit-prop'}), {immediate: true})
 onMounted(() => {
   window.ROOM_WORLD.events.on('changed', syncSelection)
-  syncSelection({reason: 'init'})
 })
 onUnmounted(() => {
   window.ROOM_WORLD.events.off('changed', syncSelection)
@@ -251,7 +263,17 @@ onUnmounted(() => {
         <!-- FATIGUE -->
         <div v-if="isEnabledFatigue()" class="stat">
           <label>{{ t('stat.fatigue') }}</label>
-          <span>{{ unit.fatigue.toFixed(1) }}</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            v-model="fatigueProxy"
+            :disabled="!canWriteGameState()"
+            min="0"
+            :max="getFatigueConfig().max"
+            @keydown.stop
+            @input="commitInputOnInput"
+            @change="commitInputOnChange"
+          />
           <span>/ {{ getFatigueConfig().max }}</span>
 
           <div class="bar">

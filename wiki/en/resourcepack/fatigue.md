@@ -18,7 +18,8 @@ Fatigue is clamped between `0` and `max`.
     "moveHoursPerPoint": 0.5,
     "recoveryPerHour": 1,
     "attackedRecoveryMultiplier": 0.5,
-    "damageCurvePower": 5,
+    "damageCurvePower": 1,
+    "minDamageMultiplier": 0.4,
     "speedThresholds": [
       { "moreThan": 5, "multiplier": 0.8 },
       { "moreThan": 8, "multiplier": 0.6 }
@@ -35,6 +36,7 @@ Fatigue is clamped between `0` and `max`.
 - `recoveryPerHour` - fatigue removed per idle hour.
 - `attackedRecoveryMultiplier` - recovery multiplier during a turn step in which the unit took damage.
 - `damageCurvePower` - shape of the damage penalty curve.
+- `minDamageMultiplier` - lower limit for the fatigue damage multiplier (from `0` to `1`).
 - `speedThresholds` - ordered fatigue thresholds. The first threshold exceeded by the unit applies its `multiplier` to speed.
 
 Movement and combat may happen in the same step; their fatigue gains are added. A unit recovers only when it neither moves nor attacks. Retreating units do not recover fatigue.
@@ -44,10 +46,10 @@ Movement and combat may happen in the same step; their fatigue gains are added. 
 The damage multiplier is calculated as:
 
 ```text
-1 - (fatigue / max) ^ damageCurvePower
+max(minDamageMultiplier, 1 - (fatigue / max) ^ damageCurvePower)
 ```
 
-At maximum fatigue, damage is always `0`. A power greater than `1` keeps the early penalty small and makes the loss steeper near the maximum.
+At maximum fatigue, damage cannot fall below `minDamageMultiplier` (default: `0.4`). A power of `1` makes damage decrease linearly; larger values keep the early penalty small and make the loss steeper near the maximum.
 
 ![Damage multiplier curves for different power values](/assets/wiki/fatigue-power.png)
 

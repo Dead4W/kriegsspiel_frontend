@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { BaseUnit } from '@/engine/units/baseUnit'
 import { CLIENT_SETTING_KEYS } from '@/enums/clientSettingsKeys'
 import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
+import { getFatigueConfig } from '@/engine/resourcePack/fatigue'
 import type { WorldRenderContext } from '../types'
 import {
   createAttackRenderState,
@@ -50,6 +51,8 @@ type UnitRenderRecord = {
   hpBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   ammoBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   ammoBarBackground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
+  fatigueBarFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
+  fatigueBarBackground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>
   baseFlagY: number
   pulsePhase: number
   shotTimer: number
@@ -214,6 +217,8 @@ export class UnitsLayerRenderer {
           hpBarFill: visual.hpBarFill,
           ammoBarFill: visual.ammoBarFill,
           ammoBarBackground: visual.ammoBarBackground,
+          fatigueBarFill: visual.fatigueBarFill,
+          fatigueBarBackground: visual.fatigueBarBackground,
           baseFlagY: visual.baseFlagY,
           bodyMaterial: visual.bodyMaterial,
           headMaterial: visual.headMaterial,
@@ -379,12 +384,23 @@ export class UnitsLayerRenderer {
     const limitedAmmo = Boolean(window.ROOM_SETTINGS?.[ROOM_SETTING_KEYS.LIMITED_AMMO])
     record.ammoBarBackground.visible = limitedAmmo
     record.ammoBarFill.visible = limitedAmmo
-    if (!limitedAmmo) return
+    if (limitedAmmo) {
+      const ammoMax = Math.max(1, Number(unit.stats.ammoMax) || 1)
+      const ammoRatio = THREE.MathUtils.clamp((Number(unit.ammo) || 0) / ammoMax, 0, 1)
+      record.ammoBarFill.scale.x = ammoRatio
+      record.ammoBarFill.position.x = (ammoRatio - 1) * record.ammoBarFill.geometry.parameters.width * 0.5
+    }
 
-    const ammoMax = Math.max(1, Number(unit.stats.ammoMax) || 1)
-    const ammoRatio = THREE.MathUtils.clamp((Number(unit.ammo) || 0) / ammoMax, 0, 1)
-    record.ammoBarFill.scale.x = ammoRatio
-    record.ammoBarFill.position.x = (ammoRatio - 1) * record.ammoBarFill.geometry.parameters.width * 0.5
+    const fatigueEnabled = Boolean(window.ROOM_SETTINGS?.[ROOM_SETTING_KEYS.FATIGUE])
+    record.fatigueBarBackground.visible = fatigueEnabled
+    record.fatigueBarFill.visible = fatigueEnabled
+    if (!fatigueEnabled) return
+
+    const fatigueMax = Math.max(1, getFatigueConfig().max)
+    const fatigueRatio = THREE.MathUtils.clamp((Number(unit.fatigue) || 0) / fatigueMax, 0, 1)
+    record.fatigueBarFill.scale.x = fatigueRatio
+    record.fatigueBarFill.position.x =
+      (fatigueRatio - 1) * record.fatigueBarFill.geometry.parameters.width * 0.5
   }
 
   private updateHouseTintOverlays(bindings: Map<string, UnitHouseBinding>) {

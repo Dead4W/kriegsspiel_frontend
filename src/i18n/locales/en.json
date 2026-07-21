@@ -262,7 +262,8 @@
         "moveHoursPerPoint": "Movement hours per point",
         "recoveryPerHour": "Recovery per hour",
         "attackedRecoveryMultiplier": "Recovery while attacked x",
-        "damageCurvePower": "Damage curve power"
+        "damageCurvePower": "Damage curve power",
+        "minDamageMultiplier": "Minimum damage multiplier"
       }
     },
     "messengerLogicEditor": {

@@ -264,7 +264,8 @@
         "moveHoursPerPoint": "Часов движения на единицу",
         "recoveryPerHour": "Восстановление в час",
         "attackedRecoveryMultiplier": "Восстановление под атакой x",
-        "damageCurvePower": "Степень кривой урона"
+        "damageCurvePower": "Степень кривой урона",
+        "minDamageMultiplier": "Минимальный модификатор урона"
       }
     },
     "messengerLogicEditor": {

@@ -8,7 +8,7 @@ import {
 import type { FormationType } from '@/engine/units/types'
 import type { StatKey } from '@/engine/units/baseUnit'
 
-export type FormationStatMultiplier = Partial<Record<StatKey, number>>
+export type FormationStatMultiplier = Partial<Record<StatKey | 'fatigue', number>>
 
 export type ResourcePackFormationType = {
   id: FormationType | string
@@ -25,6 +25,7 @@ const STAT_KEYS: StatKey[] = [
   'attackRange',
   'visionRange',
 ]
+const FATIGUE_MULTIPLIER_KEY = 'fatigue'
 
 function normalizeMultipliers(raw: unknown): FormationStatMultiplier {
   if (!isObject(raw)) return {}
@@ -34,6 +35,8 @@ function normalizeMultipliers(raw: unknown): FormationStatMultiplier {
     if (n == null) continue
     out[k] = n
   }
+  const fatigue = toFiniteNumber((raw as any)[FATIGUE_MULTIPLIER_KEY])
+  if (fatigue != null) out.fatigue = fatigue
   return out
 }
 

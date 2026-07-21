@@ -128,6 +128,8 @@
         "isRoute": "Route state",
         "moraleCheckMod": "Morale",
         "forceFormation": "Forced formation",
+        "fatigueAccumMult": "Fatigue gain x",
+        "fatigueRecoveryMult": "Fatigue recovery x",
         "unitType": "Unit type"
       }
     },
@@ -198,6 +200,8 @@
         "priorityTargets": "Priority targets",
         "suppressionThreshold": "Suppression threshold",
         "moraleCheckMod": "Morale mod",
+        "fatigueAccumMult": "Fatigue gain x",
+        "fatigueRecoveryMult": "Fatigue recovery x",
         "attackIgnoreTargetEnvMult": "Ignore env mult",
         "attackIgnoreHeightModifier": "Ignore height modifier"
       }
@@ -245,6 +249,20 @@
         "retreat": "Retreat",
         "flee": "Flee",
         "disband": "Disband"
+      }
+    },
+    "fatigueEditor": {
+      "title": "Fatigue",
+      "subtitle": "Configure fatigue accumulation, recovery, damage curve, and speed penalties.",
+      "speedThresholds": "Speed penalty thresholds",
+      "addThreshold": "Add threshold",
+      "fields": {
+        "max": "Maximum fatigue",
+        "attackHoursPerPoint": "Combat hours per point",
+        "moveHoursPerPoint": "Movement hours per point",
+        "recoveryPerHour": "Recovery per hour",
+        "attackedRecoveryMultiplier": "Recovery while attacked x",
+        "damageCurvePower": "Damage curve power"
       }
     },
     "messengerLogicEditor": {
@@ -384,6 +402,7 @@
       "weather": "Weather",
       "inaccuracy": "Inaccuracy",
       "moraleCheck": "Morale check",
+      "fatigue": "Fatigue",
       "environment": "Environment",
       "formations": "Formations",
       "abilities": "Abilities",
@@ -867,6 +886,10 @@
       "label": "Limited ammunition",
       "description": "Units have limited ammo that must be managed"
     },
+    "fatigue": {
+      "label": "Fatigue",
+      "description": "Units tire during movement and combat, reducing their speed and damage."
+    },
     "generalVisionUpdate": {
       "label": "General updates vision in direct sight",
       "description": "Information is updated within general's direct vision"
@@ -923,6 +946,10 @@
     "minimal_speed_column_or_formation": "Minimal speed column/formation",
     "waiting_for_lagging_in_column": "Waiting for lagging units in column",
     "catching_up_with_column": "Catching up with column"
+  },
+  "fatigue": {
+    "damage": "Fatigue",
+    "speed": "Fatigue"
   },
 
   "time": {

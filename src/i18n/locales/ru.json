@@ -129,6 +129,8 @@
         "isRoute": "Маршрутное состояние",
         "moraleCheckMod": "Мораль",
         "forceFormation": "Принудительная формация",
+        "fatigueAccumMult": "Накопление усталости x",
+        "fatigueRecoveryMult": "Восстановление усталости x",
         "unitType": "Тип юнита"
       }
     },
@@ -199,6 +201,8 @@
         "priorityTargets": "Приоритет целей",
         "suppressionThreshold": "Порог подавления",
         "moraleCheckMod": "Модиф. морали",
+        "fatigueAccumMult": "Накопление усталости x",
+        "fatigueRecoveryMult": "Восстановление усталости x",
         "attackIgnoreTargetEnvMult": "Множ. игнора окруж.",
         "attackIgnoreHeightModifier": "Игнорировать модификатор высоты"
       }
@@ -247,6 +251,20 @@
         "retreat": "Отступление",
         "flee": "Бегство",
         "disband": "Распад"
+      }
+    },
+    "fatigueEditor": {
+      "title": "Усталость",
+      "subtitle": "Настройте накопление и восстановление усталости, кривую урона и штрафы скорости.",
+      "speedThresholds": "Пороги штрафа скорости",
+      "addThreshold": "Добавить порог",
+      "fields": {
+        "max": "Максимальная усталость",
+        "attackHoursPerPoint": "Часов боя на единицу",
+        "moveHoursPerPoint": "Часов движения на единицу",
+        "recoveryPerHour": "Восстановление в час",
+        "attackedRecoveryMultiplier": "Восстановление под атакой x",
+        "damageCurvePower": "Степень кривой урона"
       }
     },
     "messengerLogicEditor": {
@@ -386,6 +404,7 @@
       "weather": "Погода",
       "inaccuracy": "Неточность",
       "moraleCheck": "Проверка морали",
+      "fatigue": "Усталость",
       "environment": "Окружение",
       "formations": "Формации",
       "abilities": "Способности",
@@ -872,6 +891,10 @@
       "label": "Патроны не бесконечные",
       "description": "Боезапас юнитов ограничен и требует учёта"
     },
+    "fatigue": {
+      "label": "Усталость",
+      "description": "Юниты устают в движении и бою, что снижает их скорость и урон."
+    },
     "generalVisionUpdate": {
       "label": "Генерал обновляет информацию в прямой видимости",
       "description": "Информация обновляется при прямой видимости генерала"
@@ -928,6 +951,10 @@
     "minimal_speed_column_or_formation": "Минимальная скорость колонны/формации",
     "waiting_for_lagging_in_column": "Ожидание отстающих в колонне",
     "catching_up_with_column": "Догоняет колонну"
+  },
+  "fatigue": {
+    "damage": "Усталость",
+    "speed": "Усталость"
   },
 
   "time": {

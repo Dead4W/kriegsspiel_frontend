@@ -6,6 +6,7 @@ import AbilitiesEditor from '@/components/resourcePack/AbilitiesEditor.vue'
 import AngleModifiersEditor from '@/components/resourcePack/AngleModifiersEditor.vue'
 import DistanceModifiersEditor from '@/components/resourcePack/DistanceModifiersEditor.vue'
 import EnvironmentEditor from '@/components/resourcePack/EnvironmentEditor.vue'
+import FatigueEditor from '@/components/resourcePack/FatigueEditor.vue'
 import FormationsEditor from '@/components/resourcePack/FormationsEditor.vue'
 import InaccuracyEditor from '@/components/resourcePack/InaccuracyEditor.vue'
 import MoraleCheckEditor from '@/components/resourcePack/MoraleCheckEditor.vue'
@@ -21,6 +22,7 @@ import {
   createInitialDistanceModifierPoint,
   createInitialEnvironmentState,
   createInitialFormationType,
+  createInitialFatigue,
   createInitialMoraleCheck,
   createInitialMessengerLogic,
   createInitialTimeSegment,
@@ -39,6 +41,7 @@ import type {
   TimeOfDaySegment,
   WeatherCondition,
   MessengerLogicDraft,
+  FatigueDraft,
 } from '@/components/resourcePack/types'
 
 const route = useRoute()
@@ -73,6 +76,7 @@ const isUnitsEditorOpen = ref(false)
 const isInaccuracyEditorOpen = ref(false)
 const isMoraleCheckEditorOpen = ref(false)
 const isMessengerLogicEditorOpen = ref(false)
+const isFatigueEditorOpen = ref(false)
 const isAngleModifiersEditorOpen = ref(false)
 const isDistanceModifiersEditorOpen = ref(false)
 const isJsonModalOpen = ref(false)
@@ -245,6 +249,12 @@ const messengerLogicConfig = computed<MessengerLogicDraft>(() => {
   return pack.value.messengerLogic
 })
 
+const fatigueConfig = computed<FatigueDraft>(() => {
+  if (!pack.value) return createInitialFatigue()
+  if (!pack.value.fatigue) pack.value.fatigue = createInitialFatigue()
+  return pack.value.fatigue
+})
+
 function onMessengerLogicConfigUpdate(next: MessengerLogicDraft) {
   if (!pack.value) return
   pack.value.messengerLogic = {
@@ -289,6 +299,9 @@ function hydratePack(data: ResourcePackDraft, updateDefaultSnapshot = true) {
   }
   if (!pack.value.messengerLogic) {
     pack.value.messengerLogic = createInitialMessengerLogic()
+  }
+  if (!pack.value.fatigue) {
+    pack.value.fatigue = createInitialFatigue()
   }
 }
 
@@ -809,6 +822,29 @@ onMounted(loadTemplates)
           <div v-if="isMoraleCheckEditorOpen" class="editor-body">
             <fieldset class="editor-fieldset" :disabled="isEditorReadonly">
               <MoraleCheckEditor :morale-check="moraleCheckConfig" />
+            </fieldset>
+          </div>
+        </section>
+
+        <section class="editor-shell" :class="{ open: isFatigueEditorOpen }">
+          <button
+            type="button"
+            class="editor-toggle"
+            :class="{ open: isFatigueEditorOpen }"
+            :aria-expanded="isFatigueEditorOpen"
+            @click="isFatigueEditorOpen = !isFatigueEditorOpen"
+          >
+            <span class="editor-toggle-copy">
+              <span class="editor-toggle-title">{{ t('resourcePackCreator.fatigueEditor.title') }}</span>
+              <span class="editor-toggle-help">
+                {{ t(isFatigueEditorOpen ? 'resourcePackCreator.actions.closeEditor' : 'resourcePackCreator.actions.openEditor') }}
+              </span>
+            </span>
+            <span class="editor-toggle-chevron" :class="{ open: isFatigueEditorOpen }" aria-hidden="true">v</span>
+          </button>
+          <div v-if="isFatigueEditorOpen" class="editor-body">
+            <fieldset class="editor-fieldset" :disabled="isEditorReadonly">
+              <FatigueEditor v-model="fatigueConfig" />
             </fieldset>
           </div>
         </section>

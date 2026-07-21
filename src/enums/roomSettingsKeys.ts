@@ -6,6 +6,7 @@ export const ROOM_SETTING_KEYS = {
   BLUE_TEAM_NAME: 'blueTeamName',
 
   LIMITED_AMMO: 'limitedAmmo',
+  FATIGUE: 'fatigue',
   GENERAL_VISION_UPDATE: 'generalVisionUpdate',
   AUTO_STATS_UPDATE: 'autoStatsUpdate',
   IS_PLAYER_ROOM_MAP: 'isPlayerRoomMap',

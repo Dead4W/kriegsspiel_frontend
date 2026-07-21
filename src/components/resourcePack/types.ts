@@ -53,13 +53,17 @@ export type EnvironmentState = {
   byTypes?: Partial<Record<string, Partial<Record<EnvironmentStatKey, number>>>>
 }
 
-export type FormationStatKey = CoreStatKey
+export type FormationStatKey = CoreStatKey | 'fatigue'
 
 export type FormationState = {
   id: string
   title?: string
   icon?: string
   multipliers?: Partial<Record<FormationStatKey, number>>
+  params?: {
+    fatigueAccumMult?: number
+    fatigueRecoveryMult?: number
+  }
 }
 
 export type AbilityStatKey = CoreStatKey | 'fatigue'
@@ -96,6 +100,8 @@ export type MessengerLogicDraft = {
   enemyKillChancePerTick?: number
 }
 
+export type FatigueDraft = NonNullable<ResourcePackDraft['fatigue']>
+
 export type ResourcePackUnitStats = UnitStats
 
 export type ResourcePackUnitParams = {
@@ -109,6 +115,8 @@ export type ResourcePackUnitParams = {
   attackIgnoreTargetEnvs?: string[]
   attackIgnoreTargetEnvMult?: number
   moraleCheckMod?: number
+  fatigueAccumMult?: number
+  fatigueRecoveryMult?: number
   [key: string]: unknown
 }
 
@@ -141,6 +149,18 @@ export type ResourcePackDraft = {
   inaccuracy?: ResourcePackInaccuracy
   moraleCheck?: MoraleCheckConfig
   messengerLogic?: MessengerLogicDraft
+  fatigue?: {
+    max?: number
+    attackHoursPerPoint?: number
+    moveHoursPerPoint?: number
+    recoveryPerHour?: number
+    attackedRecoveryMultiplier?: number
+    damageCurvePower?: number
+    speedThresholds?: Array<{
+      moreThan?: number
+      multiplier?: number
+    }>
+  }
   angleModifiers?: ResourcePackAngleModifier[]
   distanceModifiers?: ResourcePackDistanceModifiers
   units?: {

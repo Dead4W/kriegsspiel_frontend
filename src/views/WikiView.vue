@@ -49,6 +49,7 @@ const wikiSections: WikiSection[] = [
       { id: 'weather', titleKey: 'wikiPage.tabs.weather' },
       { id: 'inaccuracy', titleKey: 'wikiPage.tabs.inaccuracy' },
       { id: 'morale-check', titleKey: 'wikiPage.tabs.moraleCheck' },
+      { id: 'fatigue', titleKey: 'wikiPage.tabs.fatigue' },
       { id: 'environment', titleKey: 'wikiPage.tabs.environment' },
       { id: 'formations', titleKey: 'wikiPage.tabs.formations' },
       { id: 'abilities', titleKey: 'wikiPage.tabs.abilities' },

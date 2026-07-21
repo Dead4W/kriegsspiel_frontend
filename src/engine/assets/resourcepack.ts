@@ -4,6 +4,7 @@ import type { ResourcePackWeatherCondition } from "@/engine/resourcePack/weather
 import type { AbilityStatMultiplier, UnitAbilityType } from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import type { UnitStats } from "@/engine/units/baseUnit.ts";
 import type { FormationType, unitType } from "@/engine/units/types.ts";
+import type { FatigueConfig } from '@/engine/resourcePack/fatigue'
 import {
   normalizeDistanceModifiers,
   type ResourcePackDistanceModifiers,
@@ -141,6 +142,7 @@ export type ResourcePack = {
     }
   }
   messengerLogic?: ResourcePackMessengerLogic
+  fatigue?: Partial<FatigueConfig>
   abilities?: {
     types: ResourcePackAbilityType[]
   }
@@ -190,6 +192,7 @@ function normalizePack(raw: unknown): ResourcePack {
   const inaccuracy = r?.inaccuracy
   const moraleCheck = r?.moraleCheck
   const messengerLogic = r?.messengerLogic
+  const fatigue = r?.fatigue
   const abilityTypes = r?.abilities?.types
   const formationTypes = r?.formations?.types
   const unitTypes = r?.units?.types
@@ -226,6 +229,7 @@ function normalizePack(raw: unknown): ResourcePack {
         returnHpDelta: 1,
         enemyKillChancePerTick: 0.1,
       },
+    fatigue: isObject(fatigue) ? (fatigue as Partial<FatigueConfig>) : undefined,
     abilities: {
       types: Array.isArray(abilityTypes)
         ? (abilityTypes.filter(isObject) as unknown as ResourcePackAbilityType[])

@@ -100,6 +100,18 @@
       "fleeHpMultiplier": 0.5
     }
   },
+  "fatigue": {
+    "max": 10,
+    "attackHoursPerPoint": 1,
+    "moveHoursPerPoint": 0.5,
+    "recoveryPerHour": 1,
+    "attackedRecoveryMultiplier": 0.5,
+    "damageCurvePower": 5,
+    "speedThresholds": [
+      { "moreThan": 5, "multiplier": 0.8 },
+      { "moreThan": 8, "multiplier": 0.6 }
+    ]
+  },
   "environment": {
     "states": [
       { "id": "on_road", "title": "Road", "icon": "👣", "isRoute": true, "multipliers": { "speed": 1 } },
@@ -109,8 +121,8 @@
       { "id": "in_plain_field", "title": "Plowed field", "icon": "🚜", "isRoute": true, "multipliers": { "speed": 0.75 }, "byTypes": { "artillery": { "speed": 0.5 } } },
       { "id": "in_soft_field", "title": "Soft ground", "icon": "🟤", "isRoute": true, "multipliers": { "speed": 0.5 }, "byTypes": { "artillery": { "speed": 0.25 } } },
       { "id": "in_swamp_or_dirty", "title": "Swamp / mud", "icon": "💩", "isRoute": true, "multipliers": { "takeDamageMod": 0.25, "speed": 0.25 }, "byTypes": { "artillery": { "speed": 0.1 } } },
-      { "id": "in_house", "title": "House", "icon": "🏢", "params": { "moraleCheckMod": 2, "forceFormation": "default" }, "multipliers": { "takeDamageMod": 0.25, "visionRange": 1.1 } },
-      { "id": "in_cover_house", "title": "Covered house", "icon": "🧱", "params": { "moraleCheckMod": 2, "forceFormation": "default" }, "multipliers": { "takeDamageMod": 0.06, "visionRange": 1.1 } },
+      { "id": "in_house", "title": "House", "icon": "🏢", "params": { "moraleCheckMod": 2, "forceFormation": "default", "fatigueAccumMult": 0.5, "fatigueRecoveryMult": 2 }, "multipliers": { "takeDamageMod": 0.25, "visionRange": 1.1 } },
+      { "id": "in_cover_house", "title": "Covered house", "icon": "🧱", "params": { "moraleCheckMod": 2, "forceFormation": "default", "fatigueAccumMult": 0.5, "fatigueRecoveryMult": 2 }, "multipliers": { "takeDamageMod": 0.06, "visionRange": 1.1 } },
       { "id": "in_brench", "title": "Behind fence", "icon": "🚧", "multipliers": { "takeDamageMod": 0.9 } },
       { "id": "in_cover_trenches", "title": "Trenches", "icon": "🪜", "params": { "moraleCheckMod": 2 }, "multipliers": { "takeDamageMod": 0.12 } },
       { "id": "in_water", "title": "Water", "icon": "🌊", "tags": ["is_water"], "multipliers": { "takeDamageMod": 0.4 }, "byTypes": { "artillery": { "speed": 0.1 } } }
@@ -123,7 +135,7 @@
       { "id": "springing", "title": "Skirmish advance", "icon": "S", "multipliers": { "takeDamageMod": 1.2, "speed": 0.5 } },
       { "id": "kneelingVolley", "title": "Kneeling volley", "icon": "K", "multipliers": { "takeDamageMod": 2.0, "damage": 0.9 } },
       { "id": "forceWalking", "title": "Forced march", "icon": "F", "multipliers": { "takeDamageMod": 4.0, "damage": 0.8 } },
-      { "id": "onHorse", "title": "On horseback", "icon": "H", "multipliers": { "takeDamageMod": 8.0, "damage": 0.12, "speed": 1.25 } }
+      { "id": "onHorse", "title": "On horseback", "icon": "H", "multipliers": { "takeDamageMod": 8.0, "damage": 0.12, "speed": 1.25, "fatigue": 0.5 } }
     ]
   },
   "abilities": {
@@ -187,7 +199,7 @@
         "title": "Marines",
         "stats": { "maxHp": 64, "damage": 2, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 20 },
         "abilities": ["double_time_move"],
-        "params": { "moraleCheckMod": 2, "priorityTargets": 3, "suppressionThreshold": 10, "renderIcon": "M", "textureUrl": "/assets/units/marine.png" }
+        "params": { "moraleCheckMod": 2, "fatigueAccumMult": 0.5, "priorityTargets": 3, "suppressionThreshold": 10, "renderIcon": "M", "textureUrl": "/assets/units/marine.png" }
       },
       {
         "id": "militia",

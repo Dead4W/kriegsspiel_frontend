@@ -22,6 +22,8 @@ type NumberParamKey =
   | 'suppressionThreshold'
   | 'attackIgnoreTargetEnvMult'
   | 'moraleCheckMod'
+  | 'fatigueAccumMult'
+  | 'fatigueRecoveryMult'
 
 const props = defineProps<{
   units: ResourcePackUnitType[]
@@ -554,6 +556,30 @@ function getStatLabel(statKey: (typeof statKeys)[number]): string {
                 inputmode="numeric"
                 :value="unit.params?.moraleCheckMod ?? ''"
                 @input="updateNumberParam(unit, 'moraleCheckMod', getEventValue($event))"
+              />
+            </label>
+
+            <label class="field short-field">
+              <span>{{ t('resourcePackCreator.unitsEditor.fields.fatigueAccumMult') }}</span>
+              <input
+                type="number"
+                step="0.05"
+                min="0"
+                inputmode="decimal"
+                :value="unit.params?.fatigueAccumMult ?? ''"
+                @input="updateNumberParam(unit, 'fatigueAccumMult', getEventValue($event))"
+              />
+            </label>
+
+            <label class="field short-field">
+              <span>{{ t('resourcePackCreator.unitsEditor.fields.fatigueRecoveryMult') }}</span>
+              <input
+                type="number"
+                step="0.05"
+                min="0"
+                inputmode="decimal"
+                :value="unit.params?.fatigueRecoveryMult ?? ''"
+                @input="updateNumberParam(unit, 'fatigueRecoveryMult', getEventValue($event))"
               />
             </label>
 

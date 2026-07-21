@@ -142,6 +142,22 @@ function updateForceFormation(state: EnvironmentState, rawValue: string) {
   ensureParams(state).forceFormation = nextValue
 }
 
+function updateFatigueParam(
+  state: EnvironmentState,
+  key: 'fatigueAccumMult' | 'fatigueRecoveryMult',
+  rawValue: string,
+) {
+  const nextValue = parseOptionalNumber(rawValue)
+  if (nextValue == null) {
+    if (state.params) {
+      delete state.params[key]
+      cleanupParams(state)
+    }
+    return
+  }
+  ensureParams(state)[key] = nextValue
+}
+
 function updateMultiplier(state: EnvironmentState, statKey: EnvironmentStatKey, rawValue: string) {
   const nextValue = parseOptionalNumber(rawValue)
   if (nextValue == null) {
@@ -440,6 +456,30 @@ function getStateRenderKey(state: EnvironmentState, index: number): string {
                 {{ formation.label }}
               </option>
             </select>
+          </label>
+
+          <label class="field">
+            <span>{{ t('resourcePackCreator.environmentEditor.fields.fatigueAccumMult') }}</span>
+            <input
+              type="number"
+              min="0"
+              step="0.05"
+              inputmode="decimal"
+              :value="state.params?.fatigueAccumMult ?? ''"
+              @input="updateFatigueParam(state, 'fatigueAccumMult', getEventValue($event))"
+            />
+          </label>
+
+          <label class="field">
+            <span>{{ t('resourcePackCreator.environmentEditor.fields.fatigueRecoveryMult') }}</span>
+            <input
+              type="number"
+              min="0"
+              step="0.05"
+              inputmode="decimal"
+              :value="state.params?.fatigueRecoveryMult ?? ''"
+              @input="updateFatigueParam(state, 'fatigueRecoveryMult', getEventValue($event))"
+            />
           </label>
 
           <label class="field checkbox-field">

@@ -80,6 +80,14 @@ export const ROOM_SETTINGS: readonly RoomSetting[] = [
     level: 'stable',
     default: false,
   },
+  {
+    key: ROOM_SETTING_KEYS.FATIGUE,
+    type: 'boolean',
+    i18nLabel: 'settings.fatigue.label',
+    i18nDescription: 'settings.fatigue.description',
+    level: 'stable',
+    default: false,
+  },
 
   // === beta ===
   {

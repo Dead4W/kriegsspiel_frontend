@@ -38,6 +38,7 @@ import {
 } from "@/engine/resourcePack/environment.ts";
 import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/moraleCheck.ts";
 import { isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone } from '@/game/planningSpawns'
+import { getFatigueConfig } from '@/engine/resourcePack/fatigue'
 
 const REMOTE_MOVE_INTERPOLATION_STEP_MS = 24
 
@@ -48,13 +49,15 @@ export interface StatModifierInfo {
   totalMultiplier: number
   percent: number
   sources: {
-    type: 'env' | 'formation' | 'ability' | 'time' | 'weather' | 'formationMove',
+    type: 'env' | 'formation' | 'ability' | 'time' | 'weather' | 'formationMove' | 'fatigue',
     state:
       | EnvironmentStateId
       | FormationType
       | UnitAbilityType
       | TimeOfDay
       | Weather
+      | 'damage'
+      | 'speed'
       | 'minimal_speed_column_or_formation'
       | 'waiting_for_lagging_in_column'
       | 'catching_up_with_column',
@@ -247,6 +250,10 @@ export abstract class BaseUnit {
           attackerIds: [...pending.attackerIds],
         }
       : null
+  }
+
+  hasPendingAttackDamage(): boolean {
+    return this.pendingAttackDamage != null
   }
 
   /**
@@ -555,6 +562,25 @@ export abstract class BaseUnit {
           : 'catching_up_with_column',
         multiplier: this.columnLagSpeedMultiplier,
       })
+    }
+
+    if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.FATIGUE]) {
+      const fatigueConfig = getFatigueConfig()
+      const fatigue = clamp(this.fatigue, 0, fatigueConfig.max)
+      if (key === 'damage') {
+        const multiplier = Math.max(0, 1 - Math.pow(fatigue / fatigueConfig.max, fatigueConfig.damageCurvePower))
+        if (multiplier !== 1) {
+          total *= multiplier
+          sources.push({ type: 'fatigue', state: 'damage', multiplier })
+        }
+      }
+      if (key === 'speed') {
+        const threshold = fatigueConfig.speedThresholds.find((entry) => fatigue > entry.moreThan)
+        if (threshold && threshold.multiplier !== 1) {
+          total *= threshold.multiplier
+          sources.push({ type: 'fatigue', state: 'speed', multiplier: threshold.multiplier })
+        }
+      }
     }
 
     return {

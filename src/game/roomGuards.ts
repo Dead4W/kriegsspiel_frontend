@@ -54,6 +54,10 @@ export function isWeatherModifiersEnabled(): boolean {
   return isRoomSettingEnabled(ROOM_SETTING_KEYS.WEATHER_MODIFIERS);
 }
 
+export function isFatigueEnabled(): boolean {
+  return isRoomSettingEnabled(ROOM_SETTING_KEYS.FATIGUE);
+}
+
 export function isPlayerRoomMapEnabled(): boolean {
   return isRoomSettingEnabled(ROOM_SETTING_KEYS.IS_PLAYER_ROOM_MAP);
 }

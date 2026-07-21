@@ -18,6 +18,7 @@ const statKeys: FormationStatKey[] = [
   'speed',
   'attackRange',
   'visionRange',
+  'fatigue',
 ]
 const wikiLink = computed(() => ({
   name: 'wiki',

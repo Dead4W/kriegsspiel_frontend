@@ -7,6 +7,7 @@ import type {
   ResourcePackDistanceModifierPoint,
   ResourcePackUnitType,
   MessengerLogicDraft,
+  FatigueDraft,
   TimeOfDaySegment,
   WeatherCondition,
 } from '@/components/resourcePack/types'
@@ -144,6 +145,21 @@ export function createInitialMessengerLogic(): MessengerLogicDraft {
     spawnHpDelta: -1,
     returnHpDelta: 1,
     enemyKillChancePerTick: 0.1,
+  }
+}
+
+export function createInitialFatigue(): FatigueDraft {
+  return {
+    max: 10,
+    attackHoursPerPoint: 1,
+    moveHoursPerPoint: 0.5,
+    recoveryPerHour: 1,
+    attackedRecoveryMultiplier: 0.5,
+    damageCurvePower: 5,
+    speedThresholds: [
+      { moreThan: 5, multiplier: 0.8 },
+      { moreThan: 8, multiplier: 0.6 },
+    ],
   }
 }
 

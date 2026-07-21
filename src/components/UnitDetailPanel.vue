@@ -6,7 +6,8 @@ import {ROOM_SETTING_KEYS} from "@/enums/roomSettingsKeys.ts";
 import {unitType} from "@/engine";
 import {clamp} from "@/engine/math.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
-import { canWriteGameState, isAdminOrSpectatorTeam, isAdminTeam } from "@/game/roomGuards.ts";
+import { canWriteGameState, isAdminOrSpectatorTeam, isAdminTeam, isFatigueEnabled } from "@/game/roomGuards.ts";
+import { getFatigueConfig } from '@/engine/resourcePack/fatigue'
 
 const { unit } = defineProps<{ unit: UnwrapRef<BaseUnit> }>()
 
@@ -51,6 +52,18 @@ function barStyle(value: number, min: number, max: number) {
 
   return {
     width: `${percent}%`,
+    backgroundColor: `rgb(${r}, ${g}, ${b})`,
+  }
+}
+
+function fatigueBarStyle(value: number) {
+  const max = getFatigueConfig().max
+  const ratio = Math.max(0, Math.min(1, value / max))
+  const r = Math.round(34 + (239 - 34) * ratio)
+  const g = Math.round(197 + (68 - 197) * ratio)
+  const b = Math.round(94 + (68 - 94) * ratio)
+  return {
+    width: `${Math.round(ratio * 100)}%`,
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
   }
 }
@@ -124,6 +137,10 @@ const hpProxy = ref('0')
 
 function isEnabledAmmo() {
   return !!window.ROOM_SETTINGS[ROOM_SETTING_KEYS.LIMITED_AMMO]
+}
+
+function isEnabledFatigue() {
+  return isFatigueEnabled()
 }
 
 function isDebug() {
@@ -228,6 +245,17 @@ onUnmounted(() => {
               class="fill"
               :style="barStyle(unit.ammo ?? 0, 0, unit.stats.ammoMax)"
             />
+          </div>
+        </div>
+
+        <!-- FATIGUE -->
+        <div v-if="isEnabledFatigue()" class="stat">
+          <label>{{ t('stat.fatigue') }}</label>
+          <span>{{ unit.fatigue.toFixed(1) }}</span>
+          <span>/ {{ getFatigueConfig().max }}</span>
+
+          <div class="bar">
+            <div class="fill" :style="fatigueBarStyle(unit.fatigue)" />
           </div>
         </div>
 

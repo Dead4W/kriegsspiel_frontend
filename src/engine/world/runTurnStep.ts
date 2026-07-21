@@ -11,11 +11,41 @@ import {
   captureUnitPositionsById,
   emitTurnStatePackets,
 } from "@/engine/world/turnDirectView.ts";
+import { updateUnitFatigue } from '@/engine/units/fatigue'
+import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
 
 const MAX_STEP_SECONDS = 60;
 const TURN_ANIMATION_DURATION_MS = 50;
 
 type UnitLike = ReturnType<world["units"]["list"]>[number];
+
+type FatigueCommandSnapshot = {
+  moveAbilityIds: string[]
+  attackAbilityIds: string[]
+  hadActiveAttack: boolean
+}
+
+function getCommandAbilityIds(command: ReturnType<UnitLike['getCommands']>[number] | undefined): string[] {
+  const abilities = (command?.getState().state as { abilities?: unknown } | undefined)?.abilities
+  return Array.isArray(abilities)
+    ? abilities.map((ability) => String(ability)).filter(Boolean)
+    : []
+}
+
+function captureFatigueCommands(unit: UnitLike): FatigueCommandSnapshot {
+  const commands = unit.getCommands()
+  const moveCommand = commands.find((command) =>
+    command.type === UnitCommandTypes.Move && !command.isFinished(unit),
+  )
+  const attackCommand = commands.find((command) =>
+    command.type === UnitCommandTypes.Attack && !command.isFinished(unit),
+  )
+  return {
+    moveAbilityIds: getCommandAbilityIds(moveCommand),
+    attackAbilityIds: getCommandAbilityIds(attackCommand),
+    hadActiveAttack: Boolean(attackCommand),
+  }
+}
 
 function setUnitAngleFromMoveVector(unit: { angle: number }, from: vec2, to: vec2) {
   const dx = to.x - from.x;
@@ -161,6 +191,8 @@ function syncFormationMoveSpeedByOrder(units: UnitLike[], worldInstance: world) 
 export function processUnitCommands(worldInstance: world, dt: number) {
   const units = worldInstance.units.list();
   sortUnitsForTurnStep(units);
+  const positionsBeforeStep = new Map(units.map((unit) => [unit.id, { ...unit.pos }]))
+  const fatigueCommandsBeforeStep = new Map(units.map((unit) => [unit.id, captureFatigueCommands(unit)]))
 
   for (const unit of units) {
     if (!unit.alive) continue;
@@ -265,6 +297,26 @@ export function processUnitCommands(worldInstance: world, dt: number) {
     const isMovingAfterStep = nextActiveCommand?.type === UnitCommandTypes.Move;
     applyAutoEnvironment(unit, isMovingAfterStep ? "moving" : "standing");
     unit.setDirty();
+  }
+
+  if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.FATIGUE]) {
+    for (const unit of units) {
+      if (!unit.alive) continue
+      const previousPosition = positionsBeforeStep.get(unit.id)
+      const didMove = previousPosition
+        ? Math.hypot(unit.pos.x - previousPosition.x, unit.pos.y - previousPosition.y) > 0.001
+        : false
+      const isAttacking = unit.getCommands().some((command) =>
+        command.type === UnitCommandTypes.Attack && !command.isFinished(unit),
+      ) || fatigueCommandsBeforeStep.get(unit.id)?.hadActiveAttack === true
+      const commandSnapshot = fatigueCommandsBeforeStep.get(unit.id)
+      updateUnitFatigue(unit, dt, {
+        didMove,
+        isAttacking,
+        moveAbilityIds: commandSnapshot?.moveAbilityIds,
+        attackAbilityIds: commandSnapshot?.attackAbilityIds,
+      })
+    }
   }
 
   processAiTriggers(worldInstance);

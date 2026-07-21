@@ -12,6 +12,7 @@
 - Movement - improve road and bridge environment detection; clear active ability after movement
 - AI triggers - support at_game_time orders and runtime on_attacked / on_enemy_seen triggers
 - Chat - show message timestamps as game time
+- Fatigue - Add fatigue room setting, more in wiki
 
 [2026-07-01]
 - Disabled is_player_room map by default

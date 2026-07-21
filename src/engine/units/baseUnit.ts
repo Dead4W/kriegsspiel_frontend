@@ -30,7 +30,7 @@ import type {MoveCommandState} from './commands/moveCommand';
 import type {TimeOfDay} from "@/engine/resourcePack/timeOfDay.ts";
 import {type Weather} from "@/engine/resourcePack/weather.ts";
 import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
-import {getUnitNumberParam} from "@/engine/resourcePack/units.ts";
+import {getUnitFormationTypes, getUnitNumberParam} from "@/engine/resourcePack/units.ts";
 import {
   type EnvironmentStateId,
   getEnvironmentForcedFormation,
@@ -658,6 +658,7 @@ export abstract class BaseUnit {
   }
 
   setFormation(formation: FormationType) {
+    if (!getUnitFormationTypes(this.type).includes(formation)) return
     this.formation = formation;
     this.setDirty();
     window.ROOM_WORLD.events.emit('changed', { reason: 'unit' });

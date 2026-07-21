@@ -137,6 +137,20 @@ function updateDefaultFormation(unit: ResourcePackUnitType, value: string) {
   delete unit.defaultFormation
 }
 
+function getFormationEntries(unit: ResourcePackUnitType): string[] {
+  return Array.isArray(unit.formations) ? unit.formations : []
+}
+
+function getAvailableFormationOptions(unit: ResourcePackUnitType): Option[] {
+  const selected = new Set(getFormationEntries(unit))
+  const options = props.formationOptions.filter((option) => selected.has(option.id))
+
+  if (unit.defaultFormation && !options.some((option) => option.id === unit.defaultFormation)) {
+    options.unshift({ id: unit.defaultFormation, label: unit.defaultFormation })
+  }
+  return options
+}
+
 function getAbilityEntries(unit: ResourcePackUnitType): string[] {
   return Array.isArray(unit.abilities) ? unit.abilities : []
 }
@@ -391,7 +405,7 @@ function getStatLabel(statKey: (typeof statKeys)[number]): string {
             <span>{{ t('resourcePackCreator.unitsEditor.fields.defaultFormation') }}</span>
             <select :value="unit.defaultFormation ?? ''" @change="updateDefaultFormation(unit, getEventValue($event))">
               <option value="">{{ t('resourcePackCreator.unitsEditor.formations.none') }}</option>
-              <option v-for="option in formationOptions" :key="option.id" :value="option.id">
+              <option v-for="option in getAvailableFormationOptions(unit)" :key="option.id" :value="option.id">
                 {{ option.label }}
               </option>
             </select>

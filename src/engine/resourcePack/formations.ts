@@ -15,6 +15,7 @@ export type ResourcePackFormationType = {
   /** Optional display title (merged into i18n at resourcepack load). */
   title?: string
   icon?: string
+  tags?: string[]
   multipliers?: Record<string, unknown>
 }
 
@@ -48,6 +49,9 @@ function normalizeFormationType(raw: unknown): ResourcePackFormationType | null 
     id,
     title: typeof (raw as any).title === 'string' ? String((raw as any).title) : undefined,
     icon: typeof (raw as any).icon === 'string' ? (raw as any).icon : undefined,
+    tags: Array.isArray((raw as any).tags)
+      ? (raw as any).tags.map((tag: unknown) => String(tag).trim()).filter(Boolean)
+      : undefined,
     multipliers: isObject((raw as any).multipliers) ? (raw as any).multipliers : undefined,
   }
 }
@@ -96,5 +100,31 @@ export function getFormationIcon(
   pack: ResourcePack | null = getResourcePack()
 ): string {
   return getFormationIcons(pack)?.[formation] ?? ''
+}
+
+export function getFormationTags(
+  formation: FormationType,
+  pack: ResourcePack | null = getResourcePack()
+): string[] {
+  return getFormationTypesRaw(pack)
+    .find((type) => String(type.id) === formation)
+    ?.tags ?? []
+}
+
+export function hasFormationTag(
+  formation: FormationType,
+  tag: string,
+  pack: ResourcePack | null = getResourcePack()
+): boolean {
+  const normalizedTag = String(tag).trim()
+  return !!normalizedTag && getFormationTags(formation, pack).includes(normalizedTag)
+}
+
+function getFormationTypesRaw(
+  pack: ResourcePack | null
+): ResourcePackFormationType[] {
+  const raw = (pack as any)?.formations?.types
+  if (!Array.isArray(raw)) return []
+  return raw.map(normalizeFormationType).filter(Boolean) as ResourcePackFormationType[]
 }
 

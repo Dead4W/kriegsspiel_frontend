@@ -37,6 +37,7 @@ export type ResourcePackFormationType = {
   id: string
   /** Optional display title (merged into i18n at load). */
   title?: string
+  tags?: string[]
   multipliers?: Record<string, unknown>
 }
 
@@ -48,6 +49,7 @@ export type ResourcePackUnitType = {
   stats: UnitStats
   abilities?: UnitAbilityType[]
   defaultFormation?: FormationType
+  formations?: FormationType[]
   params?: Record<string, unknown>
 }
 

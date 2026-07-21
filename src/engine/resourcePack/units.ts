@@ -20,6 +20,7 @@ export type ResourcePackUnitType = {
   stats: UnitStats
   abilities: UnitAbilityType[]
   defaultFormation?: FormationType
+  formations: FormationType[]
   params?: Record<string, unknown>
 }
 
@@ -54,6 +55,13 @@ function normalizeDefaultFormation(raw: unknown): FormationType | undefined {
   return v ? (v as FormationType) : undefined
 }
 
+function normalizeFormations(raw: unknown): FormationType[] {
+  const formations = Array.isArray(raw)
+    ? raw.map((formation) => String(formation).trim()).filter(Boolean)
+    : []
+  return [...new Set(['default', ...formations])] as FormationType[]
+}
+
 function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {
   if (!isObject(raw)) return null
   const id = String((raw as any).id ?? '')
@@ -68,6 +76,7 @@ function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {
 
   const abilities = normalizeAbilities((raw as any).abilities)
   const defaultFormation = normalizeDefaultFormation((raw as any).defaultFormation)
+  const formations = normalizeFormations((raw as any).formations)
   const params = isObject((raw as any).params) ? ((raw as any).params as Record<string, unknown>) : undefined
 
   return {
@@ -77,6 +86,7 @@ function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {
     stats,
     abilities,
     defaultFormation,
+    formations,
     params,
   }
 }
@@ -146,6 +156,13 @@ export function getUnitTypeTags(
   pack: ResourcePack | null = getResourcePack()
 ): string[] {
   return getUnitTypeDef(id, pack)?.tags ?? []
+}
+
+export function getUnitFormationTypes(
+  id: UnitTypeId,
+  pack: ResourcePack | null = getResourcePack()
+): FormationType[] {
+  return getUnitTypeDef(id, pack)?.formations ?? ['default']
 }
 
 export function hasUnitTypeTag(

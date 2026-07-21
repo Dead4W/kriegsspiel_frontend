@@ -6,11 +6,13 @@ import { getEnvMultipliers } from '@/engine/units/modifiers/UnitEnvModifiers'
 import { getTimeMultipliers } from '@/engine/units/modifiers/UnitTimeModifiers'
 import { getFormationMultipliers } from '@/engine/units/modifiers/UnitFormationModifiers'
 import { getAbilityMultipliers } from '@/engine/units/modifiers/UnitAbilityModifiers'
+import { getFormationTags, getFormationTypes } from '@/engine/resourcePack/formations'
+import { getUnitFormationTypes, getUnitTypes } from '@/engine/resourcePack/units'
 
 import type { StatKey } from '@/engine/units/baseUnit'
 import {getWeatherMultipliers} from "@/engine/units/modifiers/UnitWeatherModifiers.ts";
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 defineEmits(['close'])
 
@@ -79,21 +81,37 @@ const weatherBlocks = computed(() =>
 )
 
 const formationBlocks = computed(() =>
-  Object.entries(getFormationMultipliers())
-    .filter(([, stats]) => Object.keys(stats).length > 0)
-    .map(([key, stats]) => ({
-      id: `formation:${key}`,
-      labelKey: `formation.${key}`,
+  getFormationTypes().map((formation) => {
+    const stats = getFormationMultipliers()[formation] ?? {}
+    return {
+      id: `formation:${formation}`,
+      labelKey: `formation.${formation}`,
       rows: Object.entries(stats).map(([stat, multiplier]) => ({
         stat: stat as StatKey,
         multiplier: multiplier as number,
       })),
-    }))
+      tags: getFormationTags(formation),
+      units: getUnitTypes()
+        .filter((unit) => getUnitFormationTypes(unit.id).includes(formation))
+        .map((unit) => te(`unit.${unit.id}`) ? t(`unit.${unit.id}`) : unit.title ?? unit.id),
+    }
+  })
 )
 
 const abilityBlocks = computed(() =>
   generateFromRecord(getAbilityMultipliers(), 'ability')
 )
+
+function getFormationTagLabel(tag: string): string {
+  if (tag === 'cant_attack') {
+    return t('tools.modifiers.formationTags.cant_attack')
+  }
+  return tag
+}
+
+function getFormationInfo(blockId: string) {
+  return formationBlocks.value.find((block) => block.id === blockId) ?? null
+}
 
 /* ===== categories ===== */
 
@@ -145,7 +163,7 @@ const categories = computed(() => [
             >
               <h3>{{ t(block.labelKey) }}</h3>
 
-              <table>
+              <table v-if="block.rows.length">
                 <tr v-for="row in block.rows" :key="row.stat">
                   <td class="stat">
                     {{ t(`stat.${row.stat}`) }}
@@ -158,6 +176,26 @@ const categories = computed(() => [
                   </td>
                 </tr>
               </table>
+
+              <div v-if="category.id === 'formation'" class="formation-details">
+                <p v-if="getFormationInfo(block.id)?.tags.length">
+                  <strong>{{ t('tools.modifiers.rules') }}:</strong>
+                  {{ getFormationInfo(block.id)?.tags.map(getFormationTagLabel).join(', ') }}
+                </p>
+                <div>
+                  <strong>{{ t('tools.modifiers.availableTo') }}:</strong>
+                  <div class="user-chips">
+                    <span
+                      v-for="unit in getFormationInfo(block.id)?.units ?? []"
+                      :key="unit"
+                      class="user-chip"
+                    >
+                      {{ unit }}
+                    </span>
+                    <span v-if="!getFormationInfo(block.id)?.units.length" class="empty-value">—</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -254,6 +292,38 @@ const categories = computed(() => [
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: 600;
+}
+
+.formation-details {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.formation-details p {
+  margin: 0.45rem 0 0;
+}
+
+.user-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.user-chip {
+  padding: 0.16rem 0.42rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.5);
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+.empty-value {
+  color: #94a3b8;
 }
 
 /* ===== table ===== */

@@ -142,6 +142,7 @@
       "addModifier": "Добавить",
       "removeModifier": "Удалить",
       "multipliersTitle": "Мультипликаторы статов",
+      "availableTo": "Доступно юнитам",
       "emptyModifiers": "Модификаторы не добавлены.",
       "emptyTitle": "Формации пока не добавлены.",
       "emptyText": "Добавьте формацию, чтобы начать собирать секцию формаций.",
@@ -661,9 +662,15 @@
       "sections": {
         "environment": "Окружение",
         "formation": "Формации",
+        "formationRules": "Правила и доступность формаций",
         "time": "Время",
         "weather": "Погода",
         "ability": "Способности"
+      },
+      "rules": "Правила",
+      "availableTo": "Доступно для",
+      "formationTags": {
+        "cant_attack": "Нельзя атаковать во время движения"
       }
     },
     "command_remove": "Удалить приказ"

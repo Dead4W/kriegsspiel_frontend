@@ -18,7 +18,11 @@ Each entry in `units.types[]` supports:
 - `stats` (required, object) - base numeric stats
 - `abilities` (optional, string[]) - ability IDs available to this unit
 - `defaultFormation` (optional, string) - formation ID from `formations.types[]`
+- `formations` (optional, string[]) - formation IDs this unit can switch to
 - `params` (optional, object) - extra behavior and rendering settings
+
+`default` is always available. When `formations` is omitted, the unit can use only
+`default`; add other formation IDs explicitly to make them selectable.
 
 ---
 
@@ -117,6 +121,7 @@ Spawn UI follows the order in `units.types[]`, then ensures safe defaults exist:
         },
         "abilities": ["double_time_move"],
         "defaultFormation": "line",
+        "formations": ["default", "line", "column"],
         "params": {
           "priorityTargets": 3,
           "renderIcon": "I",
@@ -137,6 +142,7 @@ Spawn UI follows the order in `units.types[]`, then ensures safe defaults exist:
 - `stats` define its base health, damage, speed, attack range, vision, and ammunition.
 - `abilities: ["double_time_move"]` means this unit can use that ability.
 - `defaultFormation: "line"` means the unit spawns or acts in the `line` formation by default.
+- `formations` restricts the formations that can be selected for the unit.
 - `priorityTargets: 3` means the unit only considers the nearest targets within that limit when attacking.
 - `renderIcon: "I"` defines a simple fallback display symbol.
 - `textureUrl: "units/infantry.png"` defines the unit image.

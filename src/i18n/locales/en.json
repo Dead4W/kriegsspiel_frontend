@@ -141,6 +141,7 @@
       "addModifier": "Add",
       "removeModifier": "Remove",
       "multipliersTitle": "Stat multipliers",
+      "availableTo": "Available to units",
       "emptyModifiers": "No modifiers added.",
       "emptyTitle": "No formations yet.",
       "emptyText": "Add a formation to start building the formations section.",
@@ -655,9 +656,15 @@
       "sections": {
         "environment": "Environments",
         "formation": "Formations",
+        "formationRules": "Formation rules and availability",
         "time": "Time",
         "weather": "Weather",
         "ability": "Abilities"
+      },
+      "rules": "Rules",
+      "availableTo": "Available to",
+      "formationTags": {
+        "cant_attack": "Cannot attack while moving"
       }
     },
     "command_remove": "Remove command"

@@ -12,6 +12,7 @@ import {
   emitTurnStatePackets,
 } from "@/engine/world/turnDirectView.ts";
 import { updateUnitFatigue } from '@/engine/units/fatigue'
+import { hasFormationTag } from '@/engine/resourcePack/formations'
 import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
 
 const MAX_STEP_SECONDS = 60;
@@ -232,12 +233,22 @@ export function processUnitCommands(worldInstance: world, dt: number) {
 
     if (commands.length === 0) continue;
 
+    const isMoving = commands.some((command) =>
+      command.type === UnitCommandTypes.Move && !command.isFinished(unit),
+    );
+    const cannotAttackWhileMoving =
+      isMoving && hasFormationTag(unit.getEffectiveFormation(), 'cant_attack');
+
     let leftDt = dt;
     const goodCommands = [];
     const postGoodCommands = [];
 
     for (let i = 0; i < commands.length; i++) {
       const cmd = commands[i]!;
+      if (cmd.type === UnitCommandTypes.Attack && cannotAttackWhileMoving) {
+        goodCommands.push(cmd);
+        continue;
+      }
       const moveStartPos =
         cmd.type === UnitCommandTypes.Move ? { x: unit.pos.x, y: unit.pos.y } : null;
 

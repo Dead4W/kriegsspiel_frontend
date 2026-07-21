@@ -15,7 +15,12 @@ Each item in `formations.types[]` supports:
 - `id` (required, string) - unique formation ID
 - `title` (optional, string) - display name of the formation
 - `icon` (optional, string) - short icon or label for the UI
+- `tags` (optional, string array) - special formation behavior
 - `multipliers` (optional, object) - stat modifiers for this formation
+
+Supported tags:
+
+- `cant_attack` - units cannot attack while moving in this formation
 
 In `multipliers`, you can use standard stat keys:
 

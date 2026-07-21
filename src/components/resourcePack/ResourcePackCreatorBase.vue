@@ -692,7 +692,7 @@ onMounted(loadTemplates)
           </button>
           <div v-if="isFormationsEditorOpen" class="editor-body">
             <fieldset class="editor-fieldset" :disabled="isEditorReadonly">
-              <FormationsEditor :formations="formationTypes" />
+              <FormationsEditor :formations="formationTypes" :units="unitTypes" />
             </fieldset>
           </div>
         </section>

@@ -59,6 +59,7 @@ export type FormationState = {
   id: string
   title?: string
   icon?: string
+  tags?: string[]
   multipliers?: Partial<Record<FormationStatKey, number>>
   params?: {
     fatigueAccumMult?: number
@@ -127,6 +128,7 @@ export type ResourcePackUnitType = {
   stats: ResourcePackUnitStats
   abilities?: string[]
   defaultFormation?: string
+  formations?: string[]
   params?: ResourcePackUnitParams
 }
 

@@ -23,7 +23,7 @@ const { t } = useI18n()
 
 const selectedFormation = ref<FormationType | null>(null)
 
-const FORMATIONS = computed<FormationType[]>(() => getAvailableFormationTypes())
+const FORMATIONS = computed<FormationType[]>(() => getAvailableFormationTypes(props.units))
 
 /* ================= ACTIONS ================= */
 

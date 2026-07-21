@@ -2,10 +2,15 @@
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createFormationState } from '@/components/resourcePack/factories'
-import type { FormationState as FormationType, FormationStatKey } from '@/components/resourcePack/types'
+import type {
+  FormationState as FormationType,
+  FormationStatKey,
+  ResourcePackUnitType,
+} from '@/components/resourcePack/types'
 
 const props = defineProps<{
   formations: FormationType[]
+  units: ResourcePackUnitType[]
 }>()
 
 const { t, te, locale } = useI18n()
@@ -64,6 +69,53 @@ function updateIcon(formation: FormationType, value: string) {
   }
 
   delete formation.icon
+}
+
+const formationTagOptions = ['cant_attack'] as const
+
+function hasTag(formation: FormationType, tag: string): boolean {
+  return Array.isArray(formation.tags) && formation.tags.includes(tag)
+}
+
+function toggleTag(formation: FormationType, tag: string) {
+  const current = Array.isArray(formation.tags) ? formation.tags : []
+  const next = hasTag(formation, tag)
+    ? current.filter((entry) => entry !== tag)
+    : [...new Set([...current, tag])]
+
+  if (next.length) {
+    formation.tags = next
+    return
+  }
+  delete formation.tags
+}
+
+function unitHasFormation(unit: ResourcePackUnitType, formationId: string): boolean {
+  return Array.isArray(unit.formations) && unit.formations.includes(formationId)
+}
+
+function toggleUnitFormation(unit: ResourcePackUnitType, formationId: string) {
+  const current = Array.isArray(unit.formations) ? unit.formations : []
+  const next = unitHasFormation(unit, formationId)
+    ? current.filter((id) => id !== formationId)
+    : [...new Set([...current, formationId])]
+
+  if (next.length) {
+    unit.formations = next
+  } else {
+    delete unit.formations
+  }
+
+  if (unit.defaultFormation === formationId && !next.includes(formationId)) {
+    delete unit.defaultFormation
+  }
+}
+
+function getUnitLabel(unit: ResourcePackUnitType): string {
+  const title = unit.title?.trim()
+  if (title) return title
+  const id = unit.id?.trim()
+  return id && te(`unit.${id}`) ? t(`unit.${id}`) : id
 }
 
 function updateMultiplier(formation: FormationType, statKey: FormationStatKey, rawValue: string) {
@@ -216,6 +268,42 @@ function getFormationRenderKey(formation: FormationType, index: number): string 
             />
           </label>
         </div>
+
+        <section class="section-block tags-section">
+          <div class="section-header">
+            <h4>{{ t('resourcePackCreator.unitsEditor.fields.tags') }}</h4>
+          </div>
+          <div class="tag-options">
+            <button
+              v-for="tag in formationTagOptions"
+              :key="`${formation.id}-tag-${tag}`"
+              type="button"
+              class="tag-chip"
+              :class="{ active: hasTag(formation, tag) }"
+              @click="toggleTag(formation, tag)"
+            >
+              {{ tag }}
+            </button>
+          </div>
+        </section>
+
+        <section class="section-block tags-section">
+          <div class="section-header">
+            <h4>{{ t('resourcePackCreator.formationsEditor.availableTo') }}</h4>
+          </div>
+          <div class="tag-options">
+            <button
+              v-for="unit in units"
+              :key="`${formation.id}-unit-${unit.id}`"
+              type="button"
+              class="tag-chip"
+              :class="{ active: unitHasFormation(unit, formation.id) }"
+              @click="toggleUnitFormation(unit, formation.id)"
+            >
+              {{ getUnitLabel(unit) }}
+            </button>
+          </div>
+        </section>
 
         <section class="section-block modifier-section">
           <div class="section-header section-header-row">
@@ -464,6 +552,33 @@ function getFormationRenderKey(formation: FormationType, index: number): string 
 .section-header h4 {
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+.tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.6rem;
+  padding: 0.18rem 0.62rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.3);
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tag-chip.active {
+  border-color: color-mix(in srgb, var(--accent) 62%, rgba(59, 130, 246, 0.38));
+  background: color-mix(in srgb, var(--accent) 22%, rgba(15, 23, 42, 0.45));
+  color: var(--text);
 }
 
 .empty-inline {

@@ -131,7 +131,7 @@
   },
   "formations": {
     "types": [
-      { "id": "default", "title": "Default", "multipliers": {} },
+      { "id": "default", "title": "Default", "tags": ["cant_attack"], "multipliers": {} },
       { "id": "column", "title": "Column", "icon": "C", "multipliers": { "takeDamageMod": 16.0 } },
       { "id": "springing", "title": "Skirmish advance", "icon": "S", "multipliers": { "takeDamageMod": 1.2, "speed": 0.5 } },
       { "id": "kneelingVolley", "title": "Kneeling volley", "icon": "K", "multipliers": { "takeDamageMod": 2.0, "damage": 0.9 } },
@@ -156,6 +156,7 @@
         "tags": ["cant_swim"],
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["double_time_move"],
+        "formations": ["default", "column", "springing", "kneelingVolley", "forceWalking"],
         "params": {
           "priorityTargets": 3,
           "suppressionThreshold": 10,
@@ -170,6 +171,7 @@
         "stats": { "maxHp": 64, "damage": 0.6, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": ["charge", "gallop", "throttle"],
         "defaultFormation": "onHorse",
+        "formations": ["default", "column", "springing", "kneelingVolley", "forceWalking", "onHorse"],
         "params": { "priorityTargets": 3, "suppressionThreshold": 10, "renderIcon": "C", "textureUrl": "/assets/units/cavalry.png" }
       },
       {
@@ -178,6 +180,7 @@
         "tags": ["cant_swim"],
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 4500, "visionRange": 1000, "ammoMax": 32 },
         "abilities": ["inaccuracy_fire", "throttle"],
+        "formations": ["default"],
         "params": {
           "priorityTargets": 1,
           "suppressionThreshold": 10,
@@ -200,6 +203,7 @@
         "title": "Marines",
         "stats": { "maxHp": 64, "damage": 2, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 20 },
         "abilities": ["double_time_move"],
+        "formations": ["default", "column", "springing", "kneelingVolley", "forceWalking"],
         "params": { "moraleCheckMod": 2, "fatigueAccumMult": 0.5, "priorityTargets": 3, "suppressionThreshold": 10, "renderIcon": "M", "textureUrl": "/assets/units/marine.png" }
       },
       {
@@ -208,6 +212,7 @@
         "tags": ["cant_swim"],
         "stats": { "maxHp": 64, "damage": 0.5, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 5 },
         "abilities": ["double_time_move"],
+        "formations": ["default", "column", "springing", "kneelingVolley", "forceWalking"],
         "params": { "moraleCheckMod": -2, "priorityTargets": 3, "suppressionThreshold": 10, "renderIcon": "m", "textureUrl": "/assets/units/militia.png" }
       },
       {
@@ -216,6 +221,7 @@
         "tags": ["cant_swim"],
         "stats": { "maxHp": 64, "damage": 16, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 10 },
         "abilities": [],
+        "formations": ["default"],
         "params": { "suppressionThreshold": 10, "renderIcon": "G", "renderWidthMult": 1.05, "textureUrl": "/assets/units/gatling.png" }
       },
       {
@@ -223,6 +229,7 @@
         "title": "General",
         "stats": { "maxHp": 64, "damage": 1, "speed": 80, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
         "abilities": ["gallop"],
+        "formations": ["default", "column", "springing", "kneelingVolley", "forceWalking"],
         "params": { "suppressionThreshold": 10, "renderIcon": "★", "renderWidthMult": 1.1, "textureUrl": "/assets/units/general.png" }
       },
       {
@@ -231,6 +238,7 @@
         "tags": ["cant_swim"],
         "stats": { "maxHp": 1, "damage": 0.01, "speed": 400, "takeDamageMod": 1, "attackRange": 2000, "visionRange": 1000, "ammoMax": 1 },
         "abilities": [],
+        "formations": ["default"],
         "params": { "suppressionThreshold": 0, "renderIcon": "✉️" }
       }
     ]

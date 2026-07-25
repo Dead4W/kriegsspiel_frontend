@@ -6,6 +6,7 @@ import { type MoveCommandState } from "@/engine/units/commands/moveCommand.ts";
 import type { vec2 } from "@/engine/types.ts";
 import { BaseUnit } from "@/engine/units/baseUnit.ts";
 import { processAiTriggers } from "@/game/ai/processAiTriggers.ts";
+import type { OutMessage } from "@/api/socket.ts";
 import {
   buildMoveFramesByUnitId,
   captureUnitPositionsById,
@@ -337,6 +338,7 @@ export function processUnitCommands(worldInstance: world, dt: number) {
 export async function runTurnStep(params: {
   worldInstance: world;
   secondsToSkip: number;
+  stepSeconds?: number;
   isLive: boolean;
   liveIntervalMs?: number;
   liveGameSecondsPerMinute?: number;
@@ -345,14 +347,20 @@ export async function runTurnStep(params: {
   const {
     worldInstance,
     secondsToSkip,
+    stepSeconds,
     isLive,
     liveIntervalMs,
     liveGameSecondsPerMinute,
     shouldContinue,
   } = params;
   if (secondsToSkip <= 0) return 0;
+  const maxStepSeconds = Math.min(
+    MAX_STEP_SECONDS,
+    Math.max(1, Math.floor(stepSeconds ?? MAX_STEP_SECONDS))
+  );
 
-  const turnStartUnitPositions = captureUnitPositionsById(worldInstance);
+  const deferredTurnStatePackets: OutMessage[] = [];
+  emitTurnStatePackets(worldInstance, undefined, deferredTurnStatePackets);
   worldInstance.units.withNewCommandsTmp.clear();
   worldInstance.socketLock = true;
   let runningSteps = 0;
@@ -360,13 +368,27 @@ export async function runTurnStep(params: {
   try {
     let leftSeconds = secondsToSkip;
     while (leftSeconds > 0 && (shouldContinue?.() ?? true)) {
-      const step = Math.min(MAX_STEP_SECONDS, leftSeconds);
+      const step = Math.min(maxStepSeconds, leftSeconds);
+      const stepStartUnitPositions = captureUnitPositionsById(worldInstance);
       processUnitCommands(worldInstance, step);
       leftSeconds -= step;
       runningSteps++;
 
       worldInstance.events.emit("changed", { reason: "unit" });
       worldInstance.skipTime(step, false);
+      const directViewAnimationDurationMs = isLive
+        ? (liveIntervalMs ?? TURN_ANIMATION_DURATION_MS) * step / secondsToSkip
+        : TURN_ANIMATION_DURATION_MS * step / secondsToSkip;
+      const directViewFramesByUnitId = buildMoveFramesByUnitId(
+        worldInstance,
+        stepStartUnitPositions,
+        directViewAnimationDurationMs,
+      );
+      emitTurnStatePackets(
+        worldInstance,
+        directViewFramesByUnitId,
+        deferredTurnStatePackets,
+      );
       await new Promise(requestAnimationFrame);
     }
 
@@ -401,15 +423,9 @@ export async function runTurnStep(params: {
       worldInstance.units.withNewCommands.add(unitId);
     }
 
-    const directViewAnimationDurationMs = isLive
-      ? (liveIntervalMs ?? TURN_ANIMATION_DURATION_MS)
-      : TURN_ANIMATION_DURATION_MS;
-    const directViewFramesByUnitId = buildMoveFramesByUnitId(
-      worldInstance,
-      turnStartUnitPositions,
-      directViewAnimationDurationMs,
-    );
-    emitTurnStatePackets(worldInstance, directViewFramesByUnitId);
+    for (const packet of deferredTurnStatePackets) {
+      worldInstance.events.emit("api", packet);
+    }
 
     worldInstance.skipTime(0, false);
     worldInstance.socketLock = false;

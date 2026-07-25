@@ -12,6 +12,7 @@ import {getMessengerLogicConfig} from "@/engine/resourcePack/messengerLogic.ts";
 import {buildMessengerRouteByNearestPoints} from "@/engine/units/messengerRoute.ts";
 import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
 import {emitUnitLinkedMessage} from "@/engine/units/messageOrders.ts";
+import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 
 export interface DeliveryCommandState {
   targets: uuid[],
@@ -310,6 +311,7 @@ export class DeliveryCommand extends BaseCommand<
   }
 
   private logPerf(event: string, details: Record<string, unknown> = {}) {
+    if (!window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]) return
     console.debug(`${DeliveryCommand.PERF_LOG_PREFIX} ${event}`, {
       messengerId: this.state.messengerId ?? null,
       returning: Boolean(this.state.returning),

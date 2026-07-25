@@ -11,6 +11,7 @@ import type { world } from '@/engine/world/world.ts'
 import { Team } from '@/enums/teamKeys'
 import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
 import { isWeatherModifiersEnabled } from '@/game/roomGuards.ts'
+import type { OutMessage } from '@/api/socket.ts'
 
 function pointInTeamGeneralVision(worldInstance: world, team: unitTeam, point: vec2): boolean {
   const generals = worldInstance.units
@@ -406,11 +407,20 @@ export function buildMoveFramesByUnitId(
 export function emitTurnStatePackets(
   worldInstance: world,
   directViewFramesByUnitId?: Map<string, MoveFrame[]>,
+  deferredPackets?: OutMessage[],
 ): void {
+  const emitPacket = (packet: OutMessage) => {
+    if (deferredPackets) {
+      deferredPackets.push(structuredClone(packet))
+      return
+    }
+    worldInstance.events.emit('api', packet)
+  }
+
   if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.GENERAL_VISION_UPDATE]) {
     const directViewByTeam = worldInstance.units.getDirectViewByGenerals()
     for (const team of [Team.RED, Team.BLUE]) {
-      worldInstance.events.emit('api', {
+      emitPacket({
         type: 'direct_view',
         team,
         data: directViewByTeam.get(team as unitTeam)!.map(({ id, isDirect }) => {
@@ -458,7 +468,7 @@ export function emitTurnStatePackets(
           }
         }),
       })
-      worldInstance.events.emit('api', {
+      emitPacket({
         type: 'direct_view_objects',
         team,
         data: getDirectViewObjects(worldInstance, team as unitTeam),
@@ -467,7 +477,7 @@ export function emitTurnStatePackets(
   }
 
   if (isWeatherModifiersEnabled()) {
-    worldInstance.events.emit('api', {
+    emitPacket({
       type: 'weather',
       data: worldInstance.newWeather.value,
     })

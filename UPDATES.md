@@ -1,4 +1,4 @@
-[2026-07-21]
+[2026-07-26]
 - Spectator - add spectator & fixes
 - Messenger - add 50m chain delivery through friendly units
 - Messenger - improve auto-spawn routes and reuse active messengers for follow-up messages
@@ -11,6 +11,7 @@
 - AI triggers - support at_game_time orders and runtime on_attacked / on_enemy_seen triggers
 - Chat - show message timestamps as game time
 - Formations - add limits by units & attack
+- Umpire Board - in planning stage players units now shared to umpire map 
 
 [2026-07-01]
 - Disabled is_player_room map by default

@@ -598,17 +598,8 @@ export class DeliveryCommand extends BaseCommand<
     return true
   }
 
-  private isUmpireReportDelivery(): boolean {
-    if (!this.state.messageId) return false
-    const message = window.ROOM_WORLD.messages.get(this.state.messageId)
-    if (!message) return false
-    return message.author_team === Team.ADMIN
-  }
-
   private rerouteAfterEnemySpotted(unit: BaseUnit, visibleEnemies: BaseUnit[]): boolean {
     if (!visibleEnemies.length) return false
-    const canReroute = this.state.returning || this.isUmpireReportDelivery()
-    if (!canReroute) return false
     const enemySignature = this.getEnemyUnitsSignature(visibleEnemies)
     const sameThreat = this.state.rerouteEnemySignature === enemySignature
     if (sameThreat && this.hasPendingDeliveryMove(unit)) {
@@ -622,7 +613,7 @@ export class DeliveryCommand extends BaseCommand<
       // Keep original return waypoints and rebuild from nearest point with threat zones.
       this.syncReturnRouteIndexToNearest(unit)
     } else {
-      // Umpire reports should not "panic-turn"; just rebuild route with threat zones.
+      // Continue toward the recipient, avoiding the newly spotted threat.
       this.state.manualRoutePoints = []
       this.state.route = []
       this.state.routeIndex = 0
@@ -1072,17 +1063,6 @@ export class DeliveryCommand extends BaseCommand<
     const immediateDeliveryTarget = immediateVisibleTarget ?? this.resolveDeliveryTarget(unit)
     if (this.tryHandleReachedTarget(unit, immediateVisibleTarget, immediateDeliveryTarget)) return
     if (this.rerouteAfterEnemySpotted(unit, visibleEnemies)) return
-    if (
-      !this.state.returning
-      && !this.isUmpireReportDelivery()
-      && this.isVisibleForEnemy(unit)
-      && !this.canDeliverAnyPendingTargetNow(unit)
-    ) {
-      this.startReturning(unit, 'enemy_spotted', 'failed')
-      this.emitDeliveryStatus('failed')
-      this.ensureDeliveryMoveCommands(unit)
-      return
-    }
     if (this.maybeInterceptedByEnemy(unit)) return
 
     if (this.state.instantDelivery) {

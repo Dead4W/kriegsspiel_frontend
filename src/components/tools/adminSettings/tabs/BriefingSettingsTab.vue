@@ -94,6 +94,7 @@ function renderMarkdown(text: string): string {
             v-model="redBriefing"
             rows="7"
             :placeholder="t('tools.admin.settings_modal.briefing.placeholder')"
+            v-show="!isPreviewVisible"
           />
           <div
             v-if="isPreviewVisible"
@@ -108,6 +109,7 @@ function renderMarkdown(text: string): string {
             v-model="blueBriefing"
             rows="7"
             :placeholder="t('tools.admin.settings_modal.briefing.placeholder')"
+            v-show="!isPreviewVisible"
           />
           <div
             v-if="isPreviewVisible"

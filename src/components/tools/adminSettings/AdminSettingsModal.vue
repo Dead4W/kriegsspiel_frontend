@@ -81,7 +81,7 @@ watch(isCaptureHidden, (hidden) => {
       @touchstart.stop
       @touchend.stop
       @contextmenu.stop.prevent
-      @wheel.stop.prevent
+      @wheel.stop
     >
       <header class="admin-settings-header">
         <h2>{{ t('tools.admin.settings_modal.title') }}</h2>

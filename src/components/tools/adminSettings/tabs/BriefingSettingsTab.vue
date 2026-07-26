@@ -5,7 +5,8 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { Team } from '@/enums/teamKeys'
 
-type TeamSettingsMap = Record<string, { briefing?: string }>
+type TeamSettings = Record<string, unknown> & { briefing?: string }
+type TeamSettingsMap = Record<string, TeamSettings>
 
 const { t } = useI18n()
 
@@ -30,8 +31,14 @@ watch(perTeamSettings, syncLocalStateFromRoomSettings, { immediate: true, deep: 
 
 function saveBriefing() {
   const payload = {
-    [Team.RED]: { briefing: redBriefing.value },
-    [Team.BLUE]: { briefing: blueBriefing.value },
+    [Team.RED]: {
+      ...(perTeamSettings.value[Team.RED] || {}),
+      briefing: redBriefing.value,
+    },
+    [Team.BLUE]: {
+      ...(perTeamSettings.value[Team.BLUE] || {}),
+      briefing: blueBriefing.value,
+    },
   }
 
   window.ROOM_WORLD.events.emit('api', {

@@ -568,6 +568,7 @@
           "blue_label": "Брифинг синих",
           "placeholder": "Напишите брифинг в markdown...",
           "save": "Сохранить брифинг",
+          "saved": "Изменения отправлены",
           "show_preview": "Предпросмотр markdown",
           "hide_preview": "Скрыть предпросмотр",
           "preview_empty": "<em>Пока нечего предпросматривать.</em>"

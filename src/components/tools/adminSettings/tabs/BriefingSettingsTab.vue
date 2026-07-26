@@ -21,6 +21,8 @@ const perTeamSettings = computed<TeamSettingsMap>(() => {
 const redBriefing = ref('')
 const blueBriefing = ref('')
 const isPreviewVisible = ref(false)
+const isSaved = ref(false)
+let savedStateTimeout: ReturnType<typeof setTimeout> | undefined
 
 function syncLocalStateFromRoomSettings() {
   redBriefing.value = perTeamSettings.value[Team.RED]?.briefing ?? ''
@@ -28,6 +30,9 @@ function syncLocalStateFromRoomSettings() {
 }
 
 watch(perTeamSettings, syncLocalStateFromRoomSettings, { immediate: true, deep: true })
+watch([redBriefing, blueBriefing], () => {
+  isSaved.value = false
+})
 
 function saveBriefing() {
   const payload = {
@@ -50,6 +55,12 @@ function saveBriefing() {
     ...(window.ROOM_SETTINGS.perTeamSettings || {}),
     ...payload,
   }
+
+  isSaved.value = true
+  if (savedStateTimeout) clearTimeout(savedStateTimeout)
+  savedStateTimeout = setTimeout(() => {
+    isSaved.value = false
+  }, 2000)
 }
 
 function togglePreview() {
@@ -114,8 +125,17 @@ function renderMarkdown(text: string): string {
               : t('tools.admin.settings_modal.briefing.show_preview')
           }}
         </button>
-        <button type="button" class="save-button" @click="saveBriefing">
-          {{ t('tools.admin.settings_modal.briefing.save') }}
+        <button
+          type="button"
+          class="save-button"
+          :class="{ saved: isSaved }"
+          @click="saveBriefing"
+        >
+          {{
+            isSaved
+              ? t('tools.admin.settings_modal.briefing.saved')
+              : t('tools.admin.settings_modal.briefing.save')
+          }}
         </button>
       </div>
     </div>
@@ -234,6 +254,12 @@ function renderMarkdown(text: string): string {
 
 .save-button:hover {
   background: #1e40af;
+}
+
+.save-button.saved,
+.save-button.saved:hover {
+  border-color: #16a34a;
+  background: #15803d;
 }
 
 .markdown :deep(p) {

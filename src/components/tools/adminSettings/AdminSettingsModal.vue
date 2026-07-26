@@ -21,6 +21,13 @@ function close() {
   emit('close')
 }
 
+function closeOnOverlayPointerDown(event: PointerEvent) {
+  event.stopPropagation()
+  if (event.button === 0) {
+    close()
+  }
+}
+
 function onCaptureModeChange(hidden: boolean) {
   isCaptureHidden.value = hidden
 }
@@ -49,7 +56,7 @@ watch(isCaptureHidden, (hidden) => {
     class="admin-settings-overlay"
     :class="{ 'is-hidden-for-capture': isCaptureHidden }"
     tabindex="-1"
-    @click.self="close"
+    @pointerdown.self="closeOnOverlayPointerDown"
     @keydown.stop
     @keyup.stop
     @keypress.stop

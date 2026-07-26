@@ -564,6 +564,7 @@
           "blue_label": "Blue team briefing",
           "placeholder": "Write briefing in markdown...",
           "save": "Save briefing",
+          "saved": "Changes sent",
           "show_preview": "Preview markdown",
           "hide_preview": "Hide preview",
           "preview_empty": "<em>Nothing to preview yet.</em>"

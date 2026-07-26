@@ -362,7 +362,6 @@ export async function runTurnStep(params: {
   const deferredTurnStatePackets: OutMessage[] = [];
   emitTurnStatePackets(worldInstance, undefined, deferredTurnStatePackets);
   worldInstance.units.withNewCommandsTmp.clear();
-  worldInstance.socketLock = true;
   let runningSteps = 0;
 
   try {
@@ -428,7 +427,6 @@ export async function runTurnStep(params: {
     }
 
     worldInstance.skipTime(0, false);
-    worldInstance.socketLock = false;
     await worldInstance.events.emit("force_api", {});
     await worldInstance.events.emit("changed", { reason: "timer" });
   } finally {

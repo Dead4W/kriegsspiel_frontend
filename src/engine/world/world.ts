@@ -177,9 +177,6 @@ export class world {
   private liveGameSecondsPerMinute = 60
   private liveSecondFractionalCarry = 0
 
-  // Блокировка сокета на отправку/приёмку событий
-  socketLock: boolean = false;
-
   stage: RoomGameStage = RoomGameStage.PLANNING;
   roomMapUserId: number | null = null
 

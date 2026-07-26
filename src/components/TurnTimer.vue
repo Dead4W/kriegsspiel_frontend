@@ -557,7 +557,6 @@ async function runTurnStep(
 
   const turnStartUnitPositions = captureUnitPositionsById()
   window.ROOM_WORLD.units.withNewCommandsTmp.clear()
-  window.ROOM_WORLD.socketLock = true
 
   try {
     let leftSeconds = secondsToSkip
@@ -608,7 +607,6 @@ async function runTurnStep(
 
     // Do not broadcast no-op skip_time: it drops live flag on remote clients.
     window.ROOM_WORLD.skipTime(0, false)
-    window.ROOM_WORLD.socketLock = false
     window.ROOM_WORLD.events.emit('force_api', {}).then();
 
     displayWorldTime.value = window.ROOM_WORLD.time

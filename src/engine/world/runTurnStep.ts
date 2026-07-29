@@ -239,6 +239,22 @@ function hasActiveMoveCommand(unit: UnitLike): boolean {
   )
 }
 
+function getCollisionSafeStepSeconds(units: UnitLike[], worldInstance: world): number {
+  const metersPerPixel = Math.max(0.0001, Number(worldInstance.map.metersPerPixel) || 1)
+  let maxSpeedPxPerSecond = 0
+
+  for (const unit of units) {
+    if (!unit.alive || !hasActiveMoveCommand(unit)) continue
+    const speedPxPerSecond = unit.speed / 60 / metersPerPixel
+    if (speedPxPerSecond > maxSpeedPxPerSecond) {
+      maxSpeedPxPerSecond = speedPxPerSecond
+    }
+  }
+
+  if (maxSpeedPxPerSecond <= 0) return Number.POSITIVE_INFINITY
+  return (BaseUnit.COLLISION_RANGE / 2) / maxSpeedPxPerSecond
+}
+
 function isStandingUnit(unit: UnitLike): boolean {
   return unit.alive
     && !unit.isRetreat
@@ -261,7 +277,7 @@ function separateOverlappingStandingUnits(units: UnitLike[], worldInstance: worl
       if (other.id === unit.id || !other.alive || other.type === unitType.MESSENGER) return false
       const dx = other.pos.x - x
       const dy = other.pos.y - y
-      return dx * dx + dy * dy <= collisionRangeSquared
+      return dx * dx + dy * dy < collisionRangeSquared
     })
 
   for (const unit of units) {
@@ -270,7 +286,7 @@ function separateOverlappingStandingUnits(units: UnitLike[], worldInstance: worl
     const overlapsAnotherStandingUnit = units.some((other) =>
       other.id !== unit.id
       && isStandingUnit(other)
-      && Math.hypot(other.pos.x - unit.pos.x, other.pos.y - unit.pos.y) <= collisionRange,
+      && Math.hypot(other.pos.x - unit.pos.x, other.pos.y - unit.pos.y) < collisionRange,
     )
     if (!overlapsAnotherStandingUnit) continue
 
@@ -473,7 +489,11 @@ export async function runTurnStep(params: {
   try {
     let leftSeconds = secondsToSkip;
     while (leftSeconds > 0 && (shouldContinue?.() ?? true)) {
-      const step = Math.min(maxStepSeconds, leftSeconds);
+      const collisionSafeStepSeconds = getCollisionSafeStepSeconds(
+        worldInstance.units.list(),
+        worldInstance,
+      );
+      const step = Math.min(maxStepSeconds, leftSeconds, collisionSafeStepSeconds);
       const stepStartUnitPositions = captureUnitPositionsById(worldInstance);
       processUnitCommands(worldInstance, step);
       leftSeconds -= step;

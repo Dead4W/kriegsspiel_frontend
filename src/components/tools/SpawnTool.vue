@@ -63,11 +63,7 @@ const TEAMS = computed(() => {
 
 /* ================= helpers ================= */
 
-function isOccupied(
-  w: world,
-  pos: { x: number; y: number },
-  radius = BaseUnit.COLLISION_RANGE,
-) {
+function isOccupied(w: world, pos: { x: number; y: number }, radius = 20) {
   return w.units.list().some(u => {
     if (!u.alive) return false
     const dx = u.pos.x - pos.x

@@ -65,6 +65,7 @@ function onPointerDown(e: PointerEvent) {
     id: crypto.randomUUID(),
     ownerId: window.CLIENT_ID,
     points: [p.x, p.y],
+    pointTimes: [Date.now()],
     color: currentMode === 'erase' ? eraserStyle.value : strokeStyle.value,
     width: width.value,
     mode: currentMode,
@@ -92,6 +93,7 @@ function onPointerMove(e: PointerEvent) {
   lastClient = { x: e.clientX, y: e.clientY }
   const p = worldPosFromEvent(e)
   currentStroke.points.push(p.x, p.y)
+  currentStroke.pointTimes?.push(Date.now())
   window.ROOM_WORLD.touchPaint()
   window.ROOM_WORLD.markPaintStrokeDirty(currentStroke.id)
 }

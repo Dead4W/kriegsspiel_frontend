@@ -5,6 +5,8 @@ export type PaintStroke = {
   ownerId: string
   /** World-space polyline: [x1, y1, x2, y2, ...] */
   points: number[]
+  /** Sender timestamps corresponding to each point, used for remote playback. */
+  pointTimes?: number[]
   /** Canvas stroke style (e.g. '#ff0000' or 'rgba(255,0,0,0.8)') */
   color: string
   /** Line width in screen px at zoom = 1 */

@@ -50,9 +50,9 @@ export class cursorregistry {
   }
 
   getMoveFrames(): CursorObject | null {
-    if (window.location.hostname === 'localhost') {
-      return null
-    }
+    // if (window.location.hostname === 'localhost') {
+    //   return null
+    // }
 
     if (this.moveFrames.length === 0) {
       return null;

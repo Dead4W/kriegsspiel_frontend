@@ -182,10 +182,15 @@ export function spawnMessengerForMessage(
 }
 
 export function getCurrentPlayerGeneral(team: Team = window.PLAYER.team): BaseUnit | null {
-  return window.ROOM_WORLD.units
+  const generals = window.ROOM_WORLD.units
     .list()
-    .find((u) => u.alive && u.team === team && u.type === unitType.GENERAL)
-    ?? null
+    .filter((u) => u.alive && u.team === team && u.type === unitType.GENERAL)
+  const playerId = window.ROOM_WORLD.roomMapUserId ?? window.PLAYER.id
+  if (playerId != null) {
+    const playerGeneral = generals.find((unit) => unit.roomMapUserId === playerId)
+    if (playerGeneral) return playerGeneral
+  }
+  return generals[0] ?? null
 }
 
 export function findLastNonAdminAuthorTeam(unitIds: uuid[]): Team | null {

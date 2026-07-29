@@ -9,7 +9,6 @@ import {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {type unitstate, unitType, type uuid} from "@/engine";
 import {Messenger} from "@/engine/units/messenger.ts";
 import {DeliveryCommand} from "@/engine/units/commands/deliveryCommand.ts";
-import {getTeamColor} from "@/engine/2d/render/util.ts";
 import type {OverlayItem} from "@/engine/types/overlayTypes.ts";
 import KringChatMessage from "@/components/chat/KringChatMessage.vue";
 import {
@@ -363,15 +362,30 @@ const quotedMessageId = ref<uuid | null>(null)
 const highlightedMessageId = ref<uuid | null>(null)
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null
 const routePoints = ref<Array<{ x: number; y: number }>>([])
+const isRouteCaptureEnabled = ref(false)
+const hasSelectedDirectViewUnit = computed(() =>
+  selectedUnits.value.some((unit) => unit.directView)
+)
 
-function isRouteCaptureActive(): boolean {
+function canCaptureRoute(): boolean {
   return (
     isOpen.value
     && isRedOrBlueTeam()
     && isWarStage()
     && selectedUnits.value.length > 0
-    && input.value.trim().length > 0
+    && !hasSelectedDirectViewUnit.value
+    && !isEditing.value
   )
+}
+
+function isRouteCaptureActive(): boolean {
+  return canCaptureRoute() && isRouteCaptureEnabled.value
+}
+
+function toggleRouteCapture() {
+  if (!canCaptureRoute()) return
+  isRouteCaptureEnabled.value = !isRouteCaptureEnabled.value
+  redrawRoutePreview()
 }
 
 function canEditMessage(message: ChatMessage): boolean {
@@ -382,6 +396,8 @@ function canEditMessage(message: ChatMessage): boolean {
 
 function startEditMessage(message: ChatMessage) {
   if (!canEditMessage(message)) return
+  isRouteCaptureEnabled.value = false
+  clearRoute()
   editingMessageId.value = message.id
   input.value = message.text
   nextTick(() => {
@@ -544,8 +560,11 @@ function send() {
     ? findLastNonAdminAuthorTeam(selected.map((u) => u.id))
     : null
   const team = inferredReportTeam ?? baseTeam
-  const general = selected.find((u) => u.type === unitType.GENERAL) ?? findTeamGeneral(team)
-  const routePayload = getCurrentMessengerRouteFromGeneral(general, selected, routePoints.value)
+  const general = selected.find((u) => u.type === unitType.GENERAL)
+    ?? (isRedOrBlueTeam() ? getCurrentPlayerGeneral(team) : findTeamGeneral(team))
+  const routePayload = selected.some((unit) => unit.directView)
+    ? { raw: [], route: [] }
+    : getCurrentMessengerRouteFromGeneral(general, selected, routePoints.value)
   const m = {
     id: crypto.randomUUID(),
     author: window.PLAYER.name,
@@ -636,6 +655,7 @@ function send() {
   input.value = ''
   clearQuote()
   clearRoute()
+  isRouteCaptureEnabled.value = false
 
   nextTick(() => {
     autoResizeInput()
@@ -679,7 +699,11 @@ function focusQuotedMessage(messageId?: uuid | null) {
 
 function redrawRoutePreview() {
   const general = getCurrentPlayerGeneral()
-  if (!general || !isRouteCaptureActive() || !isWarStage()) {
+  if (
+    !general
+    || !canCaptureRoute()
+    || (!isRouteCaptureEnabled.value && routePoints.value.length === 0)
+  ) {
     window.ROOM_WORLD.clearOverlay()
     return
   }
@@ -693,8 +717,7 @@ function redrawRoutePreview() {
   }
 
   const opacity = Number(window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.OPACITY_COMMANDS] ?? 0.8)
-  const { r, g, b } = getTeamColor(general.team)
-  const color = `rgba(${r},${g},${b},${opacity})`
+  const color = `rgba(168,85,247,${opacity})`
   const overlay: OverlayItem[] = []
   let prev = { x: general.pos.x, y: general.pos.y }
   for (const point of route) {
@@ -713,6 +736,7 @@ function redrawRoutePreview() {
 }
 
 function onGlobalPointerDown(event: PointerEvent) {
+  if (event.button !== 0) return
   if (!isRouteCaptureActive() || !isRedOrBlueTeam() || !isWarStage()) return
   const target = event.target as HTMLElement | null
   if (target && target.closest('.krig-chat')) return
@@ -793,6 +817,7 @@ function onClickMarkAllAsRead() {
 
 watch(isOpen, async (open) => {
   if (!open) {
+    isRouteCaptureEnabled.value = false
     clearRoute()
     return
   }
@@ -805,13 +830,17 @@ watch(routePoints, () => {
   redrawRoutePreview()
 }, { deep: true })
 
-watch(() => input.value.trim().length > 0, (hasInput) => {
-  if (!hasInput && routePoints.value.length > 0) {
-    clearRoute()
-    return
-  }
-  redrawRoutePreview()
-})
+watch(
+  () => selectedUnits.value.map((unit) => `${unit.id}:${unit.directView ? 1 : 0}`).join(','),
+  () => {
+    if (!canCaptureRoute()) {
+      isRouteCaptureEnabled.value = false
+      clearRoute()
+      return
+    }
+    redrawRoutePreview()
+  },
+)
 
 /* =======================
    RESIZE
@@ -1094,14 +1123,39 @@ onBeforeUnmount(() => {
             <button type="button" @click="clearQuote">{{ t('chat.cancel') }}</button>
           </div>
 
-          <div v-if="isRedOrBlueTeam() && isWarStage()" class="chat-route-toolbar">
+          <div
+            v-if="isRedOrBlueTeam() && isWarStage() && !isEditing"
+            class="chat-route-toolbar"
+          >
             <span class="chat-route-toolbar-hint">
-              {{ t('chat.route.auto_capture_hint') }}
+              {{
+                hasSelectedDirectViewUnit
+                  ? t('chat.route.unavailable_direct_view')
+                  : t('chat.route.auto_capture_hint')
+              }}
             </span>
-            <button v-if="routePoints.length > 0" type="button" @click="clearRoute">
+            <button
+              v-if="!hasSelectedDirectViewUnit && selectedUnits.length > 0"
+              type="button"
+              :class="{ active: isRouteCaptureEnabled }"
+              @click="toggleRouteCapture"
+            >
+              {{
+                isRouteCaptureEnabled
+                  ? t('chat.route.stop_capture')
+                  : t('chat.route.start_capture')
+              }}
+            </button>
+            <button
+              v-if="!hasSelectedDirectViewUnit && routePoints.length > 0"
+              type="button"
+              @click="clearRoute"
+            >
               {{ t('chat.route.clear') }}
             </button>
-            <span>{{ t('chat.route.points_count', { count: routePoints.length }) }}</span>
+            <span v-if="!hasSelectedDirectViewUnit">
+              {{ t('chat.route.points_count', { count: routePoints.length }) }}
+            </span>
           </div>
 
           <div v-if="isEditing" class="chat-editing-banner">
@@ -1532,6 +1586,12 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   padding: 2px 8px;
   cursor: pointer;
+}
+
+.chat-route-toolbar button.active {
+  background: #7e22ce;
+  border-color: #a855f7;
+  color: white;
 }
 
 .chat-route-toolbar-hint {

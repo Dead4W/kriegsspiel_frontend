@@ -852,9 +852,10 @@
       "units_in_battle": "Units engaged in battle:"
     },
     "route": {
-      "start_capture": "Capture route points",
+      "start_capture": "Set route points",
       "stop_capture": "Stop route capture",
-      "auto_capture_hint": "Route points are captured automatically when chat is open, message text exists, and units are selected.",
+      "auto_capture_hint": "Enable the mode, then click the map to set route points.",
+      "unavailable_direct_view": "A messenger route cannot be set for direct-view units.",
       "clear": "Clear route",
       "points_count": "Points: {count}"
     },

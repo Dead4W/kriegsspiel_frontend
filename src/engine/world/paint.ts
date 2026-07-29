@@ -58,16 +58,22 @@ export class paintstate {
       const s = this.strokes[idx]!
       const fromIdx = (this.lastSentPointIndex.get(id) ?? 0) << 1
       const segmentPoints = s.points.slice(fromIdx)
+      const segmentPointTimes = s.pointTimes?.slice(fromIdx >> 1)
       if (this.pointCount(segmentPoints) < 2) continue
       const segment: PaintStroke = {
         ...s,
         id: crypto.randomUUID(),
         points: segmentPoints,
+        pointTimes: segmentPointTimes,
       }
       list.push(segment)
       this.strokes.push(segment)
-      const remaining = s.points.slice(0, fromIdx)
+      // Keep the last sent point as the beginning of the next segment.
+      // Without this overlap, movement between socket flushes is never drawn,
+      // which leaves visible gaps when the pointer moves quickly.
+      const remaining = segmentPoints.slice(-2)
       s.points = remaining
+      s.pointTimes = segmentPointTimes?.slice(-1)
       this.lastSentPointIndex.set(id, 0)
       if (this.pointCount(remaining) >= 2) {
         toReDirty.add(id)

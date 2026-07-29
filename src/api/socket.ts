@@ -276,6 +276,7 @@ export class GameSocket {
   private apiEventsListenerUnsub?: unsub
   private forceApiEventsListenerUnsub?: unsub
   private readonly runtimeOptions: GameSocketRuntimeOptions
+  private paintAnimationFrames = new Set<number>()
 
   constructor(runtimeOptions: GameSocketRuntimeOptions = {}) {
     this.runtimeOptions = runtimeOptions
@@ -463,11 +464,88 @@ export class GameSocket {
 
   /* ================== IN ================== */
 
+  private addAnimatedPaintStroke(
+    stroke: PaintStroke,
+    timelineStart: number,
+    playbackStartedAt: number,
+  ) {
+    const targetPoints = stroke.points.slice()
+    const pointCount = targetPoints.length >> 1
+    const pointTimes = stroke.pointTimes?.slice()
+    const hasValidTimeline =
+      pointTimes?.length === pointCount
+      && pointTimes.every((time, index) =>
+        Number.isFinite(time) && (index === 0 || time >= pointTimes[index - 1]!)
+      )
+
+    if (pointCount < 2 || !hasValidTimeline) {
+      this.world.addPaintStroke(stroke, 'remote')
+      return
+    }
+
+    const animatedStroke: PaintStroke = {
+      ...stroke,
+      points: targetPoints.slice(0, 2),
+    }
+    this.world.addPaintStroke(animatedStroke, 'remote')
+
+    let animationFrame = 0
+    const tick = (now: number) => {
+      this.paintAnimationFrames.delete(animationFrame)
+      const playbackTime = timelineStart + (now - playbackStartedAt)
+
+      if (playbackTime >= pointTimes[pointCount - 1]!) {
+        animatedStroke.points = targetPoints
+        this.world.touchPaint()
+        return
+      }
+
+      const visiblePoints = targetPoints.slice(0, 2)
+      let nextPoint = 1
+      while (nextPoint < pointCount && pointTimes[nextPoint]! <= playbackTime) {
+        const offset = nextPoint << 1
+        visiblePoints.push(targetPoints[offset]!, targetPoints[offset + 1]!)
+        nextPoint++
+      }
+
+      if (nextPoint < pointCount && playbackTime >= pointTimes[0]!) {
+        const previousPoint = nextPoint - 1
+        const previousOffset = previousPoint << 1
+        const nextOffset = nextPoint << 1
+        const segmentDuration = pointTimes[nextPoint]! - pointTimes[previousPoint]!
+        const segmentProgress = segmentDuration > 0
+          ? (playbackTime - pointTimes[previousPoint]!) / segmentDuration
+          : 1
+        visiblePoints.push(
+          targetPoints[previousOffset]! + (targetPoints[nextOffset]! - targetPoints[previousOffset]!) * segmentProgress,
+          targetPoints[previousOffset + 1]! + (targetPoints[nextOffset + 1]! - targetPoints[previousOffset + 1]!) * segmentProgress,
+        )
+      }
+
+      animatedStroke.points = visiblePoints
+      this.world.touchPaint()
+      animationFrame = requestAnimationFrame(tick)
+      this.paintAnimationFrames.add(animationFrame)
+    }
+
+    animationFrame = requestAnimationFrame(tick)
+    this.paintAnimationFrames.add(animationFrame)
+  }
+
   private handleMessage(msg: InMessage) {
     if (msg.type === 'messages') {
       let skipTimeSoundPlayed = false
       let lastLiveSkipTimeIndex = -1
       const animatedUnitIds = new Set<string>()
+      let paintTimelineStart = Number.POSITIVE_INFINITY
+      const paintPlaybackStartedAt = performance.now()
+      for (const message of msg.messages) {
+        if (message.type !== 'paint_add') continue
+        const firstPointTime = message.data.pointTimes?.[0]
+        if (firstPointTime !== undefined && Number.isFinite(firstPointTime)) {
+          paintTimelineStart = Math.min(paintTimelineStart, firstPointTime)
+        }
+      }
       for (let i = msg.messages.length - 1; i >= 0; i -= 1) {
         const message = msg.messages[i]
         if (message?.type === 'skip_time' && message.live === true) {
@@ -717,7 +795,7 @@ export class GameSocket {
             })
           }
         } else if (m.type === 'paint_add') {
-          this.world.addPaintStroke(m.data, 'remote')
+          this.addAnimatedPaintStroke(m.data, paintTimelineStart, paintPlaybackStartedAt)
         } else if (m.type === 'paint_undo') {
           this.world.removePaintStrokeById(m.data.id)
         } else if (m.type === 'skip_time_success') {
@@ -734,6 +812,8 @@ export class GameSocket {
   }
 
   disconnect() {
+    for (const frame of this.paintAnimationFrames) cancelAnimationFrame(frame)
+    this.paintAnimationFrames.clear()
     this.stopSync()
     this.ws?.close()
   }

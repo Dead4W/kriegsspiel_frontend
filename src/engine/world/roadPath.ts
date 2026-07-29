@@ -945,6 +945,12 @@ export function buildRoadTurnRoutePoints(
     });
 
     if (chainedPath.length < 2) {
+      if (options.threatZones?.length) {
+        return buildRoadTurnRoutePoints(w, from, to, {
+          ...options,
+          threatZones: undefined,
+        });
+      }
       return options.allowDirectFallback === false ? [] : [{ x: to.x, y: to.y }];
     }
 

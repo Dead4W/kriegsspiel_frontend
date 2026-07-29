@@ -1,6 +1,6 @@
 import { BaseUnit } from "@/engine/units/baseUnit.ts";
 import type { ChatMessage } from "@/engine/types/chatMessage.ts";
-import type { commandstate, UnitAiTriggerState, unitstate } from "@/engine/units/types.ts";
+import type { commandstate, unitstate } from "@/engine/units/types.ts";
 import { unitType } from "@/engine/units/types.ts";
 import { Team } from "@/enums/teamKeys.ts";
 import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
@@ -11,6 +11,10 @@ import { RetreatCommand } from "@/engine/units/commands/retreatCommand.ts";
 import { buildRoadTurnRoutePoints } from "@/engine/world/roadPath.ts";
 import { ChatMessageStatus } from "@/engine/types/chatMessage.ts";
 import { CommandStatus } from "@/engine/units/commands/baseCommand.ts";
+import {
+  applyUnitOrderStateNotes,
+  readUnitOrderStateNotes,
+} from "@/engine/units/orderStateNotes.ts";
 
 function toCommandObjects(rawCommands: unknown[]): Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand> {
   const commands: Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand> = [];
@@ -68,58 +72,6 @@ function rebuildMoveCommandsWithRoadPath(
   }
 
   return rebuilt;
-}
-
-function parseAutoAttackFromNotes(notes: unknown): boolean | null {
-  if (!Array.isArray(notes)) return null;
-  for (const noteRaw of notes) {
-    const note = String(noteRaw ?? "").trim().toLowerCase();
-    if (!note.startsWith("set_autoattack:")) continue;
-    const value = note.slice("set_autoattack:".length).trim();
-    if (value === "on" || value === "true" || value === "1") return true;
-    if (value === "off" || value === "false" || value === "0") return false;
-  }
-  return null;
-}
-
-function parseAiTriggersFromNotes(notes: unknown, sourceMessageId: string): {
-  hasDirective: boolean;
-  triggers: UnitAiTriggerState[];
-} {
-  if (!Array.isArray(notes)) {
-    return { hasDirective: false, triggers: [] };
-  }
-  const parsedTriggers: UnitAiTriggerState[] = [];
-  let hasDirective = false;
-  for (const noteRaw of notes) {
-    const note = String(noteRaw ?? "").trim();
-    if (!note.startsWith("set_ai_triggers:")) continue;
-    hasDirective = true;
-    const jsonPayload = note.slice("set_ai_triggers:".length);
-    let rawTriggers: unknown = [];
-    try {
-      rawTriggers = JSON.parse(jsonPayload);
-    } catch {
-      rawTriggers = [];
-    }
-    if (!Array.isArray(rawTriggers)) continue;
-    for (const rawTrigger of rawTriggers) {
-      if (!rawTrigger || typeof rawTrigger !== "object") continue;
-      const rec = rawTrigger as Record<string, unknown>;
-      const triggerType = String(rec.type ?? "").toLowerCase();
-      if (triggerType !== "at_game_time") continue
-      const atGameTime = String(rec.atGameTime ?? "").trim()
-      const parsedTime = Date.parse(atGameTime.replace(" ", "T"))
-      if (!atGameTime || !Number.isFinite(parsedTime)) continue
-      parsedTriggers.push({
-        type: "at_game_time",
-        atGameTime,
-        sourceMessageId,
-        fired: false,
-      })
-    }
-  }
-  return { hasDirective, triggers: parsedTriggers };
 }
 
 function parseSendMessageTextsFromNotes(notes: unknown): string[] {
@@ -282,14 +234,18 @@ function spawnMessengerForUnitMessage(message: ChatMessage, sourceUnit: BaseUnit
   message.messengerId = messengerId
 }
 
-export function emitUnitLinkedMessage(
+export function emitUnitsLinkedMessage(
   sourceMessage: ChatMessage,
-  targetUnit: BaseUnit,
+  targetUnits: BaseUnit[],
   text: string,
   existingMessengerId: string | null = null,
 ): boolean {
+  const uniqueUnits = [...new Map(targetUnits.map((unit) => [unit.id, unit])).values()]
+  const targetUnit = uniqueUnits[0]
+  if (!targetUnit) return false
   const messageTeam = resolveUnitTeam(targetUnit)
   if (!messageTeam) return false
+  if (uniqueUnits.some((unit) => resolveUnitTeam(unit) !== messageTeam)) return false
   const existingMessenger = existingMessengerId
     ? window.ROOM_WORLD.units.get(existingMessengerId)
     : null
@@ -304,7 +260,7 @@ export function emitUnitLinkedMessage(
     id: crypto.randomUUID(),
     author: "Umpire",
     author_team: Team.ADMIN,
-    unitIds: [targetUnit.id],
+    unitIds: uniqueUnits.map((unit) => unit.id),
     text,
     time: window.ROOM_WORLD.time,
     created_at: new Date().toISOString(),
@@ -317,13 +273,24 @@ export function emitUnitLinkedMessage(
     delivered: false,
   }
   window.ROOM_WORLD.addMessage(outgoing)
-  targetUnit.linkMessage(outgoing.id)
+  for (const unit of uniqueUnits) {
+    unit.linkMessage(outgoing.id)
+  }
   if (reuseMessenger) {
     existingMessenger!.linkMessage(outgoing.id)
   } else {
     spawnMessengerForUnitMessage(outgoing, targetUnit)
   }
   return true
+}
+
+export function emitUnitLinkedMessage(
+  sourceMessage: ChatMessage,
+  targetUnit: BaseUnit,
+  text: string,
+  existingMessengerId: string | null = null,
+): boolean {
+  return emitUnitsLinkedMessage(sourceMessage, [targetUnit], text, existingMessengerId)
 }
 
 export function applyReadyMessageOrdersToUnit(
@@ -341,10 +308,10 @@ export function applyReadyMessageOrdersToUnit(
     toCommandObjects(commandsRaw as unknown[]),
     targetUnit
   );
-  const nextAutoAttack = parseAutoAttackFromNotes(plan.notes);
-  const parsedAiTriggers = parseAiTriggersFromNotes(plan.notes, message.id);
+  const orderState = readUnitOrderStateNotes(plan.notes, message.id);
+  const hasStateChanges = orderState.autoAttack != null || orderState.aiTriggers.hasDirective;
   const sendMessageTexts = parseSendMessageTextsFromNotes(plan.notes);
-  const hasEffects = nextAutoAttack != null || parsedAiTriggers.hasDirective || sendMessageTexts.length > 0;
+  const hasEffects = hasStateChanges || sendMessageTexts.length > 0;
   if (!generatedCommands.length && !hasEffects) return false;
 
   if (generatedCommands.length) {
@@ -355,12 +322,7 @@ export function applyReadyMessageOrdersToUnit(
     targetUnit.setCommands([...nonClearCommands, ...generatedCommands]);
   }
 
-  if (nextAutoAttack != null) {
-    targetUnit.setAutoAttack(nextAutoAttack);
-  }
-  if (parsedAiTriggers.hasDirective) {
-    targetUnit.setAiTriggers(parsedAiTriggers.triggers);
-  }
+  applyUnitOrderStateNotes(targetUnit, orderState);
   for (const text of sendMessageTexts) {
     emitUnitLinkedMessage(message, targetUnit, text)
   }

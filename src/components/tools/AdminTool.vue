@@ -2,6 +2,7 @@
 import {useI18n} from 'vue-i18n'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
+import {unitType} from "@/engine/units/types.ts";
 import {computed, onMounted, onUnmounted, ref} from "vue";
 import ConnectionsList from '@/components/ConnectionsList.vue'
 import ChartTool from '@/components/tools/ChartTool.vue'
@@ -78,6 +79,10 @@ function startWar() {
       })
     )
     if (!confirmed) return
+  }
+  for (const unit of window.ROOM_WORLD.units.list()) {
+    if (unit.type === unitType.MESSENGER || unit.autoAttack) continue
+    unit.setAutoAttack(true)
   }
   window.ROOM_WORLD.setStage(RoomGameStage.WAR);
 }

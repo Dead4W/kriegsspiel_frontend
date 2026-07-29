@@ -122,6 +122,12 @@ function getFirstMoveCommandModifier(unit: BaseUnit): string | null {
   return null
 }
 
+export function hasAutoBridgeFormation(unit: BaseUnit): boolean {
+  return (unit as BaseUnit & {
+    __autoBridgePrevFormation?: string | null
+  }).__autoBridgePrevFormation != null
+}
+
 function applyBridgeFormation(unit: BaseUnit, isMoving: boolean, radiusPx: number) {
   const unitWithAutoBridgeState = unit as BaseUnit & {
     __autoBridgePrevFormation?: string | null

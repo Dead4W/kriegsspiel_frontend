@@ -41,7 +41,7 @@ export interface DeliveryCommandState {
   returnHpApplied?: boolean,
   reportSent?: boolean,
   reachedTarget?: boolean,
-  enemySightings?: vec2[],
+  enemySightings?: Array<vec2 & { unitId?: uuid }>,
   outboundTrace?: vec2[],
   rerouteEnemySignature?: string | null,
 }
@@ -216,11 +216,17 @@ export class DeliveryCommand extends BaseCommand<
     if (!sightings.length) return []
     const metersPerPixel = Math.max(0.0001, window.ROOM_WORLD.map.metersPerPixel)
     const radiusPx = DeliveryCommand.ENEMY_THREAT_RADIUS_METERS / metersPerPixel
-    return sightings.map((sighting) => ({
-      x: sighting.x,
-      y: sighting.y,
-      radiusPx,
-    }))
+    return sightings
+      .filter((sighting) => {
+        if (!sighting.unitId) return true
+        const enemy = window.ROOM_WORLD.units.get(sighting.unitId)
+        return Boolean(enemy && enemy.alive && !enemy.isRetreat)
+      })
+      .map((sighting) => ({
+        x: sighting.x,
+        y: sighting.y,
+        radiusPx,
+      }))
   }
 
   private isPointInThreatZone(
@@ -611,7 +617,7 @@ export class DeliveryCommand extends BaseCommand<
         const dy = sighting.y - enemy.pos.y
         return (dx * dx + dy * dy) <= approxMergeDistanceSq
       })
-      const enemyPos = { x: enemy.pos.x, y: enemy.pos.y }
+      const enemyPos = { x: enemy.pos.x, y: enemy.pos.y, unitId: enemy.id }
       if (existingIdx >= 0) {
         this.state.enemySightings[existingIdx] = enemyPos
       } else {

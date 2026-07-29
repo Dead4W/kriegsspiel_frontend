@@ -1,6 +1,9 @@
 import type { world } from "@/engine/world/world.ts";
 import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
-import { applyAutoEnvironment } from "@/engine/units/autoEnvironment.ts";
+import {
+  applyAutoEnvironment,
+  hasAutoBridgeFormation,
+} from "@/engine/units/autoEnvironment.ts";
 import { AttackCommand, type AttackCommandState } from "@/engine/units/commands/attackCommand.ts";
 import { type MoveCommandState } from "@/engine/units/commands/moveCommand.ts";
 import type { vec2 } from "@/engine/types.ts";
@@ -15,6 +18,9 @@ import {
 import { updateUnitFatigue } from '@/engine/units/fatigue'
 import { hasFormationTag } from '@/engine/resourcePack/formations'
 import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
+import { unitType } from '@/engine/units/types'
+import { isPlanningTeamSpawnPointAllowed } from '@/game/planningSpawns'
+import { getUnitTypeDef } from '@/engine/resourcePack/units'
 
 const MAX_STEP_SECONDS = 60;
 const TURN_ANIMATION_DURATION_MS = 50;
@@ -98,6 +104,43 @@ function sortUnitsForTurnStep(units: UnitLike[]) {
 
     return a.id.localeCompare(b.id);
   });
+}
+
+function getActiveColumnUnitIds(units: UnitLike[]): Set<string> {
+  const moveGroups = new Map<string, Array<{ unitId: string; orderIndex: number }>>()
+
+  for (const unit of units) {
+    if (!unit.alive) continue
+    const firstActiveCommand = unit.getCommands().find((command) => !command.isFinished(unit))
+    if (firstActiveCommand?.type !== UnitCommandTypes.Move) continue
+
+    const moveState = firstActiveCommand.getState().state as MoveCommandState
+    if (!moveState.uniqueId || !Number.isFinite(moveState.orderIndex)) continue
+
+    const group = moveGroups.get(moveState.uniqueId) ?? []
+    group.push({ unitId: unit.id, orderIndex: moveState.orderIndex })
+    moveGroups.set(moveState.uniqueId, group)
+  }
+
+  const activeColumnUnitIds = new Set<string>()
+  for (const group of moveGroups.values()) {
+    if (group.length < 2) continue
+    if (new Set(group.map(({ orderIndex }) => orderIndex)).size !== group.length) continue
+    for (const { unitId } of group) activeColumnUnitIds.add(unitId)
+  }
+  return activeColumnUnitIds
+}
+
+function resetInactiveColumnFormations(units: UnitLike[]) {
+  const activeColumnUnitIds = getActiveColumnUnitIds(units)
+
+  for (const unit of units) {
+    if (!unit.alive || unit.getFormation() !== 'column') continue
+    if (activeColumnUnitIds.has(unit.id) || hasAutoBridgeFormation(unit)) continue
+
+    const defaultFormation = getUnitTypeDef(unit.type)?.defaultFormation ?? 'default'
+    if (defaultFormation !== 'column') unit.setFormation(defaultFormation)
+  }
 }
 
 function syncFormationMoveSpeedByOrder(units: UnitLike[], worldInstance: world) {
@@ -190,9 +233,69 @@ function syncFormationMoveSpeedByOrder(units: UnitLike[], worldInstance: world) 
   }
 }
 
+function hasActiveMoveCommand(unit: UnitLike): boolean {
+  return unit.getCommands().some((command) =>
+    command.type === UnitCommandTypes.Move && !command.isFinished(unit),
+  )
+}
+
+function isStandingUnit(unit: UnitLike): boolean {
+  return unit.alive
+    && !unit.isRetreat
+    && unit.type !== unitType.MESSENGER
+    && !hasActiveMoveCommand(unit)
+}
+
+function separateOverlappingStandingUnits(units: UnitLike[], worldInstance: world) {
+  const collisionRange = BaseUnit.COLLISION_RANGE
+  const collisionRangeSquared = collisionRange * collisionRange
+  const positionStep = collisionRange + 1
+  const map = worldInstance.map
+
+  const isWaterOrRiver = (x: number, y: number) => {
+    const entity = worldInstance.getObjectNavMeshEntityAt({ x, y })
+    return entity === 'water' || entity === 'river'
+  }
+  const isFree = (unit: UnitLike, x: number, y: number) =>
+    !isWaterOrRiver(x, y) && !units.some((other) => {
+      if (other.id === unit.id || !other.alive || other.type === unitType.MESSENGER) return false
+      const dx = other.pos.x - x
+      const dy = other.pos.y - y
+      return dx * dx + dy * dy <= collisionRangeSquared
+    })
+
+  for (const unit of units) {
+    if (!isStandingUnit(unit)) continue
+
+    const overlapsAnotherStandingUnit = units.some((other) =>
+      other.id !== unit.id
+      && isStandingUnit(other)
+      && Math.hypot(other.pos.x - unit.pos.x, other.pos.y - unit.pos.y) <= collisionRange,
+    )
+    if (!overlapsAnotherStandingUnit) continue
+
+    let freePosition: vec2 | null = null
+    for (let ring = 1; ring <= 12 && !freePosition; ring += 1) {
+      for (let side = 0; side < 16; side += 1) {
+        const angle = side * Math.PI * 2 / 16
+        const x = unit.pos.x + Math.cos(angle) * ring * positionStep
+        const y = unit.pos.y + Math.sin(angle) * ring * positionStep
+        if (x < 0 || y < 0 || x > map.width || y > map.height) continue
+        if (!isPlanningTeamSpawnPointAllowed(unit.team, { x, y })) continue
+        if (!isFree(unit, x, y)) continue
+        freePosition = { x, y }
+        break
+      }
+    }
+
+    if (freePosition) unit.move(freePosition)
+  }
+}
+
 export function processUnitCommands(worldInstance: world, dt: number) {
   const units = worldInstance.units.list();
   sortUnitsForTurnStep(units);
+  resetInactiveColumnFormations(units)
   const positionsBeforeStep = new Map(units.map((unit) => [unit.id, { ...unit.pos }]))
   const fatigueCommandsBeforeStep = new Map(units.map((unit) => [unit.id, captureFatigueCommands(unit)]))
 
@@ -267,7 +370,7 @@ export function processUnitCommands(worldInstance: world, dt: number) {
       if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat, UnitCommandTypes.Delivery].includes(cmd.type)) {
         cmd.start(unit);
         cmd.update(unit, dt);
-        if (cmd.type === UnitCommandTypes.Delivery) {
+        if (cmd.type === UnitCommandTypes.Delivery || cmd.type === UnitCommandTypes.Retreat) {
           commands = unit.getCommands();
         }
       } else {
@@ -331,6 +434,7 @@ export function processUnitCommands(worldInstance: world, dt: number) {
     }
   }
 
+  separateOverlappingStandingUnits(units, worldInstance);
   processAiTriggers(worldInstance);
   syncFormationMoveSpeedByOrder(units, worldInstance);
 }

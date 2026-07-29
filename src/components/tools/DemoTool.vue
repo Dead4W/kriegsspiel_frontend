@@ -91,6 +91,13 @@ function cancelPlaybackRaf() {
 
 /* ---------- api ---------- */
 
+function getRoomAccessKey(uuid: string): string {
+  return window.ROOM_KEYS?.admin_key
+    ?? localStorage.getItem(`room_admin_key_${uuid}`)
+    ?? localStorage.getItem(`room_key_${uuid}`)
+    ?? ''
+}
+
 async function loadSnapshotsList() {
   const uuid = route.params.uuid as string
   listLoading.value = true
@@ -99,7 +106,7 @@ async function loadSnapshotsList() {
   try {
     const res = await api.get(`/room/${uuid}/snapshots`, {
       params: {
-        key: window.ROOM_KEYS.admin_key ?? '',
+        key: getRoomAccessKey(uuid),
       },
     })
     const orderedSnapshots = [...(res.data as string[])].sort((a, b) => {
@@ -128,7 +135,7 @@ function fetchSnapshot(time: string): Promise<SnapshotData> {
   const uuid = route.params.uuid as string
   const p = api
     .get(`/room/${uuid}/snapshots/${time}`, {
-      params: { key: window.ROOM_KEYS.admin_key ?? '' },
+      params: { key: getRoomAccessKey(uuid) },
     })
     .then((res) => res.data as SnapshotData)
     .catch((e) => {

@@ -20,9 +20,11 @@ import HotkeyTag from '@/components/ui/HotkeyTag.vue'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import PlanningEntryModal from '@/components/PlanningEntryModal.vue'
 import EndGameModal from '@/components/EndGameModal.vue'
+import ChartTool from '@/components/tools/ChartTool.vue'
 import {
   canWriteGameState,
   isAdminTeam,
+  isAdminOrSpectatorTeam,
   isRedOrBlueTeam,
   isWeatherModifiersEnabled,
 } from "@/game/roomGuards.ts";
@@ -37,6 +39,7 @@ enum Tools {
   RULER = 'ruler',
   PAINT = 'paint',
   ADMIN = 'admin',
+  CHART = 'chart',
   HELP = 'help',
 }
 
@@ -240,7 +243,7 @@ onUnmounted(() => {
       @close="closeEndGameModal"
     />
 
-    <ForcesBar v-if="isAdminTeam()"/>
+    <ForcesBar v-if="isAdminOrSpectatorTeam()"/>
 
     <div v-if="!isEnd || !isAdminTeam()" class="top-bar no-select">
       <TurnTimer />
@@ -267,6 +270,15 @@ onUnmounted(() => {
         @click="toggle($event, Tools.ADMIN)"
       >
         🛡️
+      </button>
+
+      <button
+        v-if="isAdminOrSpectatorTeam()"
+        :class="{ active: activeTool === Tools.CHART }"
+        @pointerdown.stop.prevent
+        @click="toggle($event, Tools.CHART)"
+      >
+        📈 {{ t('tools.chart') }}
       </button>
 
       <button
@@ -317,7 +329,7 @@ onUnmounted(() => {
     </div>
 
     <DemoTool
-      v-if="isAdminTeam() && isEnd"
+      v-if="isAdminOrSpectatorTeam() && isEnd"
       @close="close"
     />
 
@@ -342,6 +354,11 @@ onUnmounted(() => {
     <PaintTool
       v-if="canWriteGameState() && activeTool === Tools.PAINT"
       class="no-select"
+    />
+
+    <ChartTool
+      v-if="activeTool === Tools.CHART"
+      @close="close"
     />
 
     <SelectionPanel

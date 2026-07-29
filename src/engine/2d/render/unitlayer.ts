@@ -88,13 +88,14 @@ export class unitlayer {
 
     const units = w.units
       .list()
-      .sort((a, b) => (a.lastSelected ?? 0) - (b.lastSelected ?? 0))
+      // Draw from top to bottom so units lower on the map overlap units above them.
+      .sort((a, b) => a.pos.y - b.pos.y)
 
     if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS]) {
       const onlySelected =
         settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS_ONLY_SELECTED]
       for (const unit of units) {
-        if (onlySelected && !unit.selected) continue
+        if (onlySelected && !unit.isSelected()) continue
         debugPerformance('drawCommands', () => {
           ctx.save()
           this.drawCommands(ctx, cam, unit, settings)
@@ -259,6 +260,11 @@ export class unitlayer {
     ctx.rotate(angle)
     ctx.translate(-w / 2, -h / 2)
 
+    ctx.strokeStyle = 'black'
+    ctx.lineWidth = 1 * cam.zoom
+    ctx.setLineDash([])
+    ctx.lineDashOffset = 0
+
     if (unit.type === unitType.MESSENGER) {
       const radius = Math.min(w, h) / 1.5
       ctx.beginPath()
@@ -284,8 +290,6 @@ export class unitlayer {
           ctx.restore()
         }
       }
-      ctx.strokeStyle = 'black'
-      ctx.lineWidth = 1 * cam.zoom
 
       ctx.strokeRect(0, 0, w, h)
     }
@@ -306,7 +310,7 @@ export class unitlayer {
     if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS]) return
     if (
       settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS_ONLY_SELECTED]
-      && !unit.selected
+      && !unit.isSelected()
     ) {
       return
     }
@@ -674,6 +678,8 @@ export class unitlayer {
 
     ctx.strokeStyle = '#4ade80'
     ctx.lineWidth = 3 * cam.zoom
+    ctx.setLineDash([])
+    ctx.lineDashOffset = 0
 
     ctx.translate(p.x, p.y)
     ctx.rotate(angle)

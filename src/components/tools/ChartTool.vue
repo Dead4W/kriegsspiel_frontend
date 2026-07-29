@@ -53,13 +53,20 @@ const snapshots = ref<Snapshot[]>([])
 
 /* ---------------- api ---------------- */
 
+function getRoomAccessKey(uuid: string): string {
+  return window.ROOM_KEYS?.admin_key
+    ?? localStorage.getItem(`room_admin_key_${uuid}`)
+    ?? localStorage.getItem(`room_key_${uuid}`)
+    ?? ''
+}
+
 async function loadSnapshots() {
   const uuid = route.params.uuid as string
 
   try {
     const res = await api.get(`/room/${uuid}/snapshotsChart`, {
       params: {
-        key: window.ROOM_KEYS.admin_key ?? '',
+        key: getRoomAccessKey(uuid),
       },
     })
     snapshots.value = res.data

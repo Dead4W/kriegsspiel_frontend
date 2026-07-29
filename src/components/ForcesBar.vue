@@ -38,6 +38,7 @@ function sync(data: {reason: string}) {
 
 onMounted(() => {
   window.ROOM_WORLD.events.on('changed', sync)
+  sync({reason: 'initial'})
 })
 onUnmounted(() => {
   window.ROOM_WORLD.events.off('changed', sync)

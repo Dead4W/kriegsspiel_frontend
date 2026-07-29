@@ -497,6 +497,7 @@
     "wait": "Ждать",
     "wait_column": "Ожидание колонны",
     "delivery": "Доставка",
+    "follow": "Следование",
     "retreat": "Отступление",
     "clear": "Очистить приказы",
     "move_pick": "Назначить точку",
@@ -509,6 +510,7 @@
     "attack": "Атака целей: {count}, модификатор урона {dmg}",
     "attack_no_dmg": "Атака целей: {count}",
     "changeFormation": "Смена построения на «{formation}»",
+    "follow": "Следовать на расстоянии {distance} м",
     "retreat": "{action}"
   },
   "command_status": {
@@ -618,6 +620,7 @@
       "total_minutes": "Всего минут",
       "comment": "Комментарий",
       "delivery": "Доставка",
+      "follow": "Следование",
       "formation": "Формация",
       "units": "Юниты",
       "route": "Маршрут",
@@ -641,6 +644,8 @@
       "delivery_hint": "Выделите подходящие цели",
       "delivery_message": "Сообщение",
       "delivery_confirm": "Назначить доставку",
+      "follow_hint": "Выберите юниты для следования",
+      "follow_distance": "Расстояние (м)",
 
       "clear_commands": "Очистить команды",
 

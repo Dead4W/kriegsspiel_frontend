@@ -493,6 +493,7 @@
     "abilities": "Abilities",
     "wait": "Wait",
     "delivery": "Delivery",
+    "follow": "Follow",
     "retreat": "Retreat",
     "move_pick": "Move to target",
     "damage_modifier": "Damage modifier",
@@ -504,6 +505,7 @@
     "attack": "Attack targets: {count}, damage modifier {dmg}",
     "attack_no_dmg": "Attack targets: {count}",
     "changeFormation": "Change formation to \"{formation}\"",
+    "follow": "Follow within {distance} m",
     "retreat": "{action}"
   },
   "command_status": {
@@ -615,6 +617,7 @@
       "total_minutes": "Total minutes",
       "comment": "Comment",
       "delivery": "Delivery",
+      "follow": "Follow",
       "formation": "Formation",
       "units": "Units",
       "route": "Route",
@@ -637,6 +640,8 @@
       "to": "To",
       "delivery_hint": "Select appropriate targets",
       "delivery_message": "Message",
+      "follow_hint": "Select units to follow",
+      "follow_distance": "Distance (m)",
 
       "clear_commands": "Clear commands",
 

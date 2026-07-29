@@ -275,6 +275,11 @@ function description(cmd: BaseCommand<any, any>, cmdIndex: number) {
     case UnitCommandTypes.Wait:
       return cmd.getState().state.comment
 
+    case UnitCommandTypes.Follow:
+      return t('command_desc.follow', {
+        distance: state.distanceMeters,
+      })
+
     case UnitCommandTypes.Retreat: {
       return t('command_desc.retreat', {
         action: cmd.getState().state.comment ?? '',

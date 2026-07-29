@@ -13,6 +13,10 @@ import {
   type DeliveryCommandState
 } from "@/engine/units/commands/deliveryCommand.ts";
 import {
+  FollowCommand,
+  type FollowCommandState
+} from "@/engine/units/commands/followCommand.ts";
+import {
   RetreatCommand,
   type RetreatCommandState
 } from "@/engine/units/commands/retreatCommand.ts";
@@ -27,6 +31,8 @@ export function initUnitCommand(state: commandstate) {
       return new ChangeFormationCommand(state.state)
     case UnitCommandTypes.Delivery:
       return new DeliveryCommand(state.state)
+    case UnitCommandTypes.Follow:
+      return new FollowCommand(state.state)
     case UnitCommandTypes.Wait:
       return new WaitCommand(state.state)
     case UnitCommandTypes.Retreat:
@@ -37,7 +43,7 @@ export function initUnitCommand(state: commandstate) {
   }
 }
 
-export function createUnitCommand(state: commandstate): BaseCommand<UnitCommandTypes, AttackCommandState | ChangeFormationCommandState | MoveCommandState | WaitCommandState | DeliveryCommandState | RetreatCommandState> {
+export function createUnitCommand(state: commandstate): BaseCommand<UnitCommandTypes, AttackCommandState | ChangeFormationCommandState | MoveCommandState | WaitCommandState | DeliveryCommandState | FollowCommandState | RetreatCommandState> {
   const cmd = initUnitCommand(state)
   cmd.status = state.status
   return cmd;

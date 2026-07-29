@@ -20,7 +20,7 @@ export type UnitCommandMoveRequest = {
 
 export type UnitCommandRequest =
   | {
-      command: UnitCommandTypes.Attack | UnitCommandTypes.Delivery
+      command: UnitCommandTypes.Attack | UnitCommandTypes.Delivery | UnitCommandTypes.Follow
       selectUnitId: uuid
     }
   | {

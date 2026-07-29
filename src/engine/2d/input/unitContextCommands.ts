@@ -64,7 +64,7 @@ function canAnySelectedUnitAttackTarget(w: world, target: BaseUnit) {
 
 function isAnyOrderOpen() {
   return !!document.querySelector(
-    '.orders-root .order-move, .orders-root .order-attack, .orders-root .order-delivery, .orders-root .order-change-formation, .orders-root .order-wait, .orders-root .order-retreat'
+    '.orders-root .order-move, .orders-root .order-attack, .orders-root .order-delivery, .orders-root .order-follow, .orders-root .order-change-formation, .orders-root .order-wait, .orders-root .order-retreat'
   )
 }
 
@@ -131,6 +131,12 @@ export function bindUnitContextCommands(w: world) {
         })
         return
       }
+
+      emitUnitCommandRequest({
+        command: UnitCommandTypes.Follow,
+        selectUnitId: hit.id,
+      })
+      return
     }
 
     // пустое место (или прочий контекст) → move

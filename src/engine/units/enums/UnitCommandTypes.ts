@@ -5,5 +5,6 @@ export enum UnitCommandTypes {
   ChangeFormation = 'changeFormation',
   Wait = 'wait',
   Delivery = 'delivery',
+  Follow = 'follow',
   Retreat = 'retreat',
 }

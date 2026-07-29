@@ -8,6 +8,7 @@ import CommandMove from "@/components/tools/commands/CommandMove.vue";
 import {unitType} from "@/engine";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import CommandDelivery from "@/components/tools/commands/CommandDelivery.vue";
+import CommandFollow from "@/components/tools/commands/CommandFollow.vue";
 import CommandChangeFormation from "@/components/tools/commands/CommandChangeFormation.vue";
 import CommandWait from "@/components/tools/commands/CommandWait.vue";
 import CommandRetreat from "@/components/tools/commands/CommandRetreat.vue";
@@ -31,6 +32,7 @@ const hotkeys: Record<string, UnitCommandTypes> = {
   '3': UnitCommandTypes.ChangeFormation,
   '4': UnitCommandTypes.Wait,
   '5': UnitCommandTypes.Retreat,
+  '6': UnitCommandTypes.Follow,
 }
 
 const activeOrder = ref<UnitCommandTypes | null>(null)
@@ -43,6 +45,7 @@ const moveRef = ref<any>(null)
 const formationRef = ref<any>(null)
 const waitRef = ref<any>(null)
 const deliveryRef = ref<any>(null)
+const followRef = ref<any>(null)
 const retreatRef = ref<any>(null)
 
 const autoAttackInfo = computed(() => {
@@ -176,6 +179,9 @@ function onKeydown(e: KeyboardEvent) {
         break
       case UnitCommandTypes.Delivery:
         deliveryRef.value?.confirm?.()
+        break
+      case UnitCommandTypes.Follow:
+        followRef.value?.confirm?.()
         break
       case  UnitCommandTypes.Retreat:
         retreatRef.value?.confirm?.()
@@ -427,6 +433,18 @@ onUnmounted(() => {
         <HotkeyTag key-label="5" />
       </button>
 
+      <button
+        v-if="isAdmin"
+        class="order-btn follow"
+        @click="open(UnitCommandTypes.Follow)"
+        :disabled="isCommandDisabled(UnitCommandTypes.Follow)"
+        :title="hotkeyTitle(UnitCommandTypes.Follow)"
+      >
+        <span class="icon">⇢</span>
+        <span class="label">{{ t('tools.command.command') }}<br>{{ t('tools.command.follow') }}</span>
+        <HotkeyTag key-label="6" />
+      </button>
+
       <div v-if="isAdmin" class="order-stack">
         <button
           class="order-btn morale-plus"
@@ -486,6 +504,13 @@ onUnmounted(() => {
     <CommandDelivery
       v-if="activeOrder === UnitCommandTypes.Delivery"
       ref="deliveryRef"
+      :units="units"
+      @close="close"
+    />
+
+    <CommandFollow
+      v-if="activeOrder === UnitCommandTypes.Follow"
+      ref="followRef"
       :units="units"
       @close="close"
     />

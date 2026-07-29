@@ -368,10 +368,14 @@ export function processUnitCommands(worldInstance: world, dt: number) {
         continue;
       }
 
-      if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat, UnitCommandTypes.Delivery].includes(cmd.type)) {
+      if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat, UnitCommandTypes.Delivery, UnitCommandTypes.Follow].includes(cmd.type)) {
         cmd.start(unit);
         cmd.update(unit, dt);
-        if (cmd.type === UnitCommandTypes.Delivery || cmd.type === UnitCommandTypes.Retreat) {
+        if (
+          cmd.type === UnitCommandTypes.Delivery
+          || cmd.type === UnitCommandTypes.Follow
+          || cmd.type === UnitCommandTypes.Retreat
+        ) {
           commands = unit.getCommands();
         }
       } else {

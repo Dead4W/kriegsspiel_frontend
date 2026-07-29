@@ -107,25 +107,6 @@ function clearUnitCommandsForDirectView(unit: unknown) {
   mutableUnit.futurePos = null
 }
 
-function getFuturePosFromMoveCommands(commands: unknown): { x: number; y: number } | null {
-  if (!Array.isArray(commands)) return null
-  for (let i = commands.length - 1; i >= 0; i -= 1) {
-    const command = commands[i] as { type?: unknown; state?: { target?: { x?: unknown; y?: unknown } } }
-    if (command?.type !== 'move') continue
-    const target = command.state?.target
-    if (
-      target
-      && typeof target.x === 'number'
-      && Number.isFinite(target.x)
-      && typeof target.y === 'number'
-      && Number.isFinite(target.y)
-    ) {
-      return { x: target.x, y: target.y }
-    }
-  }
-  return null
-}
-
 function applyRoomParams(params: unknown) {
   if (!params || typeof params !== 'object') return
   window.ROOM_PARAMS ??= {}
@@ -626,17 +607,10 @@ export class GameSocket {
             if (packet.frames && packet.frames.length > 0) {
               nextUnitState.pos = u?.pos ?? packet.frames[0]!.pos
             }
-            if (!u) {
-              nextUnitState.directView = true
-              window.ROOM_WORLD.units.upsert(nextUnitState, 'remote');
-            } else {
-              const nextFuturePos = getFuturePosFromMoveCommands(nextUnitState.commands)
-              // Update only some fields
-              Object.assign(u, nextUnitState)
-              u.futurePos = nextFuturePos
-              u.directView = true;
-              window.ROOM_WORLD.units.markSynced(u)
-            }
+            nextUnitState.directView = true
+            // Use the regular ingestion path for both new and existing units so
+            // command-derived render state (such as futurePos) stays in sync.
+            window.ROOM_WORLD.units.upsert(nextUnitState, 'remote')
             if (packet.frames && packet.frames.length > 0) {
               const targetUnit = window.ROOM_WORLD.units.get(nextUnitState.id)
               if (targetUnit) {

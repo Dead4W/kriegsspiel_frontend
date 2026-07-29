@@ -271,7 +271,7 @@ export class unitregistry {
     }
 
     const units = this.list()
-    const chainRange = BaseUnit.COLLISION_RANGE * 2
+    const chainRange = BaseUnit.COLLISION_RANGE_METERS * 2 / window.ROOM_WORLD.map.metersPerPixel
 
     const getChainDirectViewUnits = (seedUnits: BaseUnit[], chainTeam: unitTeam): BaseUnit[] => {
       const queue = seedUnits.filter((u) => u.team === chainTeam)

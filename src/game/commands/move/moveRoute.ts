@@ -121,7 +121,8 @@ function normalizeInitialRoutePoints(routePoints: vec2[], units: BaseUnit[], opt
     return posDist < bestDist ? pos : best;
   }, null as vec2 | null);
 
-  const localClusterRadius = Math.max(BaseUnit.COLLISION_RANGE * 2, 20);
+  const collisionRangePx = BaseUnit.COLLISION_RANGE_METERS / window.ROOM_WORLD.map.metersPerPixel;
+  const localClusterRadius = Math.max(collisionRangePx * 2, 20);
   const localUnitPositions = anchor
     ? unitPositions.filter((pos) => Math.hypot(pos.x - anchor.x, pos.y - anchor.y) <= localClusterRadius)
     : unitPositions;
@@ -131,7 +132,7 @@ function normalizeInitialRoutePoints(routePoints: vec2[], units: BaseUnit[], opt
   const trimmed = trimRouteHeadByNearestUnitDistance(aheadOfUnits, normalizeByPositions);
   if (trimmed.length <= 1) return trimmed;
 
-  const minClearance = Math.max(8, BaseUnit.COLLISION_RANGE * 0.45);
+  const minClearance = Math.max(8, collisionRangePx * 0.45);
   let keepFrom = 0;
   while (keepFrom < trimmed.length - 1) {
     const dist = minDistanceToPositions(trimmed[keepFrom]!, normalizeByPositions);

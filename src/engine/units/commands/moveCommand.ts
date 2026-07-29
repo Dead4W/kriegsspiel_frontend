@@ -95,7 +95,7 @@ export class MoveCommand extends BaseCommand<
       && Math.hypot(
         other.pos.x - unit.pos.x,
         other.pos.y - unit.pos.y
-      ) <= BaseUnit.COLLISION_RANGE
+      ) <= BaseUnit.COLLISION_RANGE_METERS / window.ROOM_WORLD.map.metersPerPixel
     )
 
     if (collisionUnits.length === 0) return true

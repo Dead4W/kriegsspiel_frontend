@@ -101,8 +101,7 @@ function getSpawnDirection(origin: Point, enemies: BaseUnit[]): Point {
 function findFreeMessengerSpawnPosition(origin: Point, direction: Point): Point {
   const w = window.ROOM_WORLD
   const map = w.map
-  const collisionRangeMeters = BaseUnit.COLLISION_RANGE * map.metersPerPixel
-  const stepPx = collisionRangeMeters / map.metersPerPixel
+  const stepPx = BaseUnit.COLLISION_RANGE_METERS / map.metersPerPixel
   const unitRadiusSq = stepPx * stepPx
 
   const perp = { x: -direction.y, y: direction.x }

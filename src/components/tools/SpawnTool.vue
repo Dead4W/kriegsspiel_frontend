@@ -80,8 +80,9 @@ function findFreePositions(
   const result: { x: number; y: number }[] = []
 
   const MAX_PER_ROW = 5
-  const STEP_X = BaseUnit.COLLISION_RANGE
-  const STEP_Y = BaseUnit.COLLISION_RANGE
+  const stepPx = BaseUnit.COLLISION_RANGE_METERS / w.map.metersPerPixel
+  const STEP_X = stepPx
+  const STEP_Y = stepPx
 
   let row = 0
   let col = 0

@@ -131,7 +131,7 @@ export function buildMoveOverlayItems(options: BuildMoveOverlayItemsOptions): Ov
           orderIndex,
           routePoints,
           columnAlgoPlan,
-          BaseUnit.COLLISION_RANGE
+          BaseUnit.COLLISION_RANGE_METERS / metersPerPixel
         );
         // Mirrors applyMoveOrder: a follower joins the route by a path on the
         // first segment it actually moves on, which is not always the first one.

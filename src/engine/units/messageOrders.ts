@@ -137,8 +137,7 @@ function findFreeMessengerSpawnPosition(
   direction: { x: number; y: number }
 ): { x: number; y: number } {
   const map = window.ROOM_WORLD.map
-  const collisionRangeMeters = BaseUnit.COLLISION_RANGE * map.metersPerPixel
-  const stepPx = collisionRangeMeters / map.metersPerPixel
+  const stepPx = BaseUnit.COLLISION_RANGE_METERS / map.metersPerPixel
   const unitRadiusSq = stepPx * stepPx
   const perp = { x: -direction.y, y: direction.x }
   const sideOffsets = [0, 1, -1, 2, -2, 3, -3]

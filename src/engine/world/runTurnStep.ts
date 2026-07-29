@@ -5,7 +5,7 @@ import {
   hasAutoBridgeFormation,
 } from "@/engine/units/autoEnvironment.ts";
 import { AttackCommand, type AttackCommandState } from "@/engine/units/commands/attackCommand.ts";
-import { type MoveCommandState } from "@/engine/units/commands/moveCommand.ts";
+import { type MoveCommandState } from "@/engine/units/commands/moveCommand.ts"; 
 import type { vec2 } from "@/engine/types.ts";
 import { BaseUnit } from "@/engine/units/baseUnit.ts";
 import { processAiTriggers } from "@/game/ai/processAiTriggers.ts";
@@ -151,10 +151,11 @@ function syncFormationMoveSpeedByOrder(units: UnitLike[], worldInstance: world) 
 
   const moveGroups = new Map<string, GroupUnit[]>();
   const getWaitingColumnSpeedMultiplier = (distancePx: number, worldInstance: world): number => {
-    if (distancePx <= BaseUnit.COLLISION_RANGE) return 1;
     const metersPerPixel = Math.max(0.0001, Number(worldInstance.map.metersPerPixel) || 1);
+    const collisionRangeMeters = BaseUnit.COLLISION_RANGE_METERS;
+    const collisionRangePx = collisionRangeMeters / metersPerPixel;
+    if (distancePx <= collisionRangePx) return 1;
     const distanceMeters = distancePx * metersPerPixel;
-    const collisionRangeMeters = BaseUnit.COLLISION_RANGE * metersPerPixel;
     const multiplier = 1 - (distanceMeters - collisionRangeMeters) * 0.001;
     return Math.max(0.1, Math.min(1, multiplier));
   };
@@ -213,7 +214,8 @@ function syncFormationMoveSpeedByOrder(units: UnitLike[], worldInstance: world) 
           prevUnit.unit.pos.x - groupUnit.unit.pos.x,
           prevUnit.unit.pos.y - groupUnit.unit.pos.y,
         );
-        if (distanceToPrevPx > BaseUnit.COLLISION_RANGE) {
+        const metersPerPixel = Math.max(0.0001, Number(worldInstance.map.metersPerPixel) || 1);
+        if (distanceToPrevPx > BaseUnit.COLLISION_RANGE_METERS / metersPerPixel) {
           laggingMultiplier = 1.1;
         }
       }
@@ -247,9 +249,9 @@ function isStandingUnit(unit: UnitLike): boolean {
 }
 
 function separateOverlappingStandingUnits(units: UnitLike[], worldInstance: world) {
-  const collisionRange = BaseUnit.COLLISION_RANGE
+  const metersPerPixel = Math.max(0.0001, Number(worldInstance.map.metersPerPixel) || 1)
+  const collisionRange = BaseUnit.COLLISION_RANGE_METERS / metersPerPixel
   const collisionRangeSquared = collisionRange * collisionRange
-  const separationRange = collisionRange / 2
   const positionStep = collisionRange + 1
   const map = worldInstance.map
 
@@ -271,7 +273,7 @@ function separateOverlappingStandingUnits(units: UnitLike[], worldInstance: worl
     const overlapsAnotherStandingUnit = units.some((other) =>
       other.id !== unit.id
       && isStandingUnit(other)
-      && Math.hypot(other.pos.x - unit.pos.x, other.pos.y - unit.pos.y) <= separationRange,
+      && Math.hypot(other.pos.x - unit.pos.x, other.pos.y - unit.pos.y) <= collisionRange,
     )
     if (!overlapsAnotherStandingUnit) continue
 
@@ -368,14 +370,10 @@ export function processUnitCommands(worldInstance: world, dt: number) {
         continue;
       }
 
-      if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat, UnitCommandTypes.Delivery, UnitCommandTypes.Follow].includes(cmd.type)) {
+      if ([UnitCommandTypes.Attack, UnitCommandTypes.Retreat, UnitCommandTypes.Delivery].includes(cmd.type)) {
         cmd.start(unit);
         cmd.update(unit, dt);
-        if (
-          cmd.type === UnitCommandTypes.Delivery
-          || cmd.type === UnitCommandTypes.Follow
-          || cmd.type === UnitCommandTypes.Retreat
-        ) {
+        if (cmd.type === UnitCommandTypes.Delivery || cmd.type === UnitCommandTypes.Retreat) {
           commands = unit.getCommands();
         }
       } else {

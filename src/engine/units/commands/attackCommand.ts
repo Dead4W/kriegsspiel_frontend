@@ -75,7 +75,7 @@ export class AttackCommand extends BaseCommand<
         * (this.state.radiusModifier ?? 1)
         * inaccuracyAbility!.radiusMult
       targets = this.getUnitsInInaccuracyRadius(inaccuracyRadius, unit)
-      const targetRadius = BaseUnit.COLLISION_RANGE / 2 * window.ROOM_WORLD.map.metersPerPixel;
+      const targetRadius = BaseUnit.COLLISION_RANGE_METERS / 2;
       hitFactor = (targetRadius * targetRadius) / (inaccuracyRadius * inaccuracyRadius);
       baseDmg *= hitFactor;
     } else {
@@ -333,7 +333,7 @@ export class AttackCommand extends BaseCommand<
     ) * window.ROOM_WORLD.map.metersPerPixel
     if (distanceToPoint > inaccuracyRadius) return 0
 
-    const targetRadius = BaseUnit.COLLISION_RANGE / 2 * window.ROOM_WORLD.map.metersPerPixel
+    const targetRadius = BaseUnit.COLLISION_RANGE_METERS / 2
     const hitFactor = (targetRadius * targetRadius) / (inaccuracyRadius * inaccuracyRadius)
 
     return baseSuppression * hitFactor

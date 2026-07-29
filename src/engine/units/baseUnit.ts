@@ -81,7 +81,7 @@ export interface MessageLinked {
 }
 
 export abstract class BaseUnit {
-  static readonly COLLISION_RANGE = 30;
+  static readonly COLLISION_RANGE_METERS = 30;
 
   id: uuid
   abstract type: unitType

@@ -120,7 +120,7 @@ export function applyMoveOrder(options: ApplyMoveOrderOptions): void {
           orderIndex,
           routePoints,
           columnAlgoPlan,
-          BaseUnit.COLLISION_RANGE
+          BaseUnit.COLLISION_RANGE_METERS / metersPerPixel
         );
         // A follower stays put on the segments that are still shorter than its
         // place in the column, so its route may only begin later. Wherever that

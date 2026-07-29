@@ -35,6 +35,27 @@ function getFirstActiveMoveState(unit: BaseUnit): MoveCommandState | null {
   return (activeMove as MoveCommand).getState().state;
 }
 
+function distance(a: vec2, b: vec2): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/**
+ * An already marching column keeps its order only while it still moves toward
+ * the new target. Once the group is sent back, its head is the farthest unit
+ * from the target, so the order has to be rebuilt instead of walking the whole
+ * column backwards through itself.
+ */
+function isExistingColumnOrderStillAhead(
+  order: uuid[],
+  startPosByUnitId: Map<uuid, vec2>,
+  firstTarget: vec2
+): boolean {
+  const head = startPosByUnitId.get(order[0]!);
+  const tail = startPosByUnitId.get(order[order.length - 1]!);
+  if (!head || !tail) return false;
+  return distance(head, firstTarget) <= distance(tail, firstTarget);
+}
+
 function resolveOrderByExistingColumn(units: BaseUnit[]): uuid[] | null {
   const groupedByMove = new Map<string, Array<{ unitId: uuid; orderIndex: number }>>();
   for (const unit of units) {
@@ -68,14 +89,18 @@ export function buildMovePlan(units: BaseUnit[], firstTarget: vec2, options?: Mo
     unit,
     startPos: getUnitPlannedPos(unit, options),
   }));
-  const orderByExistingColumn = options?.ignoreExistingMoveCommands
+  const startPosByUnitId = new Map(
+    unitsWithStartPos.map(({ unit, startPos }) => [unit.id, startPos] as const)
+  );
+  const existingColumnOrder = options?.ignoreExistingMoveCommands
     ? null
     : resolveOrderByExistingColumn(units);
+  const orderByExistingColumn =
+    existingColumnOrder && isExistingColumnOrderStillAhead(existingColumnOrder, startPosByUnitId, firstTarget)
+      ? existingColumnOrder
+      : null;
 
   if (orderByExistingColumn) {
-    const startPosByUnitId = new Map(
-      unitsWithStartPos.map(({ unit, startPos }) => [unit.id, startPos] as const)
-    );
     return orderByExistingColumn
       .map((unitId) => {
         const unit = units.find((item) => item.id === unitId);
@@ -104,6 +129,18 @@ export function buildMovePlan(units: BaseUnit[], firstTarget: vec2, options?: Mo
       };
     })
     .filter((item): item is MovePlanItem => Boolean(item));
+}
+
+/**
+ * Narrows a plan down to the units that actually receive the order, keeping the
+ * column order and turning orderIndex back into a gapless 0..n-1 range.
+ */
+export function compactMovePlanOrder(plan: MovePlanItem[], units: BaseUnit[]): MovePlanItem[] {
+  const unitIds = new Set(units.map((unit) => unit.id));
+  return plan
+    .filter((item) => unitIds.has(item.unit.id))
+    .sort((a, b) => a.orderIndex - b.orderIndex)
+    .map((item, orderIndex) => ({ ...item, orderIndex }));
 }
 
 export function buildMoveFormationCenter(units: BaseUnit[], options?: MovePlanOptions): vec2 | null {

@@ -7,7 +7,7 @@ import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes";
 import type { UnitAbilityType } from "@/engine/units/modifiers/UnitAbilityModifiers";
 import {
   getColumnPosition,
-  mergeColumnFirstSegmentWithSmartPath,
+  mergeColumnSegmentWithSmartPath,
   type ColumnPlanItem as ColumnAlgoPlanItem,
 } from "@/engine/units/formationMoveAlgorithms/columnAlgorithms";
 import {
@@ -21,6 +21,7 @@ import {
   isPlayerDirectViewOrderContext
 } from "@/engine/units/directViewOrderRules";
 import type { MoveMode, MovePlanItem, MoveRoutePoint } from "./types";
+import { compactMovePlanOrder } from "./movePlan";
 import { isPointInsideActiveZone } from "@/game/planningSpawns";
 
 interface ApplyMoveOrderOptions {
@@ -76,17 +77,7 @@ export function applyMoveOrder(options: ApplyMoveOrderOptions): void {
   const shouldSendDirectViewOrder = canPlayerUseDirectViewOrder(unitsToApplyOrder);
   const shouldReplaceMoveCommands = shouldSendDirectViewOrder;
   const routePoints = routeTargets.map((item) => item.pos);
-  const planByUnitId = new Map(plan.map((item) => [item.unit.id, item]));
-  const normalizedPlan = unitsToApplyOrder
-    .map((unit, orderIndex) => {
-      const sourcePlan = planByUnitId.get(unit.id);
-      if (!sourcePlan) return null;
-      return {
-        ...sourcePlan,
-        orderIndex,
-      };
-    })
-    .filter((item): item is MovePlanItem => item !== null);
+  const normalizedPlan = compactMovePlanOrder(plan, unitsToApplyOrder);
   const columnAlgoPlan: ColumnAlgoPlanItem[] = normalizedPlan.map((item) => ({
     unitId: item.unit.id,
     startPos: item.startPos,
@@ -98,6 +89,7 @@ export function applyMoveOrder(options: ApplyMoveOrderOptions): void {
 
   for (const { unit, orderIndex } of normalizedPlan) {
     let from = unit.pos;
+    let needsPathToRoute = true;
     newCommands.set(unit.id, []);
 
     if (!shouldReplaceMoveCommands) {
@@ -130,14 +122,18 @@ export function applyMoveOrder(options: ApplyMoveOrderOptions): void {
           columnAlgoPlan,
           BaseUnit.COLLISION_RANGE
         );
-        if (segIndex === 0) {
-          segmentTargets = mergeColumnFirstSegmentWithSmartPath(
+        // A follower stays put on the segments that are still shorter than its
+        // place in the column, so its route may only begin later. Wherever that
+        // happens, it joins the route by a path instead of a straight line.
+        if (needsPathToRoute && segmentTargets.length) {
+          segmentTargets = mergeColumnSegmentWithSmartPath(
             roomWorld as any,
             from,
             segmentTargets,
             smartPathEnabled,
             hasObjectMap
           );
+          needsPathToRoute = false;
         }
       } else {
         segmentTargets = [target.pos];
@@ -163,7 +159,8 @@ export function applyMoveOrder(options: ApplyMoveOrderOptions): void {
   }
 
   for (const unit of unitsToApplyOrder) {
-    const commands = newCommands.get(unit.id)!;
+    const commands = newCommands.get(unit.id);
+    if (!commands) continue;
     unit.manualEnvironment = null;
     if (shouldReplaceMoveCommands) {
       const nonMoveCommands = unit

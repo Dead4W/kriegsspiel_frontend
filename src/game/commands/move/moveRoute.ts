@@ -85,6 +85,30 @@ function trimRouteHeadByNearestUnitDistance(routePoints: vec2[], unitPositions: 
   return routePoints.slice(headIndex);
 }
 
+/**
+ * A road path may start with a point that lies behind the group, and marching
+ * back there before turning around looks like a broken column. The first leg is
+ * re-pathed per unit when the order is applied, so such a leading point can be
+ * dropped: whatever it was avoiding is resolved again from the real positions.
+ */
+function trimRouteHeadBehindUnits(routePoints: vec2[], unitPositions: vec2[]): vec2[] {
+  if (routePoints.length <= 1 || !unitPositions.length) return [...routePoints];
+
+  const destination = routePoints[routePoints.length - 1]!;
+  const closestUnitDistance = minDistanceToPositions(destination, unitPositions);
+
+  let headIndex = 0;
+  while (headIndex < routePoints.length - 1) {
+    const headDistance = Math.hypot(
+      routePoints[headIndex]!.x - destination.x,
+      routePoints[headIndex]!.y - destination.y
+    );
+    if (headDistance <= closestUnitDistance) break;
+    headIndex += 1;
+  }
+  return routePoints.slice(headIndex);
+}
+
 function normalizeInitialRoutePoints(routePoints: vec2[], units: BaseUnit[], options?: MoveRouteOptions): vec2[] {
   if (!routePoints.length || !units.length) return routePoints;
 
@@ -103,7 +127,8 @@ function normalizeInitialRoutePoints(routePoints: vec2[], units: BaseUnit[], opt
     : unitPositions;
   const normalizeByPositions = localUnitPositions.length ? localUnitPositions : unitPositions;
 
-  const trimmed = trimRouteHeadByNearestUnitDistance(routePoints, normalizeByPositions);
+  const aheadOfUnits = trimRouteHeadBehindUnits(routePoints, unitPositions);
+  const trimmed = trimRouteHeadByNearestUnitDistance(aheadOfUnits, normalizeByPositions);
   if (trimmed.length <= 1) return trimmed;
 
   const minClearance = Math.max(8, BaseUnit.COLLISION_RANGE * 0.45);

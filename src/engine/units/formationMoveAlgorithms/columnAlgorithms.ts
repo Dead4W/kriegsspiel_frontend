@@ -164,7 +164,7 @@ export function getColumnSegmentRoutePoints(
   return buildRoadTurnRoutePoints(world, from, to);
 }
 
-export function mergeColumnFirstSegmentWithSmartPath(
+export function mergeColumnSegmentWithSmartPath(
   world: PathWorld,
   from: vec2,
   points: vec2[],

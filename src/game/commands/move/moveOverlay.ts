@@ -7,7 +7,7 @@ import { unitType } from "@/engine";
 import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes";
 import {
   getColumnPosition,
-  mergeColumnFirstSegmentWithSmartPath,
+  mergeColumnSegmentWithSmartPath,
   type ColumnPlanItem as ColumnAlgoPlanItem,
 } from "@/engine/units/formationMoveAlgorithms/columnAlgorithms";
 import {
@@ -85,6 +85,7 @@ export function buildMoveOverlayItems(options: BuildMoveOverlayItemsOptions): Ov
   for (const { unit, orderIndex } of plan) {
     const lastPlanOrderIndex = plan.length - 1;
     let from = unit.pos;
+    let needsPathToRoute = true;
     let lastMoveSegment: { from: vec2; to: vec2 } | null = null;
 
     if (renderExistingMoveCommands) {
@@ -132,14 +133,17 @@ export function buildMoveOverlayItems(options: BuildMoveOverlayItemsOptions): Ov
           columnAlgoPlan,
           BaseUnit.COLLISION_RANGE
         );
-        if (segIndex === 0) {
-          segmentTargets = mergeColumnFirstSegmentWithSmartPath(
+        // Mirrors applyMoveOrder: a follower joins the route by a path on the
+        // first segment it actually moves on, which is not always the first one.
+        if (needsPathToRoute && segmentTargets.length) {
+          segmentTargets = mergeColumnSegmentWithSmartPath(
             roomWorld as any,
             from,
             segmentTargets,
             smartPathEnabled,
             hasObjectMap
           );
+          needsPathToRoute = false;
         }
       } else {
         segmentTargets = [target.pos];

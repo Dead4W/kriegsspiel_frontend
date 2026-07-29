@@ -116,7 +116,7 @@ export function buildVisionPolygon(u: BaseUnit, w: world) {
   const origin = u.pos
   const maxRange = (u.visionRange / w.map.metersPerPixel)
 
-  const rays = 180
+  const rays = VISION_RAY_COUNT
   const points: { x: number; y: number }[] = []
 
   for (let i = 0; i < rays; i++) {
@@ -128,18 +128,131 @@ export function buildVisionPolygon(u: BaseUnit, w: world) {
 }
 
 // Cache raycast
+const VISION_RAY_COUNT = 180
+
 type VisionCacheEntry = {
+  cacheKey: string
   pos: { x: number; y: number }
   polygon: vec2[] // результат buildVisionPolygon
-  createdAtMs: number
 }
-const visionCache = new Map<string, VisionCacheEntry>();
+const visionCache = new Map<string, VisionCacheEntry>()
+
+type VisionRaycastRequest = {
+  unit: BaseUnit
+  world: world
+  cacheKey: string
+}
+
+type ActiveVisionRaycast = VisionRaycastRequest & {
+  origin: vec2
+  maxRange: number
+  nextRay: number
+  polygon: vec2[]
+  cancelled: boolean
+}
+
+const pendingVisionRaycasts = new Map<string, VisionRaycastRequest>()
+let activeVisionRaycast: ActiveVisionRaycast | null = null
+let visionRaycastCallbackScheduled = false
+
+type RaycastTimeBudget = {
+  timeRemaining: () => number
+}
+
+function scheduleVisionRaycastCallback() {
+  if (
+    visionRaycastCallbackScheduled ||
+    (activeVisionRaycast == null && pendingVisionRaycasts.size === 0)
+  ) {
+    return
+  }
+
+  visionRaycastCallbackScheduled = true
+
+  // The render loop gets the next animation frame first. Raycast work starts
+  // from a timer after that frame has been painted and uses only a small slice.
+  window.requestAnimationFrame(() => {
+    window.setTimeout(() => {
+      const startedAt = performance.now()
+      runVisionRaycastChunk({
+        timeRemaining: () => Math.max(0, 8 - (performance.now() - startedAt)),
+      })
+    }, 0)
+  })
+}
+
+function runVisionRaycastChunk(timeBudget: RaycastTimeBudget) {
+  visionRaycastCallbackScheduled = false
+
+  if (activeVisionRaycast?.cancelled) {
+    activeVisionRaycast = null
+  }
+
+  if (activeVisionRaycast == null) {
+    const nextRequest = pendingVisionRaycasts.entries().next().value
+    if (nextRequest == null) return
+
+    const [unitId, request] = nextRequest
+    pendingVisionRaycasts.delete(unitId)
+    activeVisionRaycast = {
+      ...request,
+      origin: { ...request.unit.pos },
+      maxRange: request.unit.visionRange / request.world.map.metersPerPixel,
+      nextRay: 0,
+      polygon: [],
+      cancelled: false,
+    }
+  }
+
+  const raycast = activeVisionRaycast
+  let processedRay = false
+
+  debugPerformance('drawUnitVision.buildVisionPolygonAsync', () => {
+    while (
+      raycast.nextRay < VISION_RAY_COUNT &&
+      (!processedRay || timeBudget.timeRemaining() > 1)
+    ) {
+      const angle = (raycast.nextRay / VISION_RAY_COUNT) * Math.PI * 2
+      raycast.polygon.push(
+        castRay(raycast.unit, raycast.world, raycast.origin, angle, raycast.maxRange),
+      )
+      raycast.nextRay += 1
+      processedRay = true
+    }
+  })
+
+  if (raycast.nextRay === VISION_RAY_COUNT) {
+    if (!raycast.cancelled) {
+      visionCache.set(raycast.unit.id, {
+        cacheKey: raycast.cacheKey,
+        pos: raycast.origin,
+        polygon: raycast.polygon,
+      })
+    }
+    activeVisionRaycast = null
+  }
+
+  scheduleVisionRaycastCallback()
+}
+
+function requestVisionRaycast(unit: BaseUnit, w: world, cacheKey: string) {
+  if (activeVisionRaycast?.unit.id === unit.id) {
+    pendingVisionRaycasts.delete(unit.id)
+    return
+  }
+
+  const request = { unit, world: w, cacheKey }
+
+  // One latest request per unit is retained; repeated frames cannot build a queue.
+  pendingVisionRaycasts.set(unit.id, request)
+  scheduleVisionRaycastCallback()
+}
 
 function clearUnitVisionCache(unitId: string) {
-  for (const key of [...visionCache.keys()]) {
-    if (key.startsWith(`${unitId}_`)) {
-      visionCache.delete(key)
-    }
+  visionCache.delete(unitId)
+  pendingVisionRaycasts.delete(unitId)
+  if (activeVisionRaycast?.unit.id === unitId) {
+    activeVisionRaycast.cancelled = true
   }
 }
 
@@ -151,10 +264,6 @@ function getUnitVisionEnvironmentSignature(unit: BaseUnit): string {
 // Cache Helper
 function samePos(a: { x: number; y: number }, b: { x: number; y: number }) {
   return a.x === b.x && a.y === b.y
-}
-
-function sameRoundedPos(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return Math.round(a.x / 10) === Math.round(b.x / 10) && Math.round(a.y / 10) === Math.round(b.y / 10)
 }
 
 type TeamVisionLayer = {
@@ -264,38 +373,28 @@ export function drawUnitVision(
         return
       }
 
-      let poly: vec2[] = []
+      let poly: vec2[] | null = null
       debugPerformance('drawUnitVision.cacheAndPolygon', () => {
         const unitInForest = u.envState.includes(UnitEnvironmentState.InForest)
         const environmentSignature = getUnitVisionEnvironmentSignature(u)
         const cacheKey = `${u.id}_${unitInForest}_${environmentSignature}_${u.visionRange}`
-        const cache = visionCache.get(cacheKey)
-
-        const now = Date.now()
-        const cacheExpired = cache != null && (now - cache.createdAtMs) > 1_000
-        const shouldRebuildCache = (
+        const cache = visionCache.get(u.id)
+        const shouldRebuildCache =
           cache == null ||
-          !sameRoundedPos(cache.pos, u.pos) ||
-          (cacheExpired && !samePos(cache.pos, u.pos))
-        )
+          cache.cacheKey !== cacheKey ||
+          !samePos(cache.pos, u.pos)
 
         if (shouldRebuildCache) {
-          debugPerformance('drawUnitVision.buildVisionPolygon', () => {
-            poly = buildVisionPolygon(u, w)
-          })
-          visionCache.set(cacheKey, {
-            pos: { ...u.pos },
-            polygon: poly,
-            createdAtMs: now,
-          })
-          return
+          requestVisionRaycast(u, w, cacheKey)
         }
 
-        poly = cache.polygon
+        poly = cache?.polygon ?? null
       })
 
       // ===== ПОЛИГОН =====
       debugPerformance('drawUnitVision.drawPolygon', () => {
+        if (poly == null || poly.length === 0) return
+
         vCtx.beginPath()
         const start = w.camera.worldToScreen(poly[0]!)
         vCtx.moveTo(start.x, start.y)

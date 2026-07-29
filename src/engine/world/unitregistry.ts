@@ -40,6 +40,9 @@ export class unitregistry {
     const existing = this.map.get(state.id)
     if (existing) {
       Object.assign(existing, state)
+      // Commands may have changed with a remote snapshot. Keep the cached
+      // destination marker in sync with the commands used to draw its path.
+      existing.refreshFuturePos()
       if (source === 'remote') this.markSynced(existing)
       return existing
     }

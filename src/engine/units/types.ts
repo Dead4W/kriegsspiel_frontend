@@ -57,6 +57,7 @@ export interface unitstate {
   messagesLinked?: MessageLinked[],
 
   directView?: boolean
+  isDirectChain?: boolean
 }
 
 export type UnitAiTriggerState =

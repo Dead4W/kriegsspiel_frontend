@@ -736,6 +736,43 @@ function enforceMinPointDistance(points: vec2[], minDistancePx = MIN_POINT_DISTA
   return out;
 }
 
+/**
+ * Snapping to road centers can place the leading route points behind the start,
+ * because the local road center of a junction or a curve lies backwards. Walking
+ * back there undoes the progress of the previous step, so only the backward
+ * component of such a point is removed: the lateral offset is kept and the unit
+ * is still pulled onto the road, just sideways instead of backwards.
+ *
+ * A point that still maps onto the path itself is kept as is, since then the
+ * route really has to start backwards, for example out of a dead end.
+ */
+function removeBackwardLeadingOffset(from: vec2, path: vec2[], points: vec2[]): vec2[] {
+  if (points.length < 2) return points;
+
+  const result = points.map((p) => ({ x: p.x, y: p.y }));
+  for (let i = 0; i < result.length - 1; i += 1) {
+    const point = result[i]!;
+    const next = result[i + 1]!;
+    const dirX = next.x - from.x;
+    const dirY = next.y - from.y;
+    const dirLength = Math.hypot(dirX, dirY);
+    if (dirLength <= 0) break;
+
+    const dirNormX = dirX / dirLength;
+    const dirNormY = dirY / dirLength;
+    const alongDir = (point.x - from.x) * dirNormX + (point.y - from.y) * dirNormY;
+    if (alongDir >= 0) break;
+    if (nearestPathIndex(path, point) > 0) break;
+
+    result[i] = {
+      x: point.x - dirNormX * alongDir,
+      y: point.y - dirNormY * alongDir,
+    };
+  }
+
+  return dedupeSequential(result);
+}
+
 function snapPointsToRoadCenters(w: world, points: vec2[]): vec2[] {
   return points.map((p) => {
     const nearestRoad = w.findNearestObjectPoint(
@@ -939,7 +976,7 @@ export function buildRoadTurnRoutePoints(
       const metersPerPixel = Math.max(0.0001, Number(w.map.metersPerPixel) || 1);
       const maxStepPx = MAX_ASTAR_POINT_STEP_METERS / metersPerPixel;
       const withStepLimit = enforceMaxStepDistance(preprocessed, maxStepPx);
-      return dedupeSequential(withStepLimit);
+      return removeBackwardLeadingOffset(from, path, dedupeSequential(withStepLimit));
     });
     if (!deduped.length) {
       if (reachedGoal) return [{ x: to.x, y: to.y }];

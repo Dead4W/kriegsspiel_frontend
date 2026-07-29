@@ -145,22 +145,59 @@ export class DeliveryCommand extends BaseCommand<
   private buildDeliveryRoute(goal: vec2, from: vec2): vec2[] {
     const startedAt = this.nowMs()
     const threatZones = this.getEnemyThreatZones()
-    let points = buildRoadTurnRoutePoints(
+    const buildRoute = (target: vec2, avoidThreats: boolean) => buildRoadTurnRoutePoints(
       window.ROOM_WORLD,
       from,
-      goal,
+      target,
       {
-        threatZones,
+        threatZones: avoidThreats ? threatZones : undefined,
         allowDirectFallback: false,
-      }
-    );
+      },
+    )
+
+    let points = buildRoute(goal, true)
     if (!points.length && threatZones.length) {
-      points = buildRoadTurnRoutePoints(
-        window.ROOM_WORLD,
-        from,
-        goal,
-        { allowDirectFallback: false }
-      )
+      points = buildRoute(goal, false)
+    }
+
+    let usedApproachFallback = false
+    if (!points.length) {
+      const approachRadius = this.getDeliveryRange() * 0.8
+      const candidates = Array.from({ length: 12 }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / 12
+        return {
+          x: goal.x + Math.cos(angle) * approachRadius,
+          y: goal.y + Math.sin(angle) * approachRadius,
+        }
+      })
+      const candidateRoutes = candidates
+        .map((target) => buildRoute(target, true))
+        .filter((route) => route.length > 0)
+      if (!candidateRoutes.length && threatZones.length) {
+        candidateRoutes.push(
+          ...candidates
+            .map((target) => buildRoute(target, false))
+            .filter((route) => route.length > 0),
+        )
+      }
+      points = candidateRoutes
+        .filter((route) => {
+          const endpoint = route[route.length - 1]!
+          return Math.hypot(endpoint.x - goal.x, endpoint.y - goal.y) <= this.getDeliveryRange()
+        })
+        .sort((a, b) => {
+          const routeLength = (route: vec2[]) => {
+            let length = 0
+            let previous = from
+            for (const point of route) {
+              length += Math.hypot(point.x - previous.x, point.y - previous.y)
+              previous = point
+            }
+            return length
+          }
+          return routeLength(a) - routeLength(b)
+        })[0] ?? []
+      usedApproachFallback = points.length > 0
     }
     const durationMs = this.nowMs() - startedAt
     this.logPerf('build_delivery_route', {
@@ -169,6 +206,7 @@ export class DeliveryCommand extends BaseCommand<
       from: { x: from.x, y: from.y },
       goal: { x: goal.x, y: goal.y },
       resultPoints: points.length,
+      usedApproachFallback,
     })
     return points;
   }
@@ -726,7 +764,6 @@ export class DeliveryCommand extends BaseCommand<
       this.emitDeliveryStatus('in_transit')
       if (this.state.manualRoutePoints?.length) {
         this.syncRouteIndexToNearest(unit)
-        return true
       }
       this.ensureDeliveryMoveCommands(unit)
       return true
@@ -815,6 +852,9 @@ export class DeliveryCommand extends BaseCommand<
       hasReturnTarget: Boolean(returnTarget),
     })
     this.removePendingDeliveryMoves(unit)
+    // Move commands run after this command inside the same step, so the return
+    // leg has to be planned right away instead of losing the whole step.
+    this.ensureDeliveryMoveCommands(unit)
   }
 
   private resolveVisibleTarget(unit: BaseUnit): BaseUnit | null {

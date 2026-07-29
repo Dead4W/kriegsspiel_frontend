@@ -565,7 +565,7 @@ export class unitlayer {
     }
 
     if (unit.directView) {
-      icons.push('👁️')
+      icons.push(unit.isDirectChain ? '◐' : '👁️')
     }
 
     if (unit.isRetreat) {

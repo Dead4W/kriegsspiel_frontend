@@ -72,20 +72,27 @@ function inaccuracyAreaInTeamGeneralVision(
   team: unitTeam,
   center: vec2,
   radiusMeters: number,
-): number | null {
+): number[] | null {
   const radiusPixels = radiusMeters / worldInstance.map.metersPerPixel
   const generals = worldInstance.units
     .list()
     .filter((unit) => unit.team === team && unit.type === unitType.GENERAL && unit.alive)
 
+  let isVisible = false
+  const seenRoomUserIds = new Set<number>()
   for (const general of generals) {
     const visionPoly = buildVisionPolygon(general, worldInstance)
-    if (circleIntersectsPolygon(center, radiusPixels, visionPoly) && general.roomMapUserId > 0) {
-      return general.roomMapUserId
+    if (!circleIntersectsPolygon(center, radiusPixels, visionPoly)) continue
+
+    isVisible = true
+    if (general.roomMapUserId > 0) {
+      seenRoomUserIds.add(general.roomMapUserId)
     }
   }
 
-  return null
+  if (!isVisible) return null
+  if (!seenRoomUserIds.size) return null
+  return Array.from(seenRoomUserIds).sort((a, b) => a - b)
 }
 
 function lineSegmentIntersectionT(a1: vec2, a2: vec2, b1: vec2, b2: vec2): number | null {
@@ -293,8 +300,7 @@ function getDirectViewCommands(
 
   return rawCommands
     .filter((command) => {
-      if (command.type === UnitCommandTypes.Attack) return true
-      if (command.type === UnitCommandTypes.Move) return true
+      if (command.type !== UnitCommandTypes.Move) return true
       if (!firstMoveIncluded) {
         firstMoveIncluded = true
         return true
@@ -335,29 +341,30 @@ function getDirectViewObjects(worldInstance: world, team: unitTeam): DirectViewO
         (attackState.radiusModifier ?? 1) *
         inaccuracyAbility.radiusMult
       const normalizedRadius = Math.max(0, radiusMeters)
-      const seenRoomUserId = inaccuracyAreaInTeamGeneralVision(
+      const seenRoomUserIds = inaccuracyAreaInTeamGeneralVision(
         worldInstance,
         team,
         attackState.inaccuracyPoint,
         normalizedRadius,
       )
-      if (seenRoomUserId == null) continue
+      if (seenRoomUserIds == null) continue
 
       const key = `${attackState.inaccuracyPoint.x}:${attackState.inaccuracyPoint.y}`
       const existing = objectsByPoint.get(key)
       if (existing) {
         existing.data.radiusMeters = Math.max(existing.data.radiusMeters, normalizedRadius)
-        const existingSeenRoomUserIds = existing.seenRoomUserIds ?? []
-        if (!existingSeenRoomUserIds.includes(seenRoomUserId)) {
-          existing.seenRoomUserIds = [...existingSeenRoomUserIds, seenRoomUserId]
-        }
+        const mergedSeenRoomUserIds = new Set([
+          ...(existing.seenRoomUserIds ?? []),
+          ...seenRoomUserIds,
+        ])
+        existing.seenRoomUserIds = Array.from(mergedSeenRoomUserIds).sort((a, b) => a - b)
         continue
       }
 
       objectsByPoint.set(key, {
         type: 'inaccuracy',
         team: unit.team,
-        seenRoomUserIds: [seenRoomUserId],
+        seenRoomUserIds,
         data: {
           point: attackState.inaccuracyPoint,
           radiusMeters: normalizedRadius,
@@ -423,10 +430,10 @@ export function emitTurnStatePackets(
       emitPacket({
         type: 'direct_view',
         team,
-        data: directViewByTeam.get(team as unitTeam)!.map(({ id, isDirect }) => {
+        data: directViewByTeam.get(team as unitTeam)!.map(({ id, isDirectChain }) => {
           const unit = worldInstance.units.get(id)!
           let unitState: unitstate
-          if (!isDirect) {
+          if (isDirectChain) {
             unitState = {
               id: unit.id,
               type: unit.type,
@@ -435,6 +442,7 @@ export function emitTurnStatePackets(
               angle: unit.angle,
               roomMapUserId: unit.roomMapUserId,
               seenRoomUserIds: unit.seenRoomUserIds,
+              isDirectChain: true,
               commands: getDirectViewCommands(worldInstance, unit.id, team as unitTeam),
             }
           } else {
@@ -446,9 +454,11 @@ export function emitTurnStatePackets(
               angle: unit.angle,
               roomMapUserId: unit.roomMapUserId,
               seenRoomUserIds: unit.seenRoomUserIds,
+              isDirectChain: false,
               isRetreatState: unit.isRetreat,
               hp: unit.hp,
               ammo: unit.ammo,
+              fatigue: unit.fatigue,
               envState: unit.envState,
               formation: unit.getFormation(),
               activeAbilityType: unit.activeAbilityType,

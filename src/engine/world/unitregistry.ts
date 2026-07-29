@@ -4,7 +4,6 @@ import {createUnit} from '@/engine/units'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
 import {Team} from "@/enums/teamKeys.ts";
-import {RoomGameStage} from "@/enums/roomStage.ts";
 
 export type UnitDirtyObject = {
   unit: unitstate,
@@ -13,7 +12,18 @@ export type UnitDirtyObject = {
 
 export type GeneralDirectViewEntry = {
   id: uuid
-  isDirect: boolean
+  isDirectChain: boolean
+}
+
+// Compared apart from the rest of the state, because they are also moved by the
+// interpolation of remote frames, which must not be sent back.
+const TRANSFORM_STATE_KEYS = ['pos', 'angle'] as const satisfies readonly (keyof unitstate)[]
+
+type SyncedUnitState = {
+  /** JSON of unitstate without the transform keys. */
+  rest: string
+  pos: vec2
+  angle: number
 }
 
 export class unitregistry {
@@ -21,6 +31,7 @@ export class unitregistry {
   private dirty = new Set<uuid>()
   private dirtyRemove = new Set<uuid>()
   private dirtyMoveFrames = new Map<uuid, MoveFrame[]>()
+  private syncedStates = new Map<uuid, SyncedUnitState>()
   public withNewCommandsTmp = new Set<uuid>()
   public withNewCommands = new Set<uuid>()
 
@@ -29,6 +40,7 @@ export class unitregistry {
     const existing = this.map.get(state.id)
     if (existing) {
       Object.assign(existing, state)
+      if (source === 'remote') this.markSynced(existing)
       return existing
     }
 
@@ -37,6 +49,7 @@ export class unitregistry {
     }
     const u = createUnit(state)
     this.map.set(u.id, u)
+    if (source === 'remote') this.markSynced(u)
     return u
   }
 
@@ -44,24 +57,59 @@ export class unitregistry {
     this.dirty.add(id);
   }
 
+  /**
+   * Accepts the current state as already known by the server, so it is not sent
+   * back. Must be called for every unit mutated from an incoming socket message.
+   */
+  markSynced(unit: BaseUnit | uuid) {
+    const u = typeof unit === 'string' ? this.get(unit) : unit
+    if (!u) return
+    this.syncedStates.set(u.id, this.readSyncedState(u))
+  }
+
+  private readSyncedState(unit: BaseUnit): SyncedUnitState {
+    const rest: Partial<unitstate> = unit.toState()
+    for (const key of TRANSFORM_STATE_KEYS) {
+      delete rest[key]
+    }
+    return {
+      rest: JSON.stringify(rest),
+      pos: { ...unit.pos },
+      angle: unit.angle,
+    }
+  }
+
+  private hasUnsyncedChanges(unit: BaseUnit, current: SyncedUnitState): boolean {
+    const synced = this.syncedStates.get(unit.id)
+    if (!synced) return true
+    if (synced.rest !== current.rest) return true
+    // While remote frames are playing the unit moves on its own, the final
+    // transform is accepted in syncRemoteMoveFrames().
+    if (unit.hasPendingRemoteFrames()) return false
+    return synced.angle !== current.angle
+      || synced.pos.x !== current.pos.x
+      || synced.pos.y !== current.pos.y
+  }
+
   getDirty(): UnitDirtyObject[] {
     const list: UnitDirtyObject[] = []
-    for (const id of this.dirty) {
-      const u = this.get(id);
-      if (u) {
-        const moveFrames = this.dirtyMoveFrames.get(id) ?? [];
-        if (moveFrames.length > 0) {
-          moveFrames.push({
-            t: moveFrames[moveFrames.length-1]!.t + 1,
-            pos: u.pos,
-          });
-        }
-        list.push({
-          unit: u.toState(),
-          frames: moveFrames,
+    for (const u of this.map.values()) {
+      const current = this.readSyncedState(u)
+      if (!this.hasUnsyncedChanges(u, current) && !this.dirty.has(u.id)) continue
+
+      const moveFrames = this.dirtyMoveFrames.get(u.id) ?? [];
+      if (moveFrames.length > 0) {
+        moveFrames.push({
+          t: moveFrames[moveFrames.length-1]!.t + 1,
+          pos: u.pos,
         });
-        u.isDirty = false;
       }
+      list.push({
+        unit: u.toState(),
+        frames: moveFrames,
+      });
+      this.syncedStates.set(u.id, current)
+      u.isDirty = false;
     }
     this.dirty.clear();
     this.dirtyMoveFrames.clear()
@@ -95,6 +143,9 @@ export class unitregistry {
     //   return;
     // }
     this.map.delete(id)
+    this.syncedStates.delete(id)
+    this.dirtyMoveFrames.delete(id)
+    this.dirty.delete(id)
     if (source === 'local') this.dirtyRemove.add(id)
   }
 
@@ -105,11 +156,21 @@ export class unitregistry {
   syncRemoteMoveFrames(now = performance.now()): boolean {
     let hasAnyUpdate = false
     for (const unit of this.map.values()) {
-      if (unit.syncRemoteMoveFrames(now)) {
-        hasAnyUpdate = true
+      if (!unit.syncRemoteMoveFrames(now)) continue
+      hasAnyUpdate = true
+      if (!unit.hasPendingRemoteFrames()) {
+        this.markTransformSynced(unit)
       }
     }
     return hasAnyUpdate
+  }
+
+  /** Keeps unsent changes of the other fields, unlike markSynced(). */
+  private markTransformSynced(unit: BaseUnit) {
+    const synced = this.syncedStates.get(unit.id)
+    if (!synced) return
+    synced.pos = { ...unit.pos }
+    synced.angle = unit.angle
   }
 
   get(id: uuid): BaseUnit | null {
@@ -164,7 +225,7 @@ export class unitregistry {
     const maxY = Math.max(a.y, b.y)
 
     for (const u of this.map.values()) {
-      let isSelected = u.pos.x >= minX &&
+      const isSelected = u.pos.x >= minX &&
         u.pos.x <= maxX &&
         u.pos.y >= minY &&
         u.pos.y <= maxY;
@@ -261,7 +322,7 @@ export class unitregistry {
       const strictDirectView = strictDirectViewByTeamSet.get(team)!
       const entries = Array.from(directViewByTeamSet.get(team)!).map((id) => ({
         id,
-        isDirect: strictDirectView.has(id),
+        isDirectChain: !strictDirectView.has(id),
       }))
       directViewByTeam.set(team, entries)
     }
@@ -270,8 +331,13 @@ export class unitregistry {
       ...directViewByTeamSet.get(Team.RED)!,
       ...directViewByTeamSet.get(Team.BLUE)!,
     ])
+    const allStrictDirectViewUnitIds = new Set<uuid>([
+      ...strictDirectViewByTeamSet.get(Team.RED)!,
+      ...strictDirectViewByTeamSet.get(Team.BLUE)!,
+    ])
     for (const unit of units) {
       unit.directView = allDirectViewUnitIds.has(unit.id)
+      unit.isDirectChain = unit.directView && !allStrictDirectViewUnitIds.has(unit.id)
     }
 
     for (const unit of units) {

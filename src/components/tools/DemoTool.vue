@@ -9,10 +9,6 @@ import type { PaintStroke } from '@/engine/types/paintTypes'
 
 const { t } = useI18n()
 
-const emit = defineEmits<{
-  (e: 'close'): void
-}>()
-
 const route = useRoute()
 
 /* ---------- state ---------- */
@@ -280,6 +276,8 @@ async function interpolateToSnapshot(
           x: startUnit.pos.x + (endUnit.pos.x - startUnit.pos.x) * progress,
           y: startUnit.pos.y + (endUnit.pos.y - startUnit.pos.y) * progress,
         }
+        // Playback is local only, it must not be sent to the room.
+        w.units.markSynced(liveUnit)
       }
 
       if (fromTimestamp != null && toTimestamp != null) {

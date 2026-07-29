@@ -379,7 +379,7 @@ export class GameSocket {
   /* ================== OUT ================== */
   private syncTimer?: SyncLoop
 
-  private sendBatched(messages: OutMessage[], batchSize = 100) {
+  private sendBatched(messages: OutMessage[], batchSize = 10000) {
     if (this.ws.readyState !== WebSocket.OPEN) return
 
     for (let i = 0; i < messages.length; i += batchSize) {
@@ -486,6 +486,7 @@ export class GameSocket {
     if (msg.type === 'messages') {
       let skipTimeSoundPlayed = false
       let lastLiveSkipTimeIndex = -1
+      const animatedUnitIds = new Set<string>()
       for (let i = msg.messages.length - 1; i >= 0; i -= 1) {
         const message = msg.messages[i]
         if (message?.type === 'skip_time' && message.live === true) {
@@ -512,7 +513,13 @@ export class GameSocket {
 
 
           if (m.frames && m.frames.length) {
-            this.world.units.get(mData.id)!.applyRemoteFrames(m.frames);
+            const unit = this.world.units.get(mData.id)!
+            if (animatedUnitIds.has(mData.id)) {
+              unit.appendRemoteFrames(m.frames)
+            } else {
+              unit.applyRemoteFrames(m.frames)
+              animatedUnitIds.add(mData.id)
+            }
           }
         } else if (m.type === 'unit-remove') {
           for (const unitId of m.data) {
@@ -596,16 +603,19 @@ export class GameSocket {
             }
           }
         } else if (m.type === 'direct_view') {
+          if (window.PLAYER.team === Team.ADMIN || window.PLAYER.team === Team.SPECTATOR) {
+            continue;
+          }
+
           for (const u of window.ROOM_WORLD.units.list()) {
             if (u.directView) {
-              if (
-                u.team !== window.PLAYER.team && window.PLAYER.team !== Team.ADMIN
-                || u.type === unitType.MESSENGER && window.PLAYER.team !== Team.ADMIN
-              ) {
-                window.ROOM_WORLD.units.remove(u.id)
+              if (u.team !== window.PLAYER.team || u.type === unitType.MESSENGER) {
+                window.ROOM_WORLD.units.remove(u.id, 'remote')
               } else {
                 clearUnitCommandsForDirectView(u)
                 u.directView = false;
+                u.isDirectChain = false;
+                window.ROOM_WORLD.units.markSynced(u)
               }
             }
           }
@@ -625,13 +635,25 @@ export class GameSocket {
               Object.assign(u, nextUnitState)
               u.futurePos = nextFuturePos
               u.directView = true;
+              window.ROOM_WORLD.units.markSynced(u)
             }
             if (packet.frames && packet.frames.length > 0) {
               const targetUnit = window.ROOM_WORLD.units.get(nextUnitState.id)
-              targetUnit?.applyRemoteFrames(packet.frames)
+              if (targetUnit) {
+                if (animatedUnitIds.has(nextUnitState.id)) {
+                  targetUnit.appendRemoteFrames(packet.frames)
+                } else {
+                  targetUnit.applyRemoteFrames(packet.frames)
+                  animatedUnitIds.add(nextUnitState.id)
+                }
+              }
             }
           }
         } else if (m.type === 'direct_view_objects') {
+          if (window.PLAYER.team === Team.ADMIN || window.PLAYER.team === Team.SPECTATOR) {
+            continue;
+          }
+
           this.world.setDirectViewObjects(m.data)
         } else if (m.type === 'direct_view_send_order') {
           const unitId = (m.data?.unitId ?? '').toString()

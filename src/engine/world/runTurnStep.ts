@@ -343,6 +343,7 @@ export async function runTurnStep(params: {
   liveIntervalMs?: number;
   liveGameSecondsPerMinute?: number;
   shouldContinue?: () => boolean;
+  onStep?: (leftSeconds: number) => void;
 }) {
   const {
     worldInstance,
@@ -352,6 +353,7 @@ export async function runTurnStep(params: {
     liveIntervalMs,
     liveGameSecondsPerMinute,
     shouldContinue,
+    onStep,
   } = params;
   if (secondsToSkip <= 0) return 0;
   const maxStepSeconds = Math.min(
@@ -372,6 +374,7 @@ export async function runTurnStep(params: {
       processUnitCommands(worldInstance, step);
       leftSeconds -= step;
       runningSteps++;
+      onStep?.(leftSeconds);
 
       worldInstance.events.emit("changed", { reason: "unit" });
       worldInstance.skipTime(step, false);

@@ -141,6 +141,7 @@ export abstract class BaseUnit {
   lastSelected: number = 0;
 
   public directView: boolean = false;
+  public isDirectChain: boolean = false;
 
   constructor(s: unitstate) {
     this.id = s.id
@@ -169,6 +170,7 @@ export abstract class BaseUnit {
     this.messagesLinked = s.messagesLinked ?? [];
     this.aiTriggers = (s.aiTriggers ?? []).map((trigger) => ({ ...trigger }))
     this.directView = s.directView ?? false
+    this.isDirectChain = s.isDirectChain ?? false
     this.refreshAngleFromCommands();
   }
 
@@ -433,6 +435,7 @@ export abstract class BaseUnit {
       aiTriggers: this.aiTriggers.map((trigger) => ({ ...trigger })),
 
       directView: this.directView,
+      isDirectChain: this.isDirectChain,
 
       activeAbilityType: this.activeAbilityType,
     }
@@ -449,7 +452,7 @@ export abstract class BaseUnit {
     key: K,
     formation: FormationType = this.getEffectiveFormation()
   ): number {
-    return (getFormationMultipliers() as any)[formation]?.[key] ?? 1
+    return getFormationMultipliers()[formation]?.[key] ?? 1
   }
 
   get alive(): boolean {
@@ -598,6 +601,29 @@ export abstract class BaseUnit {
     this.remoteMoveFrameStart = performance.now();
   }
 
+  appendRemoteFrames(frames: MoveFrame[]) {
+    if (!this.remoteMoveFrames.length) {
+      this.applyRemoteFrames(frames)
+      return
+    }
+
+    const incoming = interpolateMoveFrames(frames, REMOTE_MOVE_INTERPOLATION_STEP_MS)
+    if (!incoming.length) return
+
+    const lastTime = this.remoteMoveFrames[this.remoteMoveFrames.length - 1]!.t
+    const firstTime = incoming[0]!.t
+    for (const frame of incoming.slice(1)) {
+      this.remoteMoveFrames.push({
+        ...frame,
+        t: lastTime + frame.t - firstTime,
+      })
+    }
+  }
+
+  hasPendingRemoteFrames(): boolean {
+    return this.remoteMoveFrames.length > 0
+  }
+
   syncRemoteMoveFrames(now = performance.now()): boolean {
     if (!this.remoteMoveFrames.length) {
       return false
@@ -641,7 +667,7 @@ export abstract class BaseUnit {
     return this.commands.map(c => createUnitCommand(c));
   }
 
-  setCommands(commands: BaseCommand<any, any>[]) {
+  setCommands(commands: BaseCommand<UnitCommandTypes, unknown>[]) {
     this.commands = commands.map(c => JSON.parse(JSON.stringify(c.getState())));
     this.refreshFuturePos();
     this.refreshAngleFromCommands();

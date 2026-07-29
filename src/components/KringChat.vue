@@ -284,21 +284,8 @@ function parseTimestamp(value?: string | null): number {
   return Number.isNaN(ts) ? 0 : ts
 }
 
-function isPlayableTeam(team: Team): boolean {
-  return team === Team.RED || team === Team.BLUE
-}
-
-function shouldUseCreatedAtTimestamp(message: ChatMessage): boolean {
-  return isPlayableTeam(activeTeam.value) && message.author_team === activeTeam.value
-}
-
 function getMessageOrderTimestamp(message: ChatMessage): number {
-  if (shouldUseCreatedAtTimestamp(message)) {
-    return parseTimestamp(message.created_at) || parseTimestamp(message.time)
-  }
-  return parseTimestamp(message.delivered_at)
-    || parseTimestamp(message.created_at)
-    || parseTimestamp(message.time)
+  return parseTimestamp(message.time)
 }
 
 // Фильтр сообщений по чату
@@ -319,7 +306,7 @@ const visibleMessages: ComputedRef<ChatMessage[]> = computed(() => {
       }
     }
 
-    // сортировка по реальному времени отправки/доставки
+    // сортировка по игровому времени отправки
     result.sort((a, b) => getMessageOrderTimestamp(a) - getMessageOrderTimestamp(b))
 
     return result

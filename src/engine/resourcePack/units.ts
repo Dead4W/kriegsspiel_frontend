@@ -5,6 +5,7 @@ import {
   toFiniteNumber,
 } from '@/engine/assets/resourcepack'
 
+import { memoizeByPack } from '@/engine/resourcePack/memo'
 import type { UnitStats } from '@/engine/units/baseUnit'
 import type { FormationType } from '@/engine/units/types'
 import { unitType } from '@/engine/units/types'
@@ -91,27 +92,41 @@ function normalizeUnitType(raw: unknown): ResourcePackUnitType | null {
   }
 }
 
-export function getUnitTypes(
-  pack: ResourcePack | null = getResourcePack()
-): ResourcePackUnitType[] {
+const EMPTY_PARAMS: Record<string, unknown> = {}
+
+const unitTypesByPack = memoizeByPack((pack): ResourcePackUnitType[] => {
   const raw = pack?.units?.types
   if (!Array.isArray(raw)) return []
   return raw.map(normalizeUnitType).filter(Boolean) as ResourcePackUnitType[]
+})
+
+const unitTypesByIdByPack = memoizeByPack((pack) => {
+  const index = new Map<UnitTypeId, ResourcePackUnitType>()
+  // При дублях id выигрывает первый, как это делал прежний find().
+  for (const type of unitTypesByPack(pack)) {
+    if (!index.has(type.id)) index.set(type.id, type)
+  }
+  return index
+})
+
+export function getUnitTypes(
+  pack: ResourcePack | null = getResourcePack()
+): ResourcePackUnitType[] {
+  return unitTypesByPack(pack)
 }
 
 export function getUnitTypeDef(
   id: UnitTypeId,
   pack: ResourcePack | null = getResourcePack()
 ): ResourcePackUnitType | null {
-  const types = getUnitTypes(pack)
-  return types.find((t) => t.id === id) ?? null
+  return unitTypesByIdByPack(pack).get(id) ?? null
 }
 
 export function getUnitParams(
   id: UnitTypeId,
   pack: ResourcePack | null = getResourcePack()
 ): Record<string, unknown> {
-  return getUnitTypeDef(id, pack)?.params ?? {}
+  return getUnitTypeDef(id, pack)?.params ?? EMPTY_PARAMS
 }
 
 export function getUnitBoolParam(

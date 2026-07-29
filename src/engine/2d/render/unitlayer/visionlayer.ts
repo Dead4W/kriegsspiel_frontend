@@ -2,209 +2,237 @@ import {getTeamColor} from "@/engine/2d/render/util.ts";
 import {type unitTeam, type vec2, world} from "@/engine";
 import type {BaseUnit} from "@/engine/units/baseUnit.ts";
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
-import {UnitEnvironmentState} from "@/engine/units/enums/UnitStates.ts";
 import {debugPerformance} from "@/engine/debugPerformance.ts";
+import {isScreenPointVisible} from "@/engine/2d/render/culling.ts";
+import {
+  buildForestMask,
+  buildVisionPolygonPoints,
+  castVisionRay,
+  createOccluderSampler,
+  createVisionPolygonBuffer,
+  ENABLE_HOUSE_RAYCAST_MODIFIER,
+  FOREST_OCCLUDER_ENTITY,
+  HOUSE_ENVIRONMENT_STATES,
+  HOUSE_OCCLUDER_ENTITIES,
+  type OccluderSampler,
+  VISION_RAY_COUNT,
+  type VisionOccluderField,
+  visionRayAngle,
+} from "@/engine/2d/render/unitlayer/visionRaycastCore.ts";
+import {
+  setVisionRaycastPolygonHandler,
+  setVisionRaycastWorkerDisabledHandler,
+  submitVisionRaycastJobs,
+} from "@/engine/2d/render/unitlayer/visionRaycastClient.ts";
+import type {VisionRaycastJob} from "@/engine/2d/render/unitlayer/visionRaycastProtocol.ts";
 
-// Чем дальше участок леса от юнита, тем сильнее он "гасит" луч.
-// 0 = как раньше (лес одинаково "плотный" на любой дистанции).
-const FOREST_DISTANCE_PENALTY = 3;
-const HOUSE_DISTANCE_PENALTY = 20;
-const HOUSE_DISTANCE_PENALTY_WHEN_UNIT_INSIDE = 9;
-const ENABLE_HOUSE_RAYCAST_MODIFIER = false;
-const HOUSE_OCCLUDER_ENTITIES = new Set([
-  'house',
-  'building',
-  'red_building',
-  'cover_house',
-  'fortified_house',
-  'fortified_building',
-])
-const FOREST_OCCLUDER_ENTITY = 'forest'
-const HOUSE_ENVIRONMENT_STATES = new Set([
-  'in_house',
-  'in_building',
-  'in_cover_house',
-  'in_fortified_house',
-])
-
-function getRaycastOccluderPenalty(
-  unit: BaseUnit,
-  w: world,
-  x: number,
-  y: number
-): { penalty: number; softenedByDistance: boolean } | null {
-  if (w.hasObjectNavMeshMap()) {
-    const entity = w.getObjectNavMeshEntityAt({ x: Math.floor(x), y: Math.floor(y) })
-    if (entity === FOREST_OCCLUDER_ENTITY) {
-      return {
-        penalty: FOREST_DISTANCE_PENALTY,
-        softenedByDistance: true,
-      }
-    }
-    if (
-      ENABLE_HOUSE_RAYCAST_MODIFIER &&
-      entity != null &&
-      HOUSE_OCCLUDER_ENTITIES.has(entity)
-    ) {
-      const unitInsideHouse = unit.envState.some((state) => HOUSE_ENVIRONMENT_STATES.has(state))
-      return {
-        penalty: unitInsideHouse ? HOUSE_DISTANCE_PENALTY_WHEN_UNIT_INSIDE : HOUSE_DISTANCE_PENALTY,
-        softenedByDistance: unitInsideHouse,
-      }
-    }
-    return null
-  }
-
-  const img = w.forestImageData
-  if (!img) return null
-
-  if (x < 0 || y < 0 || x >= img.width || y >= img.height) return null
-
-  const i = (Math.floor(y) * img.width + Math.floor(x)) * 4
-  return img.data[i + 3]! > 200
-    ? {
-      penalty: FOREST_DISTANCE_PENALTY,
-      softenedByDistance: true,
-    }
-    : null
+type OccluderFieldSnapshot = {
+  // Источник, по идентичности которого решается, устарел ли снимок: nav-mesh и
+  // forestImageData пересобираются целиком при смене карты.
+  source: object | null
+  field: VisionOccluderField
+  version: number
+  sampleOccluder: OccluderSampler
 }
 
-function castRay(
-  unit: BaseUnit,
-  w: world,
-  origin: { x: number; y: number },
-  angle: number,
-  maxDist: number
-) {
-  if (maxDist <= 0) return { x: origin.x, y: origin.y }
+let occluderFieldSnapshot: OccluderFieldSnapshot | null = null
+let occluderFieldVersion = 0
 
-  const step = 6
-  const dx = Math.cos(angle) * step
-  const dy = Math.sin(angle) * step
-
-  let x = origin.x
-  let y = origin.y
-  let dist = 0
-  let realDist = 0
-
-  while (dist < maxDist) {
-    let iStep = step;
-
-    const occluder = getRaycastOccluderPenalty(unit, w, x, y)
-    if (occluder != null) {
-      if (dist * 2 >= maxDist) break;
-      const distanceMultiplier = occluder.softenedByDistance
-        ? (() => {
-          const t = realDist / maxDist // 0..1
-          const t2 = Math.pow(t, 0.3)
-          return 1 + t2 * occluder.penalty
-        })()
-        : 1 + occluder.penalty
-      iStep *= distanceMultiplier
+function buildOccluderField(w: world): VisionOccluderField {
+  const navMesh = w.hasObjectNavMeshMap() ? w.objectNavMeshMap : undefined
+  if (navMesh) {
+    const houseEntityFlags = new Uint8Array(navMesh.entitiesById.length)
+    if (ENABLE_HOUSE_RAYCAST_MODIFIER) {
+      for (const entity of HOUSE_OCCLUDER_ENTITIES) {
+        const entityId = navMesh.entityIdByName.get(entity)
+        if (entityId != null) houseEntityFlags[entityId] = 1
+      }
     }
 
-    x += dx
-    y += dy
-    dist += iStep
-    realDist += step
+    return {
+      kind: 'navmesh',
+      // Пиксельные буферы отдаются по ссылке: основной поток читает их без
+      // копии, а копию для воркера делает structuredClone при отправке.
+      zones: navMesh.zones.map((zone) => ({
+        minX: zone.minX,
+        minY: zone.minY,
+        maxX: zone.maxX,
+        maxY: zone.maxY,
+        width: zone.width,
+        pixels: zone.pixels,
+      })),
+      forestEntityId: navMesh.entityIdByName.get(FOREST_OCCLUDER_ENTITY) ?? -1,
+      houseEntityFlags,
+    }
   }
 
-  return { x, y }
+  const forest = w.forestImageData
+  if (forest) {
+    return {
+      kind: 'forest',
+      width: forest.width,
+      height: forest.height,
+      forestMask: buildForestMask(forest.data, forest.width, forest.height),
+    }
+  }
+
+  return { kind: 'none' }
 }
 
-export function buildVisionPolygon(u: BaseUnit, w: world) {
-  const origin = u.pos
-  const maxRange = (u.visionRange / w.map.metersPerPixel)
+function getOccluderFieldSnapshot(w: world): OccluderFieldSnapshot {
+  const source = (w.hasObjectNavMeshMap() ? w.objectNavMeshMap : w.forestImageData) ?? null
+  if (occluderFieldSnapshot?.source === source) return occluderFieldSnapshot
 
-  const rays = VISION_RAY_COUNT
-  const points: { x: number; y: number }[] = []
-
-  for (let i = 0; i < rays; i++) {
-    const angle = (i / rays) * Math.PI * 2
-    points.push(castRay(u, w, origin, angle, maxRange))
+  const field = buildOccluderField(w)
+  occluderFieldVersion += 1
+  occluderFieldSnapshot = {
+    source,
+    field,
+    version: occluderFieldVersion,
+    sampleOccluder: createOccluderSampler(field),
   }
 
-  return points
+  return occluderFieldSnapshot
+}
+
+function isUnitInsideHouse(unit: BaseUnit): boolean {
+  if (!ENABLE_HOUSE_RAYCAST_MODIFIER) return false
+  return unit.envState.some((state) => HOUSE_ENVIRONMENT_STATES.has(state))
+}
+
+function visionPointsToPolygon(points: Float32Array): vec2[] {
+  const polygon: vec2[] = new Array(points.length / 2)
+  for (let i = 0; i < polygon.length; i++) {
+    polygon[i] = { x: points[i * 2]!, y: points[i * 2 + 1]! }
+  }
+  return polygon
+}
+
+/**
+ * Синхронный расчёт обзора. Используется игровой логикой (direct view), которая
+ * не может ждать воркер и должна видеть состояние ровно текущего тика.
+ */
+export function buildVisionPolygon(u: BaseUnit, w: world): vec2[] {
+  const points = buildVisionPolygonPoints(
+    getOccluderFieldSnapshot(w).sampleOccluder,
+    u.pos.x,
+    u.pos.y,
+    u.visionRange / w.map.metersPerPixel,
+    isUnitInsideHouse(u),
+  )
+
+  return visionPointsToPolygon(points)
 }
 
 // Cache raycast
-const VISION_RAY_COUNT = 180
 
-type VisionCacheEntry = {
-  cacheKey: string
+type VisionRequestSnapshot = {
+  // envState всегда переприсваивается новым массивом, поэтому сравнения по ссылке
+  // достаточно и оно не требует ни сортировки, ни склейки ключа каждый кадр.
+  envState: BaseUnit['envState']
+  visionRange: number
   pos: { x: number; y: number }
-  polygon: vec2[] // результат buildVisionPolygon
+}
+
+type VisionCacheEntry = VisionRequestSnapshot & {
+  fieldVersion: number
+  path: Path2D // полигон в мировых координатах, готовый к отрисовке
 }
 const visionCache = new Map<string, VisionCacheEntry>()
 
-type VisionRaycastRequest = {
-  unit: BaseUnit
-  world: world
-  cacheKey: string
-}
-
-type ActiveVisionRaycast = VisionRaycastRequest & {
-  origin: vec2
+type VisionRaycastRequest = VisionRequestSnapshot & {
+  unitId: string
+  token: number
+  fieldVersion: number
   maxRange: number
-  nextRay: number
-  polygon: vec2[]
-  cancelled: boolean
+  unitInsideHouse: boolean
+  sampleOccluder: OccluderSampler
+  route: 'worker' | 'main'
 }
 
-const pendingVisionRaycasts = new Map<string, VisionRaycastRequest>()
-let activeVisionRaycast: ActiveVisionRaycast | null = null
-let visionRaycastCallbackScheduled = false
+// По одному активному запросу на юнит: повторные кадры не могут отрастить
+// очередь, а ответ с чужим token'ом отбрасывается как устаревший.
+const requestsByUnitId = new Map<string, VisionRaycastRequest>()
+let requestTokenCounter = 0
+
+type ActiveMainThreadRaycast = VisionRaycastRequest & {
+  points: Float32Array
+  nextRay: number
+}
+
+const mainThreadQueue = new Map<string, VisionRaycastRequest>()
+let activeMainThreadRaycast: ActiveMainThreadRaycast | null = null
+let mainThreadCallbackScheduled = false
 
 type RaycastTimeBudget = {
   timeRemaining: () => number
 }
 
-function scheduleVisionRaycastCallback() {
+function scheduleMainThreadRaycastCallback() {
   if (
-    visionRaycastCallbackScheduled ||
-    (activeVisionRaycast == null && pendingVisionRaycasts.size === 0)
+    mainThreadCallbackScheduled ||
+    (activeMainThreadRaycast == null && mainThreadQueue.size === 0)
   ) {
     return
   }
 
-  visionRaycastCallbackScheduled = true
+  mainThreadCallbackScheduled = true
 
   // The render loop gets the next animation frame first. Raycast work starts
   // from a timer after that frame has been painted and uses only a small slice.
   window.requestAnimationFrame(() => {
     window.setTimeout(() => {
       const startedAt = performance.now()
-      runVisionRaycastChunk({
+      runMainThreadRaycastChunk({
         timeRemaining: () => Math.max(0, 8 - (performance.now() - startedAt)),
       })
     }, 0)
   })
 }
 
-function runVisionRaycastChunk(timeBudget: RaycastTimeBudget) {
-  visionRaycastCallbackScheduled = false
+function isRequestCurrent(request: VisionRaycastRequest): boolean {
+  return requestsByUnitId.get(request.unitId)?.token === request.token
+}
 
-  if (activeVisionRaycast?.cancelled) {
-    activeVisionRaycast = null
+function storeVisionPolygon(request: VisionRaycastRequest, points: Float32Array) {
+  if (!isRequestCurrent(request)) return
+
+  requestsByUnitId.delete(request.unitId)
+  visionCache.set(request.unitId, {
+    envState: request.envState,
+    visionRange: request.visionRange,
+    pos: request.pos,
+    fieldVersion: request.fieldVersion,
+    path: buildPolygonPath(points),
+  })
+}
+
+function runMainThreadRaycastChunk(timeBudget: RaycastTimeBudget) {
+  mainThreadCallbackScheduled = false
+
+  if (activeMainThreadRaycast != null && !isRequestCurrent(activeMainThreadRaycast)) {
+    activeMainThreadRaycast = null
   }
 
-  if (activeVisionRaycast == null) {
-    const nextRequest = pendingVisionRaycasts.entries().next().value
+  if (activeMainThreadRaycast == null) {
+    const nextRequest = mainThreadQueue.entries().next().value
     if (nextRequest == null) return
 
     const [unitId, request] = nextRequest
-    pendingVisionRaycasts.delete(unitId)
-    activeVisionRaycast = {
+    mainThreadQueue.delete(unitId)
+    if (!isRequestCurrent(request)) {
+      scheduleMainThreadRaycastCallback()
+      return
+    }
+
+    activeMainThreadRaycast = {
       ...request,
-      origin: { ...request.unit.pos },
-      maxRange: request.unit.visionRange / request.world.map.metersPerPixel,
+      points: createVisionPolygonBuffer(),
       nextRay: 0,
-      polygon: [],
-      cancelled: false,
     }
   }
 
-  const raycast = activeVisionRaycast
+  const raycast = activeMainThreadRaycast
   let processedRay = false
 
   debugPerformance('drawUnitVision.buildVisionPolygonAsync', () => {
@@ -212,9 +240,15 @@ function runVisionRaycastChunk(timeBudget: RaycastTimeBudget) {
       raycast.nextRay < VISION_RAY_COUNT &&
       (!processedRay || timeBudget.timeRemaining() > 1)
     ) {
-      const angle = (raycast.nextRay / VISION_RAY_COUNT) * Math.PI * 2
-      raycast.polygon.push(
-        castRay(raycast.unit, raycast.world, raycast.origin, angle, raycast.maxRange),
+      castVisionRay(
+        raycast.sampleOccluder,
+        raycast.pos.x,
+        raycast.pos.y,
+        visionRayAngle(raycast.nextRay),
+        raycast.maxRange,
+        raycast.unitInsideHouse,
+        raycast.points,
+        raycast.nextRay * 2,
       )
       raycast.nextRay += 1
       processedRay = true
@@ -222,43 +256,105 @@ function runVisionRaycastChunk(timeBudget: RaycastTimeBudget) {
   })
 
   if (raycast.nextRay === VISION_RAY_COUNT) {
-    if (!raycast.cancelled) {
-      visionCache.set(raycast.unit.id, {
-        cacheKey: raycast.cacheKey,
-        pos: raycast.origin,
-        polygon: raycast.polygon,
-      })
-    }
-    activeVisionRaycast = null
+    storeVisionPolygon(raycast, raycast.points)
+    activeMainThreadRaycast = null
   }
 
-  scheduleVisionRaycastCallback()
+  scheduleMainThreadRaycastCallback()
 }
 
-function requestVisionRaycast(unit: BaseUnit, w: world, cacheKey: string) {
-  if (activeVisionRaycast?.unit.id === unit.id) {
-    pendingVisionRaycasts.delete(unit.id)
+function buildPolygonPath(points: Float32Array): Path2D {
+  const path = new Path2D()
+  if (points.length < 2) return path
+
+  path.moveTo(points[0]!, points[1]!)
+  for (let i = 2; i < points.length; i += 2) {
+    path.lineTo(points[i]!, points[i + 1]!)
+  }
+  path.closePath()
+
+  return path
+}
+
+setVisionRaycastPolygonHandler((unitId, token, points) => {
+  const request = requestsByUnitId.get(unitId)
+  if (request?.token !== token) return
+  storeVisionPolygon(request, points)
+})
+
+// Воркер может отвалиться уже после отправки лучей: те запросы ответа не
+// дождутся, поэтому их надо досчитать в основном потоке.
+setVisionRaycastWorkerDisabledHandler(() => {
+  for (const request of requestsByUnitId.values()) {
+    if (request.route !== 'worker') continue
+    request.route = 'main'
+    mainThreadQueue.set(request.unitId, request)
+  }
+  scheduleMainThreadRaycastCallback()
+})
+
+function isVisionCacheFresh(
+  cache: VisionCacheEntry | undefined,
+  unit: BaseUnit,
+  fieldVersion: number,
+): boolean {
+  return (
+    cache != null &&
+    cache.fieldVersion === fieldVersion &&
+    cache.envState === unit.envState &&
+    cache.visionRange === unit.visionRange &&
+    samePos(cache.pos, unit.pos)
+  )
+}
+
+function createVisionRaycastRequest(
+  unit: BaseUnit,
+  w: world,
+  snapshot: OccluderFieldSnapshot,
+): VisionRaycastRequest {
+  requestTokenCounter += 1
+
+  return {
+    unitId: unit.id,
+    token: requestTokenCounter,
+    fieldVersion: snapshot.version,
+    envState: unit.envState,
+    visionRange: unit.visionRange,
+    pos: { x: unit.pos.x, y: unit.pos.y },
+    maxRange: unit.visionRange / w.map.metersPerPixel,
+    unitInsideHouse: isUnitInsideHouse(unit),
+    sampleOccluder: snapshot.sampleOccluder,
+    route: 'worker',
+  }
+}
+
+function toVisionRaycastJob(request: VisionRaycastRequest): VisionRaycastJob {
+  return {
+    unitId: request.unitId,
+    token: request.token,
+    originX: request.pos.x,
+    originY: request.pos.y,
+    maxRange: request.maxRange,
+    unitInsideHouse: request.unitInsideHouse,
+  }
+}
+
+function dispatchVisionRaycasts(snapshot: OccluderFieldSnapshot, requests: VisionRaycastRequest[]) {
+  if (submitVisionRaycastJobs(snapshot.field, snapshot.version, requests.map(toVisionRaycastJob))) {
     return
   }
 
-  const request = { unit, world: w, cacheKey }
-
-  // One latest request per unit is retained; repeated frames cannot build a queue.
-  pendingVisionRaycasts.set(unit.id, request)
-  scheduleVisionRaycastCallback()
+  for (const request of requests) {
+    request.route = 'main'
+    mainThreadQueue.set(request.unitId, request)
+  }
+  scheduleMainThreadRaycastCallback()
 }
 
 function clearUnitVisionCache(unitId: string) {
   visionCache.delete(unitId)
-  pendingVisionRaycasts.delete(unitId)
-  if (activeVisionRaycast?.unit.id === unitId) {
-    activeVisionRaycast.cancelled = true
-  }
-}
-
-function getUnitVisionEnvironmentSignature(unit: BaseUnit): string {
-  if (!unit.envState.length) return 'none'
-  return [...unit.envState].sort().join('|')
+  requestsByUnitId.delete(unitId)
+  mainThreadQueue.delete(unitId)
 }
 
 // Cache Helper
@@ -325,6 +421,9 @@ export function drawUnitVision(
     })
   })
 
+  const fieldSnapshot = getOccluderFieldSnapshot(w)
+  const newRequests: VisionRaycastRequest[] = []
+
   for (const u of units) {
     debugPerformance('drawUnitVision.unit', () => {
       if (!u.alive || !u.stats.visionRange) {
@@ -333,6 +432,12 @@ export function drawUnitVision(
       }
 
       if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_ONLY_SELECTED] && !u.selected) {
+        return
+      }
+
+      const screenPos = w.camera.worldToScreen(u.pos)
+      const visionRadiusPx = (u.visionRange / w.map.metersPerPixel) * w.camera.zoom
+      if (!isScreenPointVisible(screenPos.x, screenPos.y, w.camera, visionRadiusPx)) {
         return
       }
 
@@ -356,11 +461,8 @@ export function drawUnitVision(
       // ===== ПРОСТОЙ КРУГ =====
       if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]) {
         debugPerformance('drawUnitVision.circle', () => {
-          const p = w.camera.worldToScreen(u.pos)
-          const rPx = (u.visionRange / w.map.metersPerPixel) * w.camera.zoom
-
           vCtx.beginPath()
-          vCtx.arc(p.x, p.y, rPx, 0, Math.PI * 2)
+          vCtx.arc(screenPos.x, screenPos.y, visionRadiusPx, 0, Math.PI * 2)
 
           vCtx.strokeStyle = `rgb(${r},${g},${b})`
           vCtx.lineWidth = 1 * w.camera.zoom
@@ -373,48 +475,49 @@ export function drawUnitVision(
         return
       }
 
-      let poly: vec2[] | null = null
+      let path: Path2D | null = null
       debugPerformance('drawUnitVision.cacheAndPolygon', () => {
-        const unitInForest = u.envState.includes(UnitEnvironmentState.InForest)
-        const environmentSignature = getUnitVisionEnvironmentSignature(u)
-        const cacheKey = `${u.id}_${unitInForest}_${environmentSignature}_${u.visionRange}`
         const cache = visionCache.get(u.id)
-        const shouldRebuildCache =
-          cache == null ||
-          cache.cacheKey !== cacheKey ||
-          !samePos(cache.pos, u.pos)
 
-        if (shouldRebuildCache) {
-          requestVisionRaycast(u, w, cacheKey)
+        // Один незавершённый запрос на юнит: пока он считается, новые входные
+        // данные игнорируются. Иначе юнит, который двигается каждый кадр,
+        // перезапускал бы расчёт и никогда не доводил бы его до конца.
+        if (!isVisionCacheFresh(cache, u, fieldSnapshot.version) && !requestsByUnitId.has(u.id)) {
+          const request = createVisionRaycastRequest(u, w, fieldSnapshot)
+          requestsByUnitId.set(u.id, request)
+          newRequests.push(request)
         }
 
-        poly = cache?.polygon ?? null
+        path = cache?.path ?? null
       })
 
       // ===== ПОЛИГОН =====
       debugPerformance('drawUnitVision.drawPolygon', () => {
-        if (poly == null || poly.length === 0) return
+        if (path == null) return
 
-        vCtx.beginPath()
-        const start = w.camera.worldToScreen(poly[0]!)
-        vCtx.moveTo(start.x, start.y)
-
-        for (let i = 1; i < poly.length; i++) {
-          const p = w.camera.worldToScreen(poly[i]!)
-          vCtx.lineTo(p.x, p.y)
-        }
-
-        vCtx.closePath()
+        // Полигон хранится в мировых координатах: пересчёт делает контекст,
+        // а не 180 вызовов worldToScreen на юнита.
+        const zoom = w.camera.zoom
+        vCtx.save()
+        vCtx.transform(zoom, 0, 0, zoom, -w.camera.pos.x * zoom, -w.camera.pos.y * zoom)
 
         vCtx.strokeStyle = `rgb(${r},${g},${b})`
-        vCtx.lineWidth = w.camera.zoom
-        vCtx.stroke()
+        vCtx.lineWidth = 1
+        vCtx.stroke(path)
 
         vCtx.fillStyle = `rgb(${r},${g},${b})`
-        vCtx.fill()
+        vCtx.fill(path)
+
+        vCtx.restore()
       })
     })
   }
+
+  // Одно сообщение на кадр: воркер получает все "поехавшие" юниты сразу, а если
+  // он недоступен, пачка целиком уходит в кусочный расчёт основного потока.
+  debugPerformance('drawUnitVision.dispatchRaycasts', () => {
+    dispatchVisionRaycasts(fieldSnapshot, newRequests)
+  })
 
   // === НАКЛАДЫВАЕМ НА ОСНОВНОЙ CANVAS ===
   debugPerformance('drawUnitVision.composite', () => {
@@ -443,5 +546,3 @@ export function pointInPolygon(point: vec2, polygon: vec2[]): boolean {
 
   return inside
 }
-
-

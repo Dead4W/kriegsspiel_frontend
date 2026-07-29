@@ -7,6 +7,7 @@ import {debugPerformance} from "@/engine/debugPerformance.ts";
 import {WeatherLayer} from "@/engine/2d/render/weatherlayer.ts";
 import {PaintLayer} from "@/engine/2d/render/paintlayer.ts";
 import type { RenderSceneAssets } from '@/engine/orchestrators/renderOrchestrator'
+import { applyActiveZoneClip, buildActiveZoneClipPath, drawBackdrop } from '@/engine/2d/render/activeZoneClip'
 
 export class canvasrenderer {
   private canvas: HTMLCanvasElement
@@ -21,6 +22,9 @@ export class canvasrenderer {
   private cursor = new cursorlayer();
   private weather = new WeatherLayer();
   private paint = new PaintLayer();
+
+  // Считается в render() и переиспользуется в renderOverlay() того же кадра.
+  private activeZoneClipPath: Path2D | null = null
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -66,29 +70,44 @@ export class canvasrenderer {
       debugPerformance('syncRemoteMoveFrames', () => {
         w.units.syncRemoteMoveFrames()
       })
+      debugPerformance('syncCameraBounds', () => {
+        w.syncCameraBounds()
+      })
       debugPerformance('clearRect', () => {
         this.ctx.clearRect(0, 0, w.camera.viewport.x, w.camera.viewport.y)
+        // Камера умеет отъезжать за край карты и за край зон, поэтому под всё
+        // кладём фон — иначе там будет просвечивать страница.
+        drawBackdrop(this.ctx, w)
       })
       // базовые параметры текста
       this.ctx.font = '12px system-ui'
       this.ctx.textBaseline = 'top'
 
-      // слои
-      debugPerformance('map.draw', () => {
-        this.map.draw(this.ctx, w)
-      })
-      debugPerformance('paint.draw', () => {
-        this.paint.draw(this.ctx, w)
-      })
-      debugPerformance('weather.draw', () => {
-        this.weather.draw(this.ctx, w)
-      })
-      debugPerformance('units.draw', () => {
-        this.units.draw(this.ctx, w)
-      })
-      debugPerformance('overlay.draw', () => {
-        this.overlay.draw(this.ctx, w)
-      })
+      // Клип по активным зонам ставится один раз на все слои: сами слои
+      // продолжают рисовать в мировых координатах и ничего не знают о зонах.
+      this.activeZoneClipPath = buildActiveZoneClipPath(w)
+      const releaseClip = applyActiveZoneClip(this.ctx, this.activeZoneClipPath)
+
+      try {
+        // слои
+        debugPerformance('map.draw', () => {
+          this.map.draw(this.ctx, w)
+        })
+        debugPerformance('paint.draw', () => {
+          this.paint.draw(this.ctx, w)
+        })
+        debugPerformance('weather.draw', () => {
+          this.weather.draw(this.ctx, w)
+        })
+        debugPerformance('units.draw', () => {
+          this.units.draw(this.ctx, w)
+        })
+        debugPerformance('overlay.draw', () => {
+          this.overlay.draw(this.ctx, w)
+        })
+      } finally {
+        releaseClip()
+      }
     })
   }
 
@@ -102,7 +121,12 @@ export class canvasrenderer {
       this.overlayCtx.font = '12px system-ui'
       this.overlayCtx.textBaseline = 'top'
 
-      this.cursor.draw(this.overlayCtx, w)
+      const releaseClip = applyActiveZoneClip(this.overlayCtx, this.activeZoneClipPath)
+      try {
+        this.cursor.draw(this.overlayCtx, w)
+      } finally {
+        releaseClip()
+      }
     })
   }
 

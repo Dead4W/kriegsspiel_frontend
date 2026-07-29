@@ -92,13 +92,68 @@ function getRoomParamsSource(): RoomParamsSettings {
   return {}
 }
 
+const EMPTY_RECTS: SpawnRect[] = []
+
+// activeZones всегда переприсваивается новым массивом (сокет и админ-панель
+// кладут свежий массив), поэтому его можно использовать как ключ кэша.
+// Без этого нормализация крутилась бы на каждый вызов, а он есть в горячих
+// путях (проверка позиции юнита, рендер).
+const activeZoneRectsCache = new WeakMap<object, SpawnRect[]>()
+
 export function getActiveZoneRects(): SpawnRect[] {
   const source = getRoomParamsSource()
   const rawActiveZones = source.activeZones
-  if (!Array.isArray(rawActiveZones)) return []
-  return rawActiveZones
+  if (!Array.isArray(rawActiveZones)) return EMPTY_RECTS
+
+  const cached = activeZoneRectsCache.get(rawActiveZones)
+  if (cached) return cached
+
+  const rects = rawActiveZones
     .map(normalizeRect)
     .filter((rect): rect is SpawnRect => rect !== null)
+  activeZoneRectsCache.set(rawActiveZones, rects)
+  return rects
+}
+
+/**
+ * Общий прямоугольник, накрывающий все активные зоны. Зоны могут пересекаться
+ * или лежать врозь, поэтому берём объединяющий bbox — именно им ограничивается
+ * камера, чтобы остальная карта (а она бывает 12k x 12k) не рендерилась.
+ */
+export function getActiveZoneBounds(): SpawnRect | null {
+  const zones = getActiveZoneRects()
+  if (!zones.length) return null
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  for (const zone of zones) {
+    if (zone.from.x < minX) minX = zone.from.x
+    if (zone.from.y < minY) minY = zone.from.y
+    if (zone.to.x > maxX) maxX = zone.to.x
+    if (zone.to.y > maxY) maxY = zone.to.y
+  }
+
+  if (!(maxX > minX) || !(maxY > minY)) return null
+  return { from: { x: minX, y: minY }, to: { x: maxX, y: maxY } }
+}
+
+/**
+ * Режем ли обзор активными зонами. Полную карту видит только админ на
+ * расстановке — ему нужно разметить зоны. В остальных стадиях он смотрит игру
+ * так же, как red/blue/spectator.
+ */
+export function isActiveZoneViewRestricted(stage: RoomGameStage): boolean {
+  if (window.PLAYER?.team !== Team.ADMIN) return true
+  return stage !== RoomGameStage.PLANNING
+}
+
+/** Пределы камеры по активным зонам. null — ограничивать нечем. */
+export function getActiveZoneCameraBounds(stage: RoomGameStage): SpawnRect | null {
+  if (!isActiveZoneViewRestricted(stage)) return null
+  return getActiveZoneBounds()
 }
 
 export function isPointInsideAnyRect(pos: Point, rects: SpawnRect[]): boolean {

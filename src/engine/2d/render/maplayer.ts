@@ -2,7 +2,7 @@ import type { world } from '@/engine/world/world'
 import {CLIENT_SETTING_KEYS} from "@/enums/clientSettingsKeys.ts";
 import { Team } from '@/enums/teamKeys.ts'
 import { RoomGameStage } from '@/enums/roomStage.ts'
-import { getActiveZoneRects, getTeamSpawnRects, type SpawnRect } from '@/game/planningSpawns'
+import { getActiveZoneRects, getTeamSpawnRects, isActiveZoneViewRestricted, type SpawnRect } from '@/game/planningSpawns'
 
 type TeamSpawnZone = {
   team: Team.RED | Team.BLUE
@@ -87,22 +87,16 @@ export class maplayer {
     this.drawPlayerSpawnFog(ctx, w, zones, team)
   }
 
+  // Там, где обзор режется по-настоящему (камерой и клипом в canvasrenderer),
+  // подсветка не нужна. Остаётся только админ на расстановке: ему показываем,
+  // что именно попадёт в игру.
   private drawActiveZones(ctx: CanvasRenderingContext2D, w: world) {
+    if (isActiveZoneViewRestricted(w.stage)) return
+
     const zones = getActiveZoneRects()
     if (!zones.length) return
-
-    const team = window.PLAYER.team
-    if (team !== Team.ADMIN && team !== Team.RED && team !== Team.BLUE && team !== Team.SPECTATOR) return
     if (window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]) return
 
-    this.drawActiveFog(ctx, w, zones)
-  }
-
-  private drawActiveFog(
-    ctx: CanvasRenderingContext2D,
-    w: world,
-    zones: SpawnRect[],
-  ) {
     this.drawFogOutsideRects(ctx, w, zones, 'rgba(2, 6, 23, 0.35)')
   }
 

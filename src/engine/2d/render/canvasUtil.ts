@@ -1,3 +1,5 @@
+import { isScreenPointVisible } from '@/engine/2d/render/culling.ts'
+
 export function drawDashedArrow(
   ctx: CanvasRenderingContext2D,
   from: { x: number; y: number },
@@ -86,24 +88,20 @@ export function drawMoveArrowChainIcons(
 
   // 🔒 фиксированная геометрия в мире
   const step = 64          // расстояние между иконками
-  const arrowOffset = 14  // смещение стрелки вперёд
 
   for (let d = step / 2; d < dist; d += step) {
     // точка в МИРЕ
     const wx = from.x + dirX * d
     const wy = from.y + dirY * d
 
-    const awx = from.x + dirX * (d + arrowOffset)
-    const awy = from.y + dirY * (d + arrowOffset)
-
     // ===== SCREEN SPACE =====
-    const p  = window.ROOM_WORLD.camera.worldToScreen({ x: wx,  y: wy  })
-    const ap = window.ROOM_WORLD.camera.worldToScreen({ x: awx, y: awy })
+    const cam = window.ROOM_WORLD.camera
+    const p  = cam.worldToScreen({ x: wx,  y: wy  })
 
     const size = 6 * zoom
+    if (!isScreenPointVisible(p.x, p.y, cam, size * 2)) continue
 
     drawMoveIcon(ctx, p.x, p.y, angle, size, color)
-    // drawSmallArrow(ctx, ap.x, ap.y, angle, size * 0.9, color)
   }
 }
 
@@ -198,13 +196,18 @@ export function drawAttackWaveIcons(
       perpY * wave
 
     // ===== SCREEN SPACE =====
-    const p  = window.ROOM_WORLD.camera.worldToScreen({ x: wx,  y: wy  })
-    const ap = window.ROOM_WORLD.camera.worldToScreen({ x: awx, y: awy })
+    const cam = window.ROOM_WORLD.camera
+    const p  = cam.worldToScreen({ x: wx,  y: wy  })
+    const ap = cam.worldToScreen({ x: awx, y: awy })
 
     const size = 6 * zoom
 
-    drawAttackIcon(ctx, p.x, p.y, angle, size, color)
-    drawSmallArrow(ctx, ap.x, ap.y, angle, size * 0.9, color)
+    if (isScreenPointVisible(p.x, p.y, cam, size * 2)) {
+      drawAttackIcon(ctx, p.x, p.y, angle, size, color)
+    }
+    if (isScreenPointVisible(ap.x, ap.y, cam, size * 2)) {
+      drawSmallArrow(ctx, ap.x, ap.y, angle, size * 0.9, color)
+    }
 
     k++
   }

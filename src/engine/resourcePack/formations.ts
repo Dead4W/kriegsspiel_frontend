@@ -5,6 +5,7 @@ import {
   toFiniteNumber,
 } from '@/engine/assets/resourcepack'
 
+import { memoizeByPack } from '@/engine/resourcePack/memo'
 import type { FormationType } from '@/engine/units/types'
 import type { StatKey } from '@/engine/units/baseUnit'
 
@@ -56,43 +57,51 @@ function normalizeFormationType(raw: unknown): ResourcePackFormationType | null 
   }
 }
 
-export function getFormationTypes(
-  pack: ResourcePack | null = getResourcePack()
-): FormationType[] {
+const formationTypesByPack = memoizeByPack((pack): ResourcePackFormationType[] => {
   const raw = (pack as any)?.formations?.types
   if (!Array.isArray(raw)) return []
-  return raw
-    .map(normalizeFormationType)
-    .filter(Boolean)
-    .map((t) => String((t as ResourcePackFormationType).id)) as FormationType[]
-}
+  return raw.map(normalizeFormationType).filter(Boolean) as ResourcePackFormationType[]
+})
 
-export function getFormationMultipliers(
-  pack: ResourcePack | null = getResourcePack()
-): Record<FormationType, FormationStatMultiplier> {
-  const raw = (pack as any)?.formations?.types
-  if (!Array.isArray(raw)) return {} as Record<FormationType, FormationStatMultiplier>
+const formationIdsByPack = memoizeByPack(
+  (pack): FormationType[] =>
+    formationTypesByPack(pack).map((t) => String(t.id)) as FormationType[]
+)
 
+const formationMultipliersByPack = memoizeByPack((pack) => {
   const result = {} as Record<FormationType, FormationStatMultiplier>
-  for (const t of raw.map(normalizeFormationType).filter(Boolean) as ResourcePackFormationType[]) {
+  for (const t of formationTypesByPack(pack)) {
     result[String(t.id) as FormationType] = normalizeMultipliers(t.multipliers)
   }
   return result
-}
+})
 
-export function getFormationIcons(
-  pack: ResourcePack | null = getResourcePack()
-): Record<FormationType, string> {
-  const raw = (pack as any)?.formations?.types
-  if (!Array.isArray(raw)) return {} as Record<FormationType, string>
-
+const formationIconsByPack = memoizeByPack((pack) => {
   const result = {} as Record<FormationType, string>
-  for (const t of raw.map(normalizeFormationType).filter(Boolean) as ResourcePackFormationType[]) {
+  for (const t of formationTypesByPack(pack)) {
     if (typeof t.icon === 'string' && t.icon) {
       result[String(t.id) as FormationType] = t.icon
     }
   }
   return result
+})
+
+export function getFormationTypes(
+  pack: ResourcePack | null = getResourcePack()
+): FormationType[] {
+  return formationIdsByPack(pack)
+}
+
+export function getFormationMultipliers(
+  pack: ResourcePack | null = getResourcePack()
+): Record<FormationType, FormationStatMultiplier> {
+  return formationMultipliersByPack(pack)
+}
+
+export function getFormationIcons(
+  pack: ResourcePack | null = getResourcePack()
+): Record<FormationType, string> {
+  return formationIconsByPack(pack)
 }
 
 export function getFormationIcon(
@@ -123,8 +132,6 @@ export function hasFormationTag(
 function getFormationTypesRaw(
   pack: ResourcePack | null
 ): ResourcePackFormationType[] {
-  const raw = (pack as any)?.formations?.types
-  if (!Array.isArray(raw)) return []
-  return raw.map(normalizeFormationType).filter(Boolean) as ResourcePackFormationType[]
+  return formationTypesByPack(pack)
 }
 

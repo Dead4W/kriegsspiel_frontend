@@ -19,11 +19,7 @@ import {getFormationIcon} from "@/engine/resourcePack/formations.ts";
 import {getUnitNumberParam, getUnitStringParam} from "@/engine/resourcePack/units.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 import {getFatigueConfig} from "@/engine/resourcePack/fatigue.ts";
-
-type MoveOrderRange = {
-  min: number
-  max: number
-}
+import {isScreenPointVisible} from "@/engine/2d/render/culling.ts";
 
 type InaccuracyCircle = {
   x: number
@@ -52,10 +48,10 @@ function hpGradientColor(hpRatio: number) {
 export class unitlayer {
   static readonly BASE_UNIT_W = 30
   static readonly BASE_UNIT_H = 15
+  /** Высота подписей/иконок над юнитом и полос под ним, в базовых пикселях. */
+  static readonly LABELS_SCREEN_MARGIN = 70
 
   unitTypesLabel: Map<unitType, string> = new Map()
-
-  private move_orders: Record<string, MoveOrderRange> = {}
 
   private unitScale: number = 1
 
@@ -83,7 +79,6 @@ export class unitlayer {
     this.unitScale = settings[CLIENT_SETTING_KEYS.SIZE_UNIT]
 
     this.drawVision(ctx, w, settings)
-    this.updateMoveOrders()
     this.drawDirectViewObjects(ctx, w, settings)
 
     const units = w.units
@@ -141,15 +136,24 @@ export class unitlayer {
 
       const p = cam.worldToScreen(unit.pos)
       const futureP = unit.futurePos ? cam.worldToScreen(unit.futurePos) : null
-      const futureAngle = futureP ? this.getFutureAngle(unit) : unit.angle
-
-      const { r, g, b } = getTeamColor(unit.team)
-      ctx.fillStyle = `rgba(${r},${g},${b},${unitOpacity})`
 
       const wMult = getUnitNumberParam(unit.type, 'renderWidthMult') ?? 1
       const hMult = getUnitNumberParam(unit.type, 'renderHeightMult') ?? 1
       const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * this.unitScale * wMult
       const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * this.unitScale * hMult
+
+      // Запас покрывает подписи и модификаторы над юнитом и полосы HP под ним.
+      const cullMargin =
+        Math.max(wUnit, hUnit) + unitlayer.LABELS_SCREEN_MARGIN * cam.zoom * this.unitScale
+      const visible =
+        isScreenPointVisible(p.x, p.y, cam, cullMargin) ||
+        (futureP != null && isScreenPointVisible(futureP.x, futureP.y, cam, cullMargin))
+      if (!visible) return
+
+      const futureAngle = futureP ? this.getFutureAngle(unit) : unit.angle
+
+      const { r, g, b } = getTeamColor(unit.team)
+      ctx.fillStyle = `rgba(${r},${g},${b},${unitOpacity})`
 
       debugPerformance('drawUnitBody', () => {
         ctx.save()
@@ -454,35 +458,6 @@ export class unitlayer {
     }
 
     ctx.restore()
-  }
-
-  // =============================
-  // MOVE ORDER INDEX
-  // =============================
-
-  private updateMoveOrders() {
-    return debugPerformance('updateMoveOrders', () => {
-      const orders: Record<string, MoveOrderRange> = {}
-
-      for (const u of window.ROOM_WORLD.units.list()) {
-        for (const cmd of u.getCommands()) {
-          if (cmd.type !== UnitCommandTypes.Move) continue
-
-          const state = cmd.getState().state as MoveCommandState
-          const id = state.uniqueId
-
-          const entry = orders[id]
-          if (!entry) {
-            orders[id] = { min: state.orderIndex, max: state.orderIndex }
-          } else {
-            entry.min = Math.min(entry.min, state.orderIndex)
-            entry.max = Math.max(entry.max, state.orderIndex)
-          }
-        }
-      }
-
-      this.move_orders = orders
-    })
   }
 
   // =============================

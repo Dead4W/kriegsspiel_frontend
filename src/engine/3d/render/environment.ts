@@ -38,42 +38,80 @@ function createGrassTexture() {
   return texture
 }
 
-export function makeGround(context: WorldRenderContext) {
+export type GroundBounds = {
+  minX: number
+  maxX: number
+  minZ: number
+  maxZ: number
+}
+
+// Зоны могут перекрываться, а копланарные плоскости дают z-fighting. Разносим
+// их по высоте на величину, которую не видно, но которой хватает глубине.
+const OVERLAP_Y_STEP = 0.01
+
+function unionBounds(zones: GroundBounds[]): GroundBounds {
+  return {
+    minX: Math.min(...zones.map((zone) => zone.minX)),
+    maxX: Math.max(...zones.map((zone) => zone.maxX)),
+    minZ: Math.min(...zones.map((zone) => zone.minZ)),
+    maxZ: Math.max(...zones.map((zone) => zone.maxZ)),
+  }
+}
+
+/**
+ * Земля строится по кускам: без активных зон это одна плоскость на всю карту,
+ * с зонами — по плоскости на зону, чтобы между ними ничего не просвечивало.
+ */
+export function makeGround(context: WorldRenderContext, zones: GroundBounds[]) {
   const { scene, renderer, world } = context
+  if (!zones.length) return
+
   const grassTexture = createGrassTexture()
   if (grassTexture) {
     grassTexture.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy())
   }
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    map: grassTexture ?? null,
+    color: 0x6f9f52,
+    roughness: 0.98,
+    metalness: 0.0,
+  })
 
-  const maxWorldSideCells = Math.max(world.width, world.height)
+  const bounds = unionBounds(zones)
+  const unionWidthMeters = bounds.maxX - bounds.minX
+  const unionHeightMeters = bounds.maxZ - bounds.minZ
+  const maxWorldSideCells = Math.max(unionWidthMeters, unionHeightMeters) / world.cellSize
   // Radial fog uses vertex depth; subdivide large planes so fog interpolation stays stable.
   const groundSegments = Math.max(24, Math.min(320, Math.round(maxWorldSideCells / 20)))
   const baseSegments = Math.max(12, Math.floor(groundSegments / 2))
 
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(
-      world.width * world.cellSize,
-      world.height * world.cellSize,
-      groundSegments,
-      groundSegments
-    ),
-    new THREE.MeshStandardMaterial({
-      map: grassTexture ?? null,
-      color: 0x6f9f52,
-      roughness: 0.98,
-      metalness: 0.0,
-    })
-  )
-  plane.rotation.x = -Math.PI / 2
-  plane.position.y = 0
-  plane.receiveShadow = true
-  scene.add(plane)
+  for (let i = 0; i < zones.length; i += 1) {
+    const zone = zones[i]!
+    const widthMeters = zone.maxX - zone.minX
+    const heightMeters = zone.maxZ - zone.minZ
+    if (!(widthMeters > 0) || !(heightMeters > 0)) continue
 
-  const worldWidthMeters = world.width * world.cellSize
-  const worldHeightMeters = world.height * world.cellSize
+    const zoneSegments = Math.max(
+      8,
+      Math.round((groundSegments * Math.max(widthMeters, heightMeters)) / Math.max(unionWidthMeters, unionHeightMeters))
+    )
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(widthMeters, heightMeters, zoneSegments, zoneSegments),
+      groundMaterial
+    )
+    plane.rotation.x = -Math.PI / 2
+    plane.position.set(
+      (zone.minX + zone.maxX) / 2,
+      i * OVERLAP_Y_STEP,
+      (zone.minZ + zone.maxZ) / 2
+    )
+    plane.receiveShadow = true
+    scene.add(plane)
+  }
+
   // Keep the base layer far beyond fog so its edge never shows through haze.
-  const baseWidthMeters = Math.max(worldWidthMeters * 1.25, worldWidthMeters + 40000)
-  const baseHeightMeters = Math.max(worldHeightMeters * 1.25, worldHeightMeters + 40000)
+  const baseWidthMeters = Math.max(unionWidthMeters * 1.25, unionWidthMeters + 40000)
+  const baseHeightMeters = Math.max(unionHeightMeters * 1.25, unionHeightMeters + 40000)
   const baseFogSegments = Math.max(
     baseSegments,
     Math.min(160, Math.round(Math.max(baseWidthMeters, baseHeightMeters) / 520))
@@ -89,7 +127,11 @@ export function makeGround(context: WorldRenderContext) {
     new THREE.MeshStandardMaterial({ color: 0x97b88f, roughness: 1, metalness: 0 })
   )
   base.rotation.x = -Math.PI / 2
-  base.position.y = -Math.max(world.cellSize * 2, 2)
+  base.position.set(
+    (bounds.minX + bounds.maxX) / 2,
+    -Math.max(world.cellSize * 2, 2),
+    (bounds.minZ + bounds.maxZ) / 2
+  )
   scene.add(base)
 }
 

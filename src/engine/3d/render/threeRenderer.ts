@@ -12,6 +12,7 @@ import {
   filterPointsOutsideOccupancy,
   parseColorMaskFromImageData,
   resolveLayerSamplingStep,
+  type ParsedColorMask,
 } from './mask'
 import { hash2D } from './math'
 import { makeGround } from './environment'
@@ -30,6 +31,15 @@ import { createUnitsLayer, type UnitsLayerRenderer } from './objects/units'
 import { createSunSystem, resolveSunTimeHoursFromWorldTime } from './sun'
 import { createCloudyWeatherLayer, type CloudyWeatherLayer } from './weather/cloudy'
 import { createSkyLayer, type SkyLayer } from './weather/sky'
+import {
+  clearMaskOutsideRects,
+  getSceneActiveZoneKey,
+  getSceneActiveZoneRects,
+  getSceneBounds,
+  getSceneZoneBounds,
+  type SceneBounds,
+} from './activeZone'
+import { RoomGameStage } from '@/enums/roomStage'
 
 export type ThreeCameraState = {
   x: number
@@ -66,6 +76,7 @@ export class threeRenderer {
   private lastMapHeight = 1
   private metersPerPixel = 1
   private minimapStaticCanvas: HTMLCanvasElement | null = null
+  private minimapStaticKey: string | null = null
   private sunSystem = createSunSystem({ scene: this.scene })
   private sunTimeHours = 14
   private frameStartedAtMs = performance.now()
@@ -81,6 +92,14 @@ export class threeRenderer {
   private skyLayer: SkyLayer = createSkyLayer(this.scene)
   private unitsLayer: UnitsLayerRenderer | null = null
   private viewDistance = 1800
+  private stage: RoomGameStage = RoomGameStage.PLANNING
+  // Подпись зон, по которой собрана сцена: расходится — пересобираем.
+  private builtActiveZoneKey: string | null = null
+  private sceneBounds: SceneBounds | null = null
+  private sceneZoneBounds: SceneBounds[] = []
+  // Целая маска объектов; копия под текущие зоны делается на каждую пересборку.
+  private parsedMask: ParsedColorMask | null = null
+  private parsedMaskSource: ImageBitmap | null = null
 
   constructor(canvas: HTMLCanvasElement, overlayCanvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -120,7 +139,10 @@ export class threeRenderer {
     this.assets = assets
     this.mapImage = assets.mapImage
     this.metersPerPixel = Math.max(0.01, Number(assets.metersPerPixel) || 1)
-    this.minimapStaticCanvas = this.buildMinimapStaticCanvas(assets.mapImage)
+    this.minimapStaticCanvas = null
+    this.minimapStaticKey = null
+    this.parsedMask = null
+    this.parsedMaskSource = null
     this.inited = false
     await this.ensureSceneReady()
   }
@@ -170,6 +192,8 @@ export class threeRenderer {
   render(w: world) {
     this.lastMapWidth = w.map.width
     this.lastMapHeight = w.map.height
+    this.stage = w.stage
+    this.invalidateSceneOnActiveZoneChange()
     this.ensureSceneReadySync()
     const nowMs = performance.now()
     w.units.syncRemoteMoveFrames(nowMs)
@@ -214,8 +238,9 @@ export class threeRenderer {
 
     ctx.clearRect(0, 0, cssWidth, cssHeight)
 
-    if (this.minimapStaticCanvas) {
-      ctx.drawImage(this.minimapStaticCanvas, x, y, minimapWidth, minimapHeight)
+    const minimapStaticCanvas = this.resolveMinimapStaticCanvas()
+    if (minimapStaticCanvas) {
+      ctx.drawImage(minimapStaticCanvas, x, y, minimapWidth, minimapHeight)
     } else {
       ctx.fillStyle = '#263425'
       ctx.fillRect(x, y, minimapWidth, minimapHeight)
@@ -225,20 +250,21 @@ export class threeRenderer {
     ctx.lineWidth = Math.max(1, minimapWidth * 0.006)
     ctx.strokeRect(x + 0.5, y + 0.5, minimapWidth - 1, minimapHeight - 1)
 
-    const worldWidth = this.lastMapWidth * this.metersPerPixel
-    const worldHeight = this.lastMapHeight * this.metersPerPixel
+    const bounds = this.resolveSceneBounds()
+    const worldWidth = bounds.maxX - bounds.minX
+    const worldHeight = bounds.maxZ - bounds.minZ
     const visibilityRadius = this.getVisibilityRadiusMeters()
     const spanNx = (visibilityRadius * 2) / Math.max(1, worldWidth)
     const spanNy = (visibilityRadius * 2) / Math.max(1, worldHeight)
     const rw = Math.min(minimapWidth, Math.max(2, spanNx * minimapWidth))
     const rh = Math.min(minimapHeight, Math.max(2, spanNy * minimapHeight))
     const centerNx = THREE.MathUtils.clamp(
-      (this.camera.position.x + worldWidth * 0.5) / Math.max(1, worldWidth),
+      (this.camera.position.x - bounds.minX) / Math.max(1, worldWidth),
       0,
       1
     )
     const centerNy = THREE.MathUtils.clamp(
-      (this.camera.position.z + worldHeight * 0.5) / Math.max(1, worldHeight),
+      (this.camera.position.z - bounds.minZ) / Math.max(1, worldHeight),
       0,
       1
     )
@@ -252,10 +278,8 @@ export class threeRenderer {
     ctx.lineWidth = Math.max(1.2, minimapWidth * 0.007)
     ctx.strokeRect(rx, ry, rw, rh)
 
-    const nx = (this.camera.position.x + worldWidth * 0.5) / Math.max(1, worldWidth)
-    const ny = (this.camera.position.z + worldHeight * 0.5) / Math.max(1, worldHeight)
-    const dotX = x + THREE.MathUtils.clamp(nx, 0, 1) * minimapWidth
-    const dotY = y + THREE.MathUtils.clamp(ny, 0, 1) * minimapHeight
+    const dotX = x + centerNx * minimapWidth
+    const dotY = y + centerNy * minimapHeight
 
     ctx.fillStyle = 'rgba(255, 101, 101, 0.95)'
     ctx.beginPath()
@@ -271,6 +295,8 @@ export class threeRenderer {
     this.cloudyWeatherLayer.dispose()
     this.clearObjects()
     this.waterUpdater = null
+    this.parsedMask = null
+    this.parsedMaskSource = null
   }
 
   private async ensureSceneReady() {
@@ -279,6 +305,19 @@ export class threeRenderer {
     if (this.sceneBuildPromise) {
       await this.sceneBuildPromise
     }
+  }
+
+  // Зоны меняются админом и стадией игры, а сцена собирается один раз, поэтому
+  // на расхождение подписи запускаем пересборку.
+  private invalidateSceneOnActiveZoneChange() {
+    if (this.sceneBuildPromise) return
+    const key = getSceneActiveZoneKey(this.stage)
+    if (this.builtActiveZoneKey === null || this.builtActiveZoneKey === key) return
+    this.builtActiveZoneKey = null
+    // Границы пересчитаются на пересборке; до неё лучше считать их заново,
+    // чем клампить камеру и резать миникарту по старым зонам.
+    this.sceneBounds = null
+    this.inited = false
   }
 
   private ensureSceneReadySync() {
@@ -297,9 +336,49 @@ export class threeRenderer {
       })
   }
 
+  /**
+   * Разбор маски объектов стоит секунды на большой карте, а пересборка сцены
+   * нужна каждый раз, когда админ правит зоны. Поэтому разобранную маску
+   * держим целой и отдаём копию — её уже можно гасить под текущие зоны.
+   */
+  private async resolveParsedMask(
+    bitmap: ImageBitmap,
+    meta: Record<string, unknown>
+  ): Promise<ParsedColorMask | null> {
+    if (!this.parsedMask || this.parsedMaskSource !== bitmap) {
+      const sourceCanvas = document.createElement('canvas')
+      sourceCanvas.width = bitmap.width
+      sourceCanvas.height = bitmap.height
+      const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true })
+      if (!sourceCtx) return null
+      sourceCtx.drawImage(bitmap, 0, 0)
+      const imageData = sourceCtx.getImageData(0, 0, bitmap.width, bitmap.height)
+      await this.yieldToMainThread()
+
+      const longestSide = Math.max(bitmap.width, bitmap.height)
+      const targetMaxSide =
+        longestSide >= 9000 ? 2600 : longestSide >= 7000 ? 2800 : longestSide >= 5000 ? 3000 : 3400
+
+      this.parsedMask = await parseColorMaskFromImageData(
+        imageData.data,
+        bitmap.width,
+        bitmap.height,
+        meta,
+        { targetMaxSide }
+      )
+      this.parsedMaskSource = bitmap
+    }
+
+    return { ...this.parsedMask, labels: this.parsedMask.labels.slice() }
+  }
+
   private async rebuildScene() {
     if (!this.mapImage) return
 
+    // Сцена может собираться до первого render(), а от стадии зависит, режем ли
+    // мы карту зонами. Иначе админ в war успевал построить всю карту зря.
+    this.stage = window.ROOM_WORLD?.stage ?? this.stage
+    this.builtActiveZoneKey = getSceneActiveZoneKey(this.stage)
     this.clearObjects()
     this.waterUpdater = null
     await this.yieldToMainThread()
@@ -309,26 +388,11 @@ export class threeRenderer {
       return
     }
 
-    const bitmap = this.assets.objectMapImage
-    const sourceCanvas = document.createElement('canvas')
-    sourceCanvas.width = bitmap.width
-    sourceCanvas.height = bitmap.height
-    const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true })
-    if (!sourceCtx) return
-    sourceCtx.drawImage(bitmap, 0, 0)
-    const imageData = sourceCtx.getImageData(0, 0, bitmap.width, bitmap.height)
-    await this.yieldToMainThread()
-    const longestSide = Math.max(bitmap.width, bitmap.height)
-    const targetMaxSide =
-      longestSide >= 9000 ? 2600 : longestSide >= 7000 ? 2800 : longestSide >= 5000 ? 3000 : 3400
-
-    const parsedMask = await parseColorMaskFromImageData(
-      imageData.data,
-      bitmap.width,
-      bitmap.height,
-      this.assets.objectMapMeta as Record<string, unknown>,
-      { targetMaxSide }
+    const parsedMask = await this.resolveParsedMask(
+      this.assets.objectMapImage,
+      this.assets.objectMapMeta as Record<string, unknown>
     )
+    if (!parsedMask) return
     await this.yieldToMainThread()
     const sourceSampleStep = Math.max(1, Number(parsedMask.sampleStep ?? 1))
     const sampledPixelSpan = Math.max(1, sourceSampleStep)
@@ -345,12 +409,23 @@ export class threeRenderer {
     const worldWidth = worldInfo.width * worldInfo.cellSize
     const worldHeight = worldInfo.height * worldInfo.cellSize
 
-    this.camera.position.set(0, worldInfo.objectSize * 20, Math.max(worldWidth, worldHeight) * 0.18)
+    // Гасим маску вне активных зон до извлечения слоёв: тогда деревья, здания,
+    // дороги и река за пределами зон не строятся вообще.
+    clearMaskOutsideRects(parsedMask, getSceneActiveZoneRects(this.stage))
+    this.sceneBounds = getSceneBounds(this.stage, worldInfo)
+    this.sceneZoneBounds = getSceneZoneBounds(this.stage, worldInfo)
+    await this.yieldToMainThread()
+
+    const largestSceneSideMeters = this.resolveLargestSceneSideMeters()
+    this.camera.position.set(
+      (this.sceneBounds.minX + this.sceneBounds.maxX) / 2,
+      worldInfo.objectSize * 20,
+      (this.sceneBounds.minZ + this.sceneBounds.maxZ) / 2 + largestSceneSideMeters * 0.18
+    )
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ')
 
-    const largestMapSideMeters = Math.max(worldInfo.width, worldInfo.height) * worldInfo.cellSize
     this.viewDistance = THREE.MathUtils.clamp(
-      largestMapSideMeters * threeRenderer.VIEW_DISTANCE_MAP_FACTOR,
+      largestSceneSideMeters * threeRenderer.VIEW_DISTANCE_MAP_FACTOR,
       threeRenderer.MIN_VIEW_DISTANCE,
       threeRenderer.MAX_VIEW_DISTANCE
     )
@@ -373,7 +448,7 @@ export class threeRenderer {
 
     this.unitsLayer = createUnitsLayer(context)
 
-    makeGround(context)
+    makeGround(context, this.sceneZoneBounds)
     await this.yieldToMainThread()
 
     const layerSamplingSteps: Record<string, number> = {
@@ -618,14 +693,19 @@ export class threeRenderer {
     }
     this.lastMapWidth = worldInfo.width
     this.lastMapHeight = worldInfo.height
-    const worldWidth = worldInfo.width * worldInfo.cellSize
-    const worldHeight = worldInfo.height * worldInfo.cellSize
-    this.camera.position.set(0, worldInfo.objectSize * 20, Math.max(worldWidth, worldHeight) * 0.18)
+    this.sceneBounds = getSceneBounds(this.stage, worldInfo)
+    this.sceneZoneBounds = getSceneZoneBounds(this.stage, worldInfo)
+
+    const largestSceneSideMeters = this.resolveLargestSceneSideMeters()
+    this.camera.position.set(
+      (this.sceneBounds.minX + this.sceneBounds.maxX) / 2,
+      worldInfo.objectSize * 20,
+      (this.sceneBounds.minZ + this.sceneBounds.maxZ) / 2 + largestSceneSideMeters * 0.18
+    )
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ')
 
-    const largestMapSideMeters = Math.max(worldInfo.width, worldInfo.height) * worldInfo.cellSize
     this.viewDistance = THREE.MathUtils.clamp(
-      largestMapSideMeters * threeRenderer.VIEW_DISTANCE_MAP_FACTOR,
+      largestSceneSideMeters * threeRenderer.VIEW_DISTANCE_MAP_FACTOR,
       threeRenderer.MIN_VIEW_DISTANCE,
       threeRenderer.MAX_VIEW_DISTANCE
     )
@@ -665,14 +745,36 @@ export class threeRenderer {
     this.objectsGroup.clear()
   }
 
-  private buildMinimapStaticCanvas(img: CanvasImageSource) {
+  private resolveMinimapStaticCanvas() {
+    const key = getSceneActiveZoneKey(this.stage)
+    if (this.minimapStaticCanvas && this.minimapStaticKey === key) return this.minimapStaticCanvas
+    this.minimapStaticCanvas = this.buildMinimapStaticCanvas()
+    this.minimapStaticKey = key
+    return this.minimapStaticCanvas
+  }
+
+  // Миникарта показывает ту же область, что и сцена, поэтому режется по тем же
+  // границам: из полной картинки берём только кусок под активными зонами.
+  private buildMinimapStaticCanvas() {
+    const img = this.mapImage
+    if (!img) return null
     const src = img as ImageBitmap
+    const mapWidth = src.width || this.lastMapWidth
+    const mapHeight = src.height || this.lastMapHeight
+
+    const bounds = this.resolveSceneBounds()
+    const sx = bounds.minX / this.metersPerPixel + mapWidth / 2
+    const sy = bounds.minZ / this.metersPerPixel + mapHeight / 2
+    const sw = (bounds.maxX - bounds.minX) / this.metersPerPixel
+    const sh = (bounds.maxZ - bounds.minZ) / this.metersPerPixel
+    if (!(sw > 0) || !(sh > 0)) return null
+
     const c = document.createElement('canvas')
-    c.width = src.width || this.lastMapWidth
-    c.height = src.height || this.lastMapHeight
+    c.width = Math.max(1, Math.round(sw))
+    c.height = Math.max(1, Math.round(sh))
     const ctx = c.getContext('2d')
     if (!ctx) return null
-    ctx.drawImage(img, 0, 0, c.width, c.height)
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height)
     return c
   }
 
@@ -686,38 +788,58 @@ export class threeRenderer {
     }
   }
 
+  // По плоскости на активную зону: каждая берёт из общей текстуры карты свой
+  // кусок через offset/repeat, поэтому вне зон карта не показывается.
   private addMapTexturePlane(mapWidthPx: number, mapHeightPx: number) {
     if (!this.mapImage) return
-    const maxWorldSideCells = Math.max(mapWidthPx, mapHeightPx)
-    const planeSegments = Math.max(16, Math.min(220, Math.round(maxWorldSideCells / 28)))
-    const mapTexture = new THREE.Texture(this.mapImage)
-    mapTexture.colorSpace = THREE.SRGBColorSpace
-    mapTexture.wrapS = THREE.ClampToEdgeWrapping
-    mapTexture.wrapT = THREE.ClampToEdgeWrapping
-    mapTexture.minFilter = THREE.LinearMipmapLinearFilter
-    mapTexture.magFilter = THREE.LinearFilter
-    mapTexture.generateMipmaps = true
-    mapTexture.anisotropy = Math.min(16, this.renderer.capabilities.getMaxAnisotropy())
-    mapTexture.needsUpdate = true
 
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(
-        mapWidthPx * this.metersPerPixel,
-        mapHeightPx * this.metersPerPixel,
-        planeSegments,
-        planeSegments
-      ),
-      new THREE.MeshStandardMaterial({
-        map: mapTexture,
-        color: 0xffffff,
-        roughness: 0.98,
-        metalness: 0.0,
-      })
-    )
-    plane.rotation.x = -Math.PI / 2
-    plane.position.y = 0
-    plane.receiveShadow = true
-    this.objectsGroup.add(plane)
+    const mapWidthMeters = mapWidthPx * this.metersPerPixel
+    const mapHeightMeters = mapHeightPx * this.metersPerPixel
+
+    for (let i = 0; i < this.sceneZoneBounds.length; i += 1) {
+      const zone = this.sceneZoneBounds[i]!
+      const planeWidth = zone.maxX - zone.minX
+      const planeDepth = zone.maxZ - zone.minZ
+      if (!(planeWidth > 0) || !(planeDepth > 0)) continue
+
+      const maxWorldSideCells = Math.max(planeWidth, planeDepth) / this.metersPerPixel
+      const planeSegments = Math.max(16, Math.min(220, Math.round(maxWorldSideCells / 28)))
+
+      const mapTexture = new THREE.Texture(this.mapImage)
+      mapTexture.colorSpace = THREE.SRGBColorSpace
+      mapTexture.wrapS = THREE.ClampToEdgeWrapping
+      mapTexture.wrapT = THREE.ClampToEdgeWrapping
+      mapTexture.minFilter = THREE.LinearMipmapLinearFilter
+      mapTexture.magFilter = THREE.LinearFilter
+      mapTexture.generateMipmaps = true
+      mapTexture.anisotropy = Math.min(16, this.renderer.capabilities.getMaxAnisotropy())
+      // Ось V текстуры направлена вверх, а Z сцены — вниз, отсюда 1 - maxZ.
+      mapTexture.repeat.set(planeWidth / mapWidthMeters, planeDepth / mapHeightMeters)
+      mapTexture.offset.set(
+        (zone.minX + mapWidthMeters / 2) / mapWidthMeters,
+        1 - (zone.maxZ + mapHeightMeters / 2) / mapHeightMeters
+      )
+      mapTexture.needsUpdate = true
+
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(planeWidth, planeDepth, planeSegments, planeSegments),
+        new THREE.MeshStandardMaterial({
+          map: mapTexture,
+          color: 0xffffff,
+          roughness: 0.98,
+          metalness: 0.0,
+        })
+      )
+      plane.rotation.x = -Math.PI / 2
+      // Земля из makeGround стоит на тех же высотах, карту кладём поверх неё.
+      plane.position.set(
+        (zone.minX + zone.maxX) / 2,
+        (this.sceneZoneBounds.length + i) * 0.01,
+        (zone.minZ + zone.maxZ) / 2
+      )
+      plane.receiveShadow = true
+      this.objectsGroup.add(plane)
+    }
   }
 
   private getVisibilityRadiusMeters() {
@@ -797,14 +919,15 @@ export class threeRenderer {
     const insideY = localY >= y && localY <= y + minimapHeight
     if (!insideX || !insideY) return false
 
-    const worldWidth = this.lastMapWidth * this.metersPerPixel
-    const worldHeight = this.lastMapHeight * this.metersPerPixel
+    const bounds = this.resolveSceneBounds()
+    const worldWidth = bounds.maxX - bounds.minX
+    const worldHeight = bounds.maxZ - bounds.minZ
     if (!(worldWidth > 0) || !(worldHeight > 0)) return false
 
     const nx = THREE.MathUtils.clamp((localX - x) / Math.max(1, minimapWidth), 0, 1)
     const ny = THREE.MathUtils.clamp((localY - y) / Math.max(1, minimapHeight), 0, 1)
-    this.camera.position.x = nx * worldWidth - worldWidth / 2
-    this.camera.position.z = ny * worldHeight - worldHeight / 2
+    this.camera.position.x = bounds.minX + nx * worldWidth
+    this.camera.position.z = bounds.minZ + ny * worldHeight
     return true
   }
 
@@ -844,11 +967,30 @@ export class threeRenderer {
     )
   }
 
+  /**
+   * Область сцены, доступная камере: активные зоны, а без них — вся карта.
+   * Пересчитывается по требованию, потому что размер карты приезжает из render().
+   */
+  private resolveSceneBounds(): SceneBounds {
+    return (
+      this.sceneBounds ??
+      getSceneBounds(this.stage, {
+        width: this.lastMapWidth,
+        height: this.lastMapHeight,
+        cellSize: this.metersPerPixel,
+      })
+    )
+  }
+
+  private resolveLargestSceneSideMeters() {
+    const bounds = this.resolveSceneBounds()
+    return Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ)
+  }
+
   private clampCameraToWorldBounds() {
-    const maxX = (this.lastMapWidth * this.metersPerPixel) / 2
-    const maxZ = (this.lastMapHeight * this.metersPerPixel) / 2
-    this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, -maxX, maxX)
-    this.camera.position.z = THREE.MathUtils.clamp(this.camera.position.z, -maxZ, maxZ)
+    const bounds = this.resolveSceneBounds()
+    this.camera.position.x = THREE.MathUtils.clamp(this.camera.position.x, bounds.minX, bounds.maxX)
+    this.camera.position.z = THREE.MathUtils.clamp(this.camera.position.z, bounds.minZ, bounds.maxZ)
     this.camera.position.y = Math.max(this.metersPerPixel * 1.5, this.camera.position.y)
   }
 

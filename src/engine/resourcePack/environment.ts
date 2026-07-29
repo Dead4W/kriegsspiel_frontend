@@ -5,6 +5,7 @@ import {
   toFiniteNumber,
 } from '@/engine/assets/resourcepack'
 
+import { memoizeByPack } from '@/engine/resourcePack/memo'
 import { unitType } from '@/engine/units/types'
 import type { FormationType } from '@/engine/units/types'
 import type { StatKey } from '@/engine/units/baseUnit'
@@ -79,39 +80,64 @@ function normalizeEnvironmentState(raw: unknown): ResourcePackEnvironmentState |
   }
 }
 
-export function getEnvironmentStates(
-  pack: ResourcePack | null = getResourcePack()
-): ResourcePackEnvironmentState[] {
+const environmentStatesByPack = memoizeByPack((pack): ResourcePackEnvironmentState[] => {
   const raw = (pack as any)?.environment?.states
   if (!Array.isArray(raw)) return []
   return raw.map(normalizeEnvironmentState).filter(Boolean) as ResourcePackEnvironmentState[]
-}
+})
 
-export function getEnvMultipliers(
-  pack: ResourcePack | null = getResourcePack()
-): Record<EnvironmentStateId, EnvStatMultiplier> {
-  const states = getEnvironmentStates(pack)
+const environmentStatesByIdByPack = memoizeByPack((pack) => {
+  const index = new Map<EnvironmentStateId, ResourcePackEnvironmentState>()
+  // При дублях id выигрывает первый, как это делал прежний find().
+  for (const state of environmentStatesByPack(pack)) {
+    const id = String(state.id)
+    if (!index.has(id)) index.set(id, state)
+  }
+  return index
+})
+
+const envMultipliersByPack = memoizeByPack((pack) => {
   const result = {} as Record<EnvironmentStateId, EnvStatMultiplier>
-  for (const s of states) {
-    const id = String(s.id)
-    result[id] = {
+  for (const s of environmentStatesByPack(pack)) {
+    result[String(s.id)] = {
       ...normalizeMultipliers(s.multipliers),
       byTypes: normalizeByTypes(s.byTypes),
     }
   }
   return result
+})
+
+const environmentIconsByPack = memoizeByPack((pack) => {
+  const result = {} as Record<EnvironmentStateId, string>
+  for (const s of environmentStatesByPack(pack)) {
+    if (typeof s.icon === 'string' && s.icon) result[String(s.id)] = s.icon
+  }
+  return result
+})
+
+export function getEnvironmentStates(
+  pack: ResourcePack | null = getResourcePack()
+): ResourcePackEnvironmentState[] {
+  return environmentStatesByPack(pack)
+}
+
+export function getEnvMultipliers(
+  pack: ResourcePack | null = getResourcePack()
+): Record<EnvironmentStateId, EnvStatMultiplier> {
+  return envMultipliersByPack(pack)
 }
 
 export function getEnvironmentIcons(
   pack: ResourcePack | null = getResourcePack()
 ): Record<EnvironmentStateId, string> {
-  const states = getEnvironmentStates(pack)
-  const result = {} as Record<EnvironmentStateId, string>
-  for (const s of states) {
-    const id = String(s.id)
-    if (typeof s.icon === 'string' && s.icon) result[id] = s.icon
-  }
-  return result
+  return environmentIconsByPack(pack)
+}
+
+function getEnvironmentStateDef(
+  state: EnvironmentStateId,
+  pack: ResourcePack | null
+): ResourcePackEnvironmentState | null {
+  return environmentStatesByIdByPack(pack).get(String(state)) ?? null
 }
 
 export function getEnvironmentIcon(
@@ -134,8 +160,7 @@ export function getEnvironmentNumberParam(
   key: string,
   pack: ResourcePack | null = getResourcePack()
 ): number | null {
-  const states = getEnvironmentStates(pack)
-  const entry = states.find((s) => String(s.id) === state)
+  const entry = getEnvironmentStateDef(state, pack)
   return entry?.params ? toFiniteNumber(entry.params[key]) : null
 }
 
@@ -144,8 +169,7 @@ export function getEnvironmentStringParam(
   key: string,
   pack: ResourcePack | null = getResourcePack()
 ): string | null {
-  const states = getEnvironmentStates(pack)
-  const entry = states.find((s) => String(s.id) === state)
+  const entry = getEnvironmentStateDef(state, pack)
   const value = entry?.params?.[key]
   if (typeof value !== 'string') return null
   const normalized = value.trim()
@@ -180,8 +204,7 @@ export function getEnvironmentStateTags(
   state: EnvironmentStateId,
   pack: ResourcePack | null = getResourcePack()
 ): string[] {
-  const states = getEnvironmentStates(pack)
-  const entry = states.find((s) => String(s.id) === state)
+  const entry = getEnvironmentStateDef(state, pack)
   if (!entry?.tags?.length) return []
   return entry.tags
 }

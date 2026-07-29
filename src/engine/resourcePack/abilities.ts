@@ -5,6 +5,7 @@ import {
   toFiniteNumber,
 } from '@/engine/assets/resourcepack'
 
+import { memoizeByPack } from '@/engine/resourcePack/memo'
 import type {
   AbilityStatMultiplier,
   UnitAbilityType,
@@ -58,30 +59,40 @@ function normalizeAbility(raw: unknown): ResourcePackAbility | null {
   }
 }
 
-export function getResourcePackAbilities(
-  pack: ResourcePack | null = getResourcePack()
-): ResourcePackAbility[] {
+const abilitiesByPack = memoizeByPack((pack): ResourcePackAbility[] => {
   const raw = pack?.abilities?.types
   if (!Array.isArray(raw)) return []
   return raw.map(normalizeAbility).filter(Boolean) as ResourcePackAbility[]
+})
+
+const abilityMultipliersByPack = memoizeByPack((pack) => {
+  const result = {} as Record<Ability, AbilityStatMultiplier>
+  for (const t of abilitiesByPack(pack)) result[t.id as Ability] = t.multipliers ?? {}
+  return result
+})
+
+const abilityParamsByPack = memoizeByPack((pack) => {
+  const result = {} as Record<Ability, AbilityParams>
+  for (const t of abilitiesByPack(pack)) result[t.id as Ability] = t.params ?? {}
+  return result
+})
+
+export function getResourcePackAbilities(
+  pack: ResourcePack | null = getResourcePack()
+): ResourcePackAbility[] {
+  return abilitiesByPack(pack)
 }
 
 export function getAbilityMultipliers(
   pack: ResourcePack | null = getResourcePack()
 ): Record<Ability, AbilityStatMultiplier> {
-  const types = getResourcePackAbilities(pack)
-  const result = {} as Record<Ability, AbilityStatMultiplier>
-  for (const t of types) result[t.id as Ability] = t.multipliers ?? {}
-  return result
+  return abilityMultipliersByPack(pack)
 }
 
 export function getAbilityParams(
   pack: ResourcePack | null = getResourcePack()
 ): Record<Ability, AbilityParams> {
-  const types = getResourcePackAbilities(pack)
-  const result = {} as Record<Ability, AbilityParams>
-  for (const t of types) result[t.id as Ability] = t.params ?? {}
-  return result
+  return abilityParamsByPack(pack)
 }
 
 export function getAbilityInaccuracyRadiusMultiplier(

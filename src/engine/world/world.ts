@@ -23,7 +23,7 @@ import type {Weather} from "@/engine/resourcePack/weather.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import type {PlayerReadyInfo} from "@/engine/types/connectionTypes.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
-import { isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone, isTeamUnitTypeSpawnAllowed } from '@/game/planningSpawns'
+import { getActiveZoneCameraBounds, isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone, isTeamUnitTypeSpawnAllowed } from '@/game/planningSpawns'
 
 type worldevents = {
   changed: { reason: string }
@@ -220,6 +220,7 @@ export class world {
   constructor(map: mapmeta) {
     this.map = map
     this.camera.setWorldSize(map.width, map.height)
+    this.syncCameraBounds()
 
     // watch(
     //   () => this.logs.value.length,
@@ -259,6 +260,15 @@ export class world {
   setViewport(w: number, h: number) {
     this.camera.setViewport(w, h);
     // this.events.emit('changed', { reason: 'viewport' })
+  }
+
+  /**
+   * Держит камеру внутри активных зон. Зоны приходят и от админ-панели, и по
+   * сокету, поэтому вместо подписки на каждый источник дёргаем это из рендера:
+   * пересчёт стоит копейки, а bbox меняется редко.
+   */
+  syncCameraBounds() {
+    this.camera.setBounds(getActiveZoneCameraBounds(this.stage))
   }
 
   setOverlay(item: OverlayItem[]) {

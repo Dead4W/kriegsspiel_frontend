@@ -5,6 +5,7 @@ import {
   toFiniteNumber,
 } from '@/engine/assets/resourcepack'
 import { clamp } from '@/engine/math'
+import { memoizeByPack } from '@/engine/resourcePack/memo'
 
 export type FatigueConfig = {
   max: number
@@ -42,6 +43,10 @@ function positiveNumber(raw: unknown, fallback: number): number {
 export function getFatigueConfig(
   pack: ResourcePack | null = getResourcePack(),
 ): FatigueConfig {
+  return fatigueConfigByPack(pack)
+}
+
+const fatigueConfigByPack = memoizeByPack((pack): FatigueConfig => {
   const raw = pack?.fatigue
   if (!isObject(raw)) return {
     ...DEFAULT_FATIGUE_CONFIG,
@@ -77,4 +82,4 @@ export function getFatigueConfig(
     ),
     speedThresholds: speedThresholds.length ? speedThresholds : [...DEFAULT_FATIGUE_CONFIG.speedThresholds],
   }
-}
+})

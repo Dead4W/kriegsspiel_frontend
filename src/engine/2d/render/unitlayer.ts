@@ -3,7 +3,10 @@ import {unitType, type vec2} from "@/engine";
 import {getTeamColor} from '@/engine/2d/render/util.ts'
 import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys'
 import {translate} from '@/i18n'
-import {drawUnitVision} from "@/engine/2d/render/unitlayer/visionlayer.ts";
+import {
+  drawUnitVision,
+  UNIT_RENDER_DETAIL_MIN_ZOOM,
+} from "@/engine/2d/render/unitlayer/visionlayer.ts";
 import {getUnitTexture} from "@/engine/assets/textures.ts";
 import {drawAttackWaveIcons} from "@/engine/2d/render/canvasUtil.ts";
 import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
@@ -48,6 +51,8 @@ function hpGradientColor(hpRatio: number) {
 export class unitlayer {
   static readonly BASE_UNIT_W = 30
   static readonly BASE_UNIT_H = 15
+  /** Ниже этого масштаба текст и полосы не читаются и скрываются для невыбранных юнитов. */
+  static readonly DETAILS_MIN_ZOOM = UNIT_RENDER_DETAIL_MIN_ZOOM
   /** Высота подписей/иконок над юнитом и полос под ним, в базовых пикселях. */
   static readonly LABELS_SCREEN_MARGIN = 70
 
@@ -85,13 +90,18 @@ export class unitlayer {
       .list()
       .sort((a, b) => (a.lastSelected ?? 0) - (b.lastSelected ?? 0))
 
-    for (const unit of units) {
-      debugPerformance('drawCommands', () => {
-        ctx.save()
-        this.drawCommands(ctx, cam, unit, settings)
-        ctx.restore()
-        ctx.closePath()
-      })
+    if (settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS]) {
+      const onlySelected =
+        settings[CLIENT_SETTING_KEYS.SHOW_UNIT_COMMANDS_ONLY_SELECTED]
+      for (const unit of units) {
+        if (onlySelected && !unit.selected) continue
+        debugPerformance('drawCommands', () => {
+          ctx.save()
+          this.drawCommands(ctx, cam, unit, settings)
+          ctx.restore()
+          ctx.closePath()
+        })
+      }
     }
 
     this.drawInaccuracyCircles(ctx, cam, settings)
@@ -142,9 +152,16 @@ export class unitlayer {
       const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * this.unitScale * wMult
       const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * this.unitScale * hMult
 
+      // Выбранный юнит сохраняет подробности на любом масштабе.
+      const showDetails =
+        cam.zoom >= unitlayer.DETAILS_MIN_ZOOM || unit.isSelected()
+
       // Запас покрывает подписи и модификаторы над юнитом и полосы HP под ним.
       const cullMargin =
-        Math.max(wUnit, hUnit) + unitlayer.LABELS_SCREEN_MARGIN * cam.zoom * this.unitScale
+        Math.max(wUnit, hUnit) +
+        (showDetails
+          ? unitlayer.LABELS_SCREEN_MARGIN * cam.zoom * this.unitScale
+          : 0)
       const visible =
         isScreenPointVisible(p.x, p.y, cam, cullMargin) ||
         (futureP != null && isScreenPointVisible(futureP.x, futureP.y, cam, cullMargin))
@@ -185,24 +202,40 @@ export class unitlayer {
           })
         }
       }
-      debugPerformance('drawHpAmmo', () => {
+
+      const showHpAmmo =
+        showDetails &&
+        settings[CLIENT_SETTING_KEYS.SHOW_HP_UNIT_ON_MAP] &&
+        unit.hp != null
+      const showModifiers =
+        showDetails &&
+        settings[CLIENT_SETTING_KEYS.SHOW_UNIT_MODIFICATORS]
+      const showLabel =
+        showDetails &&
+        settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] &&
+        Boolean(unit.label)
+
+      if (showHpAmmo || showModifiers || showLabel) {
         ctx.save()
-        this.drawHpAmmo(ctx, cam, unit, p, wUnit, hUnit, settings)
+
+        if (showHpAmmo) {
+          debugPerformance('drawHpAmmo', () => {
+            this.drawHpAmmo(ctx, cam, unit, p, wUnit, hUnit, settings)
+          })
+        }
+        if (showModifiers) {
+          debugPerformance('drawModifiers', () => {
+            this.drawModifiers(ctx, cam, unit, p, wUnit, hUnit, settings)
+          })
+        }
+        if (showLabel) {
+          debugPerformance('drawLabel', () => {
+            this.drawLabel(ctx, cam, unit, p, wUnit, hUnit, settings)
+          })
+        }
+
         ctx.restore()
-        ctx.closePath()
-      })
-      debugPerformance('drawModifiers', () => {
-        ctx.save()
-        this.drawModifiers(ctx, cam, unit, p, wUnit, hUnit, settings)
-        ctx.restore()
-        ctx.closePath()
-      })
-      debugPerformance('drawLabel', () => {
-        ctx.save()
-        this.drawLabel(ctx, cam, unit, p, wUnit, hUnit, settings)
-        ctx.restore()
-        ctx.closePath()
-      })
+      }
     })
   }
 

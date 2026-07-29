@@ -448,8 +448,8 @@ export abstract class BaseUnit {
     return this.getStatModifierInfo(key).totalMultiplier
   }
 
-  protected getFormationMultiplier<K extends keyof UnitStats | 'damage'>(
-    key: K,
+  protected getFormationMultiplier(
+    key: StatKey,
     formation: FormationType = this.getEffectiveFormation()
   ): number {
     return getFormationMultipliers()[formation]?.[key] ?? 1

@@ -172,8 +172,8 @@ export class world {
   id: uuid = '';
   time: string = '1882-06-12 09:00:00';
   skipTimeLive: Ref<boolean> = ref(false);
-  private liveSecondTickIntervalId: ReturnType<typeof window.setInterval> | null = null
-  private liveHeartbeatTimeoutId: ReturnType<typeof window.setTimeout> | null = null
+  private liveSecondTickIntervalId: number | null = null
+  private liveHeartbeatTimeoutId: number | null = null
   private liveGameSecondsPerMinute = 60
   private liveSecondFractionalCarry = 0
 

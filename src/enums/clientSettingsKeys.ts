@@ -93,6 +93,14 @@ export const CLIENT_SETTING_KEYS = {
 export type ClientSettingKey =
   typeof CLIENT_SETTING_KEYS[keyof typeof CLIENT_SETTING_KEYS]
 
+function serializeClientSettings(
+  settings: Partial<Record<ClientSettingKey, any>>
+): string {
+  const persisted = { ...settings }
+  delete persisted[CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG]
+  return JSON.stringify(persisted)
+}
+
 // Load client settings
 function loadClientSettings(): Partial<Record<ClientSettingKey, any>> {
   try {
@@ -102,7 +110,7 @@ function loadClientSettings(): Partial<Record<ClientSettingKey, any>> {
     if (!raw) {
       localStorage.setItem(
         CLIENT_SETTINGS_STORAGE_KEY,
-        JSON.stringify(defaults)
+        serializeClientSettings(defaults)
       )
       return { ...defaults }
     }
@@ -117,6 +125,7 @@ function loadClientSettings(): Partial<Record<ClientSettingKey, any>> {
       ...defaults,
       ...parsed,
     }
+    merged[CLIENT_SETTING_KEYS.ENABLE_PERFORMANCE_DEBUG] = false
 
     // Drop deprecated renderer/camera3d keys from persisted storage.
     delete (merged as Record<string, unknown>).renderBackend
@@ -130,7 +139,7 @@ function loadClientSettings(): Partial<Record<ClientSettingKey, any>> {
     // optional: persist merged config (useful when new keys were added)
     localStorage.setItem(
       CLIENT_SETTINGS_STORAGE_KEY,
-      JSON.stringify(merged)
+      serializeClientSettings(merged)
     )
 
     return merged
@@ -185,7 +194,7 @@ export function createClientSettings() {
     saveTimer = window.setTimeout(() => {
       localStorage.setItem(
         CLIENT_SETTINGS_STORAGE_KEY,
-        JSON.stringify(window.CLIENT_SETTINGS)
+        serializeClientSettings(window.CLIENT_SETTINGS)
       )
       saveTimer = null
     }, 1000)

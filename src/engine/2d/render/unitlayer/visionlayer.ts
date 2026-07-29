@@ -26,6 +26,9 @@ import {
 } from "@/engine/2d/render/unitlayer/visionRaycastClient.ts";
 import type {VisionRaycastJob} from "@/engine/2d/render/unitlayer/visionRaycastProtocol.ts";
 
+export const UNIT_RENDER_DETAIL_MIN_ZOOM = 0.75
+const DISTANT_VISION_POINT_STRIDE = 2
+
 type OccluderFieldSnapshot = {
   // Источник, по идентичности которого решается, устарел ли снимок: nav-mesh и
   // forestImageData пересобираются целиком при смене карты.
@@ -137,6 +140,7 @@ type VisionRequestSnapshot = {
 type VisionCacheEntry = VisionRequestSnapshot & {
   fieldVersion: number
   path: Path2D // полигон в мировых координатах, готовый к отрисовке
+  distantPath: Path2D // тот же результат raycast, но с каждой второй точкой
 }
 const visionCache = new Map<string, VisionCacheEntry>()
 
@@ -204,6 +208,7 @@ function storeVisionPolygon(request: VisionRaycastRequest, points: Float32Array)
     pos: request.pos,
     fieldVersion: request.fieldVersion,
     path: buildPolygonPath(points),
+    distantPath: buildPolygonPath(points, DISTANT_VISION_POINT_STRIDE),
   })
 }
 
@@ -263,12 +268,12 @@ function runMainThreadRaycastChunk(timeBudget: RaycastTimeBudget) {
   scheduleMainThreadRaycastCallback()
 }
 
-function buildPolygonPath(points: Float32Array): Path2D {
+function buildPolygonPath(points: Float32Array, pointStride = 1): Path2D {
   const path = new Path2D()
   if (points.length < 2) return path
 
   path.moveTo(points[0]!, points[1]!)
-  for (let i = 2; i < points.length; i += 2) {
+  for (let i = pointStride * 2; i < points.length; i += pointStride * 2) {
     path.lineTo(points[i]!, points[i + 1]!)
   }
   path.closePath()
@@ -368,6 +373,44 @@ type TeamVisionLayer = {
 }
 const teamVisionLayers = new Map<unitTeam, TeamVisionLayer>()
 
+type TeamVisionBatch = {
+  regular: Path2D
+  selected: Path2D
+  hasRegular: boolean
+  hasSelected: boolean
+}
+
+function getTeamVisionBatch(
+  batches: Map<unitTeam, TeamVisionBatch>,
+  teamId: unitTeam,
+): TeamVisionBatch {
+  let batch = batches.get(teamId)
+  if (!batch) {
+    batch = {
+      regular: new Path2D(),
+      selected: new Path2D(),
+      hasRegular: false,
+      hasSelected: false,
+    }
+    batches.set(teamId, batch)
+  }
+  return batch
+}
+
+function addPathToTeamVisionBatch(
+  batch: TeamVisionBatch,
+  path: Path2D,
+  selected: boolean,
+) {
+  if (selected) {
+    batch.selected.addPath(path)
+    batch.hasSelected = true
+  } else {
+    batch.regular.addPath(path)
+    batch.hasRegular = true
+  }
+}
+
 function getTeamVisionCtx(
   teamId: unitTeam,
   width: number,
@@ -415,14 +458,14 @@ export function drawUnitVision(
 
   let units: BaseUnit[] = []
   debugPerformance('drawUnitVision.sortUnits', () => {
-    units = [...w.units.list()].sort((a, b) => {
-      if (a.selected === b.selected) return 0
-      return a.selected ? 1 : -1
-    })
+    units = w.units.list()
   })
 
   const fieldSnapshot = getOccluderFieldSnapshot(w)
   const newRequests: VisionRaycastRequest[] = []
+  const visionBatches = new Map<unitTeam, TeamVisionBatch>()
+  const useForestRaycast =
+    settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]
 
   for (const u of units) {
     debugPerformance('drawUnitVision.unit', () => {
@@ -441,36 +484,15 @@ export function drawUnitVision(
         return
       }
 
-      const vCtx = getTeamVisionCtx(u.team, viewportWidth, viewportHeight)
-
-      let r = 0
-      let g = 0
-      let b = 0
-      debugPerformance('drawUnitVision.resolveColor', () => {
-        const teamColor = getTeamColor(u.team)
-        r = teamColor.r
-        g = teamColor.g
-        b = teamColor.b
-      })
-      if (u.selected) {
-        r = Math.min(r * 1.5, 255);
-        g = Math.min(g * 1.5, 255);
-        b = Math.min(b * 1.5, 255);
-      }
+      const batch = getTeamVisionBatch(visionBatches, u.team)
 
       // ===== ПРОСТОЙ КРУГ =====
-      if (!settings[CLIENT_SETTING_KEYS.SHOW_UNIT_VISION_FOREST_RAYCAST]) {
-        debugPerformance('drawUnitVision.circle', () => {
-          vCtx.beginPath()
-          vCtx.arc(screenPos.x, screenPos.y, visionRadiusPx, 0, Math.PI * 2)
-
-          vCtx.strokeStyle = `rgb(${r},${g},${b})`
-          vCtx.lineWidth = 1 * w.camera.zoom
-          vCtx.stroke()
-
-          vCtx.fillStyle = `rgb(${r},${g},${b})`
-          vCtx.fill()
-        })
+      if (!useForestRaycast) {
+        const circle = u.selected ? batch.selected : batch.regular
+        circle.moveTo(screenPos.x + visionRadiusPx, screenPos.y)
+        circle.arc(screenPos.x, screenPos.y, visionRadiusPx, 0, Math.PI * 2)
+        if (u.selected) batch.hasSelected = true
+        else batch.hasRegular = true
         clearUnitVisionCache(u.id)
         return
       }
@@ -488,27 +510,16 @@ export function drawUnitVision(
           newRequests.push(request)
         }
 
-        path = cache?.path ?? null
+        path =
+          (w.camera.zoom < UNIT_RENDER_DETAIL_MIN_ZOOM
+            ? cache?.distantPath
+            : cache?.path) ?? null
       })
 
       // ===== ПОЛИГОН =====
       debugPerformance('drawUnitVision.drawPolygon', () => {
         if (path == null) return
-
-        // Полигон хранится в мировых координатах: пересчёт делает контекст,
-        // а не 180 вызовов worldToScreen на юнита.
-        const zoom = w.camera.zoom
-        vCtx.save()
-        vCtx.transform(zoom, 0, 0, zoom, -w.camera.pos.x * zoom, -w.camera.pos.y * zoom)
-
-        vCtx.strokeStyle = `rgb(${r},${g},${b})`
-        vCtx.lineWidth = 1
-        vCtx.stroke(path)
-
-        vCtx.fillStyle = `rgb(${r},${g},${b})`
-        vCtx.fill(path)
-
-        vCtx.restore()
+        addPathToTeamVisionBatch(batch, path, u.selected)
       })
     })
   }
@@ -517,6 +528,43 @@ export function drawUnitVision(
   // он недоступен, пачка целиком уходит в кусочный расчёт основного потока.
   debugPerformance('drawUnitVision.dispatchRaycasts', () => {
     dispatchVisionRaycasts(fieldSnapshot, newRequests)
+  })
+
+  // Все полигоны одной команды имеют одинаковый цвет. Объединение сокращает
+  // сотни переключений состояния canvas и fill/stroke до двух батчей на команду.
+  debugPerformance('drawUnitVision.drawBatches', () => {
+    for (const [teamId, batch] of visionBatches) {
+      const vCtx = getTeamVisionCtx(teamId, viewportWidth, viewportHeight)
+      const { r, g, b } = getTeamColor(teamId)
+
+      vCtx.save()
+      if (useForestRaycast) {
+        // Raycast-пути хранятся в мировых координатах.
+        const zoom = w.camera.zoom
+        vCtx.transform(zoom, 0, 0, zoom, -w.camera.pos.x * zoom, -w.camera.pos.y * zoom)
+        vCtx.lineWidth = 1
+      } else {
+        vCtx.lineWidth = w.camera.zoom
+      }
+
+      if (batch.hasRegular) {
+        const color = `rgb(${r},${g},${b})`
+        vCtx.strokeStyle = color
+        vCtx.fillStyle = color
+        vCtx.stroke(batch.regular)
+        vCtx.fill(batch.regular)
+      }
+
+      if (batch.hasSelected) {
+        const selectedColor =
+          `rgb(${Math.min(r * 1.5, 255)},${Math.min(g * 1.5, 255)},${Math.min(b * 1.5, 255)})`
+        vCtx.strokeStyle = selectedColor
+        vCtx.fillStyle = selectedColor
+        vCtx.stroke(batch.selected)
+        vCtx.fill(batch.selected)
+      }
+      vCtx.restore()
+    }
   })
 
   // === НАКЛАДЫВАЕМ НА ОСНОВНОЙ CANVAS ===

@@ -218,13 +218,30 @@ function renderMarkdown(text: string): string {
   margin: 0;
   padding: 0;
   list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 240px));
+  gap: 6px;
 }
 
 .unit-limits li {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 3px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(51, 65, 85, 0.45);
+}
+
+.unit-limits li span:last-child {
+  min-width: 28px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #1e3a5f;
+  color: #bfdbfe;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .markdown {

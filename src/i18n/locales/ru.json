@@ -805,6 +805,8 @@
   "planningEntryModal": {
     "title": "Стадия планирования",
     "team_info": "Вы играете за команду:",
+    "unit_limits": "Лимиты юнитов",
+    "not_allowed": "Запрещено",
     "close": "Закрыть"
   },
   "endGameModal": {

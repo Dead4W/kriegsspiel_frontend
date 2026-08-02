@@ -25,6 +25,11 @@ const teamLabel = computed(() => {
 
 const teamClass = computed(() => (props.team === Team.RED ? 'team-red' : 'team-blue'))
 
+type UnitLimit = {
+  type: string
+  limit: number | null
+}
+
 const briefingText = computed(() => {
   const roomPerTeamSettings =
     (window.ROOM_SETTINGS as Record<string, unknown>)?.perTeamSettings as
@@ -46,6 +51,22 @@ const briefingText = computed(() => {
     return fallbackBriefing
   }
   return ''
+})
+
+const unitLimits = computed<UnitLimit[]>(() => {
+  const roomSettings = window.ROOM_SETTINGS as Record<string, unknown>
+  const source = roomSettings?.teamUnitLimits ?? window.ROOM_PARAMS?.teamUnitLimits
+  if (!source || typeof source !== 'object') return []
+
+  const teamLimits = (source as Record<string, unknown>)[props.team]
+  if (!teamLimits || typeof teamLimits !== 'object') return []
+
+  return Object.entries(teamLimits as Record<string, unknown>)
+    .map(([type, value]) => ({
+      type,
+      limit: typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : null,
+    }))
+    .sort((a, b) => a.type.localeCompare(b.type))
 })
 
 function renderMarkdown(text: string): string {
@@ -75,7 +96,7 @@ function renderMarkdown(text: string): string {
   <div class="planning-entry-modal-overlay">
     <div
       class="planning-entry-modal"
-      :class="{ 'planning-entry-modal--with-briefing': briefingText }"
+      :class="{ 'planning-entry-modal--with-content': briefingText || unitLimits.length }"
     >
       <h2>{{ t('planningEntryModal.title') }}</h2>
       <p>
@@ -87,6 +108,15 @@ function renderMarkdown(text: string): string {
         class="briefing markdown"
         v-html="renderMarkdown(briefingText)"
       />
+      <section v-if="unitLimits.length" class="unit-limits">
+        <h3>{{ t('planningEntryModal.unit_limits') }}</h3>
+        <ul>
+          <li v-for="unitLimit in unitLimits" :key="unitLimit.type">
+            <span>{{ unitLimit.type }}</span>
+            <span>{{ unitLimit.limit ?? t('planningEntryModal.not_allowed') }}</span>
+          </li>
+        </ul>
+      </section>
       <button type="button" @click="$emit('close')">
         {{ t('planningEntryModal.close') }}
       </button>
@@ -117,7 +147,7 @@ function renderMarkdown(text: string): string {
   text-align: center;
 }
 
-.planning-entry-modal--with-briefing {
+.planning-entry-modal--with-content {
   width: min(80vw, calc(100vw - 32px));
   max-height: 50vh;
 }
@@ -161,6 +191,35 @@ function renderMarkdown(text: string): string {
   border-radius: 8px;
   padding: 10px;
   background: rgba(15, 23, 42, 0.45);
+}
+
+.unit-limits {
+  margin: 0 0 16px;
+  padding: 10px;
+  text-align: left;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.unit-limits h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #fff;
+}
+
+.unit-limits ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unit-limits li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
 }
 
 .markdown {

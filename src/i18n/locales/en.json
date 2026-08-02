@@ -799,6 +799,8 @@
   "planningEntryModal": {
     "title": "Planning Stage",
     "team_info": "You are playing for team:",
+    "unit_limits": "Unit limits",
+    "not_allowed": "Not allowed",
     "close": "Close"
   },
   "endGameModal": {

@@ -72,10 +72,10 @@ export class maplayer {
     if (w.stage !== RoomGameStage.PLANNING) return
 
     const team = window.PLAYER.team
-    if (team !== Team.ADMIN && team !== Team.RED && team !== Team.BLUE) return
+    if (team !== Team.ADMIN && team !== Team.SPECTATOR && team !== Team.RED && team !== Team.BLUE) return
     if (team !== Team.ADMIN && window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.HIDE_UNITS_LAYER]) return
 
-    if (team === Team.ADMIN) {
+    if (team === Team.ADMIN || team === Team.SPECTATOR) {
       const zones = this.getAdminSpawnZones()
       if (!zones.length) return
       this.drawAdminSpawnZones(ctx, w, zones)

@@ -14,7 +14,7 @@ defineEmits<{
   (e: 'close'): void
 }>()
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 const teamLabel = computed(() => {
   if (props.team === Team.RED) {
@@ -69,6 +69,11 @@ const unitLimits = computed<UnitLimit[]>(() => {
     .sort((a, b) => a.type.localeCompare(b.type))
 })
 
+function unitLabel(type: string): string {
+  const key = `unit.${type}`
+  return te(key) ? t(key) : type
+}
+
 function renderMarkdown(text: string): string {
   const html = marked.parse(text, {
     breaks: true,
@@ -112,7 +117,7 @@ function renderMarkdown(text: string): string {
         <h3>{{ t('planningEntryModal.unit_limits') }}</h3>
         <ul>
           <li v-for="unitLimit in unitLimits" :key="unitLimit.type">
-            <span>{{ unitLimit.type }}</span>
+            <span>{{ unitLabel(unitLimit.type) }}</span>
             <span>{{ unitLimit.limit ?? t('planningEntryModal.not_allowed') }}</span>
           </li>
         </ul>

@@ -520,6 +520,7 @@
     "hard_move_description": "Force move units position. Without this mode, you set move orders to units, not move them.",
     "hide_units_layer": "Hide Units",
     "ruler": "Ruler",
+    "chart": "Chart",
     "paint": {
       "title": "Paint",
       "color": "Color",

@@ -12,8 +12,9 @@ function isUiEventTarget(target: EventTarget | null) {
   return !!el?.closest?.('.krig-ui')
 }
 
-function unitPickRadius() {
-  return 15 * (window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1)
+function unitPickRadius(w: world) {
+  const mapScale = Math.max(0.0001, Number(w.map.metersPerPixel) || 1) / 2
+  return 15 * (window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1) / mapScale
 }
 
 function countUnitsAt(
@@ -89,7 +90,7 @@ export function bindUnitContextCommands(w: world) {
     e.stopPropagation()
 
     const pos = w.camera.screenToWorld({ x: e.clientX, y: e.clientY })
-    const radius = unitPickRadius()
+    const radius = unitPickRadius(w)
     const hit = w.units.pickAt(pos, radius)
 
     const selectedTeam = w.units.getSelected()[0]!.team

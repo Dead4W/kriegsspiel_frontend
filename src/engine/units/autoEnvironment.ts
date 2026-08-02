@@ -1,4 +1,5 @@
 import type { BaseUnit } from "@/engine/units/baseUnit.ts";
+import type { vec2 } from "@/engine/types.ts";
 import { getEnvironmentStates, hasEnvironmentStateTag } from "@/engine/resourcePack/environment.ts";
 import { getFormationTypes } from "@/engine/resourcePack/formations.ts";
 import { hasUnitTypeTag } from "@/engine/resourcePack/units.ts";
@@ -7,7 +8,10 @@ import type { MoveCommandState } from "@/engine/units/commands/moveCommand.ts";
 
 export const NEAR_OBJECT_DISTANCE_METERS = 50
 
-type EnvMode = "moving" | "standing"
+export type EnvMode = "moving" | "standing"
+
+/** Answers whether any of these object-map entities lies near a position. */
+export type NearbyEntityOracle = (entities: string[]) => boolean
 
 type ObjectEnvironmentPriority = { entities: string[]; envIds: string[] }
 
@@ -57,11 +61,11 @@ const OBJECT_ENV_PRIORITIES: Record<EnvMode, ObjectEnvironmentPriority[]> = {
 
 const MOVING_DEFAULT_FIELD_ENV_IDS = ["in_field", "in_plain_field", "in_soft_field", "field"]
 
-function isObjectMapReady(): boolean {
+export function isObjectMapReady(): boolean {
   return window.ROOM_WORLD.hasObjectNavMeshMap()
 }
 
-function getNearRadiusPx(): number {
+export function getNearRadiusPx(): number {
   const metersPerPixel = window.ROOM_WORLD.map.metersPerPixel
   if (!metersPerPixel || metersPerPixel <= 0) return 0
   return Math.max(1, Math.round(NEAR_OBJECT_DISTANCE_METERS / metersPerPixel))
@@ -75,22 +79,72 @@ function resolveEnvironmentId(envCandidates: string[]): string | null {
   return null
 }
 
-function hasNearbyEntity(unit: BaseUnit, entities: string[], radiusPx: number): boolean {
+function hasNearbyEntityAt(pos: vec2, entities: string[], radiusPx: number): boolean {
   if (radiusPx <= 0) return false
-  return Boolean(window.ROOM_WORLD.findNearestObjectPoint(unit.pos, entities, radiusPx))
+  return Boolean(window.ROOM_WORLD.findNearestObjectPoint(pos, entities, radiusPx))
 }
 
-function resolveNearbyEnvironment(
-  unit: BaseUnit,
+function resolveNearbyEnvironmentAt(
+  pos: vec2,
   priorities: ObjectEnvironmentPriority[],
   radiusPx: number,
 ): string | null {
+  return resolvePriorityEnvironment(
+    priorities,
+    (entities) => hasNearbyEntityAt(pos, entities, radiusPx),
+  )
+}
+
+function resolvePriorityEnvironment(
+  priorities: ObjectEnvironmentPriority[],
+  hasNearby: NearbyEntityOracle,
+): string | null {
   for (const priority of priorities) {
-    if (!hasNearbyEntity(unit, priority.entities, radiusPx)) continue
+    if (!hasNearby(priority.entities)) continue
     const environment = resolveEnvironmentId(priority.envIds)
     if (environment) return environment
   }
   return null
+}
+
+/**
+ * The environment a unit would be in at some position, given only an answer to
+ * "is any of these near it".
+ *
+ * Separated from `applyAutoEnvironment` so that the same priority table can be
+ * asked about ground nobody is standing on. The oracle is the caller's, because
+ * asking the object map per position is affordable for one unit and ruinous for
+ * a whole raster of them.
+ */
+export function resolveEnvironmentForMode(
+  mode: EnvMode,
+  hasNearby: NearbyEntityOracle,
+): string | null {
+  const environment = resolvePriorityEnvironment(OBJECT_ENV_PRIORITIES[mode], hasNearby)
+  if (environment) return environment
+  // A unit on the march is in open field when it is in nothing else; a unit
+  // standing still is simply in nothing.
+  return mode === "moving" ? resolveEnvironmentId(MOVING_DEFAULT_FIELD_ENV_IDS) : null
+}
+
+/**
+ * The environment the object map would put a unit in at `pos`, whether or not
+ * anyone stands there. The move estimate asks it about ground ahead of a unit.
+ */
+export function resolveEnvironmentAtPosition(pos: vec2, mode: EnvMode): string | null {
+  const radiusPx = getNearRadiusPx()
+  return resolveEnvironmentForMode(mode, (entities) => hasNearbyEntityAt(pos, entities, radiusPx))
+}
+
+/** Every object-map entity the environment rules can react to. */
+export function getEnvironmentRelevantEntities(): string[] {
+  const entities = new Set<string>()
+  for (const priorities of Object.values(OBJECT_ENV_PRIORITIES)) {
+    for (const priority of priorities) {
+      for (const entity of priority.entities) entities.add(entity)
+    }
+  }
+  return [...entities]
 }
 
 function setEnvironmentState(unit: BaseUnit, environment: string | null) {
@@ -145,7 +199,7 @@ function applyBridgeFormation(unit: BaseUnit, isMoving: boolean, radiusPx: numbe
     return
   }
 
-  const nearBridge = isMoving && hasNearbyEntity(unit, ["bridge"], radiusPx)
+  const nearBridge = isMoving && hasNearbyEntityAt(unit.pos, ["bridge"], radiusPx)
   if (nearBridge) {
     if (previousFormation == null && unit.getFormation() !== columnFormation) {
       unitWithAutoBridgeState.__autoBridgePrevFormation = unit.getFormation()
@@ -177,7 +231,7 @@ export function applyAutoEnvironment(unit: BaseUnit, mode: EnvMode): boolean {
       hasEnvironmentStateTag(firstMoveModifier, "is_water")
       && isObjectMapReady()
     )
-      ? resolveNearbyEnvironment(unit, ROAD_OBJECT_ENV_PRIORITIES, radiusPx)
+      ? resolveNearbyEnvironmentAt(unit.pos, ROAD_OBJECT_ENV_PRIORITIES, radiusPx)
       : null
     const nextEnvironment = nearbyRoadEnvironment ?? firstMoveModifier
     applyWaterEnvironmentPenalty(unit, nextEnvironment)
@@ -192,11 +246,7 @@ export function applyAutoEnvironment(unit: BaseUnit, mode: EnvMode): boolean {
   }
 
   const radiusPx = getNearRadiusPx()
-  const priorities = OBJECT_ENV_PRIORITIES[mode]
-  let nextEnvironment = resolveNearbyEnvironment(unit, priorities, radiusPx)
-  if (mode === "moving" && !nextEnvironment) {
-    nextEnvironment = resolveEnvironmentId(MOVING_DEFAULT_FIELD_ENV_IDS)
-  }
+  const nextEnvironment = resolveEnvironmentAtPosition(unit.pos, mode)
 
   applyWaterEnvironmentPenalty(unit, nextEnvironment)
   setEnvironmentState(unit, nextEnvironment)

@@ -8,7 +8,7 @@ import {
   type uuid
 } from './types'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
-import {getEnvMultipliers} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
+import {getEnvStatMultiplier} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
 import {interpolateMoveFrames} from "@/engine/util.ts";
 import {getFormationMultipliers} from "@/engine/units/modifiers/UnitFormationModifiers.ts";
 import {createUnitCommand} from "@/engine/units/commands";
@@ -38,7 +38,8 @@ import {
 } from "@/engine/resourcePack/environment.ts";
 import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/moraleCheck.ts";
 import { isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone } from '@/game/planningSpawns'
-import { getFatigueConfig } from '@/engine/resourcePack/fatigue'
+import { hasEngineAuthority } from '@/engine/authority.ts'
+import { fatigueDamageMultiplier, fatigueSpeedMultiplier } from '@/engine/units/fatigue'
 
 const REMOTE_MOVE_INTERPOLATION_STEP_MS = 24
 
@@ -81,7 +82,7 @@ export interface MessageLinked {
 }
 
 export abstract class BaseUnit {
-  static readonly COLLISION_RANGE_METERS = 30;
+  static readonly COLLISION_RANGE_METERS = 50;
 
   id: uuid
   abstract type: unitType
@@ -175,7 +176,9 @@ export abstract class BaseUnit {
   }
 
   move(to: vec2) {
-    if (this.directView && window.PLAYER.team !== Team.ADMIN) {
+    // A player's direct-view units are moved by the server's word, not
+    // locally. A client that runs the board itself dead-reckons them instead.
+    if (this.directView && !hasEngineAuthority()) {
       return;
     }
     if (window.ROOM_WORLD.stage === RoomGameStage.END) return
@@ -387,7 +390,12 @@ export abstract class BaseUnit {
     return this.commands.some(c => c.type === type)
   }
 
-  private hasNearbyFriendlyGeneral(radiusMeters: number): boolean {
+  /**
+   * Whether a general of this unit's own side is close enough to command it.
+   * The morale check reads it, and so does anything that wants to know what
+   * that check will say before the dice are thrown.
+   */
+  public hasNearbyFriendlyGeneral(radiusMeters: number): boolean {
     const rPx = radiusMeters / window.ROOM_WORLD.map.metersPerPixel
     const r2 = rPx * rPx
     for (const u of window.ROOM_WORLD.units.list()) {
@@ -486,18 +494,9 @@ export abstract class BaseUnit {
   public getStatModifierInfo(key: StatKey): StatModifierInfo {
     let total = 1
     const sources: StatModifierInfo['sources'] = []
-    const envMultipliers = getEnvMultipliers()
 
     for (const state of this.envState) {
-      let m = envMultipliers[state]?.[key];
-      if (
-        envMultipliers[state]
-        && envMultipliers[state].byTypes
-        && envMultipliers[state].byTypes![this.type]
-        && envMultipliers[state].byTypes![this.type]![key]
-      ) {
-        m = envMultipliers[state]?.byTypes![this.type]![key]
-      }
+      const m = getEnvStatMultiplier(state, key, this.type)
       if (m !== undefined) {
         total *= m
         sources.push({ type: 'env', state, multiplier: m })
@@ -568,23 +567,18 @@ export abstract class BaseUnit {
     }
 
     if (window.ROOM_SETTINGS[ROOM_SETTING_KEYS.FATIGUE]) {
-      const fatigueConfig = getFatigueConfig()
-      const fatigue = clamp(this.fatigue, 0, fatigueConfig.max)
       if (key === 'damage') {
-        const multiplier = Math.max(
-          fatigueConfig.minDamageMultiplier,
-          1 - Math.pow(fatigue / fatigueConfig.max, fatigueConfig.damageCurvePower),
-        )
+        const multiplier = fatigueDamageMultiplier(this.fatigue)
         if (multiplier !== 1) {
           total *= multiplier
           sources.push({ type: 'fatigue', state: 'damage', multiplier })
         }
       }
       if (key === 'speed') {
-        const threshold = fatigueConfig.speedThresholds.find((entry) => fatigue > entry.moreThan)
-        if (threshold && threshold.multiplier !== 1) {
-          total *= threshold.multiplier
-          sources.push({ type: 'fatigue', state: 'speed', multiplier: threshold.multiplier })
+        const multiplier = fatigueSpeedMultiplier(this.fatigue)
+        if (multiplier !== 1) {
+          total *= multiplier
+          sources.push({ type: 'fatigue', state: 'speed', multiplier })
         }
       }
     }
@@ -840,7 +834,9 @@ export abstract class BaseUnit {
   }
 
   get isRetreat() {
-    if (window.PLAYER.team !== Team.ADMIN && window.PLAYER.team !== Team.SPECTATOR) {
+    // Without the command queue there is nothing to read it from, so a player
+    // takes the synced flag on faith.
+    if (!hasEngineAuthority() && window.PLAYER.team !== Team.SPECTATOR) {
       return this.isRetreatState
     }
     return this.commands.map(c => c.type).includes(UnitCommandTypes.Retreat)

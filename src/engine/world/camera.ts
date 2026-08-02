@@ -14,6 +14,7 @@ const MIN_ZOOM = 0.05
 export class camera {
   pos: vec2 = { x: 0, y: 0 } // top-left в world coords
   zoom = 1
+  private metersPerPixel = 1
 
   viewport: vec2 = { x: 800, y: 600 } // canvas size
   worldSize: vec2 = { x: 2000, y: 2000 } // map size
@@ -28,7 +29,8 @@ export class camera {
     this.clampToWorld()
   }
 
-  setWorldSize(w: number, h: number) {
+  setWorldSize(w: number, h: number, metersPerPixel = 1) {
+    this.metersPerPixel = Math.max(0.0001, Number(metersPerPixel) || 1)
     this.worldSize = { x: w, y: h }
     this.bounds = { min: { x: 0, y: 0 }, max: { x: w, y: h } }
     this.centerOnBounds()
@@ -66,12 +68,12 @@ export class camera {
   }
 
   getMaxZoom(): number {
-    return MAX_ZOOM
+    return Math.max(MIN_ZOOM, MAX_ZOOM * this.metersPerPixel)
   }
 
   /** Половина видимой области в мировых координатах. */
   private halfView(): vec2 {
-    const zoom = clamp(this.zoom, MIN_ZOOM, MAX_ZOOM)
+    const zoom = clamp(this.zoom, MIN_ZOOM, this.getMaxZoom())
     return {
       x: this.viewport.x / zoom / 2,
       y: this.viewport.y / zoom / 2,
@@ -107,7 +109,7 @@ export class camera {
   }
 
   clampToWorld() {
-    this.zoom = clamp(this.zoom, MIN_ZOOM, MAX_ZOOM)
+    this.zoom = clamp(this.zoom, MIN_ZOOM, this.getMaxZoom())
 
     // Ограничиваем центр экрана, а не всю видимую область: улететь за край
     // можно почти целиком, но центр всегда остаётся над доступной областью.

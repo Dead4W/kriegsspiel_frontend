@@ -4,6 +4,7 @@ import {createUnit} from '@/engine/units'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
 import {Team} from "@/enums/teamKeys.ts";
+import {CHAIN_RANGE_METERS, collectChainLinkedUnitIds} from "@/engine/world/commandChain.ts";
 
 export type UnitDirtyObject = {
   unit: unitstate,
@@ -221,23 +222,30 @@ export class unitregistry {
     u.lastSelected = performance.now();
   }
 
-  selectInRect(a: vec2, b: vec2, isPreview: boolean) {
+  selectInRect(
+    a: vec2,
+    b: vec2,
+    isPreview: boolean,
+    getUnitRadius: (unit: BaseUnit) => number = () => 0
+  ) {
     const minX = Math.min(a.x, b.x)
     const maxX = Math.max(a.x, b.x)
     const minY = Math.min(a.y, b.y)
     const maxY = Math.max(a.y, b.y)
 
     for (const u of this.map.values()) {
-      const isSelected = u.pos.x >= minX &&
-        u.pos.x <= maxX &&
-        u.pos.y >= minY &&
-        u.pos.y <= maxY;
+      // Рамка задевает юнит, если пересекается с его приблизительным hitbox.
+      const radius = getUnitRadius(u)
+      const isSelected = u.pos.x >= minX - radius &&
+        u.pos.x <= maxX + radius &&
+        u.pos.y >= minY - radius &&
+        u.pos.y <= maxY + radius;
       let isFutureSelected = false;
       if (u.futurePos) {
-        isFutureSelected = u.futurePos.x >= minX &&
-          u.futurePos.x <= maxX &&
-          u.futurePos.y >= minY &&
-          u.futurePos.y <= maxY;
+        isFutureSelected = u.futurePos.x >= minX - radius &&
+          u.futurePos.x <= maxX + radius &&
+          u.futurePos.y >= minY - radius &&
+          u.futurePos.y <= maxY + radius;
       }
       u.lastSelected = performance.now()
       if (isPreview) {
@@ -271,29 +279,10 @@ export class unitregistry {
     }
 
     const units = this.list()
-    const chainRange = BaseUnit.COLLISION_RANGE_METERS * 2 / window.ROOM_WORLD.map.metersPerPixel
+    const chainRange = CHAIN_RANGE_METERS / window.ROOM_WORLD.map.metersPerPixel
 
     const getChainDirectViewUnits = (seedUnits: BaseUnit[], chainTeam: unitTeam): BaseUnit[] => {
-      const queue = seedUnits.filter((u) => u.team === chainTeam)
-      const visited = new Set<uuid>(seedUnits.map(u => u.id))
-
-      while (queue.length > 0) {
-        const current = queue.shift()!
-        for (const other of units) {
-          if (other.id === current.id) continue
-          if (other.type === unitType.MESSENGER) continue
-          if (other.team !== chainTeam) continue
-          if (visited.has(other.id)) continue
-          if (Math.hypot(
-            other.pos.x - current.pos.x,
-            other.pos.y - current.pos.y
-          ) > chainRange) continue
-
-          visited.add(other.id)
-          queue.push(other)
-        }
-      }
-
+      const visited = collectChainLinkedUnitIds(units, seedUnits, chainTeam, chainRange)
       return units.filter(u => visited.has(u.id))
     }
 

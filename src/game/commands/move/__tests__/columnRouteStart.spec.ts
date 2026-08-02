@@ -35,6 +35,9 @@ beforeEach(() => {
   window.PLAYER = { name: "admin", team: Team.ADMIN };
   window.ROOM_WORLD = {
     stage: RoomGameStage.WAR,
+    // Route building measures the collision range in pixels, so it needs a
+    // scale to measure it against.
+    map: { width: 1000, height: 1000, metersPerPixel: 1 },
     hasObjectNavMeshMap: () => false,
   } as unknown as typeof window.ROOM_WORLD;
 });

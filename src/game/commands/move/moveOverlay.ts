@@ -50,6 +50,7 @@ interface BuildMoveOverlayItemsOptions {
   formationOffsets: Record<string, vec2>;
   moveMode: MoveMode;
   metersPerPixel: number;
+  unitScale: number;
   roomWorld: unknown;
   smartPathEnabled: boolean;
   hasObjectMap: boolean;
@@ -65,6 +66,7 @@ export function buildMoveOverlayItems(options: BuildMoveOverlayItemsOptions): Ov
     formationOffsets,
     moveMode,
     metersPerPixel,
+    unitScale,
     roomWorld,
     smartPathEnabled,
     hasObjectMap,
@@ -174,20 +176,21 @@ export function buildMoveOverlayItems(options: BuildMoveOverlayItemsOptions): Ov
           ? getFacingAngleFromSegment(lastMoveSegment.from, lastMoveSegment.to, unit.angle)
           : unit.angle;
         const { r, g, b } = getTeamColor(unit.team);
+        const size = unitlayer.getWorldSize(unit.type, metersPerPixel, unitScale);
 
         if (unit.type === unitType.MESSENGER) {
           items.push({
             type: "circle",
             center: { x: to.x, y: to.y },
-            radius: Math.min(unitlayer.BASE_UNIT_W, unitlayer.BASE_UNIT_H) / 1.5,
+            radius: Math.min(size.width, size.height) / 1.5,
             color: `rgba(${r},${g},${b},0.25)`,
             strokeColor: "black",
           });
         } else {
           items.push({
             type: "rect",
-            from: { x: to.x - unitlayer.BASE_UNIT_W / 2, y: to.y - unitlayer.BASE_UNIT_H / 2 },
-            to: { x: to.x + unitlayer.BASE_UNIT_W / 2, y: to.y + unitlayer.BASE_UNIT_H / 2 },
+            from: { x: to.x - size.width / 2, y: to.y - size.height / 2 },
+            to: { x: to.x + size.width / 2, y: to.y + size.height / 2 },
             angle: previewAngle,
             fillColor: `rgba(${r},${g},${b},0.25)`,
             color: "black",

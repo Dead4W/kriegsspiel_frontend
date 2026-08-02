@@ -56,5 +56,7 @@ export function getTimeOfDayIdByHour(
   pack: ResourcePack | null = getResourcePack()
 ): TimeOfDay {
   const segments = getTimeOfDaySegments(pack)
-  return getIdByStartEndBetween(segments, hour) ?? segments[0]!.id!
+  // A pack without segments leaves nothing to fall back to, and throwing here
+  // takes down every caller that only wanted a multiplier lookup.
+  return getIdByStartEndBetween(segments, hour) ?? segments[0]?.id ?? ''
 }

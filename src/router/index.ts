@@ -141,7 +141,7 @@ router.beforeEach(async (to, from, next) => {
 
   try {
     const r = await api.get('/user/auth')
-    window.PLAYER = r.data
+    window.PLAYER = { ...r.data, isBot: Boolean(r.data?.is_bot) }
     authChecked = true
     next()
   } catch {

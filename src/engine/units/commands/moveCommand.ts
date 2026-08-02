@@ -5,6 +5,7 @@ import {UnitCommandTypes} from "@/engine/units/enums/UnitCommandTypes.ts";
 import {unitType, type uuid} from "@/engine";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 import { applyAutoEnvironment } from "@/engine/units/autoEnvironment.ts";
+import { estimateMoveSeconds } from "@/engine/units/commands/moveEstimate.ts";
 
 export interface MoveCommandState {
   target: vec2
@@ -66,16 +67,19 @@ export class MoveCommand extends BaseCommand<
     const dist = Math.hypot(dx, dy)
     if (dist === 0) return
 
-    const speed = unit.speed / 60 * dt / window.ROOM_WORLD.map.metersPerPixel
-    if (this.estimate(unit) <= dt) {
+    // Compared against the step rather than against `estimate`: the estimate
+    // prices the whole leg, ground and tiredness ahead included, while a step
+    // can only be walked at the pace the unit holds right now.
+    const stepPx = unit.speed / 60 * dt / window.ROOM_WORLD.map.metersPerPixel
+    if (dist <= stepPx) {
       unit.move({
         x: this.state.target.x,
         y: this.state.target.y,
       })
     } else {
       unit.move({
-        x: unit.pos.x + (dx / dist) * speed,
-        y: unit.pos.y + (dy / dist) * speed,
+        x: unit.pos.x + (dx / dist) * stepPx,
+        y: unit.pos.y + (dy / dist) * stepPx,
       })
     }
 
@@ -139,33 +143,12 @@ export class MoveCommand extends BaseCommand<
   }
 
   estimate(unit: BaseUnit, startPos: vec2 = unit.pos): number {
-    // save values
-    const saveEnv = [...unit.envState]
-    const saveAbilityType = unit.activeAbilityType
-
-    if (unit.manualEnvironment) {
-      unit.envState = [unit.manualEnvironment]
-    } else if (this.state.modifier) {
-      unit.envState = [this.state.modifier]
-    }
-    unit.activeAbilityType = null
-    for (const ability of this.state.abilities) {
-      if (unit.abilities.includes(ability)) {
-        unit.activeAbilityType = ability
-      }
-    }
-
-    const unitSpeed = unit.speed
-
-    // restore values
-    unit.envState = saveEnv
-    unit.activeAbilityType = saveAbilityType
-
-    const dx = this.state.target.x - startPos.x
-    const dy = this.state.target.y - startPos.y
-    const dist = Math.hypot(dx, dy)
-
-    return Math.ceil(dist / (unitSpeed / 60) * window.ROOM_WORLD.map.metersPerPixel)
+    return estimateMoveSeconds(unit, {
+      startPos,
+      target: this.state.target,
+      modifier: this.state.modifier,
+      abilities: this.state.abilities,
+    })
   }
 
   getState(): { type: UnitCommandTypes.Move; status: CommandStatus; state: MoveCommandState } {

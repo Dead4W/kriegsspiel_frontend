@@ -40,6 +40,17 @@ function positiveNumber(raw: unknown, fallback: number): number {
   return value != null && value > 0 ? value : fallback
 }
 
+/**
+ * Steepest threshold first: the lookup takes the first one the unit is past,
+ * so an ascending list would hand a spent unit the mildest penalty it
+ * qualifies for instead of the harshest.
+ */
+function byThresholdDescending(
+  thresholds: FatigueConfig['speedThresholds'],
+): FatigueConfig['speedThresholds'] {
+  return [...thresholds].sort((a, b) => b.moreThan - a.moreThan)
+}
+
 export function getFatigueConfig(
   pack: ResourcePack | null = getResourcePack(),
 ): FatigueConfig {
@@ -50,20 +61,21 @@ const fatigueConfigByPack = memoizeByPack((pack): FatigueConfig => {
   const raw = pack?.fatigue
   if (!isObject(raw)) return {
     ...DEFAULT_FATIGUE_CONFIG,
-    speedThresholds: [...DEFAULT_FATIGUE_CONFIG.speedThresholds],
+    speedThresholds: byThresholdDescending(DEFAULT_FATIGUE_CONFIG.speedThresholds),
   }
 
   const thresholdsRaw = Array.isArray(raw.speedThresholds) ? raw.speedThresholds : []
-  const speedThresholds = thresholdsRaw
-    .filter(isObject)
-    .map((threshold) => ({
-      moreThan: toFiniteNumber(threshold.moreThan),
-      multiplier: toFiniteNumber(threshold.multiplier),
-    }))
-    .filter((threshold): threshold is { moreThan: number; multiplier: number } =>
-      threshold.moreThan != null && threshold.multiplier != null && threshold.multiplier >= 0,
-    )
-    .sort((a, b) => b.moreThan - a.moreThan)
+  const speedThresholds = byThresholdDescending(
+    thresholdsRaw
+      .filter(isObject)
+      .map((threshold) => ({
+        moreThan: toFiniteNumber(threshold.moreThan),
+        multiplier: toFiniteNumber(threshold.multiplier),
+      }))
+      .filter((threshold): threshold is { moreThan: number; multiplier: number } =>
+        threshold.moreThan != null && threshold.multiplier != null && threshold.multiplier >= 0,
+      ),
+  )
 
   return {
     max: positiveNumber(raw.max, DEFAULT_FATIGUE_CONFIG.max),
@@ -80,6 +92,8 @@ const fatigueConfigByPack = memoizeByPack((pack): FatigueConfig => {
       0,
       1,
     ),
-    speedThresholds: speedThresholds.length ? speedThresholds : [...DEFAULT_FATIGUE_CONFIG.speedThresholds],
+    speedThresholds: speedThresholds.length
+      ? speedThresholds
+      : byThresholdDescending(DEFAULT_FATIGUE_CONFIG.speedThresholds),
   }
 })

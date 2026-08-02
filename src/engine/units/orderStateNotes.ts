@@ -21,6 +21,38 @@ export type UnitOrderStateNotes = {
   };
 };
 
+/**
+ * On-unit state an order sets alongside its commands.
+ *
+ * This is the structured form of what used to travel only as prefixed note
+ * strings. Notes are still read, so orders written before this field existed
+ * keep working, but an author with a choice should use this: reading behaviour
+ * out of free text means a typo silently becomes no order at all.
+ */
+export type UnitOrderState = {
+  autoAttack?: boolean;
+  /**
+   * Replaces the unit's scheduled triggers. An empty array clears them; the
+   * field being absent leaves them alone.
+   */
+  triggers?: Array<{ type: string; atGameTime?: string }>;
+};
+
+function readTriggers(
+  raw: UnitOrderState["triggers"],
+  sourceMessageId: string,
+): UnitAiTriggerState[] {
+  const triggers: UnitAiTriggerState[] = [];
+  for (const trigger of raw ?? []) {
+    if (!trigger || typeof trigger !== "object") continue;
+    if (trigger.type !== "at_game_time") continue;
+    const atGameTime = String(trigger.atGameTime ?? "").trim();
+    if (!atGameTime || !Number.isFinite(Date.parse(atGameTime.replace(" ", "T")))) continue;
+    triggers.push({ type: "at_game_time", atGameTime, sourceMessageId, fired: false });
+  }
+  return triggers;
+}
+
 function parseAiTriggers(notes: unknown, sourceMessageId: string): UnitOrderStateNotes["aiTriggers"] {
   if (!Array.isArray(notes)) {
     return { hasDirective: false, triggers: [] };
@@ -62,6 +94,26 @@ export function readUnitOrderStateNotes(
   const autoAttack = parseAutoAttack(notes);
   const aiTriggers = parseAiTriggers(notes, sourceMessageId);
   return { autoAttack, aiTriggers };
+}
+
+/**
+ * The state an order plan sets, from the structured field where it is given
+ * and from the notes otherwise. The structured field wins wherever both speak.
+ */
+export function readUnitOrderState(
+  state: UnitOrderState | null | undefined,
+  notes: unknown,
+  sourceMessageId: string,
+): UnitOrderStateNotes {
+  const fromNotes = readUnitOrderStateNotes(notes, sourceMessageId);
+  if (!state || typeof state !== "object") return fromNotes;
+
+  return {
+    autoAttack: typeof state.autoAttack === "boolean" ? state.autoAttack : fromNotes.autoAttack,
+    aiTriggers: Array.isArray(state.triggers)
+      ? { hasDirective: true, triggers: readTriggers(state.triggers, sourceMessageId) }
+      : fromNotes.aiTriggers,
+  };
 }
 
 export function applyUnitOrderStateNotes(

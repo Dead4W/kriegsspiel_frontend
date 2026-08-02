@@ -24,3 +24,36 @@ export type EnvStatKey = StatKey
 export function getEnvMultipliers(): Record<string, EnvStatMultiplier> {
   return getEnvMultipliersFromPack()
 }
+
+/**
+ * What one environment state does to one stat for one kind of unit.
+ *
+ * A per-type entry *replaces* the shared multiplier rather than stacking with
+ * it, which is what lets a pack say that a river merely slows infantry but
+ * stops guns. Undefined when the state says nothing about this stat.
+ */
+export function getEnvStatMultiplier(
+  state: string,
+  key: StatKey,
+  forUnitType?: string,
+): number | undefined {
+  const multipliers = getEnvMultipliers()[state]
+  if (!multipliers) return undefined
+
+  const byType = forUnitType
+    ? multipliers.byTypes?.[forUnitType as unitType]?.[key]
+    : undefined
+  return byType ?? multipliers[key]
+}
+
+/** The combined effect of every state a unit is in, on one stat. */
+export function getEnvStatMultiplierFor(
+  states: string[],
+  key: StatKey,
+  forUnitType?: string,
+): number {
+  return states.reduce((total, state) => {
+    const multiplier = getEnvStatMultiplier(state, key, forUnitType)
+    return multiplier === undefined ? total : total * multiplier
+  }, 1)
+}

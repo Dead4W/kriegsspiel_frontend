@@ -14,6 +14,8 @@ import type {Weather} from "@/engine/resourcePack/weather.ts";
 import type {ConnectionInfo} from "@/engine/types/connectionTypes.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 import {createUnitCommand} from "@/engine/units/commands";
+import {hasEngineAuthority} from "@/engine/authority.ts";
+import {releaseDirectViewContacts} from "@/engine/world/directViewIntake.ts";
 
 export type DirectViewUnitPacket = {
   unit: unitstate
@@ -79,6 +81,7 @@ export type OutMessage =
   | { type: 'connection_close'; data: { id: number } }
   | { type: 'room_user_ready'; data: { is_ready: boolean } | { user_id: number; user?: string; team: Team; is_ready: boolean } }
   | { type: 'room_params_update'; data: Record<string, unknown> }
+  | { type: 'room_options_update'; data: Record<string, unknown> }
   | { type: 'room_per_team_settings_update'; data: Record<string, unknown> }
 
 export type InMessage =
@@ -100,12 +103,6 @@ const DEMO_BLOCKED_INCOMING_TYPES = new Set<OutMessage['type']>([
 ])
 
 let isDemoReadonlyMode = false
-
-function clearUnitCommandsForDirectView(unit: unknown) {
-  const mutableUnit = unit as { commands?: unknown[]; futurePos?: { x: number; y: number } | null }
-  mutableUnit.commands = []
-  mutableUnit.futurePos = null
-}
 
 function applyRoomParams(params: unknown) {
   if (!params || typeof params !== 'object') return
@@ -559,6 +556,10 @@ export class GameSocket {
           continue
         }
 
+        // Announced before the packet is applied, while the state it is about
+        // to overwrite is still readable.
+        void this.world.events.emit('received', m)
+
         if (m.type === 'unit') {
           const mData = {...m.data};
           if (m.frames && m.frames.length) {
@@ -643,6 +644,9 @@ export class GameSocket {
         } else if (m.type === 'room_params_update') {
           applyRoomParams(m.data)
           syncRoomSettingsFromParams(m.data)
+        } else if (m.type === 'room_options_update') {
+          Object.assign(window.ROOM_SETTINGS, m.data)
+          syncRoomSettingsFromOptions(m.data)
         } else if (m.type === 'room_per_team_settings_update') {
           syncRoomBriefingFromPerTeamSettings(m.data as Record<string, Record<string, unknown>>)
           window.ROOM_PARAMS ??= {}
@@ -666,18 +670,11 @@ export class GameSocket {
             continue;
           }
 
-          for (const u of window.ROOM_WORLD.units.list()) {
-            if (u.directView) {
-              if (u.team !== window.PLAYER.team || u.type === unitType.MESSENGER) {
-                window.ROOM_WORLD.units.remove(u.id, 'remote')
-              } else {
-                clearUnitCommandsForDirectView(u)
-                u.directView = false;
-                u.isDirectChain = false;
-                window.ROOM_WORLD.units.markSynced(u)
-              }
-            }
-          }
+          releaseDirectViewContacts({
+            world: window.ROOM_WORLD,
+            playerTeam: window.PLAYER.team,
+            preserveLostContacts: hasEngineAuthority(),
+          })
 
           for (const packet of m.data) {
             const nextUnitState = {...packet.unit}

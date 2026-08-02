@@ -1,6 +1,8 @@
 import type {world} from '@/engine/world/world'
 import type {vec2} from '@/engine/types'
+import type {BaseUnit} from '@/engine/units/baseUnit'
 import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys.ts'
+import {getUnitNumberParam} from '@/engine/resourcePack/units.ts'
 import {RoomGameStage} from "@/enums/roomStage.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import {emitUnitCommandRequest} from "@/engine/2d/input/unitCommandBus";
@@ -33,6 +35,15 @@ export function bindUnitInteraction(
   const dragOrigin = new Map<string, vec2>()
   let commandDragPrepared = false
   let commandDragLastRouteAnchor: vec2 | null = null
+
+  const unitPickRadius = (unit?: BaseUnit) => {
+    const mapScale = Math.max(0.0001, Number(w.map.metersPerPixel) || 1) / 2
+    const width = 30 * (getUnitNumberParam(unit?.type ?? '', 'renderWidthMult') ?? 1)
+    const height = 15 * (getUnitNumberParam(unit?.type ?? '', 'renderHeightMult') ?? 1)
+    return Math.max(width, height) / 2
+      * (window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1)
+      / mapScale
+  }
   let commandDragHasInitialEmit = false
   const COMMAND_DRAG_ROUTE_STEP_METERS = 45
 
@@ -214,7 +225,7 @@ export function bindUnitInteraction(
         u.previewFutureSelected = previewBaseFutureSelection.has(u.id)
       }
 
-      w.units.selectInRect(startWorld, currentWorld, true)
+      w.units.selectInRect(startWorld, currentWorld, true, unitPickRadius)
 
       if (ctrlKeyActive) {
         // CTRL → exclude
@@ -282,13 +293,13 @@ export function bindUnitInteraction(
 
     let hit = w.units.pickAt(
       worldPos,
-      15 * window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT]
+      unitPickRadius()
     )
     let isFutureHit = false;
     if (!hit) {
       hit = w.units.pickAt(
         worldPos,
-        15 * window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT],
+        unitPickRadius(),
         true
       )
       if (hit) isFutureHit = true;
@@ -502,7 +513,7 @@ export function bindUnitInteraction(
 
     const hit = w.units.pickAt(
       worldPos,
-      15 * window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT]
+      unitPickRadius()
     )
 
     if (!hit) return

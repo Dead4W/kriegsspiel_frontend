@@ -1,78 +1,13 @@
 import { BaseUnit } from "@/engine/units/baseUnit.ts";
-import type { ChatMessage } from "@/engine/types/chatMessage.ts";
+import type { ChatMessage, ChatMessageObservation } from "@/engine/types/chatMessage.ts";
 import type { commandstate, unitstate } from "@/engine/units/types.ts";
 import { unitType } from "@/engine/units/types.ts";
 import { Team } from "@/enums/teamKeys.ts";
 import { UnitCommandTypes } from "@/engine/units/enums/UnitCommandTypes.ts";
-import { MoveCommand, type MoveCommandState } from "@/engine/units/commands/moveCommand.ts";
-import { AttackCommand } from "@/engine/units/commands/attackCommand.ts";
-import { WaitCommand } from "@/engine/units/commands/waitCommand.ts";
-import { RetreatCommand } from "@/engine/units/commands/retreatCommand.ts";
-import { buildRoadTurnRoutePoints } from "@/engine/world/roadPath.ts";
 import { ChatMessageStatus } from "@/engine/types/chatMessage.ts";
 import { CommandStatus } from "@/engine/units/commands/baseCommand.ts";
-import {
-  applyUnitOrderStateNotes,
-  readUnitOrderStateNotes,
-} from "@/engine/units/orderStateNotes.ts";
-
-function toCommandObjects(rawCommands: unknown[]): Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand> {
-  const commands: Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand> = [];
-  for (const raw of rawCommands) {
-    if (!raw || typeof raw !== "object") continue;
-    const state = raw as commandstate;
-    if (state.type === UnitCommandTypes.Move && state.state) {
-      commands.push(new MoveCommand(state.state as MoveCommandState));
-    } else if (state.type === UnitCommandTypes.Attack && state.state) {
-      commands.push(new AttackCommand(state.state as any));
-    } else if (state.type === UnitCommandTypes.Wait && state.state) {
-      commands.push(new WaitCommand(state.state as any));
-    } else if (state.type === UnitCommandTypes.Retreat && state.state) {
-      commands.push(new RetreatCommand(state.state as any));
-    }
-  }
-  return commands;
-}
-
-function rebuildMoveCommandsWithRoadPath(
-  commands: Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand>,
-  unit: BaseUnit
-): Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand> {
-  const roomWorld = window.ROOM_WORLD;
-  if (!roomWorld?.hasObjectNavMeshMap()) return commands;
-
-  const rebuilt: Array<MoveCommand | AttackCommand | WaitCommand | RetreatCommand> = [];
-  let currentPoint = { x: unit.pos.x, y: unit.pos.y };
-
-  for (const command of commands) {
-    if (command.type !== UnitCommandTypes.Move) {
-      rebuilt.push(command);
-      continue;
-    }
-
-    const moveState = command.getState().state as MoveCommandState;
-    const routePoints = buildRoadTurnRoutePoints(roomWorld, currentPoint, moveState.target);
-    if (!routePoints.length) {
-      rebuilt.push(command);
-      currentPoint = { x: moveState.target.x, y: moveState.target.y };
-      continue;
-    }
-
-    routePoints.forEach((point, index) => {
-      rebuilt.push(new MoveCommand({
-        ...moveState,
-        target: { x: point.x, y: point.y },
-        orderIndex: index,
-        segIndex: index,
-      }));
-    });
-
-    const tail = routePoints[routePoints.length - 1]!;
-    currentPoint = { x: tail.x, y: tail.y };
-  }
-
-  return rebuilt;
-}
+import { applyOrderPlanToUnit } from "@/engine/units/orderApply.ts";
+import type { UnitOrderPlan } from "@/engine/units/orderApply.ts";
 
 function parseSendMessageTextsFromNotes(notes: unknown): string[] {
   if (!Array.isArray(notes)) return []
@@ -238,6 +173,7 @@ export function emitUnitsLinkedMessage(
   targetUnits: BaseUnit[],
   text: string,
   existingMessengerId: string | null = null,
+  observation: ChatMessageObservation | null = null,
 ): boolean {
   const uniqueUnits = [...new Map(targetUnits.map((unit) => [unit.id, unit])).values()]
   const targetUnit = uniqueUnits[0]
@@ -270,6 +206,7 @@ export function emitUnitsLinkedMessage(
     team: messageTeam,
     status: ChatMessageStatus.Sent,
     delivered: false,
+    ...(observation ? { observation } : {}),
   }
   window.ROOM_WORLD.addMessage(outgoing)
   for (const unit of uniqueUnits) {
@@ -288,8 +225,9 @@ export function emitUnitLinkedMessage(
   targetUnit: BaseUnit,
   text: string,
   existingMessengerId: string | null = null,
+  observation: ChatMessageObservation | null = null,
 ): boolean {
-  return emitUnitsLinkedMessage(sourceMessage, [targetUnit], text, existingMessengerId)
+  return emitUnitsLinkedMessage(sourceMessage, [targetUnit], text, existingMessengerId, observation)
 }
 
 export function applyReadyMessageOrdersToUnit(
@@ -302,26 +240,13 @@ export function applyReadyMessageOrdersToUnit(
   const plan = orders.perUnit?.find((item) => item.unitId === targetUnit.id);
   if (!plan) return false;
 
-  const commandsRaw = Array.isArray(plan.commands) ? plan.commands : [];
-  const generatedCommands = rebuildMoveCommandsWithRoadPath(
-    toCommandObjects(commandsRaw as unknown[]),
-    targetUnit
-  );
-  const orderState = readUnitOrderStateNotes(plan.notes, message.id);
-  const hasStateChanges = orderState.autoAttack != null || orderState.aiTriggers.hasDirective;
   const sendMessageTexts = parseSendMessageTextsFromNotes(plan.notes);
-  const hasEffects = hasStateChanges || sendMessageTexts.length > 0;
-  if (!generatedCommands.length && !hasEffects) return false;
+  const applied = applyOrderPlanToUnit(message, plan as UnitOrderPlan, targetUnit, {
+    preserveCommandTypes: [UnitCommandTypes.Retreat],
+    hasExternalEffects: sendMessageTexts.length > 0,
+  });
+  if (!applied) return false;
 
-  if (generatedCommands.length) {
-    const nonClearCommands = targetUnit.getCommands().filter((command) => (
-      command.type === UnitCommandTypes.Retreat
-    ));
-    targetUnit.manualEnvironment = null;
-    targetUnit.setCommands([...nonClearCommands, ...generatedCommands]);
-  }
-
-  applyUnitOrderStateNotes(targetUnit, orderState);
   for (const text of sendMessageTexts) {
     emitUnitLinkedMessage(message, targetUnit, text)
   }

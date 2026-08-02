@@ -6,6 +6,7 @@ import type {PlayerInfo} from "@/enums/playerInfo.ts";
 type RoomSettingsWindowState = Partial<Record<RoomSettingKey, any>> & {
   teamBriefing?: Record<string, string>
   perTeamSettings?: Record<string, Record<string, unknown>>
+  teamUnitLimits?: Record<string, Record<string, number | null>>
   activeZones?: unknown[]
 }
 

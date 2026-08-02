@@ -29,6 +29,12 @@ import type {VisionRaycastJob} from "@/engine/2d/render/unitlayer/visionRaycastP
 export const UNIT_RENDER_DETAIL_MIN_ZOOM = 0.75
 const DISTANT_VISION_POINT_STRIDE = 2
 
+/** Порог LOD в масштабе камеры с учётом масштаба карты. */
+export function getUnitRenderDetailMinZoom(metersPerPixel: number): number {
+  const mapScale = Math.max(0.0001, Number(metersPerPixel) || 1) / 2
+  return UNIT_RENDER_DETAIL_MIN_ZOOM * mapScale
+}
+
 type OccluderFieldSnapshot = {
   // Источник, по идентичности которого решается, устарел ли снимок: nav-mesh и
   // forestImageData пересобираются целиком при смене карты.
@@ -511,7 +517,7 @@ export function drawUnitVision(
         }
 
         path =
-          (w.camera.zoom < UNIT_RENDER_DETAIL_MIN_ZOOM
+          (w.camera.zoom < getUnitRenderDetailMinZoom(w.map.metersPerPixel)
             ? cache?.distantPath
             : cache?.path) ?? null
       })

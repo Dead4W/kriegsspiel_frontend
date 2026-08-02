@@ -278,7 +278,7 @@ onUnmounted(() => {
         @pointerdown.stop.prevent
         @click="toggle($event, Tools.CHART)"
       >
-        📈 {{ t('tools.chart') }}
+        📈
       </button>
 
       <button

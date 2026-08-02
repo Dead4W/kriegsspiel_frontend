@@ -174,6 +174,24 @@ export function isPlanningTeamSpawnPointAllowed(team: string, pos: Point): boole
   return isPointInsideAnyRect(pos, zones)
 }
 
+/**
+ * Whether this client may raise a unit for that side at all.
+ *
+ * The spawn rects say where a side may stand and the limits say how much of it
+ * there may be, but neither says whose force it is — so without this a red
+ * player could lay out the blue army inside the blue spawn zone and under the
+ * blue allowance, and every other check would pass it.
+ *
+ * Unlike the position rules this one does not lapse when the war starts, since
+ * it is a question of whose unit it is rather than of where units may stand.
+ * The umpire is exempt because arranging both sides is what an umpire does.
+ */
+export function isTeamSpawnAllowedForPlayer(team: string): boolean {
+  const player = window.PLAYER?.team
+  if (player !== Team.RED && player !== Team.BLUE) return true
+  return team === player
+}
+
 function getTeamUnitLimitsSource(): Record<string, Record<string, unknown>> {
   const fromSettings = (window.ROOM_SETTINGS as Record<string, unknown>)?.teamUnitLimits
   if (fromSettings && typeof fromSettings === 'object') {

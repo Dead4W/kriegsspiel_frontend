@@ -5,8 +5,10 @@ import RoomSettingsTab from '@/components/tools/adminSettings/tabs/RoomSettingsT
 import BriefingSettingsTab from '@/components/tools/adminSettings/tabs/BriefingSettingsTab.vue'
 import SpawnSettingsTab from '@/components/tools/adminSettings/tabs/SpawnSettingsTab.vue'
 import ActiveZoneSettingsTab from '@/components/tools/adminSettings/tabs/ActiveZoneSettingsTab.vue'
+import MissionSettingsTab from '@/components/tools/adminSettings/tabs/MissionSettingsTab.vue'
+import UnitLimitsSettingsTab from '@/components/tools/adminSettings/tabs/UnitLimitsSettingsTab.vue'
 
-type SettingsTab = 'room' | 'briefing' | 'spawn' | 'active_zone'
+type SettingsTab = 'room' | 'briefing' | 'spawn' | 'active_zone' | 'mission' | 'unit_limits'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -122,10 +124,26 @@ watch(isCaptureHidden, (hidden) => {
         <button
           type="button"
           class="tab-button"
+          :class="{ active: activeTab === 'unit_limits' }"
+          @click="activeTab = 'unit_limits'"
+        >
+          {{ t('tools.admin.settings_modal.tabs.unit_limits') }}
+        </button>
+        <button
+          type="button"
+          class="tab-button"
           :class="{ active: activeTab === 'briefing' }"
           @click="activeTab = 'briefing'"
         >
           {{ t('tools.admin.settings_modal.tabs.briefing') }}
+        </button>
+        <button
+          type="button"
+          class="tab-button"
+          :class="{ active: activeTab === 'mission' }"
+          @click="activeTab = 'mission'"
+        >
+          {{ t('tools.admin.settings_modal.tabs.mission') }}
         </button>
       </nav>
 
@@ -139,7 +157,15 @@ watch(isCaptureHidden, (hidden) => {
           v-if="activeTab === 'active_zone'"
           @capture-mode-change="onCaptureModeChange"
         />
+        <UnitLimitsSettingsTab
+          v-if="activeTab === 'unit_limits'"
+          @capture-mode-change="onCaptureModeChange"
+        />
         <BriefingSettingsTab v-if="activeTab === 'briefing'" />
+        <MissionSettingsTab
+          v-if="activeTab === 'mission'"
+          @capture-mode-change="onCaptureModeChange"
+        />
       </div>
     </section>
   </div>

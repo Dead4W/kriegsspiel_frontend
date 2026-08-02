@@ -5,7 +5,7 @@ import {CLIENT_SETTING_KEYS} from '@/enums/clientSettingsKeys'
 import {translate} from '@/i18n'
 import {
   drawUnitVision,
-  UNIT_RENDER_DETAIL_MIN_ZOOM,
+  getUnitRenderDetailMinZoom,
 } from "@/engine/2d/render/unitlayer/visionlayer.ts";
 import {getUnitTexture} from "@/engine/assets/textures.ts";
 import {drawAttackWaveIcons} from "@/engine/2d/render/canvasUtil.ts";
@@ -52,7 +52,6 @@ export class unitlayer {
   static readonly BASE_UNIT_W = 30
   static readonly BASE_UNIT_H = 15
   /** Ниже этого масштаба текст и полосы не читаются и скрываются для невыбранных юнитов. */
-  static readonly DETAILS_MIN_ZOOM = UNIT_RENDER_DETAIL_MIN_ZOOM
   /** Высота подписей/иконок над юнитом и полос под ним, в базовых пикселях. */
   static readonly LABELS_SCREEN_MARGIN = 70
 
@@ -66,6 +65,31 @@ export class unitlayer {
     for (const type of Object.values(unitType)) {
       this.unitTypesLabel.set(type, translate(`unit.${type}`))
     }
+  }
+
+  /** Размер юнита в координатах карты: базовый размер задан в метрах. */
+  static getWorldSize(
+    type: unitType,
+    metersPerPixel: number,
+    scale = 1
+  ): { width: number; height: number } {
+    const pixelScale = Math.max(0.0001, Number(metersPerPixel) || 1) / 2
+    const wMult = getUnitNumberParam(type, 'renderWidthMult') ?? 1
+    const hMult = getUnitNumberParam(type, 'renderHeightMult') ?? 1
+
+    return {
+      width: unitlayer.BASE_UNIT_W * scale * wMult / pixelScale,
+      height: unitlayer.BASE_UNIT_H * scale * hMult / pixelScale,
+    }
+  }
+
+  /** Масштаб экранных элементов, привязанных к размеру юнита. */
+  private getUiScale(): number {
+    const metersPerPixel = Math.max(
+      0.0001,
+      Number(window.ROOM_WORLD.map.metersPerPixel) || 1
+    )
+    return this.unitScale / metersPerPixel * 2
   }
 
   // =============================
@@ -108,7 +132,7 @@ export class unitlayer {
     this.drawInaccuracyCircles(ctx, cam, settings)
 
     for (const unit of units) {
-      this.drawUnit(ctx, cam, unit, settings)
+      this.drawUnit(ctx, cam, unit, w.map.metersPerPixel, settings)
     }
   }
 
@@ -138,6 +162,7 @@ export class unitlayer {
     ctx: CanvasRenderingContext2D,
     cam: world['camera'],
     unit: BaseUnit,
+    metersPerPixel: number,
     settings: typeof window.CLIENT_SETTINGS
   ) {
     debugPerformance('drawUnit', () => {
@@ -148,20 +173,23 @@ export class unitlayer {
       const p = cam.worldToScreen(unit.pos)
       const futureP = unit.futurePos ? cam.worldToScreen(unit.futurePos) : null
 
-      const wMult = getUnitNumberParam(unit.type, 'renderWidthMult') ?? 1
-      const hMult = getUnitNumberParam(unit.type, 'renderHeightMult') ?? 1
-      const wUnit = unitlayer.BASE_UNIT_W * cam.zoom * this.unitScale * wMult
-      const hUnit = unitlayer.BASE_UNIT_H * cam.zoom * this.unitScale * hMult
+      const size = unitlayer.getWorldSize(
+        unit.type,
+        metersPerPixel,
+        this.unitScale
+      )
+      const wUnit = size.width * cam.zoom
+      const hUnit = size.height * cam.zoom
 
       // Выбранный юнит сохраняет подробности на любом масштабе.
       const showDetails =
-        cam.zoom >= unitlayer.DETAILS_MIN_ZOOM || unit.isSelected()
+        cam.zoom >= getUnitRenderDetailMinZoom(metersPerPixel) || unit.isSelected()
 
       // Запас покрывает подписи и модификаторы над юнитом и полосы HP под ним.
       const cullMargin =
         Math.max(wUnit, hUnit) +
         (showDetails
-          ? unitlayer.LABELS_SCREEN_MARGIN * cam.zoom * this.unitScale
+          ? unitlayer.LABELS_SCREEN_MARGIN * cam.zoom * this.getUiScale()
           : 0)
       const visible =
         isScreenPointVisible(p.x, p.y, cam, cullMargin) ||
@@ -517,8 +545,9 @@ export class unitlayer {
       return
 
     const hpRatio = unit.hp / unit.stats.maxHp
-    const barH = 4 * cam.zoom * this.unitScale
-    const y = p.y + h / 2 + 2 * cam.zoom * this.unitScale
+    const uiScale = this.getUiScale()
+    const barH = 4 * cam.zoom * uiScale
+    const y = p.y + h / 2 + 2 * cam.zoom * uiScale
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)'
     ctx.fillRect(p.x - w / 2, y, w, barH)
@@ -598,14 +627,15 @@ export class unitlayer {
     if (!icons.length) return
 
     const text = icons.join(' ')
-    ctx.font = `${14 * cam.zoom * this.unitScale}px system-ui`
+    const uiScale = this.getUiScale()
+    ctx.font = `${14 * cam.zoom * uiScale}px system-ui`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
     const metrics = ctx.measureText(text)
-    const bgW = metrics.width + 12 * cam.zoom * this.unitScale
-    const bgH = 20 * cam.zoom * this.unitScale
-    const y = p.y - h / 2 - bgH - 25 * cam.zoom * this.unitScale
+    const bgW = metrics.width + 12 * cam.zoom * uiScale
+    const bgH = 20 * cam.zoom * uiScale
+    const y = p.y - h / 2 - bgH - 25 * cam.zoom * uiScale
 
     ctx.fillStyle = 'rgba(0,0,0,0.5)'
     ctx.fillRect(
@@ -635,14 +665,15 @@ export class unitlayer {
       text += ` (${this.unitTypesLabel.get(unit.type)!})`
     }
 
-    ctx.font = `${12 * cam.zoom * this.unitScale}px system-ui`
+    const uiScale = this.getUiScale()
+    ctx.font = `${12 * cam.zoom * uiScale}px system-ui`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
     const metrics = ctx.measureText(text)
-    const bgW = metrics.width + 12 * cam.zoom * this.unitScale
-    const bgH = 18 * cam.zoom * this.unitScale
-    const y = p.y - h / 2 - bgH - 6 * cam.zoom * this.unitScale
+    const bgW = metrics.width + 12 * cam.zoom * uiScale
+    const bgH = 18 * cam.zoom * uiScale
+    const y = p.y - h / 2 - bgH - 6 * cam.zoom * uiScale
 
     ctx.fillStyle = unit.isSelected() && !unit.isFutureSelected()
       ? 'rgba(74,222,128,0.55)'
@@ -674,10 +705,11 @@ export class unitlayer {
   ) {
     if (!unit.isSelected()) return
 
-    const pad = 2 * cam.zoom
+    const uiScale = this.getUiScale()
+    const pad = 2 * cam.zoom * uiScale
 
     ctx.strokeStyle = '#4ade80'
-    ctx.lineWidth = 3 * cam.zoom
+    ctx.lineWidth = 3 * cam.zoom * uiScale
     ctx.setLineDash([])
     ctx.lineDashOffset = 0
 

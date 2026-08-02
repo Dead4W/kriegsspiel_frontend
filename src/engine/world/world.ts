@@ -23,12 +23,18 @@ import type {Weather} from "@/engine/resourcePack/weather.ts";
 import {Team} from "@/enums/teamKeys.ts";
 import type {PlayerReadyInfo} from "@/engine/types/connectionTypes.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
-import { getActiveZoneCameraBounds, isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone, isTeamUnitTypeSpawnAllowed } from '@/game/planningSpawns'
+import { getActiveZoneCameraBounds, isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone, isTeamSpawnAllowedForPlayer, isTeamUnitTypeSpawnAllowed } from '@/game/planningSpawns'
 
 type worldevents = {
   changed: { reason: string }
   changed_overlay: { reason: string }
   api: OutMessage
+  /**
+   * A packet the room sent, announced before it is applied. The mirror of
+   * `api`, for a client that has to know what it was told rather than only
+   * what is now true — the two differ for anything the packet overwrites.
+   */
+  received: OutMessage
   force_api: {}
   camera: {}
   ai_trigger: {
@@ -219,7 +225,7 @@ export class world {
 
   constructor(map: mapmeta) {
     this.map = map
-    this.camera.setWorldSize(map.width, map.height)
+    this.camera.setWorldSize(map.width, map.height, map.metersPerPixel)
     this.syncCameraBounds()
 
     // watch(
@@ -237,13 +243,17 @@ export class world {
   }
 
   addUnits(states: unitstate[]) {
-    const acceptedStates: unitstate[] = []
     for (const s of states) {
+      if (!isTeamSpawnAllowedForPlayer(s.team)) continue
       if (!isPointInsideActiveZone(s.pos)) continue
       if (!isPlanningTeamSpawnPointAllowed(s.team, s.pos)) continue
-      if (!isTeamUnitTypeSpawnAllowed(s.team, s.type, acceptedStates)) continue
+      // Each accepted unit is on the board before the next is considered, so
+      // the running count is already in the registry. Passing them as extras
+      // as well counted every unit of a batch twice, which cut a batch off at
+      // half its allowance — invisible from the spawn tool, which places one
+      // at a time, and not from a client that lays out a whole force at once.
+      if (!isTeamUnitTypeSpawnAllowed(s.team, s.type)) continue
       this.units.upsert(s)
-      acceptedStates.push(s)
     }
     this.events.emit('changed', { reason: 'units' })
   }

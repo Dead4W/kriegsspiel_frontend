@@ -53,12 +53,17 @@ const TEAMS = computed(() => {
       { value: 'blue' as unitTeam, label: t('team.blue') },
       { value: 'neutral' as unitTeam, label: t('team.white') },
     ]
-  } else {
-    return [
-      { value: 'red' as unitTeam, label: t('team.red') },
-      { value: 'blue' as unitTeam, label: t('team.blue') },
-    ]
   }
+  // A player raises its own force and no one else's. Offering the other side
+  // would only build a unit the board then refuses.
+  if (isRedOrBlueTeam(window.PLAYER.team)) {
+    const own = window.PLAYER.team as unitTeam
+    return [{ value: own, label: t(`team.${own}`) }]
+  }
+  return [
+    { value: 'red' as unitTeam, label: t('team.red') },
+    { value: 'blue' as unitTeam, label: t('team.blue') },
+  ]
 })
 
 /* ================= helpers ================= */

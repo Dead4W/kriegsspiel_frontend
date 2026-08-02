@@ -381,6 +381,7 @@ function rebuildMoveOverlay() {
     formationOffsets: formationOffsets.value,
     moveMode: moveMode.value,
     metersPerPixel: window.ROOM_WORLD?.map?.metersPerPixel ?? 1,
+    unitScale: window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.SIZE_UNIT] ?? 1,
     roomWorld: window.ROOM_WORLD,
     smartPathEnabled: smartPathEnabled.value,
     hasObjectMap: hasObjectMap.value,

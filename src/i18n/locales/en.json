@@ -532,7 +532,6 @@
     "attack": "Attack",
     "environment_editor": "Environment Modifiers",
     "commands": "Commands",
-    "chart": "Chart",
     "admin": {
       "title": "Administration",
       "settings_open": "Settings",
@@ -551,7 +550,20 @@
           "room": "Room settings",
           "spawn": "Spawn zones",
           "active_zone": "Active zone",
-          "briefing": "Briefing"
+          "unit_limits": "Unit limits",
+          "briefing": "Briefing",
+          "mission": "Mission"
+        },
+        "unit_limits": {
+          "group_title": "Units each side may raise",
+          "group_hint": "The force allowance for the planning stage, checked on the board and on the server. Leave a field empty to allow any number of that type; set 0 to forbid it. The grey figure is how many are already placed.",
+          "type_column": "Unit",
+          "unlimited": "Any",
+          "mirror_red": "Copy red to blue",
+          "mirror_blue": "Copy blue to red",
+          "clear": "Clear all",
+          "save": "Save limits",
+          "saved": "Changes sent"
         },
         "room": {
           "rules_group": "Game rules",
@@ -570,6 +582,25 @@
           "show_preview": "Preview markdown",
           "hide_preview": "Hide preview",
           "preview_empty": "<em>Nothing to preview yet.</em>"
+        },
+        "mission": {
+          "group_title": "Team mission",
+          "group_hint": "The task each side is given. Choose a type, then click \"Pick point\" and click the map to place the flag. Can be changed during the war stage to retask a side.",
+          "type_label": "Mission",
+          "types": {
+            "destroy": "Destroy the enemy force",
+            "defend": "Defend the point",
+            "capture": "Capture the point"
+          },
+          "point_label": "Objective point",
+          "point_empty": "Not set",
+          "pick": "Pick point",
+          "radius_label": "Holding radius (metres)",
+          "by_time_label": "Deadline (game time, optional)",
+          "by_time_placeholder": "1882-06-12 14:00:00",
+          "clear": "Clear",
+          "save": "Save mission",
+          "saved": "Changes sent"
         },
         "spawn": {
           "group_title": "Planning spawn zones",

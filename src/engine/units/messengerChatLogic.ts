@@ -6,6 +6,7 @@ import { BaseUnit } from '@/engine/units/baseUnit.ts'
 import { Messenger } from '@/engine/units/messenger.ts'
 import { DeliveryCommand } from '@/engine/units/commands/deliveryCommand.ts'
 import { buildMessengerRouteByNearestPoints } from '@/engine/units/messengerRoute.ts'
+import { hasEngineAuthority } from '@/engine/authority.ts'
 
 type Point = { x: number; y: number }
 
@@ -329,7 +330,9 @@ export function getCurrentMessengerRouteFromGeneral(
 }
 
 export function autoSpawnMessengerForIncomingOrder(message: ChatMessage): boolean {
-  if (window.PLAYER.team !== Team.ADMIN) return false
+  // Only a client that runs the board can create the courier the order needs;
+  // for anyone else the courier arrives as an ordinary unit update.
+  if (!hasEngineAuthority()) return false
   if (window.ROOM_WORLD.stage !== RoomGameStage.WAR) return false
   if (!window.ROOM_WORLD.hasObjectNavMeshMap()) return false
   if (message.author_team === Team.ADMIN) return false

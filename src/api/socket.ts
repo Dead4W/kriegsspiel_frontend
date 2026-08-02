@@ -274,6 +274,7 @@ export class GameSocket {
   private forceApiEventsListenerUnsub?: unsub
   private readonly runtimeOptions: GameSocketRuntimeOptions
   private paintAnimationFrames = new Set<number>()
+  private isInitialStateSync = true
 
   constructor(runtimeOptions: GameSocketRuntimeOptions = {}) {
     this.runtimeOptions = runtimeOptions
@@ -290,6 +291,7 @@ export class GameSocket {
     onError?: (context: GameSocketErrorContext) => void
   }) {
     this.disconnect()
+    this.isInitialStateSync = true
     const query = new URLSearchParams({
       room_id: params.roomId,
       team: params.team,
@@ -596,6 +598,11 @@ export class GameSocket {
               }
             }
           }
+        } else if (m.type === 'chat_edit') {
+          const message = this.world.messages.get(m.data.id)
+          if (message) {
+            message.text = m.data.text
+          }
         } else if (m.type === 'chat_orders_update') {
           const chat = this.world.messages.setOrders(m.data.id, m.data.orders ?? null)
           if (!chat) continue
@@ -792,7 +799,11 @@ export class GameSocket {
             })
           }
         } else if (m.type === 'paint_add') {
-          this.addAnimatedPaintStroke(m.data, paintTimelineStart, paintPlaybackStartedAt)
+          if (this.isInitialStateSync) {
+            this.world.addPaintStroke(m.data, 'remote')
+          } else {
+            this.addAnimatedPaintStroke(m.data, paintTimelineStart, paintPlaybackStartedAt)
+          }
         } else if (m.type === 'paint_undo') {
           this.world.removePaintStrokeById(m.data.id)
         } else if (m.type === 'skip_time_success') {
@@ -801,6 +812,7 @@ export class GameSocket {
       }
 
       this.world.events.emit('changed', { reason: 'ws' })
+      this.isInitialStateSync = false
     }
 
     if (msg.type === 'error') {

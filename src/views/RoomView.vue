@@ -193,6 +193,10 @@ function applyRoomSettings(id: uuid, options?: Record<string, any>, params?: Rec
       window.ROOM_SETTINGS[key] = options[key]
     }
   }
+  const teamUnitLimits = options.teamUnitLimits
+  if (teamUnitLimits && typeof teamUnitLimits === 'object') {
+    window.ROOM_SETTINGS.teamUnitLimits = teamUnitLimits
+  }
   const perTeamSettingsFromOptions = options.perTeamSettings as Record<string, { briefing?: string }> | undefined
   if (perTeamSettingsFromOptions && typeof perTeamSettingsFromOptions === 'object') {
     window.ROOM_SETTINGS.perTeamSettings = {

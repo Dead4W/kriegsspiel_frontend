@@ -102,6 +102,8 @@ const DEMO_BLOCKED_INCOMING_TYPES = new Set<OutMessage['type']>([
   'room',
 ])
 
+const PAINT_ANIMATION_MAX_AGE_MS = 2_000
+
 let isDemoReadonlyMode = false
 
 function applyRoomParams(params: unknown) {
@@ -476,8 +478,11 @@ export class GameSocket {
       && pointTimes.every((time, index) =>
         Number.isFinite(time) && (index === 0 || time >= pointTimes[index - 1]!)
       )
+    const lastPointTime = pointTimes?.[pointCount - 1]
+    const isHistoricalStroke = lastPointTime !== undefined
+      && Date.now() - lastPointTime > PAINT_ANIMATION_MAX_AGE_MS
 
-    if (pointCount < 2 || !hasValidTimeline) {
+    if (pointCount < 2 || !hasValidTimeline || isHistoricalStroke) {
       this.world.addPaintStroke(stroke, 'remote')
       return
     }

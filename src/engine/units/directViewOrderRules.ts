@@ -23,7 +23,7 @@ export function hasObjectsMapForDirectViewOrder(): boolean {
 
 export function isPlayerDirectViewOrderContext(): boolean {
   return window.PLAYER.team !== Team.ADMIN
-    && window.ROOM_WORLD.stage === RoomGameStage.WAR
+    && [RoomGameStage.PLANNING, RoomGameStage.WAR].includes(window.ROOM_WORLD.stage)
     && hasObjectsMapForDirectViewOrder()
 }
 

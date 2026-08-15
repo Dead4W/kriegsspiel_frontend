@@ -14,8 +14,6 @@ import type {Weather} from "@/engine/resourcePack/weather.ts";
 import type {ConnectionInfo} from "@/engine/types/connectionTypes.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 import {createUnitCommand} from "@/engine/units/commands";
-import {hasEngineAuthority} from "@/engine/authority.ts";
-import {releaseDirectViewContacts} from "@/engine/world/directViewIntake.ts";
 
 export type DirectViewUnitPacket = {
   unit: unitstate
@@ -681,12 +679,6 @@ export class GameSocket {
           if (window.PLAYER.team === Team.ADMIN || window.PLAYER.team === Team.SPECTATOR) {
             continue;
           }
-
-          releaseDirectViewContacts({
-            world: window.ROOM_WORLD,
-            playerTeam: window.PLAYER.team,
-            preserveLostContacts: hasEngineAuthority(),
-          })
 
           for (const packet of m.data) {
             const nextUnitState = {...packet.unit}

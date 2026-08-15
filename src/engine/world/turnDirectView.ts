@@ -90,8 +90,8 @@ function inaccuracyAreaInTeamGeneralVision(
     }
   }
 
+  // null = not visible. Empty array = visible, no per-player restriction.
   if (!isVisible) return null
-  if (!seenRoomUserIds.size) return null
   return Array.from(seenRoomUserIds).sort((a, b) => a - b)
 }
 

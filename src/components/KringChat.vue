@@ -15,6 +15,7 @@ import {
   canWriteGameState,
   isAdminTeam,
   isEndStage,
+  isPlanningStage,
   isPlayerRoomMapEnabled,
   isRedOrBlueTeam,
   isSpectatorTeam,
@@ -389,9 +390,8 @@ function toggleRouteCapture() {
 }
 
 function canEditMessage(message: ChatMessage): boolean {
-  return canWriteGameState()
-    && isOwnMessage(message)
-    && message.time === window.ROOM_WORLD.time
+  if (!canWriteGameState() || !isOwnMessage(message)) return false
+  return isPlanningStage() || message.time === window.ROOM_WORLD.time
 }
 
 function startEditMessage(message: ChatMessage) {

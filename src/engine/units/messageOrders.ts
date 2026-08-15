@@ -169,7 +169,7 @@ function spawnMessengerForUnitMessage(message: ChatMessage, sourceUnit: BaseUnit
 }
 
 export function emitUnitsLinkedMessage(
-  sourceMessage: ChatMessage,
+  sourceMessage: ChatMessage | null,
   targetUnits: BaseUnit[],
   text: string,
   existingMessengerId: string | null = null,
@@ -200,7 +200,7 @@ export function emitUnitsLinkedMessage(
     time: window.ROOM_WORLD.time,
     created_at: new Date().toISOString(),
     delivered_at: null,
-    quotedMessageId: sourceMessage.id,
+    quotedMessageId: sourceMessage?.id ?? null,
     messengerId: reuseMessenger ? existingMessenger!.id : null,
     deliveryStatus: reuseMessenger ? "in_transit" : "pending",
     team: messageTeam,
@@ -221,7 +221,7 @@ export function emitUnitsLinkedMessage(
 }
 
 export function emitUnitLinkedMessage(
-  sourceMessage: ChatMessage,
+  sourceMessage: ChatMessage | null,
   targetUnit: BaseUnit,
   text: string,
   existingMessengerId: string | null = null,

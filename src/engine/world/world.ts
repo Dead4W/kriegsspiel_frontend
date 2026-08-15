@@ -874,7 +874,11 @@ export class world {
   }
 
   setStage(stage: RoomGameStage) {
+    const leavingPlanning = this.stage === RoomGameStage.PLANNING && stage === RoomGameStage.WAR
     this.stage = stage;
+    if (leavingPlanning) {
+      this.messages.forgetMessengerSpawnCandidates()
+    }
     this.events.emit('api', { type: 'set_stage', data: stage});
     this.events.emit('changed', { reason: 'stage' });
   }

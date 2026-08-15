@@ -1,6 +1,12 @@
 import {type ChatMessage, ChatMessageStatus} from "@/engine/types/chatMessage.ts";
 import type {uuid} from "@/engine";
+import {RoomGameStage} from "@/enums/roomStage.ts";
 
+function isOpenDeliveryStatus(
+  status: ChatMessage["deliveryStatus"],
+): boolean {
+  return status == null || status === 'pending' || status === 'in_transit'
+}
 
 export class messageregistry {
   private map = new Map<uuid, ChatMessage>()
@@ -12,7 +18,9 @@ export class messageregistry {
   upsert(item: ChatMessage, source: 'local' | 'remote' = 'local', ignoreNew: boolean = false): ChatMessage {
     if (source === 'remote' && !this.remoteMessagesSeen.has(item.id)) {
       this.remoteMessagesSeen.add(item.id)
-      this.messengerSpawnCandidates.add(item.id)
+      if (window.ROOM_WORLD?.stage === RoomGameStage.WAR) {
+        this.messengerSpawnCandidates.add(item.id)
+      }
     }
 
     const existing = this.map.get(item.id)
@@ -23,6 +31,12 @@ export class messageregistry {
       }
       if (next.author_id == null && existing.author_id != null) {
         next.author_id = existing.author_id
+      }
+      const alreadyDelivered = existing.delivered || existing.deliveryStatus === 'delivered'
+      if (alreadyDelivered && isOpenDeliveryStatus(next.deliveryStatus) && next.delivered !== true) {
+        next.delivered = true
+        next.deliveryStatus = 'delivered'
+        next.delivered_at = existing.delivered_at ?? next.delivered_at
       }
       Object.assign(existing, next)
       return existing
@@ -99,5 +113,15 @@ export class messageregistry {
     this.messengerSpawnCandidates.clear()
 
     return list
+  }
+
+  forgetMessengerSpawnCandidates(ids?: uuid[]): void {
+    if (!ids) {
+      this.messengerSpawnCandidates.clear()
+      return
+    }
+    for (const id of ids) {
+      this.messengerSpawnCandidates.delete(id)
+    }
   }
 }

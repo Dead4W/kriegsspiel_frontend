@@ -334,6 +334,7 @@ export function autoSpawnMessengerForIncomingOrder(message: ChatMessage): boolea
   // for anyone else the courier arrives as an ordinary unit update.
   if (!hasEngineAuthority()) return false
   if (window.ROOM_WORLD.stage !== RoomGameStage.WAR) return false
+  if (message.delivered || message.deliveryStatus === 'delivered') return false
   if (!window.ROOM_WORLD.hasObjectNavMeshMap()) return false
   if (message.author_team === Team.ADMIN) return false
   if (message.deliveryStatus && message.deliveryStatus !== 'pending') return false

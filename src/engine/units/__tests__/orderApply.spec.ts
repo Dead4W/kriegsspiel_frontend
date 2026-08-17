@@ -49,7 +49,10 @@ function createUnit(id: string, overrides: Partial<BaseUnit> = {}): BaseUnit {
       (unit as { dirty: boolean }).dirty = true;
     },
     setAutoAttack: () => {},
+    setPeriodicBatch: () => {},
+    setTriggers: () => {},
     setAiTriggers: () => {},
+    getTriggers: () => [],
     ...overrides,
   };
   return unit as unknown as BaseUnit;
@@ -244,10 +247,12 @@ describe("applying a plan to a unit", () => {
 
   it("sets on-unit state from the structured field", () => {
     const autoAttack: boolean[] = [];
+    const periodicBatch: boolean[] = [];
     const triggers: unknown[][] = [];
     const unit = createUnit("unit-a", {
       setAutoAttack: (value: boolean) => autoAttack.push(value),
-      setAiTriggers: (next: unknown[]) => triggers.push(next),
+      setPeriodicBatch: (value: boolean) => periodicBatch.push(value),
+      setTriggers: (next: unknown[]) => triggers.push(next),
     } as unknown as Partial<BaseUnit>);
 
     const applied = applyOrderPlanToUnit(
@@ -257,7 +262,10 @@ describe("applying a plan to a unit", () => {
         commands: [],
         state: {
           autoAttack: true,
-          triggers: [{ type: "at_game_time", atGameTime: "1882-06-12 11:00:00" }],
+          triggers: [
+            { type: "periodic" },
+            { type: "at_game_time", atGameTime: "1882-06-12 11:00:00" },
+          ],
         },
       },
       unit,
@@ -265,12 +273,16 @@ describe("applying a plan to a unit", () => {
 
     expect(applied).toBe(true);
     expect(autoAttack).toEqual([true]);
-    expect(triggers).toEqual([[{
-      type: "at_game_time",
-      atGameTime: "1882-06-12 11:00:00",
-      sourceMessageId: "message-1",
-      fired: false,
-    }]]);
+    expect(periodicBatch).toEqual([]);
+    expect(triggers).toEqual([[
+      { type: "periodic", sourceMessageId: "message-1" },
+      {
+        type: "at_game_time",
+        atGameTime: "1882-06-12 11:00:00",
+        sourceMessageId: "message-1",
+        fired: false,
+      },
+    ]]);
   });
 
   it("prefers the structured field over a note saying otherwise", () => {
@@ -303,6 +315,22 @@ describe("applying a plan to a unit", () => {
     );
 
     expect(autoAttack).toEqual([true]);
+  });
+
+  it("sets periodic batch from a note", () => {
+    const periodicBatch: boolean[] = [];
+    const unit = createUnit("unit-a", {
+      setPeriodicBatch: (value: boolean) => periodicBatch.push(value),
+    } as unknown as Partial<BaseUnit>);
+
+    const applied = applyOrderPlanToUnit(
+      message(),
+      { unitId: "unit-a", commands: [], notes: ["set_periodic_batch:on"] },
+      unit,
+    );
+
+    expect(applied).toBe(true);
+    expect(periodicBatch).toEqual([true]);
   });
 
   it("marks the unit for sync only when asked to", () => {

@@ -11,6 +11,11 @@ import {CommandStatus} from "@/engine/units/commands/baseCommand.ts";
 import type {MessageLinked} from "@/engine/units/baseUnit.ts";
 import type {UnitHpHistorySample} from "@/engine/units/hpHistory.ts";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
+import type { UnitTriggerState } from "@/engine/units/triggers/types.ts";
+
+export type { UnitTriggerState, UnitAiTriggerState } from "@/engine/units/triggers/types.ts";
+export { UnitTriggerTypes } from "@/engine/units/triggers/UnitTriggerTypes.ts";
+export type { UnitTriggerType } from "@/engine/units/triggers/UnitTriggerTypes.ts";
 
 export type uuid = string
 
@@ -35,6 +40,7 @@ export interface unitstate {
   hasInWater?: boolean
   fatigue?: number
   autoAttack?: boolean
+  periodicBatch?: boolean
   angle?: number
   isRetreatState?: boolean
   roomMapUserId?: number
@@ -56,21 +62,14 @@ export interface unitstate {
 
   formation?: FormationType;
   activeAbilityType?: UnitAbilityType | null;
-  aiTriggers?: UnitAiTriggerState[];
+  triggers?: UnitTriggerState[];
+  aiTriggers?: UnitTriggerState[];
 
   messagesLinked?: MessageLinked[],
 
   directView?: boolean
   isDirectChain?: boolean
 }
-
-export type UnitAiTriggerState =
-  | {
-      type: 'at_game_time'
-      atGameTime: string
-      sourceMessageId?: uuid | null
-      fired?: boolean
-    }
 
 export type commandstate =
   { type: UnitCommandTypes.Move; status: CommandStatus; state: MoveCommandState }

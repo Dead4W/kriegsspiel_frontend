@@ -1,12 +1,18 @@
 import {
   type commandstate,
   type FormationType,
-  type UnitAiTriggerState,
   type unitstate,
   type unitTeam,
   unitType,
   type uuid
 } from './types'
+import {
+  createUnitTriggers,
+  readUnitTriggerStates,
+  type BaseTrigger,
+  type UnitTriggerState,
+  UnitTriggerTypes,
+} from "@/engine/units/triggers";
 import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {getEnvStatMultiplier} from '@/engine/units/modifiers/UnitEnvModifiers.ts'
 import {interpolateMoveFrames} from "@/engine/util.ts";
@@ -145,7 +151,7 @@ export abstract class BaseUnit {
   protected formation: FormationType;
 
   protected messagesLinked: MessageLinked[] = []
-  protected aiTriggers: UnitAiTriggerState[] = []
+  protected triggers: BaseTrigger[] = []
   private pendingAttackDamage: {
     hpBefore: number
     hpAfter: number
@@ -184,7 +190,7 @@ export abstract class BaseUnit {
     this.envState = s.envState ?? [];
     this.manualEnvironment = (s.manualEnvironment as EnvironmentStateId | null | undefined) ?? null
     this.messagesLinked = s.messagesLinked ?? [];
-    this.aiTriggers = (s.aiTriggers ?? []).map((trigger) => ({ ...trigger }))
+    this.triggers = createUnitTriggers(readUnitTriggerStates(s))
     this.directView = s.directView ?? false
     this.isDirectChain = s.isDirectChain ?? false
     this.refreshAngleFromCommands();
@@ -434,6 +440,7 @@ export abstract class BaseUnit {
       hasInWater: this.hasInWater,
       fatigue: this.fatigue,
       autoAttack: this.autoAttack,
+      periodicBatch: this.periodicBatch,
       roomMapUserId: this.roomMapUserId,
       seenRoomUserIds: this.seenRoomUserIds,
 
@@ -457,7 +464,8 @@ export abstract class BaseUnit {
       formation: this.formation,
 
       messagesLinked: this.messagesLinked,
-      aiTriggers: this.aiTriggers.map((trigger) => ({ ...trigger })),
+      triggers: this.getTriggers(),
+      aiTriggers: this.getTriggers(),
 
       directView: this.directView,
       isDirectChain: this.isDirectChain,
@@ -747,22 +755,50 @@ export abstract class BaseUnit {
     return result
   }
 
-  getAiTriggers(): UnitAiTriggerState[] {
-    return this.aiTriggers.map((trigger) => ({ ...trigger }))
+  getTriggerObjects(): BaseTrigger[] {
+    return this.triggers
   }
 
-  setAiTriggers(triggers: UnitAiTriggerState[]) {
-    this.aiTriggers = triggers.map((trigger) => ({ ...trigger }))
+  getTriggers(): UnitTriggerState[] {
+    return this.triggers.map((trigger) => trigger.getState())
+  }
+
+  setTriggers(triggers: UnitTriggerState[]) {
+    this.triggers = createUnitTriggers(triggers)
     this.setDirty()
+  }
+
+  hasTrigger(type: string): boolean {
+    return this.triggers.some((trigger) => trigger.type === type)
+  }
+
+  getAiTriggers(): UnitTriggerState[] {
+    return this.getTriggers()
+  }
+
+  setAiTriggers(triggers: UnitTriggerState[]) {
+    this.setTriggers(triggers)
   }
 
   touchAiTrigger(index: number) {
-    if (index < 0 || index >= this.aiTriggers.length) return
-    this.aiTriggers[index] = {
-      ...this.aiTriggers[index]!,
-      fired: true,
-    }
+    const trigger = this.triggers[index]
+    if (!trigger) return
+    trigger.markFired()
     this.setDirty()
+  }
+
+  get periodicBatch(): boolean {
+    return this.hasTrigger(UnitTriggerTypes.Periodic)
+  }
+
+  set periodicBatch(enabled: boolean) {
+    this.setPeriodicBatch(Boolean(enabled))
+  }
+
+  setPeriodicBatch(enabled: boolean) {
+    const next = this.getTriggers().filter((trigger) => trigger.type !== UnitTriggerTypes.Periodic)
+    if (enabled) next.push({ type: UnitTriggerTypes.Periodic })
+    this.setTriggers(next)
   }
 
   activateAbility(newAbilityType: UnitAbilityType | null) {

@@ -166,7 +166,9 @@ export function applyOrderPlanToUnit(
   )
   const sourceMessageId = options.sourceMessageIdByUnitId?.[unit.id] || message.id
   const orderState = readUnitOrderState(plan.state, plan.notes, sourceMessageId)
-  const hasStateChanges = orderState.autoAttack != null || orderState.aiTriggers.hasDirective
+  const hasStateChanges = orderState.autoAttack != null
+    || orderState.periodicBatch != null
+    || orderState.triggers.hasDirective
   const replacesQueue = commands.length > 0 || Boolean(options.clearCommandsWhenEmpty)
 
   if (!replacesQueue && !hasStateChanges && !options.hasExternalEffects) return false

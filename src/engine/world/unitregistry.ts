@@ -1,6 +1,7 @@
 import {type unitstate, type unitTeam, unitType, type uuid} from '@/engine/units/types'
 import {BaseUnit} from '@/engine/units/baseUnit'
 import {createUnit} from '@/engine/units'
+import { readUnitTriggerStates } from '@/engine/units/triggers'
 import type {MoveFrame, vec2} from "@/engine/types.ts";
 import {buildVisionPolygon, pointInPolygon} from "@/engine/2d/render";
 import {Team} from "@/enums/teamKeys.ts";
@@ -40,7 +41,9 @@ export class unitregistry {
   upsert(state: unitstate, source: 'local' | 'remote' = 'local'): BaseUnit {
     const existing = this.map.get(state.id)
     if (existing) {
-      Object.assign(existing, state)
+      const { periodicBatch, triggers, aiTriggers, ...rest } = state
+      Object.assign(existing, rest)
+      existing.setTriggers(readUnitTriggerStates({ triggers, aiTriggers, periodicBatch }))
       if (!Array.isArray(existing.hpHistory)) existing.hpHistory = []
       existing.hpLost5min = typeof existing.hpLost5min === 'number' && Number.isFinite(existing.hpLost5min)
         ? Math.max(0, existing.hpLost5min)
@@ -48,7 +51,10 @@ export class unitregistry {
       // Commands may have changed with a remote snapshot. Keep the cached
       // destination marker in sync with the commands used to draw its path.
       existing.refreshFuturePos()
-      if (source === 'remote') this.markSynced(existing)
+      if (source === 'remote') {
+        this.dirty.delete(existing.id)
+        this.markSynced(existing)
+      }
       return existing
     }
 

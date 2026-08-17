@@ -1,23 +1,35 @@
 import { BaseUnit } from "@/engine/units/baseUnit.ts";
-import type { UnitAiTriggerState } from "@/engine/units/types.ts";
+import {
+  normalizeUnitTriggerStates,
+  type UnitTriggerState,
+} from "@/engine/units/triggers";
 
-function parseAutoAttack(notes: unknown): boolean | null {
+function parseBooleanNote(notes: unknown, prefix: string): boolean | null {
   if (!Array.isArray(notes)) return null;
   for (const noteRaw of notes) {
     const note = String(noteRaw ?? "").trim().toLowerCase();
-    if (!note.startsWith("set_autoattack:")) continue;
-    const value = note.slice("set_autoattack:".length).trim();
+    if (!note.startsWith(prefix)) continue;
+    const value = note.slice(prefix.length).trim();
     if (value === "on" || value === "true" || value === "1") return true;
     if (value === "off" || value === "false" || value === "0") return false;
   }
   return null;
 }
 
+function parseAutoAttack(notes: unknown): boolean | null {
+  return parseBooleanNote(notes, "set_autoattack:");
+}
+
+function parsePeriodicBatch(notes: unknown): boolean | null {
+  return parseBooleanNote(notes, "set_periodic_batch:");
+}
+
 export type UnitOrderStateNotes = {
   autoAttack: boolean | null;
-  aiTriggers: {
+  periodicBatch: boolean | null;
+  triggers: {
     hasDirective: boolean;
-  triggers: UnitAiTriggerState[];
+    items: UnitTriggerState[];
   };
 };
 
@@ -31,34 +43,20 @@ export type UnitOrderStateNotes = {
  */
 export type UnitOrderState = {
   autoAttack?: boolean;
+  periodicBatch?: boolean;
   /**
-   * Replaces the unit's scheduled triggers. An empty array clears them; the
+   * Replaces the unit's trigger list. An empty array clears them; the
    * field being absent leaves them alone.
    */
   triggers?: Array<{ type: string; atGameTime?: string }>;
 };
 
-function readTriggers(
-  raw: UnitOrderState["triggers"],
-  sourceMessageId: string,
-): UnitAiTriggerState[] {
-  const triggers: UnitAiTriggerState[] = [];
-  for (const trigger of raw ?? []) {
-    if (!trigger || typeof trigger !== "object") continue;
-    if (trigger.type !== "at_game_time") continue;
-    const atGameTime = String(trigger.atGameTime ?? "").trim();
-    if (!atGameTime || !Number.isFinite(Date.parse(atGameTime.replace(" ", "T")))) continue;
-    triggers.push({ type: "at_game_time", atGameTime, sourceMessageId, fired: false });
-  }
-  return triggers;
-}
-
-function parseAiTriggers(notes: unknown, sourceMessageId: string): UnitOrderStateNotes["aiTriggers"] {
+function parseTriggersNote(notes: unknown, sourceMessageId: string): UnitOrderStateNotes["triggers"] {
   if (!Array.isArray(notes)) {
-    return { hasDirective: false, triggers: [] };
+    return { hasDirective: false, items: [] };
   }
-  const triggers: UnitAiTriggerState[] = [];
   let hasDirective = false;
+  const items: UnitTriggerState[] = [];
   for (const noteRaw of notes) {
     const note = String(noteRaw ?? "").trim();
     if (!note.startsWith("set_ai_triggers:")) continue;
@@ -69,31 +67,20 @@ function parseAiTriggers(notes: unknown, sourceMessageId: string): UnitOrderStat
     } catch {
       rawTriggers = [];
     }
-    if (!Array.isArray(rawTriggers)) continue;
-    for (const rawTrigger of rawTriggers) {
-      if (!rawTrigger || typeof rawTrigger !== "object") continue;
-      const trigger = rawTrigger as Record<string, unknown>;
-      if (String(trigger.type ?? "").toLowerCase() !== "at_game_time") continue;
-      const atGameTime = String(trigger.atGameTime ?? "").trim();
-      if (!atGameTime || !Number.isFinite(Date.parse(atGameTime.replace(" ", "T")))) continue;
-      triggers.push({
-        type: "at_game_time",
-        atGameTime,
-        sourceMessageId,
-        fired: false,
-      });
-    }
+    items.push(...normalizeUnitTriggerStates(rawTriggers, sourceMessageId));
   }
-  return { hasDirective, triggers };
+  return { hasDirective, items };
 }
 
 export function readUnitOrderStateNotes(
   notes: unknown,
   sourceMessageId: string,
 ): UnitOrderStateNotes {
-  const autoAttack = parseAutoAttack(notes);
-  const aiTriggers = parseAiTriggers(notes, sourceMessageId);
-  return { autoAttack, aiTriggers };
+  return {
+    autoAttack: parseAutoAttack(notes),
+    periodicBatch: parsePeriodicBatch(notes),
+    triggers: parseTriggersNote(notes, sourceMessageId),
+  };
 }
 
 /**
@@ -110,9 +97,10 @@ export function readUnitOrderState(
 
   return {
     autoAttack: typeof state.autoAttack === "boolean" ? state.autoAttack : fromNotes.autoAttack,
-    aiTriggers: Array.isArray(state.triggers)
-      ? { hasDirective: true, triggers: readTriggers(state.triggers, sourceMessageId) }
-      : fromNotes.aiTriggers,
+    periodicBatch: typeof state.periodicBatch === "boolean" ? state.periodicBatch : fromNotes.periodicBatch,
+    triggers: Array.isArray(state.triggers)
+      ? { hasDirective: true, items: normalizeUnitTriggerStates(state.triggers, sourceMessageId) }
+      : fromNotes.triggers,
   };
 }
 
@@ -121,6 +109,12 @@ export function applyUnitOrderStateNotes(
   orderState: UnitOrderStateNotes,
 ): boolean {
   if (orderState.autoAttack != null) unit.setAutoAttack(orderState.autoAttack);
-  if (orderState.aiTriggers.hasDirective) unit.setAiTriggers(orderState.aiTriggers.triggers);
-  return orderState.autoAttack != null || orderState.aiTriggers.hasDirective;
+  if (orderState.triggers.hasDirective) {
+    unit.setTriggers(orderState.triggers.items);
+  } else if (orderState.periodicBatch != null) {
+    unit.setPeriodicBatch(orderState.periodicBatch);
+  }
+  return orderState.autoAttack != null
+    || orderState.triggers.hasDirective
+    || orderState.periodicBatch != null;
 }

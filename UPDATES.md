@@ -1,5 +1,7 @@
-[LAST]
+[2026-08-18]
 - UI - Show unit damage for 5m
+- Objects Map - Updated objects map for Essex with many fixes
+- Fixes - Many async fixes on client
 
 [2026-07-26]
 - Spectator - add spectator & fixes

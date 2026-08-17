@@ -14,6 +14,11 @@ import type {Weather} from "@/engine/resourcePack/weather.ts";
 import type {ConnectionInfo} from "@/engine/types/connectionTypes.ts";
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 import {createUnitCommand} from "@/engine/units/commands";
+import {
+  getPaintPlaybackTime,
+  isHistoricalPaintStroke,
+  resolvePaintTimelineStart,
+} from "@/engine/world/paintPlayback.ts";
 
 export type DirectViewUnitPacket = {
   unit: unitstate
@@ -99,8 +104,6 @@ const DEMO_BLOCKED_INCOMING_TYPES = new Set<OutMessage['type']>([
   'weather',
   'room',
 ])
-
-const PAINT_ANIMATION_MAX_AGE_MS = 2_000
 
 let isDemoReadonlyMode = false
 
@@ -476,11 +479,7 @@ export class GameSocket {
       && pointTimes.every((time, index) =>
         Number.isFinite(time) && (index === 0 || time >= pointTimes[index - 1]!)
       )
-    const lastPointTime = pointTimes?.[pointCount - 1]
-    const isHistoricalStroke = lastPointTime !== undefined
-      && Date.now() - lastPointTime > PAINT_ANIMATION_MAX_AGE_MS
-
-    if (pointCount < 2 || !hasValidTimeline || isHistoricalStroke) {
+    if (pointCount < 2 || !hasValidTimeline || isHistoricalPaintStroke(pointTimes, Date.now())) {
       this.world.addPaintStroke(stroke, 'remote')
       return
     }
@@ -494,7 +493,7 @@ export class GameSocket {
     let animationFrame = 0
     const tick = (now: number) => {
       this.paintAnimationFrames.delete(animationFrame)
-      const playbackTime = timelineStart + (now - playbackStartedAt)
+      const playbackTime = getPaintPlaybackTime(timelineStart, playbackStartedAt, now)
 
       if (playbackTime >= pointTimes[pointCount - 1]!) {
         animatedStroke.points = targetPoints
@@ -539,15 +538,11 @@ export class GameSocket {
       let skipTimeSoundPlayed = false
       let lastLiveSkipTimeIndex = -1
       const animatedUnitIds = new Set<string>()
-      let paintTimelineStart = Number.POSITIVE_INFINITY
       const paintPlaybackStartedAt = performance.now()
-      for (const message of msg.messages) {
-        if (message.type !== 'paint_add') continue
-        const firstPointTime = message.data.pointTimes?.[0]
-        if (firstPointTime !== undefined && Number.isFinite(firstPointTime)) {
-          paintTimelineStart = Math.min(paintTimelineStart, firstPointTime)
-        }
-      }
+      const paintTimelineStart = resolvePaintTimelineStart(
+        msg.messages.flatMap((message) => message.type === 'paint_add' ? [message.data] : []),
+        Date.now(),
+      )
       for (let i = msg.messages.length - 1; i >= 0; i -= 1) {
         const message = msg.messages[i]
         if (message?.type === 'skip_time' && message.live === true) {

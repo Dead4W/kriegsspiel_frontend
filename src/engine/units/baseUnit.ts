@@ -796,7 +796,7 @@ export abstract class BaseUnit {
   }
 
   setPeriodicBatch(enabled: boolean) {
-    const next = this.getTriggers().filter((trigger) => trigger.type !== UnitTriggerTypes.Periodic)
+    const next: UnitTriggerState[] = this.getTriggers().filter((trigger) => trigger.type !== UnitTriggerTypes.Periodic)
     if (enabled) next.push({ type: UnitTriggerTypes.Periodic })
     this.setTriggers(next)
   }

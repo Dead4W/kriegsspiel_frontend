@@ -15,6 +15,8 @@ const showAuth = ref(false)
 const showServerError = ref(false)
 const nickname = ref('')
 const loading = ref(false)
+const isCreatingBot = ref(false)
+const botError = ref('')
 const error = ref('')
 
 const COOKIE_CONSENT_KEY = 'cookie_consent_v1'
@@ -144,6 +146,33 @@ function createRoom() {
   })
 }
 
+async function playWithBot() {
+  if (!user.value || isCreatingBot.value) return
+
+  isCreatingBot.value = true
+  botError.value = ''
+
+  try {
+    const { data } = await api.put('/room/bot', {
+      name: t('botRoom.name'),
+      briefing: t('botRoom.briefing'),
+      frontend_origin: window.location.origin,
+    })
+
+    localStorage.setItem(`room_key_${data.uuid}`, data.blue_key)
+
+    await router.push({
+      name: 'room',
+      params: { locale: route.params.locale, uuid: data.uuid },
+    })
+  } catch (err) {
+    console.error('CREATE BOT ROOM ERROR:', err)
+    botError.value = t('botRoom.error')
+  } finally {
+    isCreatingBot.value = false
+  }
+}
+
 function setLang(lang: 'ru' | 'en') {
   localStorage.setItem('i18n_locale', lang)
   router.push({
@@ -271,9 +300,17 @@ function acceptCookies() {
 
       <div class="actions">
         <button
+          class="bot"
+          @click="playWithBot"
+          :disabled="!user || isCreatingBot"
+        >
+          {{ isCreatingBot ? t('botRoom.creating') : t('playWithBotBtn') }}
+        </button>
+
+        <button
           class="primary"
           @click="createRoom"
-          :disabled="!user"
+          :disabled="!user || isCreatingBot"
         >
           {{ t('createRoomBtn') }}
         </button>
@@ -285,6 +322,8 @@ function acceptCookies() {
           {{ t('wiki') }}
         </router-link>
       </div>
+
+      <p v-if="botError" class="bot-error">{{ botError }}</p>
 
       <div class="discord-widget-wrap">
         <a
@@ -515,6 +554,12 @@ h1 {
   border: none;
 }
 
+.bot-error {
+  margin: 0.75rem 0 0;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
 .wiki-cta {
   display: inline-flex;
   align-items: center;
@@ -531,6 +576,19 @@ h1 {
     border-color 0.2s ease,
     background 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+.actions button.bot {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid color-mix(in oklab, var(--accent) 55%, white 10%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+}
+
+.actions button.bot:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent) 22%, var(--panel) 78%);
+  border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .primary {

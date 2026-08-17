@@ -680,6 +680,7 @@ export class GameSocket {
             continue;
           }
 
+          const visibleDirectViewIds = new Set<string>()
           for (const packet of m.data) {
             const nextUnitState = {...packet.unit}
             const u = window.ROOM_WORLD.units.get(nextUnitState.id);
@@ -690,6 +691,7 @@ export class GameSocket {
             // Use the regular ingestion path for both new and existing units so
             // command-derived render state (such as futurePos) stays in sync.
             window.ROOM_WORLD.units.upsert(nextUnitState, 'remote')
+            visibleDirectViewIds.add(nextUnitState.id)
             if (packet.frames && packet.frames.length > 0) {
               const targetUnit = window.ROOM_WORLD.units.get(nextUnitState.id)
               if (targetUnit) {
@@ -701,6 +703,10 @@ export class GameSocket {
                 }
               }
             }
+          }
+          for (const unit of window.ROOM_WORLD.units.list()) {
+            if (visibleDirectViewIds.has(unit.id)) continue
+            unit.hpLost5min = 0
           }
         } else if (m.type === 'direct_view_objects') {
           if (window.PLAYER.team === Team.ADMIN || window.PLAYER.team === Team.SPECTATOR) {

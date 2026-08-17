@@ -1,6 +1,6 @@
 import { buildVisionPolygon, pointInPolygon } from '@/engine/2d/render'
 import { getInaccuracyAbility } from '@/engine/resourcePack/abilities.ts'
-import type { DirectViewObjectState } from '@/engine/types/directViewObjects.ts'
+import type { DirectViewInaccuracyObject, DirectViewObjectState } from '@/engine/types/directViewObjects.ts'
 import type { MoveFrame, vec2 } from '@/engine/types.ts'
 import { UnitCommandTypes } from '@/engine/units/enums/UnitCommandTypes.ts'
 import type { AttackCommandState } from '@/engine/units/commands/attackCommand.ts'
@@ -12,6 +12,9 @@ import { Team } from '@/enums/teamKeys'
 import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
 import { isWeatherModifiersEnabled } from '@/game/roomGuards.ts'
 import type { OutMessage } from '@/api/socket.ts'
+
+/** Enemy fire within this radius is shown as one attack line. */
+export const ENEMY_ATTACK_LINE_GROUP_RADIUS_METERS = 500
 
 function pointInTeamGeneralVision(worldInstance: world, team: unitTeam, point: vec2): boolean {
   const generals = worldInstance.units
@@ -108,23 +111,14 @@ function lineSegmentIntersectionT(a1: vec2, a2: vec2, b1: vec2, b2: vec2): numbe
   return t
 }
 
-function getFirstSegmentVisibilityEntry(
-  from: vec2,
-  to: vec2,
-  polygons: vec2[][],
-): { point: vec2; t: number } | null {
-  const isVisibleAtT = (t: number) => {
-    const point = {
-      x: from.x + (to.x - from.x) * t,
-      y: from.y + (to.y - from.y) * t,
-    }
-    return polygons.some((polygon) => pointInPolygon(point, polygon))
+function pointAlongSegment(from: vec2, to: vec2, t: number): vec2 {
+  return {
+    x: from.x + (to.x - from.x) * t,
+    y: from.y + (to.y - from.y) * t,
   }
+}
 
-  if (isVisibleAtT(0)) {
-    return { point: { x: from.x, y: from.y }, t: 0 }
-  }
-
+function collectSegmentPolygonIntersectionTs(from: vec2, to: vec2, polygons: vec2[][]): number[] {
   const rawTs: number[] = [0, 1]
   for (const polygon of polygons) {
     if (polygon.length < 2) continue
@@ -143,18 +137,85 @@ function getFirstSegmentVisibilityEntry(
       uniqueTs.push(t)
     }
   }
+  return uniqueTs
+}
+
+function isPointVisibleInPolygons(point: vec2, polygons: vec2[][]): boolean {
+  return polygons.some((polygon) => pointInPolygon(point, polygon))
+}
+
+export function clipSegmentToVisionPolygons(
+  from: vec2,
+  to: vec2,
+  polygons: vec2[][],
+): { from: vec2; to: vec2; t0: number; t1: number } | null {
+  if (!polygons.length) return null
+
+  const isVisibleAtT = (t: number) => isPointVisibleInPolygons(pointAlongSegment(from, to, t), polygons)
+  const uniqueTs = collectSegmentPolygonIntersectionTs(from, to, polygons)
+  if (uniqueTs.length < 2) {
+    return isVisibleAtT(0) ? { from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, t0: 0, t1: 1 } : null
+  }
+
+  let bestT0: number | null = null
+  let bestT1: number | null = null
+  let runT0: number | null = null
+  let runT1: number | null = null
+
+  const commitRun = () => {
+    if (runT0 == null || runT1 == null) return
+    if (bestT0 == null || bestT1 == null || runT1 - runT0 > bestT1 - bestT0) {
+      bestT0 = runT0
+      bestT1 = runT1
+    }
+    runT0 = null
+    runT1 = null
+  }
 
   for (let i = 0; i < uniqueTs.length - 1; i++) {
     const t0 = uniqueTs[i]!
     const t1 = uniqueTs[i + 1]!
-    if (!isVisibleAtT((t0 + t1) / 2)) continue
-    return {
-      point: {
-        x: from.x + (to.x - from.x) * t0,
-        y: from.y + (to.y - from.y) * t0,
-      },
-      t: t0,
+    if (!isVisibleAtT((t0 + t1) / 2)) {
+      commitRun()
+      continue
     }
+    if (runT0 == null) runT0 = t0
+    runT1 = t1
+  }
+  commitRun()
+
+  if (bestT0 == null || bestT1 == null) {
+    if (isVisibleAtT(0) && isVisibleAtT(1)) {
+      return { from: { x: from.x, y: from.y }, to: { x: to.x, y: to.y }, t0: 0, t1: 1 }
+    }
+    return null
+  }
+
+  return {
+    from: pointAlongSegment(from, to, bestT0),
+    to: pointAlongSegment(from, to, bestT1),
+    t0: bestT0,
+    t1: bestT1,
+  }
+}
+
+function getFirstSegmentVisibilityEntry(
+  from: vec2,
+  to: vec2,
+  polygons: vec2[][],
+): { point: vec2; t: number } | null {
+  const isVisibleAtT = (t: number) => isPointVisibleInPolygons(pointAlongSegment(from, to, t), polygons)
+
+  if (isVisibleAtT(0)) {
+    return { point: { x: from.x, y: from.y }, t: 0 }
+  }
+
+  const uniqueTs = collectSegmentPolygonIntersectionTs(from, to, polygons)
+  for (let i = 0; i < uniqueTs.length - 1; i++) {
+    const t0 = uniqueTs[i]!
+    const t1 = uniqueTs[i + 1]!
+    if (!isVisibleAtT((t0 + t1) / 2)) continue
+    return { point: pointAlongSegment(from, to, t0), t: t0 }
   }
 
   if (isVisibleAtT(1)) {
@@ -286,6 +347,230 @@ function mapAttackCommandForDirectView(
   }
 }
 
+function segmentIntersectsPolygon(from: vec2, to: vec2, polygon: vec2[]): boolean {
+  if (polygon.length < 2) return false
+  if (pointInPolygon(from, polygon) || pointInPolygon(to, polygon)) return true
+
+  for (let i = 0; i < polygon.length; i++) {
+    const p1 = polygon[i]!
+    const p2 = polygon[(i + 1) % polygon.length]!
+    if (lineSegmentIntersectionT(from, to, p1, p2) != null) return true
+  }
+
+  return false
+}
+
+function attackLineSeenRoomUserIds(
+  worldInstance: world,
+  team: unitTeam,
+  from: vec2,
+  to: vec2,
+): number[] | null {
+  const generals = worldInstance.units
+    .list()
+    .filter((unit) => unit.team === team && unit.type === unitType.GENERAL && unit.alive)
+
+  let isVisible = false
+  const seenRoomUserIds = new Set<number>()
+  for (const general of generals) {
+    const visionPoly = buildVisionPolygon(general, worldInstance)
+    if (!segmentIntersectsPolygon(from, to, visionPoly)) continue
+
+    isVisible = true
+    if (general.roomMapUserId > 0) {
+      seenRoomUserIds.add(general.roomMapUserId)
+    }
+  }
+
+  if (!isVisible) return null
+  return Array.from(seenRoomUserIds).sort((a, b) => a - b)
+}
+
+function averagePoints(points: vec2[]): vec2 {
+  const count = Math.max(1, points.length)
+  let x = 0
+  let y = 0
+  for (const point of points) {
+    x += point.x
+    y += point.y
+  }
+  return { x: x / count, y: y / count }
+}
+
+export function clusterIndicesByDistance(points: vec2[], radius: number): number[][] {
+  const parent = points.map((_, index) => index)
+  const find = (index: number): number => {
+    let current = index
+    while (parent[current] !== current) {
+      parent[current] = parent[parent[current]!]!
+      current = parent[current]!
+    }
+    return current
+  }
+  const union = (a: number, b: number) => {
+    const rootA = find(a)
+    const rootB = find(b)
+    if (rootA !== rootB) parent[rootB] = rootA
+  }
+
+  const radiusSq = radius * radius
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]!
+    for (let j = i + 1; j < points.length; j++) {
+      const b = points[j]!
+      const dx = a.x - b.x
+      const dy = a.y - b.y
+      if (dx * dx + dy * dy <= radiusSq) union(i, j)
+    }
+  }
+
+  const groups = new Map<number, number[]>()
+  for (let i = 0; i < points.length; i++) {
+    const root = find(i)
+    const group = groups.get(root)
+    if (group) group.push(i)
+    else groups.set(root, [i])
+  }
+  return Array.from(groups.values())
+}
+
+type EnemyAttackLineCandidate = {
+  attackerPos: vec2
+  targetPos: vec2
+  clippedFrom: vec2
+  clippedTo: vec2
+  seenRoomUserIds: number[]
+  team: unitTeam
+  targetsGeneral: boolean
+}
+
+function resolveEnemyAttackTarget(
+  worldInstance: world,
+  attacker: { pos: vec2; team: unitTeam; attackRange: number },
+  attackState: AttackCommandState,
+  team: unitTeam,
+): { point: vec2; targetsGeneral: boolean } | null {
+  let targetPoint: vec2 | null = null
+  let nearestTargetDist = Infinity
+  let targetsGeneral = false
+
+  for (const targetId of attackState.targets) {
+    const target = worldInstance.units.get(targetId)
+    if (!target || !target.alive || target.isRetreat || target.team === attacker.team) continue
+    const dist = Math.hypot(target.pos.x - attacker.pos.x, target.pos.y - attacker.pos.y)
+    if (dist > attacker.attackRange) continue
+    if (dist >= nearestTargetDist) continue
+    nearestTargetDist = dist
+    targetPoint = target.pos
+    targetsGeneral = target.type === unitType.GENERAL && target.team === team
+  }
+
+  if (!targetPoint) return null
+  return { point: targetPoint, targetsGeneral }
+}
+
+function getEnemyAttackLineObjects(
+  worldInstance: world,
+  team: unitTeam,
+): DirectViewObjectState[] {
+  const polygons = getTeamGeneralVisionPolygons(worldInstance, team)
+  if (!polygons.length) return []
+
+  const candidates: EnemyAttackLineCandidate[] = []
+  for (const unit of worldInstance.units.list()) {
+    if (!unit.alive || unit.team === team) continue
+
+    for (const command of unit.getCommands()) {
+      if (command.type !== UnitCommandTypes.Attack) continue
+
+      const attackState = command.getState().state as AttackCommandState
+      const activeAbilities = (attackState.abilities ?? []).filter((ability) =>
+        unit.abilities.includes(ability),
+      )
+      if (attackState.inaccuracyPoint && getInaccuracyAbility(activeAbilities)) continue
+
+      const target = resolveEnemyAttackTarget(worldInstance, unit, attackState, team)
+      if (!target) continue
+
+      const clipped = clipSegmentToVisionPolygons(unit.pos, target.point, polygons)
+      if (!clipped) continue
+      if (Math.hypot(clipped.to.x - clipped.from.x, clipped.to.y - clipped.from.y) < 0.01) continue
+
+      const seenRoomUserIds = attackLineSeenRoomUserIds(
+        worldInstance,
+        team,
+        clipped.from,
+        clipped.to,
+      )
+      if (seenRoomUserIds == null) continue
+
+      candidates.push({
+        attackerPos: unit.pos,
+        targetPos: target.point,
+        clippedFrom: clipped.from,
+        clippedTo: clipped.to,
+        seenRoomUserIds,
+        team: unit.team,
+        targetsGeneral: target.targetsGeneral,
+      })
+    }
+  }
+
+  if (!candidates.length) return []
+
+  const groupRadiusPx = ENEMY_ATTACK_LINE_GROUP_RADIUS_METERS / worldInstance.map.metersPerPixel
+  const groups = clusterIndicesByDistance(
+    candidates.map((candidate) => candidate.clippedFrom),
+    groupRadiusPx,
+  )
+
+  const objects: DirectViewObjectState[] = []
+  for (const indices of groups) {
+    const group = indices.map((index) => candidates[index]!)
+    const generalTargets = group.filter((candidate) => candidate.targetsGeneral)
+    const attackerPos = averagePoints(group.map((candidate) => candidate.attackerPos))
+    const targetPos = averagePoints(
+      (generalTargets.length ? generalTargets : group).map((candidate) => candidate.targetPos),
+    )
+    const clipped = clipSegmentToVisionPolygons(attackerPos, targetPos, polygons)
+    const clippedLength = clipped
+      ? Math.hypot(clipped.to.x - clipped.from.x, clipped.to.y - clipped.from.y)
+      : 0
+    let from: vec2
+    let to: vec2
+    if (clipped && clippedLength >= 0.01) {
+      from = clipped.from
+      to = clipped.to
+    } else {
+      const fallback = group.reduce((longest, candidate) => {
+        const length = Math.hypot(
+          candidate.clippedTo.x - candidate.clippedFrom.x,
+          candidate.clippedTo.y - candidate.clippedFrom.y,
+        )
+        const longestLength = Math.hypot(
+          longest.clippedTo.x - longest.clippedFrom.x,
+          longest.clippedTo.y - longest.clippedFrom.y,
+        )
+        return length > longestLength ? candidate : longest
+      })
+      from = fallback.clippedFrom
+      to = fallback.clippedTo
+    }
+    const seenRoomUserIds = Array.from(
+      new Set(group.flatMap((candidate) => candidate.seenRoomUserIds)),
+    ).sort((a, b) => a - b)
+
+    objects.push({
+      type: 'attack_line',
+      team: group[0]!.team,
+      seenRoomUserIds,
+      data: { from, to },
+    })
+  }
+
+  return objects
+}
+
 function getDirectViewCommands(
   worldInstance: world,
   unitId: string,
@@ -319,7 +604,7 @@ function getDirectViewCommands(
 }
 
 function getDirectViewObjects(worldInstance: world, team: unitTeam): DirectViewObjectState[] {
-  const objectsByPoint = new Map<string, DirectViewObjectState>()
+  const objectsByPoint = new Map<string, DirectViewInaccuracyObject>()
 
   for (const unit of worldInstance.units.list()) {
     if (!unit.alive || unit.team === team) continue
@@ -373,7 +658,7 @@ function getDirectViewObjects(worldInstance: world, team: unitTeam): DirectViewO
     }
   }
 
-  return Array.from(objectsByPoint.values())
+  return [...objectsByPoint.values(), ...getEnemyAttackLineObjects(worldInstance, team)]
 }
 
 export function captureUnitPositionsById(worldInstance: world): Map<string, vec2> {
@@ -443,6 +728,7 @@ export function emitTurnStatePackets(
               roomMapUserId: unit.roomMapUserId,
               seenRoomUserIds: unit.seenRoomUserIds,
               isDirectChain: true,
+              hpLost5min: 0,
               commands: getDirectViewCommands(worldInstance, unit.id, team as unitTeam),
             }
           } else {
@@ -457,6 +743,7 @@ export function emitTurnStatePackets(
               isDirectChain: false,
               isRetreatState: unit.isRetreat,
               hp: unit.hp,
+              hpLost5min: unit.getHpLostOverMinutes(5),
               ammo: unit.ammo,
               fatigue: unit.fatigue,
               envState: unit.envState,

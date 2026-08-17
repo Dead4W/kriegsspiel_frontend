@@ -155,6 +155,16 @@ function isEnabledFatigue() {
   return isFatigueEnabled()
 }
 
+function formatHpLost(value: number) {
+  const safe = Number.isFinite(value) ? Math.max(0, value) : 0
+  const rounded = safe >= 10 || safe === 0 ? Math.round(safe) : Math.round(safe * 10) / 10
+  return rounded === 0 ? '0' : `−${rounded}`
+}
+
+function hpLost5min() {
+  return unit.value.getDisplayedHpLost5min()
+}
+
 function isDebug() {
   return window.CLIENT_SETTINGS[CLIENT_SETTING_KEYS.DEBUG_MODE]
 }
@@ -234,6 +244,11 @@ onUnmounted(() => {
               :style="barStyle(unit.hp, 0, unit.stats.maxHp)"
             />
           </div>
+        </div>
+
+        <div v-if="isAdminOrSpectatorTeam() || hpLost5min() > 0" class="stat">
+          <label>{{ t('stat.hp_lost_5min') }}</label>
+          <span :class="{ 'hp-lost': hpLost5min() > 0 }">{{ formatHpLost(hpLost5min()) }}</span>
         </div>
 
         <!-- Ammo -->
@@ -496,6 +511,10 @@ onUnmounted(() => {
 .stat label {
   width: 90px;
   color: #94a3b8;
+}
+
+.hp-lost {
+  color: #fca5a5;
 }
 
 .stat input {

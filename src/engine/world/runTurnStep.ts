@@ -21,6 +21,7 @@ import { ROOM_SETTING_KEYS } from '@/enums/roomSettingsKeys'
 import { unitType } from '@/engine/units/types'
 import { isPlanningTeamSpawnPointAllowed } from '@/game/planningSpawns'
 import { getUnitTypeDef } from '@/engine/resourcePack/units'
+import { worldTimeToMs } from '@/engine/units/hpHistory.ts'
 
 const MAX_STEP_SECONDS = 60;
 const TURN_ANIMATION_DURATION_MS = 50;
@@ -239,6 +240,20 @@ function hasActiveMoveCommand(unit: UnitLike): boolean {
   return unit.getCommands().some((command) =>
     command.type === UnitCommandTypes.Move && !command.isFinished(unit),
   )
+}
+
+function recordUnitsHpHistoryAnchor(worldInstance: world) {
+  const atMs = worldTimeToMs(worldInstance.time)
+  for (const unit of worldInstance.units.list()) {
+    unit.anchorHpHistory(atMs)
+  }
+}
+
+function recordUnitsHpHistoryAfterTick(worldInstance: world) {
+  const atMs = worldTimeToMs(worldInstance.time)
+  for (const unit of worldInstance.units.list()) {
+    unit.recordHpHistory(atMs)
+  }
 }
 
 function isStandingUnit(unit: UnitLike): boolean {
@@ -478,6 +493,7 @@ export async function runTurnStep(params: {
     while (leftSeconds > 0 && (shouldContinue?.() ?? true)) {
       const step = Math.min(maxStepSeconds, leftSeconds);
       const stepStartUnitPositions = captureUnitPositionsById(worldInstance);
+      recordUnitsHpHistoryAnchor(worldInstance);
       processUnitCommands(worldInstance, step);
       leftSeconds -= step;
       runningSteps++;
@@ -485,6 +501,7 @@ export async function runTurnStep(params: {
 
       worldInstance.events.emit("changed", { reason: "unit" });
       worldInstance.skipTime(step, false);
+      recordUnitsHpHistoryAfterTick(worldInstance);
       const directViewAnimationDurationMs = isLive
         ? (liveIntervalMs ?? TURN_ANIMATION_DURATION_MS) * step / secondsToSkip
         : TURN_ANIMATION_DURATION_MS * step / secondsToSkip;

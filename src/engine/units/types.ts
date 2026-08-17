@@ -9,6 +9,7 @@ import type {FollowCommandState} from "@/engine/units/commands/followCommand.ts"
 import type {RetreatCommandState} from "@/engine/units/commands/retreatCommand.ts";
 import {CommandStatus} from "@/engine/units/commands/baseCommand.ts";
 import type {MessageLinked} from "@/engine/units/baseUnit.ts";
+import type {UnitHpHistorySample} from "@/engine/units/hpHistory.ts";
 import type {UnitAbilityType} from "@/engine/units/modifiers/UnitAbilityModifiers.ts";
 
 export type uuid = string
@@ -42,6 +43,8 @@ export interface unitstate {
   label?: string
 
   hp?: number
+  hpHistory?: UnitHpHistorySample[]
+  hpLost5min?: number
   ammo?: number
 
   morale?: number

@@ -1,3 +1,6 @@
+[LAST]
+- UI - Show unit damage for 5m
+
 [2026-07-26]
 - Spectator - add spectator & fixes
 - Messenger - add 50m chain delivery through friendly units

@@ -41,6 +41,10 @@ export class unitregistry {
     const existing = this.map.get(state.id)
     if (existing) {
       Object.assign(existing, state)
+      if (!Array.isArray(existing.hpHistory)) existing.hpHistory = []
+      existing.hpLost5min = typeof existing.hpLost5min === 'number' && Number.isFinite(existing.hpLost5min)
+        ? Math.max(0, existing.hpLost5min)
+        : null
       // Commands may have changed with a remote snapshot. Keep the cached
       // destination marker in sync with the commands used to draw its path.
       existing.refreshFuturePos()

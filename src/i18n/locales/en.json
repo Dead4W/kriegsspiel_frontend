@@ -2,6 +2,13 @@
   "title": "KRIEGSSPIEL",
   "subtitle": "Fog of war.",
   "createRoomBtn": "Create room",
+  "playWithBotBtn": "Play with bot",
+  "botRoom": {
+    "name": "Bot match",
+    "creating": "Starting…",
+    "error": "Could not start a bot match",
+    "briefing": "Welcome to the player and umpire bot test.\nYour objective is to destroy the enemy force."
+  },
   "joinRoom": "Join room",
   "welcome": "Welcome",
   "to_home": "Go Home",
@@ -713,6 +720,7 @@
     "name": "Unit name",
     "damage": "Damage",
     "hp": "HP",
+    "hp_lost_5min": "Lost (5 min)",
     "morale": "Morale",
     "ammo": "Ammo",
     "fatigue": "Fatigue",

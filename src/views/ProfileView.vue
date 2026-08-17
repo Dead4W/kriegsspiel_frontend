@@ -17,6 +17,7 @@ interface UserRoom {
   ingame_time?: string
   options?: Record<string, unknown>
   admin_id?: number
+  is_bot?: boolean
   map_url?: string | null
   height_map_url?: string | null
   weather?: string | null

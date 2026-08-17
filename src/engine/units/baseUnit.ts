@@ -39,7 +39,18 @@ import {
 import {getMoraleCheckConfig, type MoraleOutcomeId} from "@/engine/resourcePack/moraleCheck.ts";
 import { isPlanningTeamSpawnPointAllowed, isPointInsideActiveZone } from '@/game/planningSpawns'
 import { hasEngineAuthority } from '@/engine/authority.ts'
+import { isAdminOrSpectatorTeam } from '@/game/roomGuards.ts'
 import { fatigueDamageMultiplier, fatigueSpeedMultiplier } from '@/engine/units/fatigue'
+import {
+  type UnitHpHistorySample,
+  HP_LOSS_WINDOW_SECONDS,
+  anchorUnitHpHistory,
+  hpLostOverSeconds,
+  normalizeHpHistory,
+  readReportedHpLost5min,
+  recordUnitHpHistory,
+  worldTimeToMs,
+} from '@/engine/units/hpHistory.ts'
 
 const REMOTE_MOVE_INTERPOLATION_STEP_MS = 24
 
@@ -106,6 +117,8 @@ export abstract class BaseUnit {
   isDirty = false
 
   hp: number
+  hpHistory: UnitHpHistorySample[]
+  hpLost5min: number | null
   ammo: number
   fatigue: number
   hasInWater: boolean
@@ -159,6 +172,8 @@ export abstract class BaseUnit {
 
     this.label = s.label ?? translate(`unit.${s.type}`)
     this.hp = 0;
+    this.hpHistory = normalizeHpHistory(s.hpHistory)
+    this.hpLost5min = s.hpLost5min == null ? null : readReportedHpLost5min(s.hpLost5min)
     this.ammo = 0;
     this.morale = s.morale ?? 0;
     this.setCommands(s.commands?.map(c => createUnitCommand(c)) ?? []);
@@ -428,6 +443,8 @@ export abstract class BaseUnit {
       label: this.label,
 
       hp: this.hp,
+      hpHistory: this.hpHistory.map((sample) => ({ ...sample })),
+      hpLost5min: this.hpLost5min ?? undefined,
       ammo: this.ammo,
 
       morale: this.morale,
@@ -465,6 +482,27 @@ export abstract class BaseUnit {
 
   get alive(): boolean {
     return this.hp > 0;
+  }
+
+  anchorHpHistory(atMs: number) {
+    anchorUnitHpHistory(this, atMs)
+  }
+
+  recordHpHistory(atMs: number) {
+    recordUnitHpHistory(this, atMs)
+  }
+
+  getHpLostOverMinutes(minutes = HP_LOSS_WINDOW_SECONDS / 60, atMs?: number): number {
+    if (!Array.isArray(this.hpHistory)) this.hpHistory = []
+    const nowMs = atMs ?? worldTimeToMs(window.ROOM_WORLD?.time ?? '')
+    return hpLostOverSeconds(this.hpHistory, this.hp, nowMs, minutes * 60)
+  }
+
+  getDisplayedHpLost5min(): number {
+    if (isAdminOrSpectatorTeam() || hasEngineAuthority()) {
+      return this.getHpLostOverMinutes(5)
+    }
+    return readReportedHpLost5min(this.hpLost5min)
   }
 
   get takeDamageMod(): number {

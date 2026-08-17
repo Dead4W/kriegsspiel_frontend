@@ -27,6 +27,7 @@ export type RoomData = {
   blueResult?: Record<string, string>
   redResult?: Record<string, string>
   admin_id: number
+  is_bot?: boolean
   options: Record<RoomSettingKey, any>
   params?: Record<string, any>
   resource_pack_id?: number | null

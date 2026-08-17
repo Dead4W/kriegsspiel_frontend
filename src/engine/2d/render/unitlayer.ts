@@ -23,6 +23,7 @@ import {getUnitNumberParam, getUnitStringParam} from "@/engine/resourcePack/unit
 import type {DirectViewObjectState} from "@/engine/types/directViewObjects.ts";
 import {getFatigueConfig} from "@/engine/resourcePack/fatigue.ts";
 import {isScreenPointVisible} from "@/engine/2d/render/culling.ts";
+import {formatHpLostShort} from "@/engine/units/hpHistory.ts";
 
 type InaccuracyCircle = {
   x: number
@@ -53,7 +54,7 @@ export class unitlayer {
   static readonly BASE_UNIT_H = 15
   /** Ниже этого масштаба текст и полосы не читаются и скрываются для невыбранных юнитов. */
   /** Высота подписей/иконок над юнитом и полос под ним, в базовых пикселях. */
-  static readonly LABELS_SCREEN_MARGIN = 70
+  static readonly LABELS_SCREEN_MARGIN = 90
 
   unitTypesLabel: Map<unitType, string> = new Map()
 
@@ -243,8 +244,11 @@ export class unitlayer {
         showDetails &&
         settings[CLIENT_SETTING_KEYS.SHOW_UNIT_LABELS] &&
         Boolean(unit.label)
+      const hpLostLabel = showDetails
+        ? formatHpLostShort(unit.getDisplayedHpLost5min())
+        : null
 
-      if (showHpAmmo || showModifiers || showLabel) {
+      if (showHpAmmo || showModifiers || showLabel || hpLostLabel) {
         ctx.save()
 
         if (showHpAmmo) {
@@ -260,6 +264,11 @@ export class unitlayer {
         if (showLabel) {
           debugPerformance('drawLabel', () => {
             this.drawLabel(ctx, cam, unit, p, wUnit, hUnit, settings)
+          })
+        }
+        if (hpLostLabel) {
+          debugPerformance('drawHpLost', () => {
+            this.drawHpLost(ctx, cam, p, wUnit, hUnit, hpLostLabel, showLabel, showModifiers)
           })
         }
 
@@ -464,7 +473,23 @@ export class unitlayer {
 
     const cam = w.camera
     const objects: DirectViewObjectState[] = w.directViewObjects.value
+    const commandOpacity = settings[CLIENT_SETTING_KEYS.OPACITY_COMMANDS] ?? 0.8
     for (const object of objects) {
+      if (object.type === 'attack_line') {
+        const { r, g, b } = getTeamColor(object.team)
+        ctx.save()
+        ctx.globalAlpha = commandOpacity
+        drawAttackWaveIcons(
+          ctx,
+          object.data.from,
+          object.data.to,
+          `rgba(${r},${g},${b},1)`,
+          cam.zoom
+        )
+        ctx.restore()
+        continue
+      }
+
       if (object.type !== 'inaccuracy') continue
 
       const inaccuracyPointKey =
@@ -548,9 +573,15 @@ export class unitlayer {
     const uiScale = this.getUiScale()
     const barH = 4 * cam.zoom * uiScale
     const y = p.y + h / 2 + 2 * cam.zoom * uiScale
+    const lostRatio = Math.max(0, unit.getDisplayedHpLost5min() / unit.stats.maxHp)
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)'
     ctx.fillRect(p.x - w / 2, y, w, barH)
+
+    if (lostRatio > 0) {
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.45)'
+      ctx.fillRect(p.x - w / 2, y, w * Math.min(1, hpRatio + lostRatio), barH)
+    }
 
     ctx.fillStyle = hpGradientColor(hpRatio)
     ctx.fillRect(p.x - w / 2, y, w * hpRatio, barH)
@@ -646,6 +677,37 @@ export class unitlayer {
     )
 
     ctx.fillStyle = 'white'
+    ctx.fillText(text, p.x, y + bgH / 2)
+  }
+
+  private drawHpLost(
+    ctx: CanvasRenderingContext2D,
+    cam: world['camera'],
+    p: { x: number; y: number },
+    _w: number,
+    h: number,
+    text: string,
+    showLabel: boolean,
+    showModifiers: boolean,
+  ) {
+    const uiScale = this.getUiScale()
+    const s = cam.zoom * uiScale
+    ctx.font = `${11 * s}px system-ui`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    const metrics = ctx.measureText(text)
+    const bgW = metrics.width + 8 * s
+    const bgH = 16 * s
+    let stackTop = p.y - h / 2
+    if (showModifiers) stackTop -= 45 * s
+    else if (showLabel) stackTop -= 24 * s
+    else stackTop -= 6 * s
+    const y = stackTop - 4 * s - bgH
+
+    ctx.fillStyle = 'rgba(127, 29, 29, 0.72)'
+    ctx.fillRect(p.x - bgW / 2, y, bgW, bgH)
+    ctx.fillStyle = '#fecaca'
     ctx.fillText(text, p.x, y + bgH / 2)
   }
 

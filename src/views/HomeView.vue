@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useHead } from '@unhead/vue'
@@ -17,7 +17,12 @@ const nickname = ref('')
 const loading = ref(false)
 const isCreatingBot = ref(false)
 const botError = ref('')
+const workersCapacity = ref<{ available: boolean; free: number; total: number } | null>(null)
+const workersAvailable = computed(() => workersCapacity.value?.available ?? null)
+const workersFree = computed(() => workersCapacity.value?.free ?? null)
 const error = ref('')
+const WORKERS_POLL_MS = 5000
+let workersPoll: ReturnType<typeof setInterval> | null = null
 
 const COOKIE_CONSENT_KEY = 'cookie_consent_v1'
 const hasAcceptedCookies = ref(false)
@@ -146,8 +151,54 @@ function createRoom() {
   })
 }
 
+function setWorkersUnavailable() {
+  workersCapacity.value = {
+    available: false,
+    free: 0,
+    total: workersCapacity.value?.total ?? 0,
+  }
+}
+
+async function fetchWorkersAvailable() {
+  if (!user.value) {
+    workersCapacity.value = null
+    return
+  }
+
+  try {
+    const { data } = await api.get('/worker/available')
+    const free = Number(data?.free)
+    const total = Number(data?.total)
+    const available = typeof data?.available === 'boolean'
+      ? data.available
+      : Number.isFinite(free) && free > 0
+
+    workersCapacity.value = {
+      available,
+      free: Number.isFinite(free) ? Math.max(0, Math.floor(free)) : 0,
+      total: Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0,
+    }
+  } catch {
+    workersCapacity.value = null
+  }
+}
+
+function startWorkersPoll() {
+  void fetchWorkersAvailable()
+  if (workersPoll) return
+  workersPoll = setInterval(() => {
+    void fetchWorkersAvailable()
+  }, WORKERS_POLL_MS)
+}
+
+function stopWorkersPoll() {
+  if (!workersPoll) return
+  clearInterval(workersPoll)
+  workersPoll = null
+}
+
 async function playWithBot() {
-  if (!user.value || isCreatingBot.value) return
+  if (!user.value || isCreatingBot.value || workersAvailable.value === false) return
 
   isCreatingBot.value = true
   botError.value = ''
@@ -167,7 +218,12 @@ async function playWithBot() {
     })
   } catch (err) {
     console.error('CREATE BOT ROOM ERROR:', err)
-    botError.value = t('botRoom.error')
+    if (axios.isAxiosError(err) && err.response?.status === 503) {
+      setWorkersUnavailable()
+      botError.value = t('botRoom.unavailable')
+    } else {
+      botError.value = t('botRoom.error')
+    }
   } finally {
     isCreatingBot.value = false
   }
@@ -194,10 +250,13 @@ async function checkAuth() {
     user.value = data
     showAuth.value = false
     showServerError.value = false
+    startWorkersPoll()
   } catch (err: unknown) {
     if (axios.isAxiosError(err) && err.response?.status === 401) {
       showAuth.value = true
       showServerError.value = false
+      stopWorkersPoll()
+      workersCapacity.value = null
       return
     }
 
@@ -224,6 +283,7 @@ async function register() {
       name: nickname.value,
     }
     showAuth.value = false
+    startWorkersPoll()
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       const responseData = err.response?.data as {
@@ -251,6 +311,7 @@ async function register() {
 onMounted(checkAuth)
 onMounted(applyAuthErrorFromQuery)
 onMounted(fetchUpdates)
+onUnmounted(stopWorkersPoll)
 
 onMounted(() => {
   try {
@@ -299,13 +360,30 @@ function acceptCookies() {
       </div>
 
       <div class="actions">
-        <button
-          class="bot"
-          @click="playWithBot"
-          :disabled="!user || isCreatingBot"
-        >
-          {{ isCreatingBot ? t('botRoom.creating') : t('playWithBotBtn') }}
-        </button>
+<!--        <div-->
+<!--          class="bot-action"-->
+<!--          :class="{-->
+<!--            'is-unavailable': workersAvailable === false,-->
+<!--            'is-available': workersAvailable === true,-->
+<!--          }"-->
+<!--        >-->
+<!--          <p v-if="workersAvailable === false" class="bot-status" role="status">-->
+<!--            <span class="bot-status__dot" aria-hidden="true"></span>-->
+<!--            <span>{{ t('botRoom.unavailable') }}</span>-->
+<!--          </p>-->
+<!--          <p v-else-if="workersFree" class="bot-status" role="status">-->
+<!--            <span class="bot-status__dot" aria-hidden="true"></span>-->
+<!--            <span>{{ t('botRoom.available', workersFree) }}</span>-->
+<!--          </p>-->
+<!--          <button-->
+<!--            class="bot"-->
+<!--            @click="playWithBot"-->
+<!--            :disabled="!user || isCreatingBot || workersAvailable === false"-->
+<!--            :title="workersAvailable === false ? t('botRoom.unavailable') : undefined"-->
+<!--          >-->
+<!--            {{ isCreatingBot ? t('botRoom.creating') : t('playWithBotBtn') }}-->
+<!--          </button>-->
+<!--        </div>-->
 
         <button
           class="primary"
@@ -323,7 +401,7 @@ function acceptCookies() {
         </router-link>
       </div>
 
-      <p v-if="botError" class="bot-error">{{ botError }}</p>
+      <p v-if="botError && workersAvailable !== false" class="bot-error">{{ botError }}</p>
 
       <div class="discord-widget-wrap">
         <a
@@ -517,7 +595,52 @@ h1 {
   display: flex;
   gap: 1rem;
   justify-content: center;
+  align-items: flex-end;
   flex-wrap: wrap;
+}
+
+.bot-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 200px;
+}
+
+.bot-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0 0 0.55rem;
+  padding: 0.4rem 0.7rem;
+  max-width: 220px;
+  text-align: left;
+  color: var(--text-muted);
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.bot-status__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex-shrink: 0;
+  margin-top: 0.35em;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.bot-action.is-unavailable .bot-status {
+  color: var(--danger);
+}
+
+.bot-action.is-unavailable .bot-status__dot {
+  background: var(--danger);
+}
+
+.bot-action.is-available .bot-status__dot {
+  background: var(--accent);
 }
 
 .discord-widget-wrap {
@@ -589,6 +712,15 @@ h1 {
   background: color-mix(in oklab, var(--accent) 22%, var(--panel) 78%);
   border-color: var(--accent);
   transform: translateY(-1px);
+}
+
+.actions button.bot:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bot-action .bot {
+  width: 100%;
 }
 
 .primary {

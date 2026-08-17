@@ -7,6 +7,8 @@
     "name": "Bot match",
     "creating": "Starting…",
     "error": "Could not start a bot match",
+    "unavailable": "No free workers right now. Try again later.",
+    "available": "{n} free worker | {n} free workers",
     "briefing": "Welcome to the player and umpire bot test.\nYour objective is to destroy the enemy force."
   },
   "joinRoom": "Join room",

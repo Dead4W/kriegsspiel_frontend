@@ -158,7 +158,7 @@ function spawnMessengerForUnitMessage(message: ChatMessage, sourceUnit: BaseUnit
         messengerId,
         quotedMessageId: message.quotedMessageId ?? null,
         sourceUnitId: sourceUnit.id,
-        manualRoutePoints: [],
+        manualRoutePoints: message.routePoints ?? [],
         manualRouteIsPath: true,
         deliveryStatus: "pending",
       },
@@ -174,6 +174,7 @@ export function emitUnitsLinkedMessage(
   text: string,
   existingMessengerId: string | null = null,
   observation: ChatMessageObservation | null = null,
+  routePoints: Array<{ x: number; y: number }> = [],
 ): boolean {
   const uniqueUnits = [...new Map(targetUnits.map((unit) => [unit.id, unit])).values()]
   const targetUnit = uniqueUnits[0]
@@ -203,6 +204,7 @@ export function emitUnitsLinkedMessage(
     quotedMessageId: sourceMessage?.id ?? null,
     messengerId: reuseMessenger ? existingMessenger!.id : null,
     deliveryStatus: reuseMessenger ? "in_transit" : "pending",
+    routePoints,
     team: messageTeam,
     status: ChatMessageStatus.Sent,
     delivered: false,
@@ -226,8 +228,9 @@ export function emitUnitLinkedMessage(
   text: string,
   existingMessengerId: string | null = null,
   observation: ChatMessageObservation | null = null,
+  routePoints: Array<{ x: number; y: number }> = [],
 ): boolean {
-  return emitUnitsLinkedMessage(sourceMessage, [targetUnit], text, existingMessengerId, observation)
+  return emitUnitsLinkedMessage(sourceMessage, [targetUnit], text, existingMessengerId, observation, routePoints)
 }
 
 export function applyReadyMessageOrdersToUnit(
